@@ -7,6 +7,15 @@ export const MAX_SHOPPING_LIST_CHARS = 12_000;
 export const MAX_SHOPPING_LIST_ITEMS = 200;
 
 
+function collapseDuplicatedList(value: string): string {
+  const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (lines.length < 8 || lines.length % 2 !== 0) return value;
+  const half = lines.length / 2;
+  const first = lines.slice(0, half);
+  const second = lines.slice(half);
+  return first.every((line, index) => line === second[index]) ? first.join('\n') : value;
+}
+
 function normalizeTerm(value: string): string {
   return value
     .normalize('NFD')
@@ -26,7 +35,8 @@ function normalizeMeasurementUnit(value: string): SupermarketMeasurementUnit {
 }
 export function parseGroupShoppingList(value: string): GroupItemInput[] {
   const consolidated = new Map<string, GroupItemInput>();
-  for (const [index, rawEntry] of value.slice(0, MAX_SHOPPING_LIST_CHARS).split(/[,;\n]+/).entries()) {
+  const source = collapseDuplicatedList(value.slice(0, MAX_SHOPPING_LIST_CHARS));
+  for (const [index, rawEntry] of source.split(/[,;\n]+/).entries()) {
     let entry = rawEntry
       .trim()
       .replace(/^[-*•]\s*/, '')
@@ -46,7 +56,10 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     let rawTerm = entry;
     let unit: SupermarketMeasurementUnit | undefined;
     const leadingPackage = entry.match(
-      /^(\d{1,3})\s*(?:botellas?|latas?|cajas?|packs?|paquetes?)\s+(?:de\s+)?(.+)$/i,
+      /^(\d{1,3})\s*(?:botellas?|latas?|cajas?|packs?|paquetes?|sachets?|bolsas?|mallas?)\s+(?:de\s+)?(.+)$/i,
+    );
+    const packageOfCount = entry.match(
+      /^(?:paquetes?|packs?|cajas?|bolsas?)\s+de\s+(\d{1,3})\s+(.+)$/i,
     );
     const leadingMeasure = entry.match(
       /^(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
@@ -63,6 +76,9 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     if (leadingPackage) {
       quantity = Number(leadingPackage[1]);
       rawTerm = leadingPackage[2];
+    } else if (packageOfCount) {
+      quantity = Number(packageOfCount[1]);
+      rawTerm = packageOfCount[2];
     } else if (leadingMeasure) {
       quantity = Number(leadingMeasure[1]);
       unit = normalizeMeasurementUnit(leadingMeasure[2]);
@@ -71,6 +87,8 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
       quantity = Number(trailingMeasure[2]);
       unit = normalizeMeasurementUnit(trailingMeasure[3]);
       rawTerm = trailingMeasure[1];
+      const leadingCount = rawTerm.match(/^(\d{1,3})\s+(.+)$/);
+      if (leadingCount) rawTerm = leadingCount[2];
     } else if (leadingQuantity) {
       quantity = Number(leadingQuantity[1]);
       rawTerm = leadingQuantity[2];

@@ -488,10 +488,30 @@ export default function SupermarketPage() {
                             )}
                             <p className="mt-0.5 text-xs cc-text-tertiary">{item.brand || selectedBasket?.store}</p>
                           </>
-                        ) : (
+                        ) : loading ? (
                           <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
                             <AlertTriangle className="h-4 w-4" /> Buscando equivalente
                           </span>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                              <AlertTriangle className="h-4 w-4" /> No encontrado
+                            </span>
+                            {selectedBasket && storeSearchUrl(selectedBasket.store, item.requestedTerm) && (
+                              <p className="text-xs cc-text-secondary">
+                                Agrégalo tú
+                                {' · '}
+                                <a
+                                  href={storeSearchUrl(selectedBasket.store, item.requestedTerm)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-semibold underline"
+                                >
+                                  buscarlo en {selectedBasket.store}
+                                </a>
+                              </p>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-5 py-3 text-sm cc-text-secondary">

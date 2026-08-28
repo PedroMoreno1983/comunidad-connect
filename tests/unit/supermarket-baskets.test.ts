@@ -241,4 +241,26 @@ describe('buildBasketComparison', () => {
     });
     expect(result.recommended?.items).toHaveLength(6);
   });
+
+  it('does not silently swap generic carne molida for chicken mince', () => {
+    const withBeef = buildBasketComparison(['carne molida'], {
+      'carne molida': [
+        row('aCuenta', 'Carne Molida Pollo 400 g Ariztia', 4944),
+        row('aCuenta', 'Carne Molida Vacuno 4% 500 g', 6180),
+      ],
+    }, { 'carne molida': 500 }, { 'carne molida': 'g' });
+
+    expect(withBeef.recommended?.items[0].name).toBe('Carne Molida Vacuno 4% 500 g');
+    expect(withBeef.recommended?.items[0].name).not.toMatch(/pollo/i);
+  });
+
+  it('leaves carne molida missing rather than substituting pollo', () => {
+    const onlyChicken = buildBasketComparison(['carne molida'], {
+      'carne molida': [row('aCuenta', 'Carne Molida Pollo 400 g Ariztia', 4944)],
+    }, { 'carne molida': 500 }, { 'carne molida': 'g' });
+
+    expect(onlyChicken.recommended).toBeNull();
+    expect(onlyChicken.comparisons.flatMap(basket => basket.items).map(item => item.name).join())
+      .not.toMatch(/pollo/i);
+  });
 });

@@ -99,4 +99,11 @@ describe('fetchBatchSupermarketRows', () => {
       'Pollo Pechuga Deshuesada Congelada 750 g Super Pollo',
     ]);
   });
+
+  it('sends distinctive later words so yogurt protein is not drowned by cheap yogurts', async () => {
+    await fetchBatchSupermarketRows(['yogurt protein'], '2026-07-20T00:00:00Z');
+    const query = state.batches.flat().find(item => item.term === 'yogur protein' || item.term === 'yogurt protein');
+    expect(query?.anchor).toBe('yogur');
+    expect(query?.anchors).toEqual(expect.arrayContaining(['yogur', 'yogurt', 'protein', 'proteina']));
+  });
 });
