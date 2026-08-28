@@ -80,7 +80,7 @@ class FullCatalogParserTests(unittest.TestCase):
             'a1:{"name":"Arroz Caja 10 unidades","price":1590,'
             '"photosUrl":"$a2","sku":"123","ean":"$a3",'
             '"slug":"arroz-123","brand":"Acuenta","stock":8,'
-            '"promotion":null,"__typename":"CatalogProductModel"}\n'
+            '"promotion":null,"__typename":"CatalogProductModel","index":0}\n'
             'a2:["https://img/arroz.jpg"]\n'
             'a3:["7800000000123"]\n'
         )
@@ -502,7 +502,7 @@ class FullCatalogParserTests(unittest.TestCase):
             '"photosUrl":"$a2","sku":"123","ean":"$a3",'
             '"slug":"arroz-123","brand":"Acuenta","stock":8,'
             '"promotion":"$a4","promotionPricePerSubUnit":129,'
-            '"__typename":"CatalogProductModel"}\n'
+            '"__typename":"CatalogProductModel","index":0}\n'
             'a2:["https://img/arroz.jpg"]\n'
             'a3:["7800000000123"]\n'
             'a4:{"type":"specialPrice","isActive":true,"conditions":"$a5"}\n'
@@ -526,6 +526,27 @@ class FullCatalogParserTests(unittest.TestCase):
         self.assertEqual(products[0].pack_units, 10)
         self.assertEqual(products[0].ean, "7800000000123")
         self.assertEqual(products[0].image_url, "https://img/arroz.jpg")
+
+    def test_acuenta_parses_catalog_product_when_typename_is_not_last_field(self) -> None:
+        # Run 80: live RSC added "index" after CatalogProductModel; advertised
+        # totals were present (Despensa 683) but the line-end regex yielded 0 SKUs.
+        product = (
+            'd4:{"name":"Aceite Vegetal Botella 900 ml Acuenta","price":1520,'
+            '"photosUrl":"$d5","sku":"696785","ean":"$d6",'
+            '"slug":"aceite-vegetal-900","brand":"Acuenta","stock":2748,'
+            '"promotion":null,"__typename":"CatalogProductModel","index":0}\n'
+            'd5:["https://img/aceite.jpg"]\n'
+            'd6:["7800000000123"]\n'
+        )
+        pagination = '"pagination":{"page":1,"pages":14,"total":{"value":683,"relation":"eq"}}'
+        encoded = json.dumps(product + pagination, ensure_ascii=False)
+        page_html = f"<script>self.__next_f.push([1,{encoded}])</script>"
+        products, pages, total = parse_acuenta_category_page(page_html, "Despensa")
+        self.assertEqual((pages, total), (14, 683))
+        self.assertEqual(len(products), 1)
+        self.assertEqual(products[0].sku, "696785")
+        self.assertEqual(products[0].name, "Aceite Vegetal Botella 900 ml Acuenta")
+        self.assertEqual(products[0].price, 1520)
 
     def test_irurzun_only_accepts_available_positive_prices(self) -> None:
         payload = json.dumps(
