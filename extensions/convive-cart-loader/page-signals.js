@@ -17,6 +17,14 @@
       .trim();
   }
 
+  const TERMS_TEXT = [
+    'actualizamos terminos y condiciones',
+    'terminos y condiciones de puntos cencosud',
+    'puntos cencosud',
+    'no pudimos registrar tu aceptacion',
+    'registrar tu aceptacion',
+  ];
+
   const OUT_OF_STOCK_TEXT = [
     'justo se agoto',
     'que mal justo se agoto',
@@ -52,6 +60,12 @@
     return left <= cx && left + width >= cx && top <= cy && top + height >= cy;
   }
 
+  function overlayLooksLikeTerms(text) {
+    const haystack = normalize(text);
+    if (!haystack) return false;
+    return TERMS_TEXT.some(fragment => haystack.includes(normalize(fragment)));
+  }
+
   function overlayLooksLikeDelivery(text, locationText) {
     const haystack = normalize(text);
     if (!haystack) return false;
@@ -67,8 +81,10 @@
   globalThis.CONVIVE_PAGE_SIGNALS = {
     normalize,
     OUT_OF_STOCK_TEXT,
+    TERMS_TEXT,
     overlayIsBlocking,
     overlayLooksLikeDelivery,
+    overlayLooksLikeTerms,
     textLooksOutOfStock,
   };
 })();

@@ -15,7 +15,7 @@ de búsqueda en vivo.
 | Tottus | API pública de listing raíz, paginada hasta `pagination.count` | Completa |
 | Santa Isabel | Categorías principales descubiertas desde el menú público; páginas hasta vacío/repetición | Completa |
 | Unimarc | 15 categorías principales; `__NEXT_DATA__` SSR y total `resource` | Completa |
-| Jumbo | 8 categorías principales; respuesta JSON de `bff.jumbo.cl/catalog/plp` capturada por Playwright | Completa |
+| Jumbo | 13 categorías (incluye panadería, fiambres y desayuno); JSON de `bff.jumbo.cl/catalog/plp` vía Playwright | Completa |
 | Lider | Desafío interactivo de verificación humana | Bloqueada hasta contar con feed/API autorizado |
 
 “Completa” significa que el proceso recorre toda la paginación publicada por la

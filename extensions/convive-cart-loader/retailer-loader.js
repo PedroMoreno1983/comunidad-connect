@@ -222,9 +222,14 @@
   function interventionPrompt(config) {
     const overlay = blockingOverlay();
     if (!overlay) return null;
+    if (PAGE_SIGNALS.overlayLooksLikeTerms(overlay.textContent)) return 'terms';
     return PAGE_SIGNALS.overlayLooksLikeDelivery(overlay.textContent, config.locationText)
       ? 'delivery'
       : null;
+  }
+
+  function termsPauseDetail(store) {
+    return `${store} muestra los Términos de Puntos Cencosud. Ciérralos o pulsa Reintentar tú — CoCo no acepta términos ni paga — y luego pulsa “Reanudar carga”.`;
   }
 
   function productDetailRoot() {
@@ -458,10 +463,18 @@
   }
 
   async function replaceExistingCart(overlay, config, job) {
+    if (interventionPrompt(config) === 'terms') {
+      await pause(overlay, termsPauseDetail(job.store));
+      return false;
+    }
     overlay.querySelector('.coco-loader__detail').textContent =
       `Revisando el carro anterior de ${job.store} antes de cargar la lista nueva…`;
     const before = await cartCountWithDrawerProbe(config);
     if (before === null) {
+      if (interventionPrompt(config) === 'terms') {
+        await pause(overlay, termsPauseDetail(job.store));
+        return false;
+      }
       await pause(
         overlay,
         `No fue posible verificar el contador de ${job.store}. Abre su carro, déjalo vacío y pulsa “Reanudar carga”.`,
@@ -499,6 +512,10 @@
         parseCartCount(config) === 0 ? { cartCount: 0 } : null
       ), 10000);
       if (!cleared) {
+        if (interventionPrompt(config) === 'terms') {
+          await pause(overlay, termsPauseDetail(job.store));
+          return false;
+        }
         await pause(
           overlay,
           `${job.store} no confirmó que el carro quedara vacío. Vacíalo aquí y pulsa “Reanudar carga”.`,
@@ -744,6 +761,10 @@
       );
       return;
     }
+    if (interventionPrompt(config) === 'terms') {
+      await pause(overlay, termsPauseDetail(job.store));
+      return;
+    }
 
     if (job.replaceCart && job.cartResetStatus === 'pending' && !config.cartApi) {
       const replaced = await replaceExistingCart(overlay, config, job);
@@ -810,10 +831,15 @@
       );
       return;
     }
+    if (interventionPrompt(config) === 'terms') {
+      await pause(overlay, termsPauseDetail(job.store));
+      return;
+    }
 
     let addControl = initialAddControl;
     if (!addControl) {
       const signal = await waitFor(() => {
+        if (interventionPrompt(config) === 'terms') return { type: 'terms' };
         if (interventionPrompt(config) === 'delivery') return { type: 'delivery' };
         const control = findAddControl(config);
         if (control) return { type: 'add', control };
@@ -824,6 +850,9 @@
       }, 15000);
       if (signal?.type === 'add') {
         addControl = signal.control;
+      } else if (signal?.type === 'terms') {
+        await pause(overlay, termsPauseDetail(job.store));
+        return;
       } else if (signal?.type === 'delivery') {
         await pause(
           overlay,
@@ -895,6 +924,7 @@
     }
     const outcome = addedDuringQuantity ? 'added' : await waitFor(() => {
       if (pageIsBlocked(config)) return 'blocked';
+      if (interventionPrompt(config) === 'terms') return 'terms';
       if (interventionPrompt(config) === 'delivery') return 'delivery';
       if (additionWasVerified(config, addControl, before)) return 'added';
       return null;
@@ -905,6 +935,10 @@
         overlay,
         `${job.store} pide una verificación humana. Complétala aquí y luego pulsa “Reanudar carga”.`,
       );
+      return;
+    }
+    if (outcome === 'terms') {
+      await pause(overlay, termsPauseDetail(job.store));
       return;
     }
     if (outcome === 'delivery') {

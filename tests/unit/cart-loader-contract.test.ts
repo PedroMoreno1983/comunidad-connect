@@ -184,6 +184,15 @@ describe('retailer-loader', () => {
         );
     });
 
+    it('pausa el modal de Términos Cencosud y no lo acepta por la persona', () => {
+        expect(source).toContain('overlayLooksLikeTerms');
+        expect(source).toContain('termsPauseDetail');
+        expect(source).toContain('Puntos Cencosud');
+        expect(source).toContain('no acepta términos ni paga');
+        expect(source).not.toMatch(/triggerClick\([^)]*[Aa]ceptar/);
+        expect(source).not.toMatch(/findEmptyCartConfirmation[\s\S]{0,200}aceptar terminos/i);
+    });
+
     it('omite una ficha agotada y sigue con el resto de la lista', () => {
         expect(source).toContain('productIsOutOfStock');
         expect(source).toContain('está agotado');

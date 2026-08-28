@@ -12,7 +12,7 @@ Irurzun.
 - Cada URL exacta de producto se valida contra los dominios de su propia tienda.
 - No lee contraseñas, medios de pago ni datos del checkout.
 - No confirma pedidos, no reserva horarios y no ejecuta pagos.
-- Pausa ante CAPTCHA, verificación humana o un modal real de entrega (el que cubre el centro de la pantalla) y permite reanudar.
+- Pausa ante CAPTCHA, verificación humana, el modal de Términos de Puntos Cencosud o un modal real de entrega (el que cubre el centro de la pantalla) y permite reanudar. CoCo no acepta términos ni paga.
 - Omite productos agotados con una nota visible y continúa con el resto de la lista.
 - No confunde el widget permanente de despacho del header con una puerta de ubicación.
 - Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.

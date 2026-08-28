@@ -23,6 +23,7 @@ function loadSignals() {
     CONVIVE_PAGE_SIGNALS?: {
       overlayIsBlocking: (rect: object, viewport: object) => boolean;
       overlayLooksLikeDelivery: (text: string, locationText: string[]) => boolean;
+      overlayLooksLikeTerms: (text: string) => boolean;
       textLooksOutOfStock: (text: string) => boolean;
       OUT_OF_STOCK_TEXT: string[];
     };
@@ -74,6 +75,17 @@ describe('puerta de ubicación', () => {
       'Agregar al carro Avena Tradicional',
       LOCATION_TEXT,
     )).toBe(false);
+  });
+});
+
+describe('modal de términos Cencosud', () => {
+  const signals = loadSignals();
+
+  it('reconoce el overlay de Puntos Cencosud que congelaba Santa Isabel en el item 1', () => {
+    expect(signals.overlayLooksLikeTerms(
+      'Actualizamos Términos y Condiciones de Puntos Cencosud. No pudimos registrar tu aceptación. Reintentar',
+    )).toBe(true);
+    expect(signals.overlayLooksLikeTerms('Agregar al carro Yogurt Batido Colun 125 g')).toBe(false);
   });
 });
 
