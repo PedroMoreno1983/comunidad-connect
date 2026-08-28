@@ -15,8 +15,9 @@ de búsqueda en vivo.
 | Tottus | API pública de listing raíz, paginada hasta `pagination.count` | Completa |
 | Santa Isabel | Categorías principales descubiertas desde el menú público; páginas hasta vacío/repetición | Completa |
 | Unimarc | 15 categorías principales; `__NEXT_DATA__` SSR y total `resource` | Completa |
-| Jumbo | 13 categorías (incluye panadería, fiambres y desayuno); JSON de `bff.jumbo.cl/catalog/plp` vía Playwright | Completa |
+| Jumbo | 13 categorías; PLP `?page=N` vía Playwright (no depende del botón visible de paginación) + JSON `bff.jumbo.cl/catalog/plp` | Completa |
 | Lider | Desafío interactivo de verificación humana | Bloqueada hasta contar con feed/API autorizado |
+| aCuenta | Pasillos de despensa fijos primero; el menú live no puede abrir con un aisle promo vacío (“Luka…”) | Completa |
 
 “Completa” significa que el proceso recorre toda la paginación publicada por la
 tienda y deduplica por SKU, EAN, URL o nombre. No significa que un producto
@@ -55,4 +56,9 @@ incluye como `database_count`.
 
 ## Automatización
 
-`full-supermarket-catalog.yml` ejecuta una matriz independiente por tienda tres
+`full-supermarket-catalog.yml` ejecuta una matriz independiente por tienda a las
+03:27 UTC y en cada push a `master` que toque el crawler.
+
+Jumbo y aCuenta reintentan hasta 3 veces si el job sale 2 (bloqueo / partial).
+No se inventan SKUs: un aisle vacío se omite y se sigue con el siguiente.
+
