@@ -25,6 +25,21 @@
     'registrar tu aceptacion',
   ];
 
+  const EMPTY_CART_TEXT = [
+    'tu carro esta vacio',
+    'tu carrito esta vacio',
+    'carro esta vacio',
+    'carrito esta vacio',
+    'carro vacio',
+    'carrito vacio',
+    'no tienes productos en tu carro',
+    'no tienes productos en tu carrito',
+    'sin productos en tu carro',
+    'sin productos en tu carrito',
+    'no hay productos en tu carro',
+    'no hay productos en tu carrito',
+  ];
+
   const OUT_OF_STOCK_TEXT = [
     'justo se agoto',
     'que mal justo se agoto',
@@ -78,13 +93,28 @@
     return OUT_OF_STOCK_TEXT.some(fragment => haystack.includes(normalize(fragment)));
   }
 
+  /**
+   * Copy nativo de carro vacío. Jumbo (2026-08-28) muestra "Tu carro está vacío"
+   * con un panel de marketing ("Inténtalo aquí") mientras el contador del header
+   * no parsea: eso no es un API que confirme 0, pero sí es el carro vacío.
+   */
+  function textLooksLikeEmptyCart(text) {
+    const haystack = normalize(text);
+    if (!haystack) return false;
+    if (EMPTY_CART_TEXT.some(fragment => haystack.includes(normalize(fragment)))) return true;
+    return /(?:^|\b)(?:tu )?(?:carro|carrito)(?: de compras)?(?: esta)? vacio\b/.test(haystack)
+      || /(?:^|\b)(?:no tienes|sin|no hay) productos (?:en|dentro de) (?:tu )?(?:carro|carrito)\b/.test(haystack);
+  }
+
   globalThis.CONVIVE_PAGE_SIGNALS = {
     normalize,
+    EMPTY_CART_TEXT,
     OUT_OF_STOCK_TEXT,
     TERMS_TEXT,
     overlayIsBlocking,
     overlayLooksLikeDelivery,
     overlayLooksLikeTerms,
+    textLooksLikeEmptyCart,
     textLooksOutOfStock,
   };
 })();
