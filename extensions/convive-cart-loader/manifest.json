@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CoCo · Cargador de Supermercado",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "Carga automáticamente en el supermercado que elijas la lista que CoCo comparó por ti. Tú revisas y pagas; CoCo nunca confirma la compra.",
   "icons": {
     "16": "icon-16.png",

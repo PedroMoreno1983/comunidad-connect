@@ -17,7 +17,7 @@ Irurzun.
 - No confunde el widget permanente de despacho del header con una puerta de ubicación.
 - Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.
 - Informa el contador observado antes y después sin asumir que cada producto crea una línea nueva.
-- Vacía el carro anterior sólo cuando la persona confirma que quiere reemplazarlo. Si la tienda muestra copy de carro vacío (“Tu carro está vacío”) trata el carro como vacío y empieza a agregar, aunque el contador del header no parsea; no espera para siempre un API que nunca confirma 0. Si un panel de marketing tapa la ficha, cierra la X o pausa con Reanudar — nunca pulsa pagar ni “Inténtalo aquí”.
+- Vacía el carro anterior sólo cuando la persona confirma que quiere reemplazarlo. En **las 7 tiendas** (Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta, Irurzun), si la UI nativa muestra carro vacío (“Tu carro está vacío”, “Tu carrito está vacío”, “Your cart is empty”, etc.) CoCo trata el carro como vacío y empieza a agregar, aunque el contador/API no parsea; no espera para siempre un 0 de red. Si un panel de marketing tapa la ficha, cierra la X o pausa con Reanudar. Nunca pulsa pagar, confirmar ni “Inténtalo aquí”. Ante Términos de Puntos Cencosud, pausa y no acepta.
 - Expone versión y capacidades para impedir que Convive use un cargador antiguo.
 - Persiste el avance para continuar producto por producto y no detiene toda la lista por un faltante.
 
