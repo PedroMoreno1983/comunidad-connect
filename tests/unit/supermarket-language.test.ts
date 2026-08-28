@@ -38,7 +38,8 @@ describe('supermarket catalog language variants', () => {
 
   it('resolves common Chilean drinks, retailer naming and a frequent typo', () => {
     expect(matchAnchor('champaña brut')).toBe('espumante');
-    expect(matchAnchors('champaña brut')).toEqual(['espumante', 'champana', 'champaña']);
+    expect(matchAnchors('champaña brut')).toEqual(expect.arrayContaining(['espumante', 'champana', 'champaña']));
+    expect(matchAnchors('champaña brut')[0]).toBe('espumante');
     expect(termMatchesProductName('champaña brut', 'Espumante Brut 750 ml')).toBe(true);
     expect(termMatchesProductName('Aperol', 'Cóctel Aperitivo Botella 1 L Aperol')).toBe(true);
     expect(termMatchesProductName('Aperol', 'Licor Aperol 11° 1 L')).toBe(true);

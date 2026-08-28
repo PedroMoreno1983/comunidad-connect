@@ -47,7 +47,7 @@ export async function comparePersistedSupermarkets(
 ) {
   const cutoff = new Date(Date.now() - MAX_PRICE_AGE_MS).toISOString();
   const supabaseAdmin = getSupabaseAdmin();
-  const batchedRows = await fetchBatchSupermarketRows(terms, cutoff);
+  const batchedRows = await fetchBatchSupermarketRows(terms, cutoff, requestedUnits);
   const entries: Array<[string, Record<string, unknown>[]]> = batchedRows
     ? Object.entries(batchedRows)
     : await Promise.all(terms.map(async term => {

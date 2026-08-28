@@ -130,6 +130,18 @@ export function isProductSuitableForRequest(
       || measurement.dimension === 'mass' && measurement.amount >= 500;
   }
 
+  // "Carne molida" en Chile es vacuno. Sin esta guarda, "Carne Molida Pollo"
+  // ganaba por precio aunque el pedido no mencionara pollo (lista de Pedro).
+  if (
+    /\bcarne\b/.test(normalizedTerm)
+    && /\bmolid[oa]s?\b/.test(normalizedTerm)
+    && !/\b(?:pollo|pavo|cerdo)\b/.test(normalizedTerm)
+    && /\b(?:pollo|pavo|cerdo)\b/.test(normalizedName)
+    && !/\b(?:vacuno|res|vacuna)\b/.test(normalizedName)
+  ) {
+    return false;
+  }
+
   if (requestedUnit || significantWords(requestedTerm).length !== 1) return true;
 
   if (family === 'carne') {
