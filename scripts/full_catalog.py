@@ -282,11 +282,13 @@ def parse_acuenta_category_page(
 
     products: list[Product] = []
     observed_at = utc_now()
-    for match in re.finditer(
-        r'(?m)^[0-9a-z]+:(\{.*?"__typename":"CatalogProductModel"\})$',
-        stream,
-    ):
-        raw = json.loads(match.group(1))
+    # Live RSC records now append fields after __typename (e.g. "index":0).
+    # Run 80 advertised Despensa total 683 with zero SKUs because the parser
+    # required CatalogProductModel to be the last key. Walk decoded flight
+    # references instead of a line-end regex; never invent missing SKUs.
+    for raw in references.values():
+        if not isinstance(raw, dict) or raw.get("__typename") != "CatalogProductModel":
+            continue
         name = str(raw.get("name") or "").strip()
         regular_price = parse_price(raw.get("price"))
         promotion_price = 0
