@@ -306,38 +306,15 @@ export interface SupermarketBasketCandidate extends SupermarketBasketSummary {
   channelType: SupermarketChannelType;
   items: SupermarketSearchCandidate[];
   fetchedAt?: string;
-  quoteStatus?: 'catalog' | 'retailer';
-  quotedAt?: string;
 }
 
-export interface SupermarketCheckoutQuoteItem {
-  id: string;
-  requestedTerm: string;
-  name: string;
-  sku: string;
-  productUrl?: string;
-  quantity: number;
-  price: number;
-  lineTotal: number;
-}
+export type SupermarketComparisonSourceStatus = 'ok' | 'no_results' | 'degraded';
 
-export interface SupermarketCheckoutQuoteRequestItem {
-  id: string;
-  requestedTerm: string;
-  name: string;
-  productUrl?: string;
-  quantity: number;
-  catalogLineTotal: number;
-}
-
-export interface SupermarketCheckoutQuote {
+export interface SupermarketComparisonSource {
   store: string;
-  subtotal: number;
-  catalogSubtotal: number;
-  items: SupermarketCheckoutQuoteItem[];
-  missingTerms: string[];
-  quotedAt: string;
+  status: SupermarketComparisonSourceStatus;
 }
+
 export type SupermarketPurchasePlanStatus = 'single_store' | 'split_store' | 'needs_substitution';
 
 export interface SupermarketPurchasePlanBasket {
@@ -366,66 +343,6 @@ export interface SupermarketPurchasePlan {
   substitutionTasks: SupermarketSubstitutionTask[];
 }
 
-export type SupermarketCartLoaderStatus =
-  | 'idle'
-  | 'opening'
-  | 'loading'
-  | 'paused'
-  | 'completed'
-  | 'completed_with_issues'
-  | 'failed';
-
-export interface SupermarketCartLoadItem {
-  id: string;
-  name: string;
-  requestedTerm: string;
-  quantity: number;
-  productUrl?: string;
-  /** Codigo de la tienda. Sin el la extension solo puede recorrer la interfaz. */
-  sku?: string;
-  /** Lider: exigido junto al sku para cargar el carro por API. */
-  offerId?: string;
-}
-
-export interface SupermarketCartLoadRequest {
-  version: 1;
-  store: string;
-  items: SupermarketCartLoadItem[];
-  createdAt: string;
-  replaceCart: boolean;
-}
-
-export interface SupermarketCartLoadProgress {
-  jobId?: string;
-  store: string;
-  status: SupermarketCartLoaderStatus;
-  total: number;
-  added: number;
-  failed: number;
-  currentItem?: string;
-  previousCartCount?: number;
-  currentCartCount?: number;
-  removedCartCount?: number;
-  cartReplaced?: boolean;
-  detail: string;
-  /** Nombres de los productos que la tienda no cargo, para poder ofrecerlos. */
-  failedItems?: string[];
-  /** Ids de los productos que sí quedaron en el carro, para marcarlos en la lista. */
-  addedItemIds?: string[];
-  /** Detalle por producto omitido (agotado, sin botón, etc.). */
-  failedItemDetails?: Array<{ id: string; name: string; detail: string }>;
-}
-
-export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'outdated' | 'unavailable';
-
-export interface SupermarketCartLoaderBridge {
-  availability: SupermarketCartLoaderAvailability;
-  installedVersion?: string;
-  progress: SupermarketCartLoadProgress | null;
-  start: (options?: { replaceCart?: boolean }) => boolean;
-}
-
-
 export interface SupermarketRequestedItem {
   term: string;
   quantity: number;
@@ -448,16 +365,8 @@ export interface SupermarketSearchResponse {
   requestedItems?: SupermarketRequestedItem[];
   basketComparison?: SupermarketBasketSummary[];
   basketOptions?: SupermarketBasketCandidate[];
-  checkout?: {
-    status: string;
-    store?: string;
-    storeUrl?: string;
-    productUrls: string[];
-    requiresRetailerSession: boolean;
-    cartPreloaded: boolean;
-    detail: string;
-    plan?: SupermarketPurchasePlan;
-  };
+  sources?: SupermarketComparisonSource[];
+  degradedStores?: string[];
 }
 export interface CommunityProject {
   id: string;

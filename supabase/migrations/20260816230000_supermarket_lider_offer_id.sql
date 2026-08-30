@@ -6,7 +6,7 @@
 -- Sin esta columna la carga solo puede hacerse recorriendo la interfaz, producto
 -- por producto y con una navegacion completa por cada uno.
 --
--- Contrato observado en extensions/convive-cart-loader/ADAPTADORES.md.
+-- Contrato observado en las páginas de producto del retailer.
 --
 -- Ambas columnas son TEXT y nullable a proposito:
 --   * TEXT porque los identificadores de Walmart llevan ceros a la izquierda y

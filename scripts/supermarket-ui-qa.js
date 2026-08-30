@@ -123,16 +123,24 @@ async function main() {
     }
 
     await page.waitForTimeout(3_000);
-    if (await page.getByRole('heading', { name: /Una lista\. Un supermercado/i }).count() === 0) {
+    if (await page.getByRole('heading', { name: /Compara tu compra/i }).count() === 0) {
       const bodyText = (await page.locator('body').innerText()).slice(0, 800);
       await page.screenshot({ path: 'C:\\tmp\\supermarket-ui-diagnostic.png', fullPage: true });
-      throw Object.assign(new Error('La vista de Supermercado no mostro la compra personal.'), {
+      throw Object.assign(new Error('La vista de Supermercado no mostro el comparador principal.'), {
         details: { url: page.url(), bodyText, renderErrors },
       });
     }
-    assert(await page.getByRole('heading', { name: /Una lista\. Un supermercado/i }).isVisible(), 'Personal supermarket is visible');
+    assert(await page.getByRole('heading', { name: /Compara tu compra/i }).isVisible(), 'Price comparison is the primary supermarket experience');
+    const cookieNoticeButton = page.getByRole('button', { name: 'Entendido' });
+    if (await cookieNoticeButton.count()) await cookieNoticeButton.click();
     assert(await page.getByText('Comprar en comunidad', { exact: true }).count() === 0, 'Community purchasing is absent from Supermarket');
-    assert(await page.getByText(/Pega hasta 200 productos/i).isVisible(), 'The single-store shopping hero is visible');
+    assert(await page.getByText(/Pega hasta 200 productos/i).isVisible(), 'The price comparison hero is visible');
+    assert(await page.getByRole('link', { name: /Descargar Extensi[oó]n|Cargador/i }).count() === 0, 'The downloadable cart loader is absent');
+    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'];
+    for (const store of expectedStores) {
+      const testId = `store-chip-${store.toLowerCase().replaceAll(' ', '-')}`;
+      assert(await page.getByTestId(testId).isVisible(), `Store icon is visible for ${store}`);
+    }
 
     const colors = await page.getByText(/Pega hasta 200 productos/i).evaluate(element => {
       const section = element.closest('section');
@@ -169,12 +177,20 @@ async function main() {
     await page.getByRole('button', { name: 'Comparar lista' }).click();
     const comparisonResponse = await comparisonResponsePromise;
     const comparisonPayload = await comparisonResponse.json();
-    await page.getByRole('heading', { name: /Mejores totales|Mayor cobertura/i }).waitFor({ timeout: 90_000 });
-    assert(await page.getByText(/Nunca repartimos tu compra entre supermercados/i).isVisible(), 'Results keep the purchase in one store');
+    await page.getByRole('heading', { name: /Mejor compra completa|Mayor cobertura disponible/i }).waitFor({ timeout: 90_000 });
+    const optionStores = (comparisonPayload.basketOptions || []).map(basket => basket.store);
+    assert(
+      optionStores.length === expectedStores.length
+        && new Set(optionStores).size === expectedStores.length
+        && expectedStores.every(store => optionStores.includes(store)),
+      'The comparison payload contains every supermarket exactly once',
+      { optionStores },
+    );
+    assert(await page.getByTestId('store-comparison-row').getByRole('button').count() === 7, 'The result row shows seven supermarket cards');
     assert(await page.locator('tbody tr').count() === 15, 'All fifteen requested rows remain in the contained table');
     assert((await page.locator('#shopping-list').inputValue()).includes('avena'), 'The original list remains editable after comparison');
 
-    const selectedStore = await page.getByText('Tu elección', { exact: true })
+    const selectedStore = await page.getByText('Canasta seleccionada', { exact: true })
       .locator('..').locator('h2').innerText();
     const selectedBasket = (comparisonPayload.basketOptions || [])
       .find(basket => basket.store === selectedStore);
@@ -182,97 +198,55 @@ async function main() {
     const expectedNames = (comparisonPayload.requestedItems || []).map(requested => (
       selectedBasket.items.find(item => item.requestedTerm === requested.term)?.name || requested.term
     ));
-    const visibleNames = await page.locator('tbody tr').evaluateAll(rows => rows.map(row => (
-      row.querySelectorAll('td')[1]?.querySelector('p')?.textContent?.trim() || ''
-    )));
+    const visibleNames = await page.locator('tbody tr').evaluateAll(rows => rows.map(row => {
+      const cell = row.querySelectorAll('td')[1];
+      return cell?.querySelector('a span')?.textContent?.trim()
+        || cell?.querySelector('p')?.textContent?.trim()
+        || row.querySelectorAll('td')[0]?.textContent?.trim()
+        || '';
+    }));
     assert(
       JSON.stringify(visibleNames) === JSON.stringify(expectedNames),
       'Visible products and values belong to the selected supermarket',
       { selectedStore, expectedNames, visibleNames },
     );
 
-    const verifiedDirectStores = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
-    assert(
-      verifiedDirectStores.has(selectedStore),
-      'Default recommendation supports automatic cart loading',
-      { selectedStore },
-    );
-    if (selectedStore === 'Unimarc') {
+    const completeBaskets = (comparisonPayload.basketOptions || []).filter(basket => basket.complete);
+    if (completeBaskets.length > 0) {
       assert(
-        await page.getByTestId('unimarc-login-warning').isVisible(),
-        'Unimarc warns before opening that Google login is unavailable and explains the working access',
-      );
-      const loginWarning = await page.getByTestId('unimarc-login-warning').innerText();
-      assert(
-        loginWarning.includes('Google') && loginWarning.includes('Recibir la clave de acceso rápido'),
-        'Unimarc login warning names the broken provider and the quick-access alternative',
-        { loginWarning },
+        selectedStore === completeBaskets[0].store,
+        'The cheapest complete basket is selected by default',
+        { selectedStore, completeStores: completeBaskets.map(basket => basket.store) },
       );
     }
-    const cartResponsePromise = page.waitForResponse(response => (
-      response.url().endsWith('/api/supermarket/cart-url')
-      && response.request().method() === 'POST'
-    ));
-    const popupPromise = context.waitForEvent('page');
-    await page.getByRole('button', { name: `Cargar carro en ${selectedStore}` }).click();
-    const [cartResponse, retailerPage] = await Promise.all([cartResponsePromise, popupPromise]);
-    const cartPayload = await cartResponse.json();
-    assert(
-      cartResponse.ok() && cartPayload.supported === true && cartPayload.plannedCount > 0,
-      'Cart handoff API confirms products for the selected store',
-      { status: cartResponse.status(), cartPayload },
-    );
-    await retailerPage.waitForURL(url => url.hostname.includes('vtexcommercestable.com.br'), {
-      timeout: 45_000,
-    });
-    await retailerPage.waitForFunction(async plannedCount => {
-      try {
-        const response = await fetch('/api/checkout/pub/orderForm', { cache: 'no-store' });
-        const orderForm = await response.json();
-        return Array.isArray(orderForm.items) && orderForm.items.length === plannedCount;
-      } catch {
-        return false;
-      }
-    }, cartPayload.plannedCount, { timeout: 45_000 });
-    if (selectedStore === 'Unimarc') {
-      await retailerPage.waitForURL(url => (
-        url.hostname === 'unimarc.vtexcommercestable.com.br'
-        && url.searchParams.get('ReturnUrl') === '/cart'
-      ), { timeout: 15_000 });
-      await retailerPage.waitForFunction(async plannedCount => {
-        try {
-          const response = await fetch('/api/checkout/pub/orderForm', { cache: 'no-store' });
-          const orderForm = await response.json();
-          return Array.isArray(orderForm.items) && orderForm.items.length === plannedCount;
-        } catch {
-          return false;
-        }
-      }, cartPayload.plannedCount, { timeout: 30_000 });
-    }
-    const retailerCart = await retailerPage.evaluate(async () => {
-      const response = await fetch('/api/checkout/pub/orderForm', { cache: 'no-store' });
-      const orderForm = await response.json();
-      return {
-        count: Array.isArray(orderForm.items) ? orderForm.items.length : 0,
-        ids: Array.isArray(orderForm.items) ? orderForm.items.map(item => String(item.id)) : [],
-      };
-    });
-    assert(
-      retailerCart.count === cartPayload.plannedCount,
-      'One click opens the official retailer session with the confirmed cart',
-      {
-        selectedStore,
-        finalUrl: retailerPage.url(),
-        plannedCount: cartPayload.plannedCount,
-        cartCount: retailerCart.count,
-        skuIds: retailerCart.ids,
-      },
-    );
-    await retailerPage.close();
+    assert(await page.getByText(/Despacho separado del precio de productos/i).isVisible(), 'Delivery is explicitly excluded from the product total');
+    assert(await page.getByRole('button', { name: /Cargar carro/i }).count() === 0, 'No cart-loader action remains');
+    await page.getByRole('button', { name: 'Copiar comparación' }).click();
+    const copiedComparison = await page.evaluate(() => navigator.clipboard.readText());
+    assert(expectedStores.every(store => copiedComparison.includes(store)), 'Copied comparison includes all seven stores');
+    await page.waitForTimeout(5_500);
 
     const desktopPath = 'C:\\tmp\\supermarket-ui-desktop.png';
     await page.screenshot({ path: desktopPath, fullPage: true });
     report.screenshots.push(desktopPath);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    const mobileDimensions = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    }));
+    assert(
+      mobileDimensions.scrollWidth <= mobileDimensions.viewportWidth + 1,
+      'Mobile supermarket comparison has no page-level horizontal overflow',
+      mobileDimensions,
+    );
+    assert(await page.getByTestId('store-comparison-row').isVisible(), 'The seven-store comparison remains visible on mobile');
+    const mobilePath = 'C:\\tmp\\supermarket-ui-mobile.png';
+    await page.screenshot({ path: mobilePath, fullPage: true });
+    report.screenshots.push(mobilePath);
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
 
     await page.goto(`${baseUrl}/convivencia?lane=abasto`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     await page.getByRole('heading', { name: /Compra en comunidad/i }).waitFor();
@@ -356,17 +330,6 @@ async function main() {
     assert(await orderCard.getByText('Vecina QA', { exact: true }).first().isVisible(), 'Settlement names the invited participant');
     assert(await orderCard.getByText('Debe pagar a Organizador QA').isVisible(), 'Settlement identifies who receives payment');
     assert(await orderCard.getByText('$3.000', { exact: true }).isVisible() && await orderCard.getByText('$4.000', { exact: true }).isVisible(), 'Settlement displays exact participant amounts');
-
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
-    const dimensions = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      viewportWidth: window.innerWidth,
-    }));
-    assert(dimensions.scrollWidth <= dimensions.viewportWidth + 1, 'Mobile layout has no horizontal overflow', dimensions);
-    const mobilePath = 'C:\\tmp\\supermarket-ui-mobile.png';
-    await page.screenshot({ path: mobilePath, fullPage: true });
-    report.screenshots.push(mobilePath);
 
     report.passed = true;
   } finally {

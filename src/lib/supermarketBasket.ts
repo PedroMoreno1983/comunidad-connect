@@ -366,19 +366,26 @@ export function buildBasketComparison(
       complete: missingTerms.length === 0 && terms.length > 0,
       fetchedAt: items.map(item => item.fetchedAt).filter(Boolean).sort().at(0),
     };
-  }).filter(basket => basket.coveredCount > 0)
-    .sort((left, right) => (
+  }).sort((left, right) => (
       Number(right.complete) - Number(left.complete)
       || right.coveredCount - left.coveredCount
       || left.subtotal - right.subtotal
     ));
 
-  const recommended = comparisons.find(basket => basket.complete) ?? null;
-  const purchasePlan = buildResilientPurchasePlan(terms, comparisons as SupermarketBasketCandidate[]);
+  // La comparacion es un producto de siete cadenas, no una lista de resultados
+  // positivos. Conservamos tambien las tiendas sin coincidencias para que la UI
+  // pueda distinguir "sin datos vigentes" de "no fue comparada". Solo las
+  // canastas con productos participan de la recomendacion y del plan.
+  const availableComparisons = comparisons.filter(basket => basket.coveredCount > 0);
+  const recommended = availableComparisons.find(basket => basket.complete) ?? null;
+  const purchasePlan = buildResilientPurchasePlan(
+    terms,
+    availableComparisons as SupermarketBasketCandidate[],
+  );
   return {
     terms,
     recommended,
-    bestAvailable: comparisons[0] ?? null,
+    bestAvailable: availableComparisons[0] ?? null,
     comparisons,
     purchasePlan,
   };

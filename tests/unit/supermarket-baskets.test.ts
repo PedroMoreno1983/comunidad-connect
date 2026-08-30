@@ -152,8 +152,34 @@ describe('buildBasketComparison', () => {
 
     expect(result.recommended?.store).toBe('Tottus');
     expect(result.recommended?.items[0].name).toBe('Yogur bebible 1 L');
-    expect(result.comparisons.some(basket => basket.store === 'Lider')).toBe(false);
+    expect(result.comparisons.find(basket => basket.store === 'Lider')).toMatchObject({
+      coveredCount: 0,
+      subtotal: 0,
+      items: [],
+      missingTerms: ['yogur'],
+    });
   });
+
+  it.each(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'])(
+    'permite que %s gane cuando tiene la canasta completa disponible',
+    store => {
+      const result = buildBasketComparison(['arroz'], {
+        arroz: [row(store, 'Arroz grado 2 bolsa 1 kg', 1200)],
+      });
+
+      expect(result.recommended?.store).toBe(store);
+      expect(result.comparisons).toHaveLength(7);
+      expect(new Set(result.comparisons.map(basket => basket.store))).toEqual(new Set([
+        'Jumbo',
+        'Santa Isabel',
+        'Lider',
+        'Unimarc',
+        'Tottus',
+        'aCuenta',
+        'Irurzun',
+      ]));
+    },
+  );
 
   it('uses a household-size dairy milk for a generic milk request', () => {
     const result = buildBasketComparison(['leche'], {
