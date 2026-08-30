@@ -23,7 +23,7 @@ export interface ScrapedItem {
   /**
    * Lider/Walmart: identificador de oferta, distinto del SKU y exigido por la
    * mutacion `updateItems` para cargar el carro. Ver
-   * extensions/convive-cart-loader/ADAPTADORES.md.
+   * el contrato observado en las páginas de producto del retailer.
    */
   offerId?: string;
   /** Unidad de venta que espera la tienda al agregar al carro ('EACH', etc). */

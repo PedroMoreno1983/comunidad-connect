@@ -11,21 +11,16 @@ import {
 } from '@/lib/supermarketGroupDomain';
 import { toSupermarketShoppingItem } from '@/lib/supermarketResultItem';
 import { createClient } from '@/lib/supabase/server';
-import type { SupermarketMeasurementUnit, SupermarketShoppingItem } from '@/lib/types';
+import type {
+  SupermarketBasketCandidate,
+  SupermarketMeasurementUnit,
+  SupermarketShoppingItem,
+} from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
-const STORE_URLS: Record<string, string> = {
-  Jumbo: 'https://www.jumbo.cl',
-  Lider: 'https://super.lider.cl',
-  'Santa Isabel': 'https://www.santaisabel.cl',
-  Unimarc: 'https://www.unimarc.cl',
-  Tottus: 'https://www.tottus.cl/tottus-cl',
-  aCuenta: 'https://www.acuenta.cl',
-  Irurzun: 'https://irurzun.cl',
-};
 
 type RequestedItem = {
   term: string;
@@ -186,18 +181,6 @@ export async function POST(req: NextRequest) {
             ...comparison.comparisons
               .filter(basket => basket.store !== selectedStore),
           ],
-          checkout: {
-            status: checkoutPlan.status,
-            store: primaryStore,
-            storeUrl: primaryStore ? STORE_URLS[primaryStore] : undefined,
-            productUrls: items.flatMap(item => item.productUrl ? [item.productUrl] : []),
-            requiresRetailerSession: true,
-            cartPreloaded: false,
-            detail: ready
-              ? `Convive preparó una sola canasta en ${primaryStore} para continuar sin volver a buscar los productos.`
-              : `Convive mantuvo todo en ${primaryStore}; los faltantes no se repartirán entre otras tiendas.`,
-            plan: checkoutPlan,
-          },
           sources: STORES.map(store => ({
             store,
             status: items.some(item => item.store === store) || comparison.comparisons.some(basket => basket.store === store)
@@ -301,6 +284,58 @@ export async function POST(req: NextRequest) {
 
     const missingTerms = best.missingTerms;
     const foundCount = items.length;
+    const basketOptions = STORES.map<SupermarketBasketCandidate>(store => {
+      const basket = (result.basketComparison ?? []).find(candidate => candidate.store === store);
+      if (!basket) {
+        return {
+          store,
+          channelType: store === 'aCuenta' || store === 'Irurzun' ? 'wholesale' : 'retail',
+          items: [],
+          subtotal: 0,
+          coveredCount: 0,
+          requestedCount: requestedItems.length,
+          coveragePercent: 0,
+          missingTerms: terms,
+          complete: false,
+        };
+      }
+
+      const basketItems = basket.items.map(item => {
+        const req = requestedItems.find((requested: RequestedItem) => requested.term === item.query)
+          ?? { term: item.query, quantity: item.userQuantity ?? 1 };
+        return toSupermarketShoppingItem({
+          id: randomUUID(),
+          name: item.name,
+          brand: item.brand,
+          sku: item.sku,
+          offerId: item.offerId,
+          price: item.price,
+          store: item.store,
+          productUrl: item.productUrl,
+          originalPrice: item.originalPrice,
+          isOffer: item.isOffer,
+          selectionReason: item.selectionReason,
+          fetchedAt,
+        }, req, 'live', 0);
+      });
+
+      return {
+        store,
+        channelType: store === 'aCuenta' || store === 'Irurzun' ? 'wholesale' : 'retail',
+        items: basketItems,
+        subtotal: basket.subtotal,
+        coveredCount: basket.coveredCount,
+        requestedCount: basket.requestedCount,
+        coveragePercent: basket.coveragePercent,
+        missingTerms: basket.missingTerms,
+        complete: basket.complete,
+        fetchedAt,
+      };
+    }).sort((left, right) => (
+      Number(right.complete) - Number(left.complete)
+      || right.coveredCount - left.coveredCount
+      || left.subtotal - right.subtotal
+    ));
 
     return NextResponse.json({
       message: result.message,
@@ -323,21 +358,15 @@ export async function POST(req: NextRequest) {
         missingTerms: basket.missingTerms,
         complete: basket.complete,
       })),
+      basketOptions,
       degradedStores: result.degradedStores,
-      checkout: {
-        status: ready ? 'ready_for_assisted_checkout' : 'missing_products',
-        store: best.store,
-        storeUrl: STORE_URLS[best.store],
-        productUrls: best.items.flatMap(item => item.productUrl ? [item.productUrl] : []),
-        requiresRetailerSession: true,
-        cartPreloaded: false,
-        detail: 'Convive abre una sola vez el supermercado ganador y copia la lista exacta. El carro no se precarga porque la tienda exige la sesión del comprador.',
-      },
       sources: STORES.map(store => ({
         store,
-        status: result.basketComparison?.some(b => b.store === store)
-          ? 'ok'
-          : 'no_results',
+        status: result.degradedStores?.includes(store)
+          ? 'degraded'
+          : basketOptions.some(basket => basket.store === store && basket.coveredCount > 0)
+            ? 'ok'
+            : 'no_results',
       })),
     });
   } catch (error) {

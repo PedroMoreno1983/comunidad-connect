@@ -3,25 +3,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  BadgeDollarSign,
+  BarChart3,
+  Check,
   CheckCircle2,
   ChevronRight,
-  Download,
+  Copy,
+  Drone,
   ExternalLink,
+  Info,
   Loader2,
-  ShoppingCart,
-  Sparkles,
+  ScanBarcode,
+  ShoppingBag,
+  ShoppingBasket,
   Store,
+  Tags,
   Trophy,
+  Warehouse,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
-import { CartLoaderButton } from '@/components/resident/supermarket/CartLoaderButton';
+import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
-import { storeLoadability, loadabilityRank, type StoreLoadability } from '@/lib/supermarket/cartUrl';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketCandidate,
+  SupermarketComparisonSource,
   SupermarketRequestedItem,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
@@ -33,35 +40,50 @@ const LIST_SUGGESTIONS = [
   { title: 'Desayunos', items: ['Avena', 'Leche', 'Yogur', 'Plátanos', 'Huevos', 'Pan'] },
 ];
 
+const STORE_HOME: Record<string, string> = {
+  Jumbo: 'https://www.jumbo.cl',
+  'Santa Isabel': 'https://www.santaisabel.cl',
+  Lider: 'https://super.lider.cl',
+  Unimarc: 'https://www.unimarc.cl',
+  Tottus: 'https://www.tottus.cl/tottus-cl',
+  aCuenta: 'https://www.acuenta.cl',
+  Irurzun: 'https://irurzun.cl',
+};
+
+const STORE_ACCENT: Record<string, string> = {
+  Jumbo: '#2E7D32',
+  'Santa Isabel': '#C62828',
+  Lider: '#1476D4',
+  Unimarc: '#D71920',
+  Tottus: '#7CB342',
+  aCuenta: '#F28C00',
+  Irurzun: '#6D4C41',
+};
+
+const STORE_ICONS = {
+  Jumbo: ShoppingBasket,
+  'Santa Isabel': Store,
+  Lider: BadgeDollarSign,
+  Unimarc: ScanBarcode,
+  Tottus: ShoppingBag,
+  aCuenta: Tags,
+  Irurzun: Warehouse,
+};
+
 function money(value: number) {
   return `$${Math.round(value).toLocaleString('es-CL')}`;
 }
 
-const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; fg: string }> = {
-  direct: { label: 'Carga automática', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
-  offsite: { label: 'Carga directa*', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
-  manual: { label: 'Requiere un paso extra', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
-};
-
-/**
- * Ordena priorizando las tiendas donde la carga del carro SÍ funciona (rank 0-1:
- * enlace/carro directo) por sobre las manuales (rank 2: Tottus/aCuenta), aunque
- * estas sean más baratas — a pedido: que lo que se puede cargar salga primero.
- * Dentro de cada grupo: más cobertura, luego mejor precio.
- */
-function orderBaskets(baskets: SupermarketBasketCandidate[]): SupermarketBasketCandidate[] {
-  const worksGroup = (store: string) => (loadabilityRank(store) <= 1 ? 0 : 1);
-  return [...baskets].sort((a, b) => {
-    const ga = worksGroup(a.store);
-    const gb = worksGroup(b.store);
-    if (ga !== gb) return ga - gb; // primero las que cargan
-    if (a.complete !== b.complete) return a.complete ? -1 : 1;
-    if (a.coveredCount !== b.coveredCount) return b.coveredCount - a.coveredCount;
-    // leve desempate fino: 'verified' sobre 'attempt' a precio parecido
-    const sa = a.subtotal * (1 + loadabilityRank(a.store) * 0.01);
-    const sb = b.subtotal * (1 + loadabilityRank(b.store) * 0.01);
-    return sa - sb;
-  });
+function freshness(value?: string) {
+  if (!value) return 'Sin actualización verificable';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sin actualización verificable';
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingItem {
@@ -90,24 +112,10 @@ export default function SupermarketPage() {
   const [list, setList] = useState<SupermarketShoppingItem[]>([]);
   const [requestedItems, setRequestedItems] = useState<SupermarketRequestedItem[]>([]);
   const [basketOptions, setBasketOptions] = useState<SupermarketBasketCandidate[]>([]);
+  const [sources, setSources] = useState<SupermarketComparisonSource[]>([]);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [compared, setCompared] = useState(false);
-  // Si el Cargador de Convive (extensión) está activo, todas las tiendas
-  // cargan con un click y el badge debe reflejarlo.
-  const [cartLoaderReady, setCartLoaderReady] = useState(false);
-  // Flujo: el usuario elige tienda y el carro se carga solo en el supermercado;
-  // cada selección explícita incrementa esta llave y gatilla la carga.
-  const [autoLoadKey, setAutoLoadKey] = useState(0);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
-      if (event.data.type === 'CONVIVE_CART_LOADER_READY') setCartLoaderReady(true);
-    };
-    window.addEventListener('message', handleMessage);
-    window.postMessage({ source: 'convive-connect', type: 'CONVIVE_CART_LOADER_PING' }, '*');
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -120,10 +128,20 @@ export default function SupermarketPage() {
   }, []);
 
   const selectedBasket = useMemo(
-    () => basketOptions.find(basket => basket.store === selectedStore) ?? basketOptions[0] ?? null,
+    () => basketOptions.find(basket => basket.store === selectedStore)
+      ?? basketOptions.find(basket => basket.coveredCount > 0)
+      ?? null,
     [basketOptions, selectedStore],
   );
-  const completeBasketCount = basketOptions.filter(basket => basket.complete).length;
+  const completeBaskets = basketOptions.filter(basket => basket.complete);
+  const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
+  const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
+  const runnerUp = winner?.complete ? completeBaskets[1] : undefined;
+  const winnerSavings = winner && runnerUp ? Math.max(0, runnerUp.subtotal - winner.subtotal) : 0;
+  const sourceByStore = useMemo(
+    () => new Map(sources.map(source => [source.store, source.status])),
+    [sources],
+  );
 
   const selectBasket = (
     basket: SupermarketBasketCandidate,
@@ -131,9 +149,6 @@ export default function SupermarketPage() {
   ) => {
     const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
     setSelectedStore(basket.store);
-    // Elegir la tienda ES la orden de cargar: el carro se prepara de inmediato
-    // en el supermercado elegido y la persona solo revisa, acepta y paga.
-    setAutoLoadKey(key => key + 1);
     setList(requested.map(requestedItem => {
       const candidate = byTerm.get(requestedItem.term);
       return candidate ? {
@@ -162,18 +177,17 @@ export default function SupermarketPage() {
         quantity: item.requestedQuantity,
         unit: item.requestedUnit,
       }));
-      // Se reordena con desempate por cargabilidad: a precios parecidos, primero
-      // la tienda más fácil de cargar. La selección por defecto sigue ese orden.
-      const nextOptions = orderBaskets(data.basketOptions ?? []);
+      const nextOptions = data.basketOptions ?? [];
       setRequestedItems(nextRequested);
       setBasketOptions(nextOptions);
+      setSources(data.sources ?? []);
       setCompared(true);
-      setSelectedStore(nextOptions[0]?.store ?? data.recommendedStore ?? null);
+      setSelectedStore(nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null);
       setList(data.items);
 
       toast({
         title: nextOptions.some(basket => basket.complete)
-          ? 'Comparación completa'
+          ? 'Siete cadenas comparadas'
           : 'Comparación con faltantes',
         description: data.message,
         variant: nextOptions.some(basket => basket.complete) ? 'success' : undefined,
@@ -181,7 +195,7 @@ export default function SupermarketPage() {
     } catch (error) {
       toast({
         title: 'No se pudo comparar',
-        description: error instanceof Error ? error.message : 'Hubo un fallo contactando a CoCo.',
+        description: error instanceof Error ? error.message : 'Hubo un fallo consultando los precios.',
         variant: 'destructive',
       });
     } finally {
@@ -189,32 +203,74 @@ export default function SupermarketPage() {
     }
   };
 
-  const applySuggestion = (items: string[]) => {
-    setShoppingInput(items.join('\n'));
+  const copyComparison = async () => {
+    const rows = basketOptions.map(basket => (
+      basket.coveredCount > 0
+        ? `${basket.store}: ${money(basket.subtotal)} · ${basket.coveredCount}/${basket.requestedCount}`
+        : `${basket.store}: sin resultados vigentes`
+    ));
+    try {
+      await navigator.clipboard.writeText([
+        'Comparación de supermercados · Convive Connect',
+        ...rows,
+        '',
+        'Totales de productos; despacho, membresías y medios de pago no incluidos.',
+      ].join('\n'));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2_000);
+    } catch {
+      toast({
+        title: 'No se pudo copiar',
+        description: 'Tu navegador bloqueó el portapapeles.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 pb-20 sm:px-0">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--cc-copper)' }}>
-            Supermercado
-          </p>
-          <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
-          <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-            CoCo busca toda tu compra dentro de cada cadena, compara las canastas completas y te muestra primero
-            la más barata, luego la segunda y la tercera.
-          </p>
-        </div>
-        <a
-          href="/downloads/convive-cart-loader.zip"
-          download="convive-cart-loader.zip"
-          className="self-start sm:self-auto shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-subtle bg-surface text-xs font-semibold cc-text-primary hover:bg-subtle/50 transition-colors shadow-xs"
-        >
-          <Download className="h-4 w-4 text-[var(--cc-copper)]" />
-          <span>Descargar Extensión Chrome (ZIP)</span>
-        </a>
+    <div className="mx-auto max-w-7xl space-y-6 px-4 pb-20 sm:px-0">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--cc-copper)' }}>
+          Comparador de supermercados
+        </p>
+        <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
+        <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
+          Revisamos la misma lista y las mismas cantidades en siete cadenas. Una canasta incompleta nunca gana
+          solo porque su subtotal sea menor.
+        </p>
       </header>
+
+      <section
+        aria-label="Supermercados comparados"
+        className="flex gap-2 overflow-x-auto rounded-2xl border p-3"
+        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}
+      >
+        {SUPERMARKET_STORES.map(store => {
+          const Icon = STORE_ICONS[store];
+          const status = sourceByStore.get(store);
+          return (
+            <div
+              key={store}
+              data-testid={`store-chip-${store.toLowerCase().replaceAll(' ', '-')}`}
+              className="flex min-w-max flex-1 items-center gap-2 rounded-xl border px-3 py-2"
+              style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
+            >
+              <span
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white"
+                style={{ background: STORE_ACCENT[store] }}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-xs font-bold cc-text-primary">{store}</span>
+                <span className="block text-[10px] cc-text-tertiary">
+                  {!compared ? 'Por comparar' : status === 'degraded' ? 'Fuente degradada' : status === 'ok' ? 'Comparado' : 'Sin resultados'}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </section>
 
       <section
         className="relative overflow-hidden rounded-2xl border p-6 text-white md:p-8"
@@ -222,28 +278,25 @@ export default function SupermarketPage() {
       >
         <div className="grid gap-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+            <div
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
               style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)' }}
             >
-              <Sparkles className="h-3 w-3" style={{ color: '#F5BFA3' }} />
+              <BarChart3 className="h-3 w-3" style={{ color: '#F5BFA3' }} />
               Comparación por compra total
-            </motion.div>
+            </div>
             <DisplayHeading size={36} className="mt-4" style={{ color: '#fff' }}>
               Pega hasta {MAX_SHOPPING_LIST_ITEMS} productos.
             </DisplayHeading>
             <p className="mt-3 max-w-lg text-sm leading-6 text-white/70">
-              Una línea por producto. Si no indicas cantidad usamos 1; si no indicas marca elegimos una
-              alternativa equivalente y vigente dentro de cada supermercado.
+              Una línea por producto. Respetamos cantidades, unidades y formatos comparables antes de sumar.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {LIST_SUGGESTIONS.map(suggestion => (
                 <button
                   key={suggestion.title}
                   type="button"
-                  onClick={() => applySuggestion(suggestion.items)}
+                  onClick={() => setShoppingInput(suggestion.items.join('\n'))}
                   className="rounded-full border px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
                   style={{ borderColor: 'rgba(255,255,255,0.18)' }}
                 >
@@ -283,61 +336,64 @@ export default function SupermarketPage() {
         </div>
       </section>
 
-      {basketOptions.length > 0 && (
+      {basketOptions.length > 0 && hasResults && (
         <>
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Elige dónde comprar</p>
+                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Resultado de las siete cadenas</p>
                 <h2 className="mt-1 text-2xl font-bold cc-text-primary">
-                  {completeBasketCount > 0 ? 'Mejores totales para tu lista' : 'Mayor cobertura en una sola tienda'}
+                  {completeBaskets.length > 0 ? 'Mejor compra completa' : 'Mayor cobertura disponible'}
                 </h2>
+                {winnerSavings > 0 && winner && (
+                  <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--cc-sage)' }}>
+                    {winner.store} ahorra {money(winnerSavings)} frente a la siguiente canasta completa.
+                  </p>
+                )}
               </div>
-              <p className="text-xs cc-text-secondary">
-                Nunca repartimos tu compra entre supermercados.
-              </p>
+              <button
+                type="button"
+                onClick={() => void copyComparison()}
+                className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold cc-text-primary"
+                style={{ borderColor: 'var(--cc-line)' }}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Comparación copiada' : 'Copiar comparación'}
+              </button>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="mt-5 flex gap-3 overflow-x-auto pb-2" data-testid="store-comparison-row">
               {basketOptions.map((basket, index) => {
                 const selected = basket.store === selectedBasket?.store;
+                const isWinner = basket.store === winner?.store;
+                const hasStoreResults = basket.coveredCount > 0;
                 return (
                   <button
                     key={basket.store}
                     type="button"
                     onClick={() => selectBasket(basket)}
-                    className="rounded-2xl border p-5 text-left transition hover:-translate-y-0.5"
+                    className="min-w-[220px] flex-1 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5"
                     style={{
                       borderColor: selected ? 'var(--cc-copper)' : 'var(--cc-line)',
                       background: selected ? 'var(--cc-paper-warm)' : 'var(--cc-paper)',
-                      boxShadow: selected ? '0 10px 30px rgba(73, 49, 36, 0.08)' : undefined,
+                      opacity: hasStoreResults ? 1 : 0.68,
                     }}
+                    aria-label={`Ver comparación de ${basket.store}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3">
                       <span
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
-                        style={{ background: index === 0 ? 'var(--cc-copper)' : 'var(--cc-paper-warm)', color: index === 0 ? '#fff' : 'var(--cc-ink)' }}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
+                        style={{ background: STORE_ACCENT[basket.store] ?? 'var(--cc-ink)' }}
                       >
                         {index + 1}
                       </span>
-                      {index === 0 && basket.complete && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
+                      {isWinner && hasStoreResults && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
                     </div>
-                    <p className="mt-4 text-xl font-bold cc-text-primary">{basket.store}</p>
-                    {(() => {
-                      const badge = cartLoaderReady
-                        ? LOADABILITY_BADGE.direct
-                        : LOADABILITY_BADGE[storeLoadability(basket.store)];
-                      return (
-                        <span
-                          className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                          style={{ background: badge.bg, color: badge.fg }}
-                        >
-                          {badge.label}
-                        </span>
-                      );
-                    })()}
-                    <p className="mt-1 text-2xl font-bold cc-text-primary">{money(basket.subtotal)}</p>
-                    <p className="mt-2 text-sm cc-text-secondary">
+                    <p className="mt-3 text-lg font-bold cc-text-primary">{basket.store}</p>
+                    <p className="mt-1 text-2xl font-bold cc-text-primary">
+                      {hasStoreResults ? money(basket.subtotal) : '—'}
+                    </p>
+                    <p className="mt-2 text-xs cc-text-secondary">
                       {basket.coveredCount} de {basket.requestedCount} productos
                     </p>
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--cc-paper-deep)' }}>
@@ -350,8 +406,13 @@ export default function SupermarketPage() {
                       />
                     </div>
                     <p className="mt-3 text-xs font-semibold" style={{ color: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
-                      {basket.complete ? 'Canasta completa' : `${basket.missingTerms.length} por reemplazar en esta tienda`}
+                      {!hasStoreResults
+                        ? 'Sin precios vigentes para esta lista'
+                        : basket.complete
+                          ? 'Canasta completa'
+                          : `${basket.missingTerms.length} productos faltantes`}
                     </p>
+                    <p className="mt-2 text-[10px] cc-text-tertiary">Actualización: {freshness(basket.fetchedAt)}</p>
                   </button>
                 );
               })}
@@ -363,91 +424,79 @@ export default function SupermarketPage() {
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div className="flex items-start gap-3">
                   <div className="rounded-xl p-3" style={{ background: 'var(--cc-paper-warm)' }}>
-                    <Store className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />
+                    <Store className="h-5 w-5" style={{ color: STORE_ACCENT[selectedBasket.store] ?? 'var(--cc-copper)' }} />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Tu elección</p>
+                    <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Canasta seleccionada</p>
                     <h2 className="mt-1 text-2xl font-bold cc-text-primary">{selectedBasket.store}</h2>
                     <p className="mt-1 text-sm cc-text-secondary">
                       {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos · {money(selectedBasket.subtotal)}
                     </p>
                   </div>
                 </div>
-                <div className="w-full space-y-2 sm:w-80">
-                  {selectedBasket.complete ? (
-                    <CartLoaderButton basket={selectedBasket} autoLoadKey={autoLoadKey} />
-                  ) : selectedBasket.coveredCount > 0 ? (
-                    <>
-                      {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
-                          Ahora se puede cargar lo encontrado y agregar el resto a mano. */}
-                      {/*
-                          Que falte un producto pasa en todas las tiendas. Antes se
-                          nombraba el faltante y nada mas, asi que la persona quedaba
-                          sin saber que hacer. Ahora cada faltante trae las dos salidas
-                          reales: buscarlo en esta tienda, o cambiarse a una que si lo
-                          tiene (que es el dato mas util y el que nadie estaba dando).
-                      */}
-                      <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
-                        <p className="text-sm font-bold cc-text-primary">
-                          Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
-                        </p>
-                        <ul className="mt-2 space-y-2">
-                          {selectedBasket.missingTerms.map((term) => {
-                            const search = storeSearchUrl(selectedBasket.store, term);
-                            const alternativas = basketOptions.filter(
-                              (option) => option.store !== selectedBasket.store && !option.missingTerms.includes(term),
-                            );
-                            return (
-                              <li key={term} className="text-xs cc-text-secondary">
-                                <strong className="cc-text-primary">{term}</strong>
-                                {search && (
-                                  <>
-                                    {' · '}
-                                    <a href={search} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
-                                      buscarlo en {selectedBasket.store}
-                                    </a>
-                                  </>
-                                )}
-                                {alternativas.length > 0 && (
-                                  <>
-                                    {' · sí está en '}
-                                    {alternativas.map((option, index) => (
-                                      <span key={option.store}>
-                                        {index > 0 && ', '}
-                                        <button
-                                          type="button"
-                                          onClick={() => selectBasket(option)}
-                                          className="font-semibold underline"
-                                        >
-                                          {option.store}
-                                        </button>
-                                      </span>
-                                    ))}
-                                  </>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                      <CartLoaderButton basket={selectedBasket} autoLoadKey={autoLoadKey} />
-                    </>
-                  ) : (
-                    <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
-                      <p className="text-sm font-bold cc-text-primary">No encontramos productos de tu lista en {selectedBasket.store}</p>
-                      <p className="mt-1 text-xs cc-text-secondary">Prueba otra tienda o revisa cómo escribiste los productos.</p>
-                    </div>
-                  )}
-                </div>
+                <a
+                  href={STORE_HOME[selectedBasket.store]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
+                  style={{ borderColor: 'var(--cc-line)' }}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Abrir sitio de {selectedBasket.store}
+                </a>
               </div>
+
+              {!selectedBasket.complete && selectedBasket.missingTerms.length > 0 && (
+                <div className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
+                  <p className="text-sm font-bold cc-text-primary">
+                    Esta canasta no compite como completa: faltan {selectedBasket.missingTerms.length} productos.
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {selectedBasket.missingTerms.map(term => {
+                      const search = storeSearchUrl(selectedBasket.store, term);
+                      const alternatives = basketOptions.filter(option => (
+                        option.store !== selectedBasket.store
+                        && option.coveredCount > 0
+                        && !option.missingTerms.includes(term)
+                      ));
+                      return (
+                        <li key={term} className="text-xs cc-text-secondary">
+                          <strong className="cc-text-primary">{term}</strong>
+                          {search && (
+                            <>
+                              {' · '}
+                              <a href={search} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                                buscar en {selectedBasket.store}
+                              </a>
+                            </>
+                          )}
+                          {alternatives.length > 0 && (
+                            <>
+                              {' · disponible en '}
+                              {alternatives.map((option, optionIndex) => (
+                                <span key={option.store}>
+                                  {optionIndex > 0 && ', '}
+                                  <button type="button" onClick={() => selectBasket(option)} className="font-semibold underline">
+                                    {option.store}
+                                  </button>
+                                </span>
+                              ))}
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </section>
           )}
 
           <section className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--cc-line)' }}>
               <div>
-                <h2 className="text-lg font-bold cc-text-primary">Productos seleccionados</h2>
-                <p className="text-xs cc-text-secondary">La lista queda contenida aquí, aunque pegues 50, 100 o 200 productos.</p>
+                <h2 className="text-lg font-bold cc-text-primary">Detalle de la canasta</h2>
+                <p className="text-xs cc-text-secondary">Producto equivalente, cantidad calculada y precio observado.</p>
               </div>
               <span className="rounded-full px-3 py-1.5 text-xs font-bold cc-text-secondary" style={{ background: 'var(--cc-paper-warm)' }}>
                 {list.filter(item => item.available).length} de {list.length}
@@ -455,21 +504,19 @@ export default function SupermarketPage() {
             </div>
 
             <div className="max-h-[34rem] overflow-auto">
-              <table className="w-full min-w-[720px] border-collapse text-left">
+              <table className="w-full min-w-[760px] border-collapse text-left">
                 <thead className="sticky top-0 z-10" style={{ background: 'var(--cc-paper-warm)' }}>
                   <tr className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">
                     <th className="px-5 py-3">Pediste</th>
-                    <th className="px-5 py-3">Producto elegido</th>
+                    <th className="px-5 py-3">Producto comparable</th>
                     <th className="px-5 py-3">Cantidad</th>
-                    <th className="px-5 py-3 text-right">Precio</th>
+                    <th className="px-5 py-3 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {list.map(item => (
                     <tr key={`${item.requestedTerm}-${item.id}`} className="border-t" style={{ borderColor: 'var(--cc-line)' }}>
-                      <td className="px-5 py-3">
-                        <p className="text-sm font-semibold cc-text-primary">{item.requestedTerm}</p>
-                      </td>
+                      <td className="px-5 py-3 text-sm font-semibold cc-text-primary">{item.requestedTerm}</td>
                       <td className="px-5 py-3">
                         {item.available ? (
                           <>
@@ -478,45 +525,28 @@ export default function SupermarketPage() {
                                 href={item.productUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group inline-flex items-center gap-1.5 text-sm font-semibold cc-text-primary hover:text-[var(--cc-copper)] transition-colors"
+                                className="group inline-flex items-center gap-1.5 text-sm font-semibold cc-text-primary hover:text-[var(--cc-copper)]"
                               >
                                 <span>{item.name}</span>
-                                <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
+                                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
                               </a>
                             ) : (
                               <p className="text-sm font-semibold cc-text-primary">{item.name}</p>
                             )}
-                            <p className="mt-0.5 text-xs cc-text-tertiary">{item.brand || selectedBasket?.store}</p>
+                            <p className="mt-0.5 text-xs cc-text-tertiary">
+                              {item.brand || selectedBasket?.store}
+                              {item.isOffer ? ' · oferta observada' : ''}
+                            </p>
                           </>
-                        ) : loading ? (
-                          <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
-                            <AlertTriangle className="h-4 w-4" /> Buscando equivalente
-                          </span>
                         ) : (
-                          <div className="space-y-0.5">
-                            <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
-                              <AlertTriangle className="h-4 w-4" /> No encontrado
-                            </span>
-                            {selectedBasket && storeSearchUrl(selectedBasket.store, item.requestedTerm) && (
-                              <p className="text-xs cc-text-secondary">
-                                Agrégalo tú
-                                {' · '}
-                                <a
-                                  href={storeSearchUrl(selectedBasket.store, item.requestedTerm)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-semibold underline"
-                                >
-                                  buscarlo en {selectedBasket.store}
-                                </a>
-                              </p>
-                            )}
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                            <AlertTriangle className="h-4 w-4" /> No encontrado
+                          </span>
                         )}
                       </td>
                       <td className="px-5 py-3 text-sm cc-text-secondary">
                         {item.requestedUnit
-                          ? `${item.requestedQuantity} ${item.requestedUnit}`
+                          ? `${item.requestedQuantity} ${item.requestedUnit} · ${item.quantity} envase${item.quantity === 1 ? '' : 's'}`
                           : `${item.quantity} unidad${item.quantity === 1 ? '' : 'es'}`}
                       </td>
                       <td className="px-5 py-3 text-right text-sm font-bold cc-text-primary">
@@ -529,50 +559,54 @@ export default function SupermarketPage() {
             </div>
           </section>
 
-          {selectedBasket && (
-            <section
+          <section className="grid gap-3 md:grid-cols-2">
+            <div
               className="flex items-start gap-3 rounded-2xl border p-5"
               style={{
-                borderColor: selectedBasket.complete ? 'var(--cc-success-border)' : 'var(--cc-amber)',
-                background: selectedBasket.complete ? 'var(--cc-sage-tint)' : 'var(--cc-amber-tint)',
+                borderColor: selectedBasket?.complete ? 'var(--cc-success-border)' : 'var(--cc-amber)',
+                background: selectedBasket?.complete ? 'var(--cc-sage-tint)' : 'var(--cc-amber-tint)',
               }}
             >
-              {selectedBasket.complete
+              {selectedBasket?.complete
                 ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-fg" />
                 : <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--cc-amber)' }} />}
               <div>
                 <p className="font-bold cc-text-primary">
-                  {selectedBasket.complete
-                    ? `Canasta completa en ${selectedBasket.store}`
-                    : `Faltan ${selectedBasket.missingTerms.length} productos en ${selectedBasket.store}`}
+                  {selectedBasket?.complete ? 'Comparación válida como canasta completa' : 'Subtotal parcial, no ganador'}
                 </p>
                 <p className="mt-1 text-sm cc-text-secondary">
-                  {selectedBasket.complete
-                    ? 'El total incluye todos los productos y cantidades de tu lista.'
-                    : 'El subtotal no se compara como si fuera una compra completa. CoCo mantiene la búsqueda dentro de esta misma cadena.'}
+                  {selectedBasket?.complete
+                    ? 'Incluye todos los productos y las cantidades solicitadas.'
+                    : 'Los productos faltantes se muestran y el subtotal no se presenta como la compra más barata.'}
                 </p>
               </div>
-            </section>
-          )}
+            </div>
+            <div className="flex items-start gap-3 rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+              <Drone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--cc-copper)' }} />
+              <div>
+                <p className="font-bold cc-text-primary">Despacho separado del precio de productos</p>
+                <p className="mt-1 text-sm cc-text-secondary">
+                  El total no incluye envío, propina, beneficios de tarjeta ni membresías. Esos valores dependen de dirección, sesión y medio de pago.
+                </p>
+              </div>
+            </div>
+          </section>
         </>
       )}
 
-      {basketOptions.length === 0 && !loading && compared && (
+      {basketOptions.length > 0 && !hasResults && !loading && compared && (
         <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
           <AlertTriangle className="mx-auto h-10 w-10" style={{ color: 'var(--cc-amber)' }} />
-          <p className="mt-3 font-bold cc-text-secondary">Ningún supermercado devolvió productos para esta lista.</p>
-          <p className="mt-1 text-sm cc-text-tertiary">
-            No es un fallo de una sola tienda: el catálogo compartido no encontró coincidencias vigentes.
-            Prueba con nombres más simples (por ejemplo “leche”, “arroz”) o vuelve a intentar en unos minutos.
-          </p>
+          <p className="mt-3 font-bold cc-text-secondary">Las siete cadenas quedaron sin resultados vigentes para esta lista.</p>
+          <p className="mt-1 text-sm cc-text-tertiary">Prueba nombres más simples o vuelve a intentar cuando se actualicen los catálogos.</p>
         </section>
       )}
 
       {basketOptions.length === 0 && !loading && !compared && (
         <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
-          <ShoppingCart className="mx-auto h-10 w-10 cc-text-disabled" />
-          <p className="mt-3 font-bold cc-text-secondary">Pega tu lista para comparar compras completas.</p>
-          <p className="mt-1 text-sm cc-text-tertiary">No mostraremos una mezcla de supermercados como si fuera una sola canasta.</p>
+          <Info className="mx-auto h-10 w-10 cc-text-disabled" />
+          <p className="mt-3 font-bold cc-text-secondary">Pega tu lista para comparar las siete cadenas.</p>
+          <p className="mt-1 text-sm cc-text-tertiary">No mezclaremos una canasta incompleta con una completa.</p>
         </section>
       )}
     </div>

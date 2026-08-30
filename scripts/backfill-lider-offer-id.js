@@ -5,7 +5,7 @@
  * `offerId` ademas del `usItemId` (que ya guardamos como `sku`). Son codigos
  * distintos -para el SKU 00780433000693 el offerId es 821920- y el offerId no
  * viene en el ld+json del que sale el resto del catalogo. Si viene en el
- * `__NEXT_DATA__` de cada ficha. Ver extensions/convive-cart-loader/ADAPTADORES.md.
+ * `__NEXT_DATA__` de cada ficha, según el contrato observado del retailer.
  *
  * Lo que lo hace eficiente: cada ficha trae los pares de su carrusel de
  * relacionados, no solo el suyo. Medido el 2026-08-17: una corrida de 500
