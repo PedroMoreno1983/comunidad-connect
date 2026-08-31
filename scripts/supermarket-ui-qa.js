@@ -221,7 +221,7 @@ async function main() {
     }
     assert(await page.getByText(/Despacho separado del precio de productos/i).isVisible(), 'Delivery is explicitly excluded from the product total');
     assert(
-      (await page.getByText('Clic carga el carro; si pide login, los productos ya están').count()) >= 1
+      (await page.getByText('Clic carga el carro en el sitio de la tienda').count()) >= 1
       || (await page.getByRole('button', { name: /Cargar carro en/i }).count()) >= 1,
       'Cart handoff is offered for stores that support a session cart link',
     );

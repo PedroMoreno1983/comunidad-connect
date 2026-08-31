@@ -21,6 +21,8 @@ const MANUAL_REASON: Record<string, string> = {
   Lider: 'Lider no publica un enlace para armar el carro. Abre cada ficha y agrégalo en super.lider.cl.',
   Tottus: 'Tottus no publica un enlace para armar el carro. Abre cada ficha en tottus.cl y agrégalo ahí.',
   aCuenta: 'aCuenta no publica un enlace para armar el carro. Abre cada ficha en acuenta.cl y agrégalo ahí.',
+  'Santa Isabel': 'Santa Isabel no carga el carro por enlace. Abre cada ficha en santaisabel.cl y agrégalo ahí.',
+  Unimarc: 'Unimarc no carga el carro por enlace. Abre cada ficha en unimarc.cl y agrégalo ahí.',
 };
 
 function cleanText(value: unknown, max: number) {
