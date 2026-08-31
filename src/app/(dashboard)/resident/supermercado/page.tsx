@@ -253,8 +253,8 @@ export default function SupermarketPage() {
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
           Revisamos la misma lista y las mismas cantidades en siete cadenas. Una canasta incompleta nunca gana
-          solo porque su subtotal sea menor. En Jumbo e Irurzun el clic carga el carro en su sitio; en las
-          demás, las fichas quedan linkeadas para agregarlas ahí.
+          solo porque su subtotal sea menor. En Jumbo, Santa Isabel e Irurzun el clic carga el carro en su
+          sitio; en las demás, las fichas quedan linkeadas para agregarlas ahí.
         </p>
       </header>
 

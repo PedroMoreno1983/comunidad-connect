@@ -7,6 +7,7 @@ import {
   MAX_ITEMS_PER_URL,
   storeSupportsDirectCart,
   storeSupportsShopifyCart,
+  storeSupportsStorefrontQueryCart,
   storeSupportsVtexCart,
 } from '@/lib/supermarket/cartUrl';
 import { resolveIrurzunCartItems } from '@/lib/supermarket/irurzunCart';
@@ -18,11 +19,10 @@ export const maxDuration = 60;
 
 const MAX_ITEMS = 200;
 const MANUAL_REASON: Record<string, string> = {
-  Lider: 'Lider no publica un enlace para armar el carro. Abre cada ficha y agrégalo en super.lider.cl.',
-  Tottus: 'Tottus no publica un enlace para armar el carro. Abre cada ficha en tottus.cl y agrégalo ahí.',
-  aCuenta: 'aCuenta no publica un enlace para armar el carro. Abre cada ficha en acuenta.cl y agrégalo ahí.',
-  'Santa Isabel': 'Santa Isabel no carga el carro por enlace. Abre cada ficha en santaisabel.cl y agrégalo ahí.',
-  Unimarc: 'Unimarc no carga el carro por enlace. Abre cada ficha en unimarc.cl y agrégalo ahí.',
+  Lider: 'Lider solo acepta el alta en super.lider.cl (Orchestra), no por enlace. Abre cada ficha y agrégalo ahí.',
+  Tottus: 'Tottus guarda el carro en su origen (CommerceTools), no por enlace. Abre cada ficha en tottus.cl y agrégalo ahí.',
+  aCuenta: 'aCuenta guarda el carro en Instaleap, no por enlace. Abre cada ficha en acuenta.cl y agrégalo ahí.',
+  Unimarc: 'Unimarc carga el carro con una cookie de su dominio, no por enlace. Abre cada ficha en unimarc.cl y agrégalo ahí.',
 };
 
 function cleanText(value: unknown, max: number) {
@@ -85,6 +85,42 @@ export async function POST(req: NextRequest) {
         productUrls,
         reason: MANUAL_REASON[store]
           || `${store || 'Esa tienda'} no permite cargar el carro desde un enlace. Abre las fichas y agrégalo en su sitio.`,
+      };
+      return NextResponse.json(response);
+    }
+
+    if (storeSupportsStorefrontQueryCart(store) && !storeSupportsVtexCart(store)) {
+      const planned = requested.slice(0, MAX_ITEMS_PER_URL);
+      const overflow = requested.slice(MAX_ITEMS_PER_URL);
+      const handoffItems = planned.flatMap(item => (
+        item.sku ? [{ sku: item.sku, quantity: item.quantity }] : []
+      ));
+      const cartUrl = buildDirectCartUrl(store, handoffItems);
+      const missingItems = [
+        ...planned.filter(item => !item.sku).map(item => item.name),
+        ...overflow.map(item => item.name),
+      ].filter(Boolean);
+
+      if (!cartUrl) {
+        const response: SupermarketCartHandoff = {
+          supported: false,
+          mode: 'manual',
+          store,
+          plannedCount: 0,
+          missingItems,
+          productUrls: requested.map(item => item.productUrl).filter(Boolean),
+          reason: 'La tienda no confirmó ningún SKU disponible para esta lista. No abrimos un carro vacío.',
+        };
+        return NextResponse.json(response);
+      }
+
+      const response: SupermarketCartHandoff = {
+        supported: true,
+        mode: 'browser-session-link',
+        store,
+        cartUrl,
+        plannedCount: handoffItems.length,
+        missingItems,
       };
       return NextResponse.json(response);
     }
