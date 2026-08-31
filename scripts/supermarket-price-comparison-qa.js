@@ -51,7 +51,6 @@ function assertReplacementIntegrity() {
     'public/convive-cart-loader.zip',
     'public/downloads/convive-cart-loader.zip',
     'src/app/(dashboard)/resident/supermercado/cargador',
-    'src/app/api/supermarket/cart-url',
     'src/components/resident/supermarket/CartLoaderButton.tsx',
     'src/hooks/useSupermarketCartLoader.ts',
   ];
@@ -60,7 +59,15 @@ function assertReplacementIntegrity() {
   }
   assert(!packageJson.includes('qa:supermarket-cart-loader'), 'Los comandos del cargador salieron del proyecto.');
   assert(!page.includes('convive-cart-loader'), 'La interfaz ya no detecta la extensión antigua.');
-  assert(!page.includes('Cargar carro'), 'La interfaz ya no promete cargar el carro.');
+  assert(page.includes('Clic carga el carro'), 'Elegir una tienda explica que se carga el carro.');
+  assert(
+    read('src/components/resident/supermarket/CartHandoffButton.tsx').includes('Cargar carro en'),
+    'El botón de handoff carga el carro en las cadenas que lo permiten.',
+  );
+  assert(
+    fs.existsSync(path.join(root, 'src/app/api/supermarket/cart-url/route.ts')),
+    'El handoff del carro sigue publicado.',
+  );
 }
 
 async function countRows(query) {

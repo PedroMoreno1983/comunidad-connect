@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BadgeDollarSign,
@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
+import { CartHandoffButton, loadStoreCart } from '@/components/resident/supermarket/CartHandoffButton';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { storeLoadability } from '@/lib/supermarket/cartUrl';
 import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
@@ -116,6 +118,7 @@ export default function SupermarketPage() {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [compared, setCompared] = useState(false);
   const [copied, setCopied] = useState(false);
+  const lastHandoffKey = useRef('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -146,6 +149,7 @@ export default function SupermarketPage() {
   const selectBasket = (
     basket: SupermarketBasketCandidate,
     requested = requestedItems,
+    loadCart = false,
   ) => {
     const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
     setSelectedStore(basket.store);
@@ -158,6 +162,13 @@ export default function SupermarketPage() {
         source: 'catalog' as const,
       } : missingItem(requestedItem);
     }));
+    if (loadCart && storeLoadability(basket.store) === 'direct') {
+      const key = `${basket.store}:${basket.items.map(item => `${item.sku || item.id}:${item.quantity}`).join(',')}`;
+      if (lastHandoffKey.current !== key) {
+        lastHandoffKey.current = key;
+        void loadStoreCart(basket.store, basket.items, toast);
+      }
+    }
   };
 
   const processShoppingList = async () => {
@@ -184,6 +195,7 @@ export default function SupermarketPage() {
       setCompared(true);
       setSelectedStore(nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null);
       setList(data.items);
+      lastHandoffKey.current = '';
 
       toast({
         title: nextOptions.some(basket => basket.complete)
@@ -236,7 +248,8 @@ export default function SupermarketPage() {
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
           Revisamos la misma lista y las mismas cantidades en siete cadenas. Una canasta incompleta nunca gana
-          solo porque su subtotal sea menor.
+          solo porque su subtotal sea menor. Elige una tienda y, cuando la cadena lo permite, cargamos el carro
+          en su checkout para que revises y pagues ahí.
         </p>
       </header>
 
@@ -371,14 +384,16 @@ export default function SupermarketPage() {
                   <button
                     key={basket.store}
                     type="button"
-                    onClick={() => selectBasket(basket)}
+                    onClick={() => selectBasket(basket, requestedItems, true)}
                     className="min-w-[220px] flex-1 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5"
                     style={{
                       borderColor: selected ? 'var(--cc-copper)' : 'var(--cc-line)',
                       background: selected ? 'var(--cc-paper-warm)' : 'var(--cc-paper)',
                       opacity: hasStoreResults ? 1 : 0.68,
                     }}
-                    aria-label={`Ver comparación de ${basket.store}`}
+                    aria-label={storeLoadability(basket.store) === 'direct'
+                      ? `Cargar carro de ${basket.store}`
+                      : `Ver comparación de ${basket.store}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span
@@ -412,6 +427,13 @@ export default function SupermarketPage() {
                           ? 'Canasta completa'
                           : `${basket.missingTerms.length} productos faltantes`}
                     </p>
+                    {hasStoreResults && (
+                      <p className="mt-2 text-[10px] font-semibold cc-text-tertiary">
+                        {storeLoadability(basket.store) === 'direct'
+                          ? 'Clic carga el carro en el checkout de la tienda'
+                          : 'Esta cadena no carga el carro por enlace'}
+                      </p>
+                    )}
                     <p className="mt-2 text-[10px] cc-text-tertiary">Actualización: {freshness(basket.fetchedAt)}</p>
                   </button>
                 );
@@ -434,16 +456,21 @@ export default function SupermarketPage() {
                     </p>
                   </div>
                 </div>
-                <a
-                  href={STORE_HOME[selectedBasket.store]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
-                  style={{ borderColor: 'var(--cc-line)' }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Abrir sitio de {selectedBasket.store}
-                </a>
+                <div className="flex flex-wrap items-center gap-2">
+                  {storeLoadability(selectedBasket.store) === 'direct' && (
+                    <CartHandoffButton store={selectedBasket.store} items={selectedBasket.items} />
+                  )}
+                  <a
+                    href={STORE_HOME[selectedBasket.store]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
+                    style={{ borderColor: 'var(--cc-line)' }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir sitio de {selectedBasket.store}
+                  </a>
+                </div>
               </div>
 
               {!selectedBasket.complete && selectedBasket.missingTerms.length > 0 && (
@@ -476,7 +503,7 @@ export default function SupermarketPage() {
                               {alternatives.map((option, optionIndex) => (
                                 <span key={option.store}>
                                   {optionIndex > 0 && ', '}
-                                  <button type="button" onClick={() => selectBasket(option)} className="font-semibold underline">
+                                  <button type="button" onClick={() => selectBasket(option, requestedItems, true)} className="font-semibold underline">
                                     {option.store}
                                   </button>
                                 </span>

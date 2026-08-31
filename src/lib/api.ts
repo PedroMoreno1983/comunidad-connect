@@ -55,6 +55,8 @@ import {
     ResidentNavigationContext,
     ResidentFinanceExpense,
     ServiceRequestQueueItem,
+    SupermarketCartHandoff,
+    SupermarketCartHandoffItem,
     SupermarketGroupComparison,
     SupermarketGroupCreateInput,
     SupermarketGroupOrder,
@@ -2171,6 +2173,17 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
     }
     return data;
 }
+
+export const SupermarketCartService = {
+    async prepareHandoff(store: string, items: SupermarketCartHandoffItem[]): Promise<SupermarketCartHandoff> {
+        const response = await fetch('/api/supermarket/cart-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ store, items }),
+        });
+        return readJsonResponse<SupermarketCartHandoff>(response);
+    },
+};
 
 export const SupermarketGroupService = {
     async list(): Promise<SupermarketGroupOrder[]> {
