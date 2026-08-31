@@ -320,6 +320,7 @@ export interface SupermarketCheckoutQuoteItem {
   requestedTerm: string;
   name: string;
   sku: string;
+  seller?: string;
   productUrl?: string;
   quantity: number;
   price: number;
@@ -330,6 +331,7 @@ export interface SupermarketCheckoutQuoteRequestItem {
   id: string;
   requestedTerm: string;
   name: string;
+  sku?: string;
   productUrl?: string;
   quantity: number;
   catalogLineTotal: number;

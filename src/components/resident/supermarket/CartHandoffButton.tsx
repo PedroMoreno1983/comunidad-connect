@@ -42,7 +42,7 @@ export async function loadStoreCart(
     return false;
   }
 
-  const tab = storeLoadability(store) === 'direct' ? openBlankRetailerTab() : null;
+  const tab = storeLoadability(store) === 'direct' ? openBlankRetailerTab(store) : null;
 
   try {
     const handoff = await SupermarketCartService.prepareHandoff(store, payload);

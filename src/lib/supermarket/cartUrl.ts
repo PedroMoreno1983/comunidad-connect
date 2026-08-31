@@ -21,6 +21,7 @@
 export interface CartUrlItem {
   sku: string;
   quantity: number;
+  seller?: string;
 }
 
 export type DirectCartConfidence = 'verified';
@@ -75,7 +76,12 @@ function usableItems(items: CartUrlItem[]): CartUrlItem[] {
     .map(item => ({
       sku: item.sku.trim(),
       quantity: Math.min(99, Math.max(1, Math.round(item.quantity) || 1)),
+      seller: item.seller?.trim() || undefined,
     }));
+}
+
+function sellerId(item: CartUrlItem): string {
+  return item.seller && /^\d{1,8}$/.test(item.seller) ? item.seller : '1';
 }
 
 function buildVtexCartUrl(base: string, items: CartUrlItem[]): string {
@@ -84,7 +90,7 @@ function buildVtexCartUrl(base: string, items: CartUrlItem[]): string {
   const params = new URLSearchParams();
   items.forEach(item => params.append('sku', item.sku));
   items.forEach(item => params.append('qty', String(item.quantity)));
-  items.forEach(() => params.append('seller', '1'));
+  items.forEach(item => params.append('seller', sellerId(item)));
   params.append('sc', '1');
   params.append('redirect', 'true');
   return `${base}/checkout/cart/add?${params.toString()}`;
