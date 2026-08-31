@@ -142,6 +142,110 @@ describe('quoteVtexBasket', () => {
     expect(quote.subtotal).toBe(5290);
   });
 
+  it('loads the catalog skuId even when the stored name would not match', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse([{
+        productName: 'Arroz Pregraneado 1 kg',
+        items: [{
+          itemId: '111151',
+          nameComplete: 'Arroz Pregraneado 1 kg',
+          sellers: [{
+            sellerId: '1',
+            commertialOffer: { Price: 2150, ListPrice: 2150, AvailableQuantity: 20 },
+          }],
+        }],
+      }]))
+      .mockResolvedValueOnce(jsonResponse({
+        items: [{
+          requestIndex: 0,
+          id: '111151',
+          quantity: 2,
+          availability: 'available',
+          priceDefinition: { total: 430000 },
+        }],
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const quote = await quoteVtexBasket('Jumbo', [{
+      id: 'arroz',
+      requestedTerm: 'arroz',
+      name: 'Arroz Grado 2 Tucapel 1 kg',
+      sku: '111151',
+      quantity: 2,
+      catalogLineTotal: 4000,
+    }]);
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('fq=skuId:111151');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(quote.items[0]).toMatchObject({
+      sku: '111151',
+      seller: '1',
+      lineTotal: 4300,
+    });
+    expect(quote.missingTerms).toEqual([]);
+  });
+
+  it('looks up Unimarc /product/ URLs as VTEX /p slugs', async () => {
+    const beef = [{
+      productName: 'Carne molida 10% grasa vacuno corriente Fundo Rio Alegre congelado 500 g',
+      items: [{
+        itemId: 'beef-500',
+        nameComplete: 'Carne molida 10% grasa vacuno corriente Fundo Rio Alegre congelado 500 g',
+        sellers: [{
+          sellerId: '1',
+          commertialOffer: { Price: 5290, ListPrice: 5290, AvailableQuantity: 20 },
+        }],
+      }],
+    }];
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(beef))
+      .mockResolvedValueOnce(jsonResponse({
+        items: [{
+          requestIndex: 0,
+          id: 'beef-500',
+          quantity: 1,
+          availability: 'available',
+          priceDefinition: { total: 529000 },
+        }],
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const quote = await quoteVtexBasket('Unimarc', [{
+      id: 'beef',
+      requestedTerm: 'carne',
+      name: 'Carne molida 10% grasa vacuno corriente Fundo Rio Alegre congelado 500 g',
+      productUrl: 'https://www.unimarc.cl/product/carne-molida-10-grasa-500-g',
+      quantity: 1,
+      catalogLineTotal: 5290,
+    }]);
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/api/catalog_system/pub/products/search/carne-molida-10-grasa-500-g/p',
+    );
+    expect(quote.items).toHaveLength(1);
+    expect(quote.items[0]?.sku).toBe('beef-500');
+  });
+
+  it('still hands off resolved SKUs when checkout simulation rejects the basket', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(papaProduct()))
+      .mockResolvedValueOnce(jsonResponse({ items: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const quote = await quoteVtexBasket('Santa Isabel', [{
+      id: 'papa',
+      requestedTerm: 'papas',
+      name: 'Papas Soufle Malla 2 kg',
+      sku: '15476',
+      quantity: 1,
+      catalogLineTotal: 2090,
+    }]);
+
+    expect(quote.items).toHaveLength(1);
+    expect(quote.items[0]?.sku).toBe('15476');
+    expect(quote.missingTerms).toEqual([]);
+  });
+
   it('marks one rejected lookup as missing without blocking the remaining cart', async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new Error('VTEX respondio HTTP 400.'))

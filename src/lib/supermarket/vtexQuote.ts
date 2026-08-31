@@ -58,10 +58,18 @@ function productSlug(productUrl: string | undefined): string | null {
   if (!productUrl) return null;
   try {
     const path = new URL(productUrl).pathname.replace(/^\/+|\/+$/g, '');
-    return path.endsWith('/p') ? path : null;
+    if (path.endsWith('/p')) return path;
+    // Unimarc ya no usa /p en el storefront; el catálogo VTEX sigue siendo {linkText}/p.
+    const unimarc = path.match(/(?:^|\/)product\/([^/]+)\/?$/i);
+    return unimarc ? `${unimarc[1]}/p` : null;
   } catch {
     return null;
   }
+}
+
+function catalogSkuId(sku: string | undefined): string | null {
+  const cleaned = (sku ?? '').trim();
+  return /^[A-Za-z0-9_-]{1,40}$/.test(cleaned) ? cleaned : null;
 }
 
 async function fetchJson(
@@ -98,15 +106,23 @@ function vtexSearchTerm(value: string): string {
   return value.replace(/[%<>]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function offerFromProduct(
-  expectedName: string,
-  product: Record<string, unknown>,
-): { name: string; sku: string; price: number; listPrice: number } | null {
-  const productName = asString(product.productName);
-  const score = productNameScore(expectedName, productName);
-  if (score < 0) return null;
+interface VtexOffer {
+  name: string;
+  sku: string;
+  seller: string;
+  price: number;
+  listPrice: number;
+  score: number;
+}
 
-  const offers = asRecords(product.items).flatMap(item => {
+function sellerFrom(seller: Record<string, unknown>): string {
+  const id = asString(seller.sellerId).trim();
+  return /^\d{1,8}$/.test(id) ? id : '1';
+}
+
+function availableOffers(product: Record<string, unknown>, expectedName?: string): VtexOffer[] {
+  const productName = asString(product.productName);
+  return asRecords(product.items).flatMap(item => {
     const sku = asString(item.itemId);
     const itemName = asString(item.nameComplete) || productName;
     return asRecords(item.sellers).flatMap(seller => {
@@ -114,18 +130,57 @@ function offerFromProduct(
       const price = asNumber(commercialOffer?.Price);
       const available = asNumber(commercialOffer?.AvailableQuantity);
       if (!sku || price <= 0 || available <= 0) return [];
+      const score = expectedName ? productNameScore(expectedName, itemName) : 1;
+      if (score < 0) return [];
       return [{
-        score: productNameScore(expectedName, itemName),
+        score,
         name: itemName,
         sku,
+        seller: sellerFrom(seller),
         price,
         listPrice: Math.max(price, asNumber(commercialOffer?.ListPrice)),
       }];
     });
-  }).filter(offer => offer.score >= 0)
-    .sort((left, right) => right.score - left.score || left.price - right.price);
+  });
+}
 
-  return offers[0] ?? null;
+function offerFromProduct(
+  expectedName: string,
+  product: Record<string, unknown>,
+): Omit<VtexOffer, 'score'> | null {
+  const productName = asString(product.productName);
+  if (productNameScore(expectedName, productName) < 0) return null;
+  const offers = availableOffers(product, expectedName)
+    .sort((left, right) => right.score - left.score || left.price - right.price);
+  const offer = offers[0];
+  return offer ? { name: offer.name, sku: offer.sku, seller: offer.seller, price: offer.price, listPrice: offer.listPrice } : null;
+}
+
+function offerFromSku(
+  product: Record<string, unknown>,
+  sku: string,
+): Omit<VtexOffer, 'score'> | null {
+  const match = availableOffers(product).find(offer => offer.sku === sku);
+  return match
+    ? { name: match.name, sku: match.sku, seller: match.seller, price: match.price, listPrice: match.listPrice }
+    : null;
+}
+
+function toQuoteItem(
+  item: SupermarketCheckoutQuoteRequestItem,
+  offer: Omit<VtexOffer, 'score'>,
+): SupermarketCheckoutQuoteItem {
+  return {
+    id: item.id,
+    requestedTerm: item.requestedTerm,
+    name: offer.name,
+    sku: offer.sku,
+    seller: offer.seller,
+    productUrl: item.productUrl,
+    quantity: item.quantity,
+    price: offer.price,
+    lineTotal: offer.price * item.quantity,
+  };
 }
 
 async function resolveProduct(
@@ -134,6 +189,19 @@ async function resolveProduct(
 ): Promise<SupermarketCheckoutQuoteItem | null> {
   const base = VTEX_ACCOUNT_BASES[store];
   if (!base) return null;
+
+  const skuId = catalogSkuId(item.sku);
+  if (skuId) {
+    const bySku = asRecords(await fetchJson(
+      `${base}/api/catalog_system/pub/products/search?fq=skuId:${skuId}`,
+      undefined,
+      true,
+    ));
+    const skuOffer = bySku
+      .map(product => offerFromSku(product, skuId))
+      .find((offer): offer is NonNullable<typeof offer> => offer !== null);
+    if (skuOffer) return toQuoteItem(item, skuOffer);
+  }
 
   const slug = productSlug(item.productUrl);
   let products: Record<string, unknown>[] = [];
@@ -165,16 +233,7 @@ async function resolveProduct(
   const offer = offers[0];
   if (!offer) return null;
 
-  return {
-    id: item.id,
-    requestedTerm: item.requestedTerm,
-    name: offer.name,
-    sku: offer.sku,
-    productUrl: item.productUrl,
-    quantity: item.quantity,
-    price: offer.price,
-    lineTotal: offer.price * item.quantity,
-  };
+  return toQuoteItem(item, offer);
 }
 
 async function resolveProducts(
@@ -244,7 +303,11 @@ export async function quoteVtexBasket(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: available.map(item => ({ id: item.sku, quantity: item.quantity, seller: '1' })),
+        items: available.map(item => ({
+          id: item.sku,
+          quantity: item.quantity,
+          seller: item.seller || '1',
+        })),
         country: 'CHL',
       }),
     },
@@ -261,7 +324,6 @@ export async function quoteVtexBasket(
       || asString(simulated.availability) !== 'available'
       || lineTotal <= 0
     ) {
-      missingTerms.push(item.requestedTerm);
       continue;
     }
     verifiedItems.push({
@@ -271,12 +333,23 @@ export async function quoteVtexBasket(
     });
   }
 
+  if (verifiedItems.length === 0 && available.length > 0) {
+    // La simulación a veces rechaza un SKU vigente. Preferimos abrir el carro
+    // con lo que el catálogo público ya confirmó en stock, no un checkout vacío.
+    verifiedItems.push(...available);
+  }
+
+  const verifiedTerms = new Set(verifiedItems.map(item => item.requestedTerm));
+  const stillMissing = requested
+    .map(item => item.requestedTerm)
+    .filter(term => !verifiedTerms.has(term));
+
   return {
     store,
     subtotal: verifiedItems.reduce((sum, item) => sum + item.lineTotal, 0),
     catalogSubtotal,
     items: verifiedItems,
-    missingTerms: [...new Set(missingTerms)],
+    missingTerms: [...new Set(stillMissing)],
     quotedAt: new Date().toISOString(),
   };
 }

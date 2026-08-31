@@ -59,6 +59,12 @@ describe('supermarket direct cart links', () => {
     expect(DIRECT_STORES.map(loadabilityRank)).toEqual([0, 0, 0, 0]);
   });
 
+  it('keeps an explicit VTEX seller id in the add URL', () => {
+    expect(buildDirectCartUrl('Jumbo', [{ sku: '111151', quantity: 1, seller: '2' }])).toBe(
+      'https://jumbo.vtexcommercestable.com.br/checkout/cart/add?sku=111151&qty=1&seller=2&sc=1&redirect=true',
+    );
+  });
+
   it('returns null when no SKU can travel in the link', () => {
     expect(buildDirectCartUrl('Jumbo', [{ sku: '  ', quantity: 1 }])).toBeNull();
     expect(buildDirectCartUrl('Jumbo', [])).toBeNull();

@@ -119,6 +119,7 @@ export default function SupermarketPage() {
   const [compared, setCompared] = useState(false);
   const [copied, setCopied] = useState(false);
   const lastHandoffKey = useRef('');
+  const handoffInFlight = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -162,11 +163,15 @@ export default function SupermarketPage() {
         source: 'catalog' as const,
       } : missingItem(requestedItem);
     }));
-    if (loadCart && storeLoadability(basket.store) === 'direct') {
+    if (loadCart && storeLoadability(basket.store) === 'direct' && basket.items.length > 0) {
       const key = `${basket.store}:${basket.items.map(item => `${item.sku || item.id}:${item.quantity}`).join(',')}`;
-      if (lastHandoffKey.current !== key) {
-        lastHandoffKey.current = key;
-        void loadStoreCart(basket.store, basket.items, toast);
+      if (!handoffInFlight.current && lastHandoffKey.current !== key) {
+        handoffInFlight.current = true;
+        void loadStoreCart(basket.store, basket.items, toast).then(loaded => {
+          if (loaded) lastHandoffKey.current = key;
+        }).finally(() => {
+          handoffInFlight.current = false;
+        });
       }
     }
   };

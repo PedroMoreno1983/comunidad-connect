@@ -92,16 +92,28 @@ export async function POST(req: NextRequest) {
         id: item.id,
         requestedTerm: item.requestedTerm || item.name,
         name: item.name,
+        sku: item.sku || undefined,
         productUrl: item.productUrl || undefined,
         quantity: item.quantity,
         catalogLineTotal: item.catalogLineTotal,
       }));
       const overflow = requested.slice(MAX_ITEMS_PER_URL);
       const quote = await quoteVtexBasket(store, quoteInput);
-      const cartUrl = buildDirectCartUrl(store, quote.items);
-      const unresolvedNames = quote.missingTerms.map(term => (
-        quoteInput.find(item => item.requestedTerm === term)?.name || term
-      ));
+      const quotedItems = quote.items.map(item => ({
+        sku: item.sku,
+        quantity: item.quantity,
+        seller: item.seller,
+      }));
+      const usedQuoted = quotedItems.length > 0;
+      const handoffItems = usedQuoted
+        ? quotedItems
+        : requested.flatMap(item => (item.sku ? [{ sku: item.sku, quantity: item.quantity }] : []));
+      const cartUrl = buildDirectCartUrl(store, handoffItems);
+      const unresolvedNames = usedQuoted
+        ? quote.missingTerms.map(term => (
+          quoteInput.find(item => item.requestedTerm === term)?.name || term
+        ))
+        : requested.filter(item => !item.sku).map(item => item.name);
       const missingItems = [...unresolvedNames, ...overflow.map(item => item.name)].filter(Boolean);
 
       if (!cartUrl) {
@@ -123,7 +135,7 @@ export async function POST(req: NextRequest) {
         mode: 'browser-session-link',
         store,
         cartUrl,
-        plannedCount: quote.items.length,
+        plannedCount: usedQuoted ? quote.items.length : handoffItems.length,
         missingItems,
         quotedTotal: quote.subtotal,
         catalogTotal: quote.catalogSubtotal,
