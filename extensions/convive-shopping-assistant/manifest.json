@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "CoCo · Asistente de Compras",
+  "version": "2.0.0",
+  "description": "Carga la lista comparada por CoCo dentro de la sesión real del supermercado. Nunca confirma ni paga la compra.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://super.lider.cl/*",
+    "https://www.lider.cl/*",
+    "https://lider.cl/*",
+    "https://www.jumbo.cl/*",
+    "https://jumbo.cl/*",
+    "https://www.santaisabel.cl/*",
+    "https://santaisabel.cl/*",
+    "https://www.unimarc.cl/*",
+    "https://unimarc.cl/*",
+    "https://www.tottus.cl/*",
+    "https://tottus.cl/*",
+    "https://www.acuenta.cl/*",
+    "https://acuenta.cl/*",
+    "https://irurzun.cl/*",
+    "https://www.irurzun.cl/*",
+    "https://i5.walmartimages.cl/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://conviveconnect.com/*",
+        "https://www.conviveconnect.com/*",
+        "http://localhost:3000/*",
+        "http://localhost:3012/*"
+      ],
+      "js": ["convive-bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://super.lider.cl/*",
+        "https://www.lider.cl/*",
+        "https://lider.cl/*",
+        "https://www.jumbo.cl/*",
+        "https://jumbo.cl/*",
+        "https://www.santaisabel.cl/*",
+        "https://santaisabel.cl/*",
+        "https://www.unimarc.cl/*",
+        "https://unimarc.cl/*",
+        "https://www.tottus.cl/*",
+        "https://tottus.cl/*",
+        "https://www.acuenta.cl/*",
+        "https://acuenta.cl/*",
+        "https://irurzun.cl/*",
+        "https://www.irurzun.cl/*"
+      ],
+      "js": ["store-config.js", "page-signals.js", "retailer-loader.js"],
+      "css": ["loader.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
