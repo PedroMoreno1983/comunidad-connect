@@ -12,8 +12,8 @@ import {
   storeSupportsVtexCart,
 } from '@/lib/supermarket/cartUrl';
 
-const DIRECT_STORES = ['Jumbo', 'Irurzun'] as const;
-const MANUAL_STORES = ['Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta'] as const;
+const DIRECT_STORES = ['Jumbo', 'Santa Isabel', 'Irurzun'] as const;
+const MANUAL_STORES = ['Lider', 'Unimarc', 'Tottus', 'aCuenta'] as const;
 
 describe('supermarket direct cart links', () => {
   it('builds a Jumbo storefront query that CartFromUrl reads on jumbo.cl', () => {
@@ -27,10 +27,21 @@ describe('supermarket direct cart links', () => {
     expect(url).not.toContain('/checkout/cart/add');
   });
 
-  it('does not send Santa Isabel or Unimarc to a VTEX account-host cart', () => {
-    expect(buildDirectCartUrl('Santa Isabel', [{ sku: '11389', quantity: 1 }])).toBeNull();
+  it('builds a Santa Isabel home query with quantity (not Jumbo qty) and without action', () => {
+    const url = buildDirectCartUrl('Santa Isabel', [
+      { sku: '3294', quantity: 2 },
+      { sku: '875', quantity: 1 },
+    ]);
+
+    expect(url).toBe('https://www.santaisabel.cl/?sku=3294%2C875&quantity=2%2C1');
+    expect(url).not.toContain('qty=');
+    expect(url).not.toContain('action=');
+    expect(url).not.toContain('vtexcommercestable');
+    expect(url).not.toContain('/checkout/cart/add');
+  });
+
+  it('does not send Unimarc to a VTEX account-host cart', () => {
     expect(buildDirectCartUrl('Unimarc', [{ sku: '32', quantity: 2 }])).toBeNull();
-    expect(storeLoadability('Santa Isabel')).toBe('manual');
     expect(storeLoadability('Unimarc')).toBe('manual');
   });
 
@@ -50,12 +61,14 @@ describe('supermarket direct cart links', () => {
     }
   });
 
-  it('marks Jumbo and Irurzun as direct', () => {
+  it('marks Jumbo, Santa Isabel and Irurzun as direct', () => {
     expect(DIRECT_STORES.every(storeSupportsDirectCart)).toBe(true);
     expect(storeSupportsStorefrontQueryCart('Jumbo')).toBe(true);
+    expect(storeSupportsStorefrontQueryCart('Santa Isabel')).toBe(true);
     expect(storeSupportsVtexCart('Jumbo')).toBe(true);
+    expect(storeSupportsVtexCart('Santa Isabel')).toBe(false);
     expect(storeSupportsShopifyCart('Irurzun')).toBe(true);
-    expect(DIRECT_STORES.map(loadabilityRank)).toEqual([0, 0]);
+    expect(DIRECT_STORES.map(loadabilityRank)).toEqual([0, 0, 0]);
   });
 
   it('returns null when no SKU can travel in the link', () => {

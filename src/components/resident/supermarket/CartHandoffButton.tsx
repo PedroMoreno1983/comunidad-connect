@@ -54,7 +54,7 @@ export async function loadStoreCart(
           ? `Carro de ${store} listo para revisar`
           : `${handoff.plannedCount} productos van a ${store}`,
         description: missing === 0
-          ? 'Revisa el carro en la tienda y paga ahí. En Jumbo se abre el mini carro de jumbo.cl.'
+          ? 'Revisa el carro en la tienda y paga ahí. En Jumbo y Santa Isabel se abre el mini carro. Si Santa Isabel pide modo de entrega, elígelo.'
           : `No entraron: ${handoff.missingItems.slice(0, 4).join(', ')}${missing > 4 ? '…' : ''}.`,
         variant: 'success',
       });

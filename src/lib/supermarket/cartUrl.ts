@@ -7,13 +7,26 @@
  *     en jumbo.cl, llama a su BFF y abre el mini carro. No usar el host
  *     VTEX: `{cuenta}.vtexcommercestable.com.br/checkout/cart/add` deja
  *     los productos en otra cookie y jumbo.cl queda vacío.
+ *   Santa Isabel
+ *     El storefront (`cl-sisa-web-front`) lee `?sku=&quantity=` en la home
+ *     (`addProductsByUrl`). El parámetro de cantidad es `quantity`, no el
+ *     `qty` de Jumbo. Resuelve cada SKU contra el PLP Cencosud
+ *     (`fullText: "sku:3294"`) y hace PATCH al BFF `/cart/items`.
+ *     No enviar `action=clean`: en el bundle vivo eso solo vacía el carro
+ *     y no vuelve a agregar. Si `localStorage.seller` está vacío (primera
+ *     visita), el PLP busca con `store:null` y no encuentra productos; con
+ *     tienda ya elegida el mini carro sí se abre (probado con sku 3294 × 2).
  *   Irurzun
  *     GET irurzun.cl/cart/{variantId}:{qty} crea el carro Shopify.
  *     El `sku` del catálogo a veces es el EAN: hay que resolver el
  *     variant id antes de armar el enlace.
  *
- * Santa Isabel, Unimarc, Lider, Tottus y aCuenta no publican un alta por
- * URL que deje el carro en el sitio donde la persona compra.
+ * Unimarc, Lider, Tottus y aCuenta no publican un alta por URL que deje
+ * el carro en el sitio donde la persona compra. Unimarc consume una cookie
+ * `addToCart` en `.unimarc.cl`; Lider muta Orchestra en `super.lider.cl`;
+ * Tottus y aCuenta guardan el cartId en storage de su origen. Nada de eso
+ * se puede fijar desde conviveconnect.com, y el host VTEX/myvtex deja un
+ * carro fantasma.
  */
 
 export interface CartUrlItem {
@@ -25,8 +38,21 @@ export interface CartUrlItem {
 export type DirectCartConfidence = 'verified';
 export type StoreLoadability = 'direct' | 'manual';
 
-const STOREFRONT_QUERY_CART_HOSTS: Record<string, string> = {
-  Jumbo: 'https://www.jumbo.cl',
+interface StorefrontQueryCartConfig {
+  base: string;
+  /** Jumbo lee `qty`; Santa Isabel lee `quantity`. */
+  quantityParam: 'qty' | 'quantity';
+}
+
+const STOREFRONT_QUERY_CART: Record<string, StorefrontQueryCartConfig> = {
+  Jumbo: {
+    base: 'https://www.jumbo.cl',
+    quantityParam: 'qty',
+  },
+  'Santa Isabel': {
+    base: 'https://www.santaisabel.cl',
+    quantityParam: 'quantity',
+  },
 };
 
 const SHOPIFY_CART_HOSTS: Record<string, string> = {
@@ -41,16 +67,17 @@ export function directCartConfidence(store: string): DirectCartConfidence | null
 }
 
 export function storeSupportsDirectCart(store: string): boolean {
-  return store in STOREFRONT_QUERY_CART_HOSTS || store in SHOPIFY_CART_HOSTS;
+  return store in STOREFRONT_QUERY_CART || store in SHOPIFY_CART_HOSTS;
 }
 
 export function storeSupportsStorefrontQueryCart(store: string): boolean {
-  return store in STOREFRONT_QUERY_CART_HOSTS;
+  return store in STOREFRONT_QUERY_CART;
 }
 
 export function storeSupportsVtexCart(store: string): boolean {
-  // Jumbo sigue resolviendo SKU contra VTEX, pero el alta va al storefront.
-  return storeSupportsStorefrontQueryCart(store);
+  // Solo Jumbo cotiza contra VTEX y luego abre jumbo.cl. Santa Isabel usa el
+  // skuId del catálogo Cencosud; el orderForm VTEX no es el carro del shopper.
+  return store === 'Jumbo';
 }
 
 export function storeSupportsShopifyCart(store: string): boolean {
@@ -67,7 +94,7 @@ export function loadabilityRank(store: string): number {
 }
 
 export function supportedDirectCartStores(): string[] {
-  return [...Object.keys(STOREFRONT_QUERY_CART_HOSTS), ...Object.keys(SHOPIFY_CART_HOSTS)];
+  return [...Object.keys(STOREFRONT_QUERY_CART), ...Object.keys(SHOPIFY_CART_HOSTS)];
 }
 
 function usableItems(items: CartUrlItem[]): CartUrlItem[] {
@@ -81,12 +108,11 @@ function usableItems(items: CartUrlItem[]): CartUrlItem[] {
     }));
 }
 
-function buildStorefrontQueryCartUrl(base: string, items: CartUrlItem[]): string {
-  // CartFromUrl en jumbo.cl hace sku.split(',') y qty.split(',').
+function buildStorefrontQueryCartUrl(config: StorefrontQueryCartConfig, items: CartUrlItem[]): string {
   const params = new URLSearchParams();
   params.set('sku', items.map(item => item.sku).join(','));
-  params.set('qty', items.map(item => String(item.quantity)).join(','));
-  return `${base}/?${params.toString()}`;
+  params.set(config.quantityParam, items.map(item => String(item.quantity)).join(','));
+  return `${config.base}/?${params.toString()}`;
 }
 
 function buildShopifyCartUrl(base: string, items: CartUrlItem[]): string {
@@ -102,8 +128,8 @@ export function buildDirectCartUrl(store: string, items: CartUrlItem[]): string 
   const usable = usableItems(items);
   if (usable.length === 0) return null;
 
-  const storefrontHost = STOREFRONT_QUERY_CART_HOSTS[store];
-  if (storefrontHost) return buildStorefrontQueryCartUrl(storefrontHost, usable);
+  const storefront = STOREFRONT_QUERY_CART[store];
+  if (storefront) return buildStorefrontQueryCartUrl(storefront, usable);
 
   const shopifyHost = SHOPIFY_CART_HOSTS[store];
   if (shopifyHost) return buildShopifyCartUrl(shopifyHost, usable);
