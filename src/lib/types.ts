@@ -315,6 +315,62 @@ export interface SupermarketComparisonSource {
   status: SupermarketComparisonSourceStatus;
 }
 
+export interface SupermarketCheckoutQuoteItem {
+  id: string;
+  requestedTerm: string;
+  name: string;
+  sku: string;
+  productUrl?: string;
+  quantity: number;
+  price: number;
+  lineTotal: number;
+}
+
+export interface SupermarketCheckoutQuoteRequestItem {
+  id: string;
+  requestedTerm: string;
+  name: string;
+  productUrl?: string;
+  quantity: number;
+  catalogLineTotal: number;
+}
+
+export interface SupermarketCheckoutQuote {
+  store: string;
+  subtotal: number;
+  catalogSubtotal: number;
+  items: SupermarketCheckoutQuoteItem[];
+  missingTerms: string[];
+  quotedAt: string;
+}
+
+export type SupermarketCartHandoffMode = 'browser-session-link' | 'manual';
+export type SupermarketStoreLoadability = 'direct' | 'manual';
+
+export interface SupermarketCartHandoffItem {
+  id?: string;
+  requestedTerm?: string;
+  name: string;
+  sku?: string;
+  productUrl?: string;
+  quantity: number;
+  lineTotal?: number;
+}
+
+export interface SupermarketCartHandoff {
+  supported: boolean;
+  mode: SupermarketCartHandoffMode;
+  store: string;
+  cartUrl?: string;
+  plannedCount: number;
+  missingItems: string[];
+  quotedTotal?: number;
+  catalogTotal?: number;
+  quotedAt?: string;
+  reason?: string;
+  productUrls?: string[];
+}
+
 export type SupermarketPurchasePlanStatus = 'single_store' | 'split_store' | 'needs_substitution';
 
 export interface SupermarketPurchasePlanBasket {
