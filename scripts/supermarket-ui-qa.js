@@ -220,7 +220,9 @@ async function main() {
       );
     }
     assert(await page.getByText(/Despacho separado del precio de productos/i).isVisible(), 'Delivery is explicitly excluded from the product total');
-    assert(await page.getByRole('button', { name: /Cargar carro/i }).count() === 0, 'No cart-loader action remains');
+    assert(await page.getByRole('button', { name: new RegExp(`Cargar compra en ${selectedStore}`, 'i') }).isVisible(), 'The selected basket exposes the new shopping assistant action');
+    assert(await page.getByRole('button', { name: /Cargar carro/i }).count() === 0, 'The old cart-loader action remains absent');
+    assert(await page.getByRole('link', { name: /Abrir sitio sin cargar/i }).isVisible(), 'The manual fallback is labeled honestly');
     await page.getByRole('button', { name: 'Copiar comparación' }).click();
     const copiedComparison = await page.evaluate(() => navigator.clipboard.readText());
     assert(expectedStores.every(store => copiedComparison.includes(store)), 'Copied comparison includes all seven stores');

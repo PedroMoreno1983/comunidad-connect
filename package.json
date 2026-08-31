@@ -22,6 +22,8 @@
     "qa:supermarket-group-live": "node scripts/supermarket-group-live-qa.js",
     "qa:supermarket-ui": "node scripts/supermarket-ui-qa.js",
     "qa:supermarket-price-comparison": "node scripts/supermarket-price-comparison-qa.js",
+    "qa:supermarket-shopping-assistant": "node scripts/supermarket-shopping-assistant-integrity-qa.js && node scripts/supermarket-shopping-assistant-background-qa.mjs",
+    "qa:supermarket-shopping-assistant:e2e": "node scripts/supermarket-shopping-assistant-e2e-qa.js",
     "supermarket:catalog-status": "node scripts/supermarket-catalog-status.js",
     "supermarket:backfill-lider-offer-id": "node scripts/backfill-lider-offer-id.js",
     "qa:multitenant": "node scripts/multitenant-qa.js",

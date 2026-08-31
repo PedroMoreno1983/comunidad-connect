@@ -324,6 +324,68 @@ export interface SupermarketPurchasePlanBasket {
   items: SupermarketSearchCandidate[];
 }
 
+export type SupermarketShoppingAssistantStatus =
+  | 'idle'
+  | 'opening'
+  | 'loading'
+  | 'paused'
+  | 'completed'
+  | 'completed_with_issues'
+  | 'failed';
+
+export interface SupermarketShoppingAssistantItem {
+  id: string;
+  name: string;
+  requestedTerm: string;
+  quantity: number;
+  productUrl?: string;
+  sku?: string;
+  offerId?: string;
+}
+
+export interface SupermarketShoppingAssistantRequest {
+  version: 1;
+  store: string;
+  createdAt: string;
+  replaceCart: boolean;
+  items: SupermarketShoppingAssistantItem[];
+}
+
+export interface SupermarketShoppingAssistantProgress {
+  jobId?: string;
+  store: string;
+  status: SupermarketShoppingAssistantStatus;
+  total: number;
+  added: number;
+  failed: number;
+  currentItem?: string;
+  previousCartCount?: number;
+  currentCartCount?: number;
+  removedCartCount?: number;
+  cartReplaced?: boolean;
+  detail: string;
+  failedItems?: string[];
+  addedItemIds?: string[];
+  failedItemDetails?: Array<{ id: string; name: string; detail: string }>;
+}
+
+export type SupermarketShoppingAssistantAvailability =
+  | 'checking'
+  | 'ready'
+  | 'outdated'
+  | 'unavailable';
+
+export interface SupermarketShoppingAssistantBridge {
+  availability: SupermarketShoppingAssistantAvailability;
+  installedVersion?: string;
+  progress: SupermarketShoppingAssistantProgress | null;
+  start: (options?: { replaceCart?: boolean }) => boolean;
+}
+
+export interface ShoppingAssistantButtonProps {
+  basket: SupermarketBasketCandidate;
+}
+
 export interface SupermarketSubstitutionTask {
   requestedTerm: string;
   suggestedStore?: string;

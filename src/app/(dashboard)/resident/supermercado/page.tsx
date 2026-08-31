@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
+import { ShoppingAssistantButton } from '@/components/resident/supermarket/ShoppingAssistantButton';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
@@ -434,16 +435,19 @@ export default function SupermarketPage() {
                     </p>
                   </div>
                 </div>
-                <a
-                  href={STORE_HOME[selectedBasket.store]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
-                  style={{ borderColor: 'var(--cc-line)' }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Abrir sitio de {selectedBasket.store}
-                </a>
+                <div className="space-y-2">
+                  <ShoppingAssistantButton basket={selectedBasket} />
+                  <a
+                    href={STORE_HOME[selectedBasket.store]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2 text-[11px] font-semibold cc-text-secondary"
+                    style={{ borderColor: 'var(--cc-line)' }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Abrir sitio sin cargar
+                  </a>
+                </div>
               </div>
 
               {!selectedBasket.complete && selectedBasket.missingTerms.length > 0 && (

@@ -36,6 +36,8 @@ function assertReplacementIntegrity() {
   const page = read('src/app/(dashboard)/resident/supermercado/page.tsx');
   const basket = read('src/lib/supermarketBasket.ts');
   const packageJson = read('package.json');
+  const assistant = read('src/components/resident/supermarket/ShoppingAssistantButton.tsx');
+  const assistantManifest = JSON.parse(read('extensions/convive-shopping-assistant/manifest.json'));
 
   for (const store of stores) {
     assert(page.includes(store), `La interfaz declara ${store}.`);
@@ -60,7 +62,11 @@ function assertReplacementIntegrity() {
   }
   assert(!packageJson.includes('qa:supermarket-cart-loader'), 'Los comandos del cargador salieron del proyecto.');
   assert(!page.includes('convive-cart-loader'), 'La interfaz ya no detecta la extensión antigua.');
-  assert(!page.includes('Cargar carro'), 'La interfaz ya no promete cargar el carro.');
+  assert(page.includes('<ShoppingAssistantButton basket={selectedBasket}'), 'El comparador monta el asistente nuevo con la canasta elegida.');
+  assert(assistant.includes('Cargar compra en ${basket.store}'), 'La interfaz ofrece la carga automática mediante el asistente.');
+  assert(assistant.includes("assistant.availability !== 'ready'"), 'La interfaz no debe prometer carga cuando el asistente está ausente.');
+  assert(assistantManifest.version === '2.0.0', 'El manifiesto del asistente nuevo no está en la versión 2.0.0.');
+  assert(packageJson.includes('qa:supermarket-shopping-assistant'), 'Falta la verificación del asistente nuevo.');
 }
 
 async function countRows(query) {
