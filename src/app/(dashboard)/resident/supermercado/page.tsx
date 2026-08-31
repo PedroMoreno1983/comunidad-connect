@@ -430,7 +430,7 @@ export default function SupermarketPage() {
                     {hasStoreResults && (
                       <p className="mt-2 text-[10px] font-semibold cc-text-tertiary">
                         {storeLoadability(basket.store) === 'direct'
-                          ? 'Clic carga el carro en el checkout de la tienda'
+                          ? 'Clic carga el carro; si pide login, los productos ya están'
                           : 'Esta cadena no carga el carro por enlace'}
                       </p>
                     )}

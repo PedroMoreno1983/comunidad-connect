@@ -54,7 +54,7 @@ export async function loadStoreCart(
           ? `Carro de ${store} listo para revisar`
           : `${handoff.plannedCount} productos van a ${store}`,
         description: missing === 0
-          ? 'Revisa cantidades y despacho en el checkout de la tienda antes de pagar.'
+          ? 'Si la tienda pide iniciar sesión, entra con tu cuenta: los productos ya quedaron en el carro. Revisa y paga ahí.'
           : `No entraron: ${handoff.missingItems.slice(0, 4).join(', ')}${missing > 4 ? '…' : ''}.`,
         variant: 'success',
       });
