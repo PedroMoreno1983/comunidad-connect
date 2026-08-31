@@ -8,32 +8,30 @@ import {
   storeLoadability,
   storeSupportsDirectCart,
   storeSupportsShopifyCart,
+  storeSupportsStorefrontQueryCart,
   storeSupportsVtexCart,
 } from '@/lib/supermarket/cartUrl';
 
-const DIRECT_STORES = ['Jumbo', 'Santa Isabel', 'Unimarc', 'Irurzun'] as const;
-const MANUAL_STORES = ['Lider', 'Tottus', 'aCuenta'] as const;
+const DIRECT_STORES = ['Jumbo', 'Irurzun'] as const;
+const MANUAL_STORES = ['Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta'] as const;
 
 describe('supermarket direct cart links', () => {
-  it('builds a VTEX session add URL on the account host, not the branded site', () => {
+  it('builds a Jumbo storefront query that CartFromUrl reads on jumbo.cl', () => {
     const url = buildDirectCartUrl('Jumbo', [
       { sku: '111151', quantity: 2 },
       { sku: '6699', quantity: 1 },
     ]);
 
-    expect(url).toBe(
-      'https://jumbo.vtexcommercestable.com.br/checkout/cart/add?sku=111151&sku=6699&qty=2&qty=1&seller=1&seller=1&sc=1&redirect=true',
-    );
-    expect(url).not.toContain('jumbo.cl');
+    expect(url).toBe('https://www.jumbo.cl/?sku=111151%2C6699&qty=2%2C1');
+    expect(url).not.toContain('vtexcommercestable');
+    expect(url).not.toContain('/checkout/cart/add');
   });
 
-  it('builds Santa Isabel and Unimarc add URLs on their VTEX account hosts', () => {
-    expect(buildDirectCartUrl('Santa Isabel', [{ sku: '11389', quantity: 1 }])).toContain(
-      'https://santaisabel.vtexcommercestable.com.br/checkout/cart/add?',
-    );
-    expect(buildDirectCartUrl('Unimarc', [{ sku: '32', quantity: 2 }])).toBe(
-      'https://unimarc.vtexcommercestable.com.br/checkout/cart/add?sku=32&qty=2&seller=1&sc=1&redirect=true',
-    );
+  it('does not send Santa Isabel or Unimarc to a VTEX account-host cart', () => {
+    expect(buildDirectCartUrl('Santa Isabel', [{ sku: '11389', quantity: 1 }])).toBeNull();
+    expect(buildDirectCartUrl('Unimarc', [{ sku: '32', quantity: 2 }])).toBeNull();
+    expect(storeLoadability('Santa Isabel')).toBe('manual');
+    expect(storeLoadability('Unimarc')).toBe('manual');
   });
 
   it('builds an Irurzun Shopify cart permalink from variant ids', () => {
@@ -52,17 +50,12 @@ describe('supermarket direct cart links', () => {
     }
   });
 
-  it('marks the four verified stores as direct', () => {
+  it('marks Jumbo and Irurzun as direct', () => {
     expect(DIRECT_STORES.every(storeSupportsDirectCart)).toBe(true);
+    expect(storeSupportsStorefrontQueryCart('Jumbo')).toBe(true);
     expect(storeSupportsVtexCart('Jumbo')).toBe(true);
     expect(storeSupportsShopifyCart('Irurzun')).toBe(true);
-    expect(DIRECT_STORES.map(loadabilityRank)).toEqual([0, 0, 0, 0]);
-  });
-
-  it('keeps an explicit VTEX seller id in the add URL', () => {
-    expect(buildDirectCartUrl('Jumbo', [{ sku: '111151', quantity: 1, seller: '2' }])).toBe(
-      'https://jumbo.vtexcommercestable.com.br/checkout/cart/add?sku=111151&qty=1&seller=2&sc=1&redirect=true',
-    );
+    expect(DIRECT_STORES.map(loadabilityRank)).toEqual([0, 0]);
   });
 
   it('returns null when no SKU can travel in the link', () => {
