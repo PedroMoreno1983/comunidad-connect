@@ -35,6 +35,9 @@ function pathContainsFiles(relativePath) {
 function assertReplacementIntegrity() {
   const page = read('src/app/(dashboard)/resident/supermercado/page.tsx');
   const basket = read('src/lib/supermarketBasket.ts');
+  const cartButton = read('src/components/resident/supermarket/ManagedCartButton.tsx');
+  const directHandoff = read('src/lib/supermarketDirectHandoff.ts');
+  const managedCart = read('src/lib/supermarketManagedCart.ts');
   const packageJson = read('package.json');
 
   for (const store of stores) {
@@ -45,6 +48,13 @@ function assertReplacementIntegrity() {
   assert(page.includes('Una canasta incompleta nunca gana'), 'La interfaz explica el criterio de recomendación.');
   assert(basket.includes('const availableComparisons = comparisons.filter'), 'Solo canastas con productos participan de la recomendación.');
   assert(basket.includes('bestAvailable: availableComparisons[0] ?? null'), 'Una tienda vacía no puede ser la mejor disponible.');
+  assert(page.includes('<ManagedCartButton'), 'La canasta elegida ofrece traspaso al carro.');
+  assert(cartButton.includes('prepareHandoff'), 'El control prepara el carro antes de abrir la tienda.');
+  assert(directHandoff.includes('/checkout/cart/add?'), 'Las cadenas compatibles usan su checkout oficial.');
+  assert(directHandoff.includes("store === 'Irurzun'"), 'Irurzun usa un enlace oficial de carro.');
+  assert(managedCart.includes('openManagedRetailerCart'), 'Las cadenas restantes tienen carga en sesión móvil administrada.');
+  assert(managedCart.includes('persistWebViewData: true'), 'La sesión del supermercado permanece local en el teléfono.');
+  assert(packageJson.includes('@capgo/capacitor-inappbrowser'), 'La app incluye la ventana móvil administrada.');
 
   const removedPaths = [
     'extensions/convive-cart-loader',
@@ -60,7 +70,7 @@ function assertReplacementIntegrity() {
   }
   assert(!packageJson.includes('qa:supermarket-cart-loader'), 'Los comandos del cargador salieron del proyecto.');
   assert(!page.includes('convive-cart-loader'), 'La interfaz ya no detecta la extensión antigua.');
-  assert(!page.includes('Cargar carro'), 'La interfaz ya no promete cargar el carro.');
+  assert(!cartButton.includes('chrome.runtime'), 'El traspaso no depende de una extensión Chrome.');
 }
 
 async function countRows(query) {

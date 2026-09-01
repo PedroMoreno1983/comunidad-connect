@@ -368,6 +368,75 @@ export interface SupermarketSearchResponse {
   sources?: SupermarketComparisonSource[];
   degradedStores?: string[];
 }
+
+export type SupermarketManagedCartItemStatus = 'added' | 'failed' | 'needs_user';
+
+export interface SupermarketManagedCartItem {
+  id: string;
+  name: string;
+  requestedTerm: string;
+  quantity: number;
+  productUrl: string;
+  sku?: string;
+  offerId?: string;
+}
+
+export interface SupermarketManagedCartProgress {
+  store: SupermarketStore;
+  current: number;
+  total: number;
+  added: number;
+  failed: number;
+  itemName?: string;
+  status: 'opening' | 'loading' | 'needs_user' | 'completed' | 'cancelled' | 'error';
+  detail: string;
+}
+
+export interface SupermarketManagedCartStartResult {
+  started: boolean;
+  reason?: 'native_required' | 'empty_cart' | 'invalid_store' | 'open_failed';
+}
+
+export interface SupermarketManagedStoreConfig {
+  hosts: string[];
+  cartUrl: string;
+  apiMode?: 'shopify' | 'vtex' | 'lider';
+  addSelectors: string[];
+  plusSelectors: string[];
+  quantitySelectors: string[];
+  cartSelectors: string[];
+  quantityBeforeAdd?: boolean;
+  quantityControlAddsToCart?: boolean;
+}
+
+export interface SupermarketManagedCartCallbacks {
+  onProgress?: (progress: SupermarketManagedCartProgress) => void;
+}
+
+export interface SupermarketManagedCartButtonProps {
+  store: string;
+  items: SupermarketSearchCandidate[];
+}
+
+export interface SupermarketCartHandoffItem {
+  id: string;
+  name: string;
+  requestedTerm: string;
+  quantity: number;
+  sku?: string;
+  offerId?: string;
+  productUrl?: string;
+}
+
+export interface SupermarketCartHandoff {
+  supported: boolean;
+  store: string;
+  mode: 'direct_url' | 'managed_webview';
+  cartUrl?: string;
+  plannedCount: number;
+  missingItems: string[];
+  reason?: string;
+}
 export interface CommunityProject {
   id: string;
   communityId?: string;

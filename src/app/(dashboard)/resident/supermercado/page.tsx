@@ -11,6 +11,7 @@ import {
   Copy,
   Drone,
   ExternalLink,
+  FileUp,
   Info,
   Loader2,
   ScanBarcode,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
+import { ManagedCartButton } from '@/components/resident/supermarket/ManagedCartButton';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
@@ -116,6 +118,36 @@ export default function SupermarketPage() {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [compared, setCompared] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const importShoppingList = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 1_000_000) {
+      toast({
+        title: 'El archivo es demasiado grande',
+        description: 'Usa un TXT o CSV de hasta 1 MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const raw = await file.text();
+      const imported = file.name.toLowerCase().endsWith('.csv')
+        ? raw.split(/\r?\n/).map(row => (
+          row.split(/[;,\t]/).map(cell => cell.trim()).find(Boolean) ?? ''
+        )).filter(Boolean).join('\n')
+        : raw;
+      const normalized = imported.trim().slice(0, MAX_SHOPPING_LIST_CHARS);
+      if (!normalized) throw new Error('El archivo no contiene productos legibles.');
+      setShoppingInput(normalized);
+      toast({ title: 'Lista importada', description: 'Revísala y pulsa comparar.', variant: 'success' });
+    } catch (error) {
+      toast({
+        title: 'No se pudo leer la lista',
+        description: error instanceof Error ? error.message : 'Usa un archivo TXT o CSV.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -236,7 +268,8 @@ export default function SupermarketPage() {
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
           Revisamos la misma lista y las mismas cantidades en siete cadenas. Una canasta incompleta nunca gana
-          solo porque su subtotal sea menor.
+          solo porque su subtotal sea menor. En la app móvil puedes cargar la selección dentro de una sesión local
+          de la tienda, sin extensiones ni entregar tu clave a Convive.
         </p>
       </header>
 
@@ -291,6 +324,11 @@ export default function SupermarketPage() {
             <p className="mt-3 max-w-lg text-sm leading-6 text-white/70">
               Una línea por producto. Respetamos cantidades, unidades y formatos comparables antes de sumar.
             </p>
+            <ol className="mt-4 grid gap-2 text-xs text-white/75 sm:grid-cols-3">
+              <li><strong className="text-white">1.</strong> Escribe o sube tu lista</li>
+              <li><strong className="text-white">2.</strong> Compara y resuelve faltantes</li>
+              <li><strong className="text-white">3.</strong> Carga el carro elegido</li>
+            </ol>
             <div className="mt-4 flex flex-wrap gap-2">
               {LIST_SUGGESTIONS.map(suggestion => (
                 <button
@@ -331,7 +369,25 @@ export default function SupermarketPage() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
               </button>
             </div>
-            <p className="mt-2 text-xs text-white/60">También puedes separar productos con coma o punto y coma.</p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-white/60">También puedes separar productos con coma o punto y coma.</p>
+              <label
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold text-white/85 hover:bg-white/10"
+                style={{ borderColor: 'rgba(255,255,255,0.18)' }}
+              >
+                <FileUp className="h-4 w-4" />
+                Subir TXT o CSV
+                <input
+                  type="file"
+                  accept=".txt,.csv,text/plain,text/csv"
+                  className="sr-only"
+                  onChange={event => {
+                    void importShoppingList(event.target.files?.[0]);
+                    event.currentTarget.value = '';
+                  }}
+                />
+              </label>
+            </div>
           </div>
         </div>
       </section>
@@ -434,16 +490,19 @@ export default function SupermarketPage() {
                     </p>
                   </div>
                 </div>
-                <a
-                  href={STORE_HOME[selectedBasket.store]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
-                  style={{ borderColor: 'var(--cc-line)' }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Abrir sitio de {selectedBasket.store}
-                </a>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ManagedCartButton store={selectedBasket.store} items={selectedBasket.items} />
+                  <a
+                    href={STORE_HOME[selectedBasket.store]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
+                    style={{ borderColor: 'var(--cc-line)' }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir sitio de {selectedBasket.store}
+                  </a>
+                </div>
               </div>
 
               {!selectedBasket.complete && selectedBasket.missingTerms.length > 0 && (
