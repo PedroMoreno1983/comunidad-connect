@@ -61,5 +61,8 @@ describe('managed supermarket cart', () => {
     expect(script).not.toContain('</script>');
     expect(script).toContain('convive-managed-cart');
     expect(script).toContain('Agregado y verificado');
+    expect(script).toContain('Producto no disponible');
+    expect(script).toContain('elige un metodo de entrega');
+    expect(script).toContain('__conviveManagedCartAttempt');
   });
 });

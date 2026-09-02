@@ -49,6 +49,7 @@ const MANAGED_STORES: Record<SupermarketStore, SupermarketManagedStoreConfig> = 
   Lider: {
     hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
     cartUrl: 'https://super.lider.cl/cart',
+    resumePaths: ['/'],
     apiMode: 'lider',
     addSelectors: [
       'button[data-automation-id="add-to-cart"]',
@@ -90,7 +91,8 @@ const MANAGED_STORES: Record<SupermarketStore, SupermarketManagedStoreConfig> = 
   },
   Tottus: {
     hosts: ['www.tottus.cl', 'tottus.cl'],
-    cartUrl: 'https://www.tottus.cl/tottus-cl/cart',
+    cartUrl: 'https://www.tottus.cl/tottus-cl/basket',
+    resumePaths: ['/tottus-cl', '/tottus-cl/'],
     addSelectors: [
       '#add-to-cart-button',
       'button[id*="add-to-cart"]',
@@ -98,16 +100,29 @@ const MANAGED_STORES: Record<SupermarketStore, SupermarketManagedStoreConfig> = 
       'button[aria-label*="Agregar" i]',
     ],
     plusSelectors: [
+      '.cart-persist button.add-to-cart-button',
       'button[aria-label*="Aumentar" i]',
       'button[aria-label="Agregar otro"]',
       'button[data-testid*="increment"]',
     ],
-    quantitySelectors: ['input[aria-label*="Cantidad" i]', '[data-testid*="quantity"] input'],
-    cartSelectors: ['[data-testid*="cart"]', 'button[aria-label*="carro" i]'],
+    quantitySelectors: [
+      '.cart-persist .count-from-cart',
+      'input[aria-label*="Cantidad" i]',
+      '[data-testid*="quantity"] input',
+    ],
+    cartSelectors: [
+      '#testId-UserAction-basket + span',
+      '[class*="UserActions-module_has-count"]',
+      '[data-testid*="cart"]',
+      'button[aria-label*="carro" i]',
+    ],
   },
   aCuenta: {
     hosts: ['www.acuenta.cl', 'acuenta.cl'],
     cartUrl: 'https://www.acuenta.cl/checkout/#/cart',
+    openCartSelectors: ['button[data-testid="header-cart-button"]'],
+    resumeAfterUserPageLoad: true,
+    resumePaths: ['/'],
     addSelectors: [
       'button[data-add-button="true"]',
       'button[data-automation-id="add-to-cart"]',
@@ -151,6 +166,17 @@ const BLOCKED_TEXT = [
   'security verification',
 ];
 
+const UNAVAILABLE_TEXT = [
+  'el producto que estas buscando ya no esta disponible',
+  'el producto que estás buscando ya no está disponible',
+  'este producto no se encuentra disponible en el momento',
+  'este producto no esta disponible',
+  'este producto no está disponible',
+  'producto no disponible',
+  'producto agotado',
+  'sin stock',
+];
+
 const INTERVENTION_TEXT = [
   'ingresa tu ubicacion',
   'ingresa tu ubicación',
@@ -160,6 +186,9 @@ const INTERVENTION_TEXT = [
   'selecciona una comuna',
   'como quieres recibir tu compra',
   'cómo quieres recibir tu compra',
+  'elige un metodo de entrega',
+  'elige un método de entrega',
+  'elige un modo de entrega',
   'inicia sesion',
   'inicia sesión',
   'ingresa a tu cuenta',
@@ -223,6 +252,7 @@ export function buildManagedCartItemScript(
     current,
     total,
     blockedText: BLOCKED_TEXT,
+    unavailableText: UNAVAILABLE_TEXT,
     interventionText: INTERVENTION_TEXT,
   }).replaceAll('<', '\\u003c');
 
@@ -243,6 +273,18 @@ export function buildManagedCartItemScript(
     const find = selectors => selectors.flatMap(selector => {
       try { return [...document.querySelectorAll(selector)]; } catch { return []; }
     }).find(visible) || null;
+    const findAdd = () => {
+      const sku = String(item.sku || '').trim();
+      if (sku) {
+        try {
+          const exact = document.querySelector(
+            '[data-add-button="true"][data-dtname="' + CSS.escape(sku) + '"]',
+          );
+          if (visible(exact)) return exact;
+        } catch {}
+      }
+      return find(config.addSelectors);
+    };
     const label = element => normalize([
       element?.getAttribute?.('aria-label'),
       element?.getAttribute?.('title'),
@@ -285,6 +327,12 @@ export function buildManagedCartItemScript(
       post({ action: 'needs-user', itemId: item.id, detail });
       window.__conviveManagedCartRunning = false;
     };
+    const failItem = detail => {
+      clearAttempt();
+      setDetail(detail);
+      post({ action: 'item-result', itemId: item.id, status: 'failed', detail });
+      window.__conviveManagedCartRunning = false;
+    };
     const click = element => {
       try {
         const options = { bubbles: true, cancelable: true, view: window };
@@ -305,6 +353,21 @@ export function buildManagedCartItemScript(
       try { return [...document.querySelectorAll(selector)].filter(visible).map(label).join('|'); }
       catch { return ''; }
     }).join('::');
+    const attemptKey = '__conviveManagedCartAttempt:' + item.id;
+    const readAttempt = () => {
+      try {
+        const value = JSON.parse(sessionStorage.getItem(attemptKey) || 'null');
+        return value && typeof value === 'object' ? value : null;
+      } catch { return window.__conviveManagedCartAttempt || null; }
+    };
+    const rememberAttempt = value => {
+      window.__conviveManagedCartAttempt = value;
+      try { sessionStorage.setItem(attemptKey, JSON.stringify(value)); } catch {}
+    };
+    const clearAttempt = () => {
+      delete window.__conviveManagedCartAttempt;
+      try { sessionStorage.removeItem(attemptKey); } catch {}
+    };
     const clickExtraQuantity = async start => {
       let clicks = 0;
       for (let index = start; index < item.quantity; index += 1) {
@@ -320,6 +383,16 @@ export function buildManagedCartItemScript(
       const response = await fetch(url, { credentials: 'include', ...init });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       return response.json();
+    };
+    const intervention = () => {
+      const pageText = normalize(document.body?.innerText);
+      if (payload.interventionText.some(value => pageText.includes(normalize(value)))) return true;
+      return [...document.querySelectorAll(
+        '[role="dialog"],dialog,[aria-modal="true"],[class*="modal" i]',
+      )].filter(visible).some(element => {
+        const text = normalize(element.textContent);
+        return payload.interventionText.some(value => text.includes(normalize(value)));
+      });
     };
     const tryShopify = async () => {
       if (config.apiMode !== 'shopify') return false;
@@ -411,28 +484,52 @@ export function buildManagedCartItemScript(
         requireUser('La tienda pide una verificación humana. Complétala aquí y continúa.');
         return;
       }
-      const center = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-      const modal = center?.closest?.('[role="dialog"],dialog,[aria-modal="true"],[class*="modal" i]');
-      const modalText = normalize(modal?.textContent);
-      if (modalText && payload.interventionText.some(text => modalText.includes(normalize(text)))) {
-        requireUser('La tienda necesita inicio de sesión, ubicación o despacho. Completa el paso aquí y continúa.');
+      const priorAttempt = readAttempt();
+      if (priorAttempt?.itemId === item.id) {
+        const currentCart = cartSignature();
+        const currentQuantity = signature();
+        const changedSinceAttempt = (
+          (currentCart && currentCart !== priorAttempt.beforeCart)
+          || (currentQuantity && currentQuantity !== priorAttempt.beforeQuantity)
+        );
+        if (changedSinceAttempt) {
+          const quantity = await clickExtraQuantity(1);
+          const detail = quantity.complete
+            ? 'Agregado y verificado con cantidad ' + item.quantity + '.'
+            : 'Producto agregado; revisa la cantidad antes de pagar.';
+          clearAttempt();
+          setDetail(detail);
+          post({ action: 'item-result', itemId: item.id, status: 'added', detail });
+          window.__conviveManagedCartRunning = false;
+          return;
+        }
+      }
+      if (payload.unavailableText.some(text => body.includes(normalize(text)))) {
+        failItem('Producto no disponible. Vuelve a Convive para buscar y elegir un reemplazo.');
         return;
       }
       const apiAdded = await tryShopify() || await tryVtex();
       if (apiAdded) {
         const detail = 'Agregado y verificado con cantidad ' + item.quantity + '.';
+        clearAttempt();
         setDetail(detail);
         post({ action: 'item-result', itemId: item.id, status: 'added', detail });
         window.__conviveManagedCartRunning = false;
         return;
       }
-      const add = await waitFor(() => find(config.addSelectors));
+      const beforeCart = cartSignature();
+      const beforeQuantity = signature();
+      const add = await waitFor(findAdd);
       if (!add) {
+        rememberAttempt({ itemId: item.id, beforeCart, beforeQuantity });
+        if (intervention()) {
+          requireUser('La tienda necesita inicio de sesión, ubicación o despacho. Completa el paso aquí y continúa.');
+          return;
+        }
         requireUser('No encontramos el botón de agregar. Agrégalo manualmente en esta ficha y continúa.');
         return;
       }
-      const beforeCart = cartSignature();
-      const beforeQuantity = signature();
+      rememberAttempt({ itemId: item.id, beforeCart, beforeQuantity });
       let quantity = { complete: true, clicks: 0 };
       if (config.quantityBeforeAdd) quantity = await clickExtraQuantity(1);
       if (!(config.quantityControlAddsToCart && quantity.clicks > 0)) click(add);
@@ -443,6 +540,10 @@ export function buildManagedCartItemScript(
         return (afterCart && afterCart !== beforeCart) || (afterQuantity && afterQuantity !== beforeQuantity);
       }, 8000);
       if (!changed) {
+        if (intervention()) {
+          requireUser('La tienda necesita inicio de sesión, ubicación o despacho. Completa el paso aquí y continúa.');
+          return;
+        }
         requireUser('El sitio recibió el intento, pero no pudimos confirmar el cambio. Revisa el producto y continúa.');
         return;
       }
@@ -451,9 +552,11 @@ export function buildManagedCartItemScript(
         ? 'Agregado y verificado con cantidad ' + item.quantity + '.'
         : 'Producto agregado; revisa la cantidad antes de pagar.';
       setDetail(detail);
+      clearAttempt();
       post({ action: 'item-result', itemId: item.id, status: 'added', detail });
       window.__conviveManagedCartRunning = false;
     })().catch(error => {
+      clearAttempt();
       post({
         action: 'item-result',
         itemId: item.id,
@@ -507,7 +610,9 @@ export async function openManagedRetailerCart(
     let current = 0;
     let added = 0;
     let failed = 0;
+    let lastFailureDetail = '';
     let finished = false;
+    let waitingForUser = false;
 
     const report = (value: SupermarketManagedCartProgress) => callbacks.onProgress?.(value);
     const injectCurrent = async (targetId?: string) => {
@@ -522,17 +627,42 @@ export async function openManagedRetailerCart(
 
     const loadedListener = await InAppBrowser.addListener('browserPageLoaded', event => {
       if (finished || (viewState.id && event.id && event.id !== viewState.id)) return;
+      if (waitingForUser) {
+        if (!config.resumeAfterUserPageLoad) return;
+        waitingForUser = false;
+        void InAppBrowser.setUrl({
+          id: event.id ?? viewState.id,
+          url: items[current].productUrl,
+        });
+        return;
+      }
       void injectCurrent(event.id);
+    });
+    const urlListener = await InAppBrowser.addListener('urlChangeEvent', event => {
+      if (finished || !waitingForUser || (viewState.id && event.id && event.id !== viewState.id)) return;
+      try {
+        const currentUrl = new URL(event.url);
+        const productUrl = new URL(items[current].productUrl);
+        const returnedFromUserStep = (
+          currentUrl.hostname === productUrl.hostname
+          && config.resumePaths?.includes(currentUrl.pathname)
+        );
+        if (!returnedFromUserStep) return;
+        waitingForUser = false;
+        void InAppBrowser.setUrl({ id: event.id ?? viewState.id, url: productUrl.toString() });
+      } catch {}
     });
     const messageListener = await InAppBrowser.addListener('messageFromWebview', event => {
       if (viewState.id && event.id && event.id !== viewState.id) return;
       const detail = asRecord(event.detail);
       if (detail?.source !== 'convive-managed-cart') return;
       if (detail.action === 'resume') {
+        waitingForUser = false;
         void injectCurrent(event.id);
         return;
       }
       if (detail.action === 'needs-user') {
+        waitingForUser = true;
         report(progress(
           store,
           current + 1,
@@ -546,8 +676,12 @@ export async function openManagedRetailerCart(
         return;
       }
       if (detail.action !== 'item-result' || detail.itemId !== items[current]?.id) return;
+      waitingForUser = false;
       if (detail.status === 'added') added += 1;
-      else failed += 1;
+      else {
+        failed += 1;
+        lastFailureDetail = typeof detail.detail === 'string' ? detail.detail : '';
+      }
       current += 1;
       if (current >= items.length) {
         finished = true;
@@ -560,9 +694,28 @@ export async function openManagedRetailerCart(
           'completed',
           failed === 0
             ? `Carro cargado con ${added} productos. Revísalo antes de pagar.`
-            : `Carro abierto: ${added} cargados y ${failed} pendientes de revisión.`,
+            : `Carro abierto: ${added} cargados y ${failed} pendientes. ${lastFailureDetail}`.trim(),
         ));
-        void InAppBrowser.setUrl({ id: event.id ?? viewState.id, url: config.cartUrl });
+        if (config.openCartSelectors?.length) {
+          const selectors = JSON.stringify(config.openCartSelectors).replaceAll('<', '\\u003c');
+          void InAppBrowser.executeScript({
+            id: event.id ?? viewState.id,
+            code: `(() => {
+              const selectors = ${selectors};
+              const element = selectors.flatMap(selector => {
+                try { return [...document.querySelectorAll(selector)]; } catch { return []; }
+              }).find(candidate => {
+                const rect = candidate.getBoundingClientRect();
+                const style = window.getComputedStyle(candidate);
+                return rect.width > 1 && rect.height > 1
+                  && style.display !== 'none' && style.visibility !== 'hidden';
+              });
+              element?.click?.();
+            })();`,
+          });
+        } else {
+          void InAppBrowser.setUrl({ id: event.id ?? viewState.id, url: config.cartUrl });
+        }
         return;
       }
       void InAppBrowser.setUrl({ id: event.id ?? viewState.id, url: items[current].productUrl });
@@ -573,6 +726,7 @@ export async function openManagedRetailerCart(
         report(progress(store, current, items.length, added, failed, 'cancelled', 'La carga se cerró antes de terminar.'));
       }
       void loadedListener.remove();
+      void urlListener.remove();
       void messageListener.remove();
       void closeListener.remove();
     });
@@ -588,6 +742,7 @@ export async function openManagedRetailerCart(
       preventDeeplink: false,
     });
     viewState.id = opened.id;
+    void injectCurrent(opened.id);
     return { started: true };
   } catch {
     callbacks.onProgress?.(progress(store, 0, items.length, 0, 0, 'error', 'No se pudo abrir el navegador de compra.'));

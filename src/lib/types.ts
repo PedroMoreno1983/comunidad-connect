@@ -400,6 +400,9 @@ export interface SupermarketManagedCartStartResult {
 export interface SupermarketManagedStoreConfig {
   hosts: string[];
   cartUrl: string;
+  openCartSelectors?: string[];
+  resumeAfterUserPageLoad?: boolean;
+  resumePaths?: string[];
   apiMode?: 'shopify' | 'vtex' | 'lider';
   addSelectors: string[];
   plusSelectors: string[];
