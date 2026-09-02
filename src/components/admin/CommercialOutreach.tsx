@@ -82,7 +82,7 @@ export default function CommercialOutreach() {
                             Nombre del administrador
                         </label>
                         <Input
-                            placeholder="Ej. Pedro Moreno"
+                            placeholder="Nombre y apellido"
                             value={formData.adminName}
                             onChange={(event) => setFormData({ ...formData, adminName: event.target.value })}
                             required
