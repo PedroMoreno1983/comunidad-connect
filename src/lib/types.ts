@@ -369,54 +369,7 @@ export interface SupermarketSearchResponse {
   degradedStores?: string[];
 }
 
-export type SupermarketManagedCartItemStatus = 'added' | 'failed' | 'needs_user';
-
-export interface SupermarketManagedCartItem {
-  id: string;
-  name: string;
-  requestedTerm: string;
-  quantity: number;
-  productUrl: string;
-  sku?: string;
-  offerId?: string;
-}
-
-export interface SupermarketManagedCartProgress {
-  store: SupermarketStore;
-  current: number;
-  total: number;
-  added: number;
-  failed: number;
-  itemName?: string;
-  status: 'opening' | 'loading' | 'needs_user' | 'completed' | 'cancelled' | 'error';
-  detail: string;
-}
-
-export interface SupermarketManagedCartStartResult {
-  started: boolean;
-  reason?: 'native_required' | 'empty_cart' | 'invalid_store' | 'open_failed';
-}
-
-export interface SupermarketManagedStoreConfig {
-  hosts: string[];
-  cartUrl: string;
-  openCartSelectors?: string[];
-  resumeAfterUserPageLoad?: boolean;
-  resumePaths?: string[];
-  apiMode?: 'shopify' | 'vtex' | 'lider';
-  addSelectors: string[];
-  plusSelectors: string[];
-  quantitySelectors: string[];
-  cartSelectors: string[];
-  quantityBeforeAdd?: boolean;
-  quantityControlAddsToCart?: boolean;
-}
-
-export interface SupermarketManagedCartCallbacks {
-  onProgress?: (progress: SupermarketManagedCartProgress) => void;
-}
-
-export interface SupermarketManagedCartButtonProps {
+export interface SupermarketCartButtonProps {
   store: string;
   items: SupermarketSearchCandidate[];
 }
@@ -434,8 +387,11 @@ export interface SupermarketCartHandoffItem {
 export interface SupermarketCartHandoff {
   supported: boolean;
   store: string;
-  mode: 'direct_url' | 'managed_webview';
+  mode: 'remote_browser' | 'direct_url' | 'unavailable';
   cartUrl?: string;
+  sessionUrl?: string;
+  sessionId?: string;
+  expiresAt?: string;
   plannedCount: number;
   missingItems: string[];
   reason?: string;
