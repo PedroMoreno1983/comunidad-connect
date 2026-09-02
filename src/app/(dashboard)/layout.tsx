@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import CoCo from "@/components/CoCo/CoCo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AdminShell } from "@/components/cc/AdminShell";
+import { useToast } from "@/components/ui/Toast";
+import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE } from "@/lib/roleAccess";
 
 export default function DashboardLayout({
     children,
@@ -23,6 +25,7 @@ function DashboardShell({
     const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const { toast } = useToast();
     const [timeString, setTimeString] = useState("");
 
     // Hydration-safe clock
@@ -49,6 +52,18 @@ function DashboardShell({
             router.replace(`/login${next}`);
         }
     }, [loading, pathname, user, router]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get(ACCESS_DENIED_QUERY) !== ACCESS_DENIED_VALUE) return;
+        toast({
+            title: "No tienes acceso",
+            description: "Esa sección no está disponible para tu rol.",
+            variant: "destructive",
+        });
+        router.replace(pathname);
+    }, [pathname, router, toast]);
 
     useEffect(() => {
         const routeTitles: Record<string, string> = {

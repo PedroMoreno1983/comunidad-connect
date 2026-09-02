@@ -47,7 +47,7 @@ export default function TermsPage() {
         <div className="min-h-screen bg-slate-50 p-8 pt-12 cc-text-primary dark:bg-[#0B0F19] md:p-16">
             <div className="mx-auto max-w-4xl">
                 <Link href="/" className="mb-8 inline-flex items-center gap-2 font-semibold text-role-admin-fg transition-opacity hover:opacity-80">
-                    <ArrowLeft className="h-5 w-5" /> Regresar
+                    <ArrowLeft className="h-5 w-5" /> Volver
                 </Link>
                 <h1 className="mb-4 text-4xl font-extrabold">Términos del servicio</h1>
                 <p className="mb-8 text-lg leading-relaxed cc-text-secondary">

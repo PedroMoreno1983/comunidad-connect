@@ -9,6 +9,7 @@ import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
+import { postLoginPath } from "@/lib/roleAccess";
 
 export default function LoginPage() {
     return (
@@ -31,7 +32,6 @@ function LoginForm() {
     const { toast } = useToast();
     const nextParam = searchParams.get("next");
     const checkEmail = searchParams.get("check_email") === "1";
-    const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
 
     const handleResendConfirmation = async () => {
         if (!email.trim()) {
@@ -65,7 +65,7 @@ function LoginForm() {
         event.preventDefault();
         setLoading(true);
 
-        const { error } = await signIn(email, password);
+        const { error, role } = await signIn(email, password);
 
         if (error) {
             toast({
@@ -82,7 +82,8 @@ function LoginForm() {
             description: "Has iniciado sesión correctamente",
             variant: "success",
         });
-        router.push(safeNext);
+        router.replace(postLoginPath(nextParam, role));
+        router.refresh();
     };
 
     return (

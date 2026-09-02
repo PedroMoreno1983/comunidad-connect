@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { formatWhatsAppPhone } from './whatsapp';
+import { periodCollectionStats, resolveBillingPeriod } from '@/lib/finance/periodCollection';
 import {
     AdminDashboardSummary,
     AdminBooking,
@@ -748,7 +749,7 @@ export const AdminDashboardService = {
                 .from("expenses")
                 .select("amount, status, month, items:expense_items(label, amount)")
                 .order("month", { ascending: false })
-                .limit(240);
+                .limit(2500);
             let bookingsQuery = supabase
                 .from("bookings")
                 .select("id, status, date")
@@ -780,11 +781,11 @@ export const AdminDashboardService = {
 
             const residentsActive = profiles.filter(profile => profile.role === "resident").length;
             const unitsTotal = units.length;
-            const collectionTarget = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-            const collectionCollected = expenses
-                .filter(expense => expense.status === "paid")
-                .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-            const collectionRate = collectionTarget > 0 ? Math.round((collectionCollected / collectionTarget) * 100) : 0;
+            const period = resolveBillingPeriod(expenses.map(expense => expense.month));
+            const collection = periodCollectionStats(expenses, period);
+            const collectionTarget = collection.totalBilled;
+            const collectionCollected = collection.totalCollected;
+            const collectionRate = collection.collectionRate;
 
             const byMonth = new Map<string, { collected: number; target: number }>();
             expenses.forEach((expense) => {
@@ -1939,25 +1940,32 @@ type FinanceExpenseRow = {
 };
 
 export const AdminFinanceService = {
-    async getOverview(): Promise<CommunityFinance> {
+    async getOverview(communityId?: string): Promise<CommunityFinance> {
+        let expensesQuery = supabase
+            .from('expenses')
+            .select('id,unit_id,amount,status,month,due_date,paid_at,items:expense_items(category,label,amount)')
+            .order('month', { ascending: false })
+            .limit(2500);
+        let unitsQuery = supabase.from('units').select('id', { count: 'exact', head: true });
+        if (isUuid(communityId)) {
+            expensesQuery = expensesQuery.eq('community_id', communityId);
+            unitsQuery = unitsQuery.eq('community_id', communityId);
+        }
+
         const [{ data, error }, unitsResult] = await Promise.all([
-            supabase
-                .from('expenses')
-                .select('id,unit_id,amount,status,month,due_date,paid_at,items:expense_items(category,label,amount)')
-                .order('month', { ascending: false })
-                .limit(2500),
-            supabase.from('units').select('id', { count: 'exact', head: true }),
+            expensesQuery,
+            unitsQuery,
         ]);
         if (error) throw error;
         if (unitsResult.error) throw unitsResult.error;
 
         const rows = (data || []) as FinanceExpenseRow[];
-        const period = rows.map(row => row.month || '').filter(Boolean).sort((a, b) => b.localeCompare(a))[0]
-            || new Date().toISOString().slice(0, 7);
+        const period = resolveBillingPeriod(rows.map(row => row.month));
+        const collection = periodCollectionStats(rows, period);
         const periodRows = rows.filter(row => row.month === period);
         const amountOf = (row: FinanceExpenseRow) => Number(row.amount || 0);
-        const totalBilled = periodRows.reduce((sum, row) => sum + amountOf(row), 0);
-        const totalRevenue = periodRows.filter(row => row.status === 'paid').reduce((sum, row) => sum + amountOf(row), 0);
+        const totalBilled = collection.totalBilled;
+        const totalRevenue = collection.totalCollected;
         const pendingAmount = periodRows.filter(row => row.status === 'pending').reduce((sum, row) => sum + amountOf(row), 0);
         const overdueAmount = periodRows.filter(row => row.status === 'overdue').reduce((sum, row) => sum + amountOf(row), 0);
         const billedUnitIds = new Set(periodRows.map(row => row.unit_id).filter((id): id is string => Boolean(id)));
@@ -2020,7 +2028,7 @@ export const AdminFinanceService = {
             reserveFund,
             pendingAmount,
             overdueAmount,
-            collectionRate: totalBilled > 0 ? Math.round((totalRevenue / totalBilled) * 100) : 0,
+            collectionRate: collection.collectionRate,
             totalUnits: unitsResult.count || 0,
             billedUnits: billedUnitIds.size,
             paidUnits: paidUnitIds.size,

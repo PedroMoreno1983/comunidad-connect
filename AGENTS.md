@@ -204,6 +204,7 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 5. **No hardcodear IDs:** El `condo_id` de desarrollo local es `11111111-1111-1111-1111-111111111111` - usar la constante, no el string suelto.
 6. **Vercel:** Los headers de seguridad están en `vercel.json`. No eliminarlos.
 7. **Mobile:** `capacitor.config.ts` apunta al directorio `out` del build estático. No cambiar sin coordinar.
+8. **Copy pública:** Producción es https://conviveconnect.com. No hardcodear "Pedro Moreno" ni otros nombres reales como valor o placeholder de formularios.
 
 ---
 
