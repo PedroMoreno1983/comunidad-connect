@@ -51,7 +51,7 @@ function contentSecurityPolicy(nonce: string) {
     "media-src 'self' data: blob: https://*.supabase.co",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
-    "upgrade-insecure-requests",
+    ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 }
 

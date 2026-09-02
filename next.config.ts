@@ -32,6 +32,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["10.0.2.2"],
   async headers() {
     return [
       {
