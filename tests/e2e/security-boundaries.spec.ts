@@ -53,6 +53,8 @@ test('signup rejects incomplete and forged invitations', async ({ request }) => 
             password: 'Boundary-QA-2026!',
             accessCode: 'FORGED-CODE-2026',
             role: 'admin',
+            acceptTerms: true,
+            acceptPrivacy: true,
         },
     });
     expect(forged.status()).toBe(403);
