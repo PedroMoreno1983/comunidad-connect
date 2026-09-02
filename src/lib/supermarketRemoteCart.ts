@@ -74,9 +74,9 @@ export async function prepareRemoteCartHandoff(
       mode: 'remote_browser',
       sessionUrl: viewerUrl,
       sessionId,
-      expiresAt: typeof payload.expiresAt === 'string' ? payload.expiresAt : undefined,
-      plannedCount: cleanCount(payload.plannedCount, direct.plannedCount || items.length),
-      missingItems: cleanMissingItems(payload.missingItems),
+      expiresAt: typeof payload?.expiresAt === 'string' ? payload.expiresAt : undefined,
+      plannedCount: cleanCount(payload?.plannedCount, direct.plannedCount || items.length),
+      missingItems: cleanMissingItems(payload?.missingItems),
     };
   } catch (error) {
     if (direct.supported && direct.cartUrl) return direct;
