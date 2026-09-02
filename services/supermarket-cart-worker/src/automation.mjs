@@ -27,6 +27,8 @@ const UNAVAILABLE_TEXT = [
   'producto no disponible',
   'producto agotado',
   'sin stock',
+  'justo se agoto',
+  'se agoto justo',
 ];
 
 const INTERVENTION_TEXT = [
