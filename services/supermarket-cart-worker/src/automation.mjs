@@ -10,6 +10,12 @@ const BLOCKED_TEXT = [
   'verificacion de seguridad',
   'verificación de seguridad',
   'security verification',
+  'just a moment',
+  'verifying you are human',
+  'verificando que eres humano',
+  'checking your browser',
+  'review the security of your connection',
+  'revisando la seguridad de tu conexion',
 ];
 
 const UNAVAILABLE_TEXT = [
