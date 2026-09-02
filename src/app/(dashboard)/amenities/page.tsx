@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import Image from "next/image";
 import { AmenitiesService } from "@/lib/api";
 import {
@@ -90,6 +90,8 @@ export default function AmenitiesPage() {
     const isAdmin = user?.role === "admin";
     const isConcierge = user?.role === "concierge";
 
+    const agendaRef = useRef<HTMLDivElement | null>(null);
+
     const timeSlots = [
         '08:00', '10:00', '12:00', '14:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
     ];
@@ -115,19 +117,18 @@ export default function AmenitiesPage() {
     }, []);
 
     useEffect(() => {
-        if (user) {
+        if (user?.id) {
             loadData();
         }
-    }, [loadData, user]);
+    }, [loadData, user?.id]);
 
-    // Generar strip de los próximos 7 días a partir de hoy
-    const getNext7Days = () => {
+    const next7Days = useMemo(() => {
         const list = [];
         const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const today = new Date();
         for (let i = 0; i < 7; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() + i);
-            const dateStr = d.toISOString().slice(0, 10);
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
             list.push({
                 dateStr,
                 dayName: daysOfWeek[d.getDay()],
@@ -136,16 +137,18 @@ export default function AmenitiesPage() {
             });
         }
         return list;
-    };
+    }, []);
 
-    const next7Days = getNext7Days();
-
-    // Configurar primer día por defecto si hay amenidad seleccionada
     useEffect(() => {
         if (selectedAmenity && !selectedDate) {
             setSelectedDate(next7Days[0].dateStr);
         }
     }, [selectedAmenity, selectedDate, next7Days]);
+
+    useEffect(() => {
+        if (!selectedAmenity) return;
+        agendaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [selectedAmenity]);
 
     const handleSelectAmenity = (amenity: Amenity) => {
         setSelectedAmenity(amenity);
@@ -517,7 +520,7 @@ export default function AmenitiesPage() {
                     </>
                 ) : (
                     /* Vista 2: Proceso de Reserva de Amenidad (Flujo Integrado) */
-                    <div className="space-y-7">
+                    <div ref={agendaRef} id="agenda" className="space-y-7">
                         <div className="relative min-h-[300px] overflow-hidden sm:min-h-[390px] lg:min-h-[460px]">
                             <Image src="/edificio-malaga-patio.jpg" alt={selectedAmenity.name} fill sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" priority />
                             <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.86) 0%, rgba(26,22,17,0.08) 64%)" }} />
