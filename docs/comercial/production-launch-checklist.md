@@ -25,7 +25,7 @@ Configurar en el proyecto Vercel de `conviveconnect.com`, ambiente `Production`.
 - `TWILIO_WHATSAPP_FROM`
 - `WHATSAPP_WEBHOOK_SECRET`
 
-Webhook entrante que debe pegarse en Twilio:
+Webhook entrante (interno; no publicar en `/support` ni otras páginas públicas). Ver `docs/whatsapp-twilio-webhook.md`:
 
 ```text
 https://conviveconnect.com/api/coco/whatsapp

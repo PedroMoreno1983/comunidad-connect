@@ -10,6 +10,7 @@ Este directorio deja cerrado el material base para vender, implementar y operar 
 - `implementacion-cliente.md`: flujo de activacion de un nuevo condominio.
 - `terminos-operativos.md`: reglas de uso, datos, IA y canales.
 - `cierre-produccion.md`: checklist tecnico para cerrar produccion pagada.
+- `../whatsapp-twilio-webhook.md`: endpoint Twilio de CoCo WhatsApp (interno; no exponer en páginas públicas).
 
 ## Estado
 

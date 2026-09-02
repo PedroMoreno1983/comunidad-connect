@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { interpretRosterExtractResponse } from "@/lib/onboarding/extractResult";
 
 interface ExtractedUser {
     id: string;
@@ -55,13 +56,19 @@ function friendlyError(message?: string) {
     if (text.includes("timeout") || text.includes("504") || text.includes("large") || text.includes("grande")) {
         return "El archivo tardó demasiado en procesarse. Prueba con un PDF más liviano o divide la nómina en partes.";
     }
+    if (text.includes("formato no soportado") || text.includes("unsupported")) {
+        return "Ese tipo de archivo no es una nómina. Usa PDF, Word, Excel, TXT o CSV.";
+    }
     if (text.includes("json") || text.includes("gemini") || text.includes("api")) {
         return "No pudimos leer el archivo con suficiente confianza. Revisa el formato o intenta con una planilla Excel/CSV/TXT.";
+    }
+    if (text.includes("columnas") || text.includes("nómina") || text.includes("nomina") || text.includes("vacio") || text.includes("vacío")) {
+        return message || "No se encontraron columnas de nómina. Revisa el archivo e inténtalo de nuevo.";
     }
     if (text.includes("supabase") || text.includes("database")) {
         return "No pudimos guardar la información en este momento. Revisa tu conexión e intenta nuevamente.";
     }
-    return "No pudimos completar la operación. Revisa el archivo e intenta nuevamente.";
+    return message || "No pudimos completar la operación. Revisa el archivo e intenta nuevamente.";
 }
 
 export default function AdminOnboardingPage() {
@@ -81,6 +88,7 @@ export default function AdminOnboardingPage() {
     const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
     const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
     const [agentAssessment, setAgentAssessment] = useState<OnboardingAssessment | null>(null);
+    const [extractError, setExtractError] = useState<string | null>(null);
     const activeSectionRef = useRef<HTMLElement | null>(null);
     const batchLoadedRef = useRef(false);
 
@@ -138,14 +146,12 @@ export default function AdminOnboardingPage() {
     const processFiles = async (uploadedFiles: File[]) => {
         if (!uploadedFiles.length) return;
         setIsExtracting(true);
-        setExtractedData(null);
         setSyncSuccess(false);
         setConfirmingSync(false);
         setSyncResult(null);
         setSyncedPreview([]);
-        setAgentAssessment(null);
-        setBatchId("");
-        setLastFileName(uploadedFiles.map(file => file.name).join(", "));
+        setExtractError(null);
+        const pendingName = uploadedFiles.map(file => file.name).join(", ");
 
         try {
             const formData = new FormData();
@@ -153,21 +159,40 @@ export default function AdminOnboardingPage() {
             formData.append("source", "admin_onboarding");
             const response = await fetch("/api/onboarding/batches", { method: "POST", body: formData });
             const extraction = await response.json();
-            if (!response.ok || !Array.isArray(extraction.data)) throw new Error(extraction.error || "batch-extract-failed");
+            const interpreted = interpretRosterExtractResponse(extraction, response.ok);
+            if (!interpreted.ok) {
+                const message = friendlyError(interpreted.message);
+                setExtractError(message);
+                if (!extractedData) {
+                    if (extraction.batchId) setBatchId(extraction.batchId);
+                    setFailedDocumentCount((extraction.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
+                    setLastFileName(pendingName);
+                }
+                toast({
+                    title: "No se pudo procesar el archivo",
+                    description: message,
+                    variant: "destructive",
+                });
+                return;
+            }
             setBatchId(extraction.batchId || "");
             setFailedDocumentCount((extraction.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
-            setExtractedData(extraction.data);
+            setLastFileName(pendingName);
+            setExtractedData(interpreted.rows);
             setAgentAssessment(extraction.assessment || null);
+            setExtractError(null);
             toast({
                 title: "Lote procesado",
-                description: `${uploadedFiles.length} documento(s) y ${extraction.data.length} registros para revision.`,
+                description: `${uploadedFiles.length} documento(s) y ${interpreted.rows.length} registros para revisión.`,
                 variant: "success",
             });
         } catch (err: unknown) {
             console.warn("[AdminOnboarding] extract failed:", err);
+            const message = friendlyError(err instanceof Error ? err.message : undefined);
+            setExtractError(message);
             toast({
                 title: "No se pudo procesar el archivo",
-                description: friendlyError(err instanceof Error ? err.message : undefined),
+                description: message,
                 variant: "destructive",
             });
         } finally {
@@ -204,10 +229,17 @@ export default function AdminOnboardingPage() {
                 method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "retry_failed" }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error || "retry-failed");
-            setExtractedData(payload.data || []);
-            setAgentAssessment(payload.assessment || null);
+            const interpreted = interpretRosterExtractResponse(payload, response.ok);
             setFailedDocumentCount(Number(payload.remaining || 0));
+            if (!interpreted.ok) {
+                const message = friendlyError(interpreted.message);
+                setExtractError(message);
+                toast({ title: "No se pudo reintentar", description: message, variant: "destructive" });
+                return;
+            }
+            setExtractedData(interpreted.rows);
+            setAgentAssessment(payload.assessment || null);
+            setExtractError(null);
             toast({ title: "Reintento completado", description: `${payload.recovered || 0} documento(s) recuperados.`, variant: "success" });
         } catch (error) {
             toast({ title: "No se pudo reintentar", description: friendlyError(error instanceof Error ? error.message : undefined), variant: "destructive" });
@@ -283,6 +315,7 @@ export default function AdminOnboardingPage() {
         setLastFileName("");
         setBatchId("");
         setFailedDocumentCount(0);
+        setExtractError(null);
     };
 
     const restoreSyncedRows = () => {
@@ -354,6 +387,23 @@ export default function AdminOnboardingPage() {
                 secondaryActionLabel="Ver unidades"
                 secondaryActionHref="/admin/units"
             />
+
+            {extractError && (
+                <div
+                    role="alert"
+                    className="flex items-start gap-3 rounded-2xl border p-4"
+                    style={{ borderColor: "var(--cc-rose)", background: "var(--cc-rose-tint, #fdecec)" }}
+                >
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--cc-rose)" }} />
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold cc-text-primary">No se pudo extraer la nómina</p>
+                        <p className="mt-1 text-sm cc-text-secondary">{extractError}</p>
+                        {lastFileName && (
+                            <p className="mt-1 text-xs cc-text-tertiary">Archivo: {lastFileName}</p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {!extractedData && !syncSuccess && (
                 <section

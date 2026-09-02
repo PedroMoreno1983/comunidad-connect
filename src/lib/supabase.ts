@@ -25,7 +25,7 @@ const createNoopClient = () => {
     auth: {
       getSession: async () => ({ data: { session: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signInWithPassword: async () => ({ error: new Error('Supabase no configurado') }),
+      signInWithPassword: async () => ({ data: { user: null, session: null }, error: new Error('Supabase no configurado') }),
       signUp: async () => ({ error: new Error('Supabase no configurado') }),
       signOut: async () => ({ error: null }),
     },

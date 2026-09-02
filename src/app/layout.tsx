@@ -12,7 +12,7 @@ const structuredData = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Plataforma de bienestar comunitario para condominios: gastos comunes, reservas, conserjeria, votaciones, CoCo IA, WhatsApp y convivencia vecinal.",
+    "Plataforma de bienestar comunitario para condominios: gastos comunes, reservas, conserjería, votaciones, CoCo IA, WhatsApp y convivencia vecinal.",
   offers: {
     "@type": "Offer",
     priceCurrency: "CLP",
@@ -38,7 +38,7 @@ const faqStructuredData = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "Que permite gestionar Convive Connect?",
+      name: "Qué permite gestionar Convive Connect?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Convive Connect centraliza gastos comunes, reservas, comunicaciones, votaciones, marketplace vecinal, soporte por WhatsApp, CoCo IA y herramientas de convivencia comunitaria para condominios en Chile.",
@@ -49,7 +49,7 @@ const faqStructuredData = {
       name: "Convive Connect sirve para administradores y residentes?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Si. La plataforma separa permisos para administradores, residentes, conserjeria y superadministracion, con acceso por rol y datos protegidos.",
+        text: "Sí. La plataforma separa permisos para administradores, residentes, conserjería y superadministración, con acceso por rol y datos protegidos.",
       },
     },
     {
@@ -57,7 +57,7 @@ const faqStructuredData = {
       name: "CoCo IA puede ayudar por WhatsApp?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Si. CoCo puede operar por WhatsApp mediante Twilio, con verificacion por telefono, opt-in del residente y unidad asociada.",
+        text: "Sí. CoCo puede operar por WhatsApp mediante Twilio, con verificación por teléfono, opt-in del residente y unidad asociada.",
       },
     },
   ],
@@ -68,28 +68,28 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_SITE_URL),
   title: {
-    default: "Convive Connect - Tu edificio, mas humano que nunca",
+    default: "Convive Connect - Tu edificio, más humano que nunca",
     template: "%s | Convive Connect",
   },
   description:
-    "Plataforma de bienestar comunitario para condominios. Gastos comunes, reservas, conserjeria, votaciones, marketplace y CoCo IA en una sola experiencia.",
+    "Plataforma de bienestar comunitario para condominios. Gastos comunes, reservas, conserjería, votaciones, marketplace y CoCo IA en una sola experiencia.",
   alternates: {
     canonical: "/",
   },
   keywords: [
     "condominio",
-    "gestion comunitaria",
+    "gestión comunitaria",
     "comunidad",
     "marketplace",
     "amenidades",
     "gastos comunes",
     "agua",
-    "administracion",
+    "administración",
     "Ley 21.442",
-    "administracion de condominios Chile",
+    "administración de condominios Chile",
     "software para condominios",
     "WhatsApp para comunidades",
-    "mediacion vecinal",
+    "mediación vecinal",
   ],
   authors: [{ name: "Convive Connect" }],
   manifest: "/manifest.json",
@@ -111,9 +111,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_CL",
     siteName: "Convive Connect",
-    title: "Convive Connect - Tu edificio, mas humano que nunca",
+    title: "Convive Connect - Tu edificio, más humano que nunca",
     description:
-      "Gastos comunes, reservas, conserjeria, votaciones, marketplace y CoCo IA para comunidades residenciales.",
+      "Gastos comunes, reservas, conserjería, votaciones, marketplace y CoCo IA para comunidades residenciales.",
     images: [
       {
         url: "/opengraph-image",
@@ -125,8 +125,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Convive Connect - Tu edificio, mas humano que nunca",
-    description: "Gestion comunitaria, CoCo IA, WhatsApp y convivencia vecinal para condominios en Chile.",
+    title: "Convive Connect - Tu edificio, más humano que nunca",
+    description: "Gestión comunitaria, CoCo IA, WhatsApp y convivencia vecinal para condominios en Chile.",
     images: ["/opengraph-image"],
   },
   robots: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isSuperAdminEmail } from "@/lib/security/superadmin";
 import { resolveProductCapabilities } from "@/lib/productCapabilities";
+import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE, homePathForRole, isDashboardPathAllowedForRole } from "@/lib/roleAccess";
 
 const PROTECTED_DASHBOARD_PREFIXES = [
   "/admin",
@@ -125,7 +126,6 @@ export async function proxy(req: NextRequest) {
     .maybeSingle();
 
   const role = typeof profile?.role === "string" ? profile.role : "resident";
-  let allowed = true;
 
   if (pathname.startsWith("/comunicaciones") && role === "resident") {
     return secureResponse(NextResponse.redirect(new URL("/feed", req.url)), nonce);
@@ -134,32 +134,11 @@ export async function proxy(req: NextRequest) {
     return secureResponse(NextResponse.redirect(new URL("/comunicaciones", req.url)), nonce);
   }
 
-  if (pathname.startsWith("/agent-center")) {
-    allowed = role === "admin";
-  } else if (pathname.startsWith("/convivencia")) {
-    allowed = role === "resident";
-  } else if (pathname.startsWith("/resident/supermercado")) {
-    allowed = role === "resident";
-  } else if (
-    pathname.startsWith("/marketplace")
-    || pathname.startsWith("/services")
-    || pathname.startsWith("/votaciones")
-    || pathname.startsWith("/expenses")
-  ) {
-    allowed = role === "admin" || role === "resident";
-  } else if (pathname.startsWith("/comunicaciones")) {
-    allowed = role === "admin" || role === "concierge";
-  } else if (pathname.startsWith("/staff")) {
-    allowed = role === "admin" || role === "concierge";
-  } else if (pathname.startsWith("/admin")) {
-    allowed = role === "admin";
-  } else if (pathname.startsWith("/concierge")) {
-    allowed = role === "concierge" || role === "admin";
-  } else if (pathname.startsWith("/resident")) {
-    allowed = role === "resident" || role === "admin";
+  if (!isDashboardPathAllowedForRole(pathname, role)) {
+    const home = new URL(homePathForRole(role), req.url);
+    home.searchParams.set(ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE);
+    return secureResponse(NextResponse.redirect(home), nonce);
   }
-
-  if (!allowed) return secureResponse(NextResponse.redirect(new URL("/home", req.url)), nonce);
 
   return res;
 }

@@ -6,11 +6,12 @@ import { CommercialLeadForm } from "@/components/commercial/CommercialLeadForm";
 
 export const metadata: Metadata = {
     title: "Recorrido comercial | Convive Connect",
-    description: "Recorrido por los flujos reales de administracion, residentes, conserjeria y CoCo en Convive Connect.",
+    description: "Recorrido por los flujos reales de administración, residentes, conserjería y CoCo en Convive Connect.",
 };
 
 const roleJourney = [
     {
+        id: "administracion",
         number: "01",
         title: "Administración",
         description: "Controla la comunidad desde información real y separada por edificio.",
@@ -18,6 +19,7 @@ const roleJourney = [
         items: ["Residentes, unidades y permisos", "Gastos comunes y reportes", "Votaciones, anuncios y solicitudes", "Auditoría de acciones de CoCo"],
     },
     {
+        id: "residentes",
         number: "02",
         title: "Residentes",
         description: "Cada persona ve solamente lo que corresponde a su comunidad y unidad.",
@@ -25,6 +27,7 @@ const roleJourney = [
         items: ["Gastos y estado de cuenta", "Reservas de espacios comunes", "Marketplace con mensajería privada", "Cursos, avisos y participación vecinal"],
     },
     {
+        id: "conserjeria",
         number: "03",
         title: "Conserjería",
         description: "La operación diaria queda centralizada y con responsables claros.",
@@ -32,6 +35,7 @@ const roleJourney = [
         items: ["Visitas y accesos", "Encomiendas y novedades", "Solicitudes operativas", "Información limitada por rol"],
     },
     {
+        id: "coco",
         number: "04",
         title: "CoCo",
         description: "El agente consulta datos y ejecuta únicamente acciones habilitadas.",
@@ -93,7 +97,7 @@ export default function CommercialTourPage() {
                         {roleJourney.map((role) => {
                             const Icon = role.icon;
                             return (
-                                <article key={role.number} className="rounded-3xl border p-7" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                                <article id={role.id} key={role.number} className="scroll-mt-8 rounded-3xl border p-7" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
                                             <Icon className="h-5 w-5" />

@@ -31,7 +31,7 @@ const steps = [
   },
   {
     title: "CoCo interpreta",
-    description: "Detecta unidades, contactos, brechas, reglas relevantes y modulos recomendados.",
+    description: "Detecta unidades, contactos, brechas, reglas relevantes y módulos recomendados.",
     icon: UploadCloud,
   },
   {
@@ -50,7 +50,7 @@ const checklist = [
 ];
 
 const documentOptions = [
-  "Nomina residentes/unidades",
+  "Nómina residentes/unidades",
   "Gastos comunes",
   "Reglamento PDF",
   "Espacios comunes",
@@ -64,8 +64,8 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [condoName, setCondoName] = useState("");
   const [units, setUnits] = useState("");
-  const [priority, setPriority] = useState("Activacion completa con CoCo");
-  const [documents, setDocuments] = useState<string[]>(["Nomina residentes/unidades"]);
+  const [priority, setPriority] = useState("Activación completa con CoCo");
+  const [documents, setDocuments] = useState<string[]>(["Nómina residentes/unidades"]);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -75,7 +75,7 @@ export default function OnboardingPage() {
     if (!adminName.trim() || !adminEmail.trim() || !condoName.trim()) {
       toast({
         title: "Faltan datos",
-        description: "Completa nombre, correo y condominio para preparar la activacion.",
+        description: "Completa nombre, correo y condominio para preparar la activación.",
         variant: "destructive",
       });
       return;
@@ -95,13 +95,13 @@ export default function OnboardingPage() {
       setSent(true);
       if (result.emailSent) {
         toast({
-          title: "Activacion solicitada",
+          title: "Activación solicitada",
           description: "Registramos el edificio y enviamos la confirmación por correo.",
           variant: "success",
         });
       } else {
         toast({
-          title: "Activacion registrada",
+          title: "Activación registrada",
           description: "La solicitud quedó guardada. La confirmación por correo está pendiente.",
           variant: "default",
         });
@@ -138,7 +138,7 @@ export default function OnboardingPage() {
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#5F7A46]/20 bg-[#5F7A46]/8 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#5F7A46]">
               <CalendarClock className="h-4 w-4" />
-              Activacion inteligente con CoCo
+              Activación inteligente con CoCo
             </div>
 
             <div className="space-y-5">
@@ -146,7 +146,7 @@ export default function OnboardingPage() {
                 Sube tus datos y CoCo arma el edificio operativo.
               </h1>
               <p className="max-w-2xl text-base leading-8 text-[#524A40] md:text-lg">
-                La experiencia premium parte con documentos reales, interpretacion asistida y aprobacion antes de crear usuarios, gastos o invitaciones.
+                La experiencia premium parte con documentos reales, interpretación asistida y aprobación antes de crear usuarios, gastos o invitaciones.
               </p>
             </div>
 
@@ -189,7 +189,7 @@ export default function OnboardingPage() {
                 </div>
                 <h2 className="text-3xl font-semibold tracking-tight">Solicitud recibida</h2>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 cc-text-secondary">
-                  Dejamos registrada la activacion para {condoName}. El siguiente paso es crear el condominio y entrar al centro de carga asistida.
+                  Dejamos registrada la activación para {condoName}. El siguiente paso es crear el condominio y entrar al centro de carga asistida.
                 </p>
                 <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8A8178]">
                   {emailSent
@@ -209,7 +209,7 @@ export default function OnboardingPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5F7A46]">Preactivacion IA</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5F7A46]">Preactivación IA</p>
                   <h2 className="mt-2 text-3xl font-semibold tracking-tight">Cuéntanos qué puede leer CoCo</h2>
                   <p className="mt-2 text-sm leading-6 cc-text-secondary">
                     Con estos datos el flujo queda preparado para crear comunidad, cargar archivos y revisar brechas sin partir desde cero.
@@ -218,7 +218,7 @@ export default function OnboardingPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Nombre administrador" icon={<Users className="h-4 w-4" />}>
-                    <input value={adminName} onChange={(event) => setAdminName(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Pedro Moreno" />
+                    <input value={adminName} onChange={(event) => setAdminName(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Nombre y apellido" />
                   </Field>
                   <Field label="Correo" icon={<Mail className="h-4 w-4" />}>
                     <input type="email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="admin@condominio.cl" />
@@ -245,7 +245,7 @@ export default function OnboardingPage() {
                     onChange={(event) => setPriority(event.target.value)}
                     className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12"
                   >
-                    <option>Activacion completa con CoCo</option>
+                    <option>Activación completa con CoCo</option>
                     <option>Crear comunidad y cargar residentes</option>
                     <option>Cargar gastos comunes y pagos</option>
                     <option>Ordenar Conserjería y visitas</option>
@@ -283,13 +283,13 @@ export default function OnboardingPage() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A1611] px-5 py-4 text-sm font-bold text-white shadow-lg transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />}
-                  Solicitar activacion inteligente
+                  Solicitar activación inteligente
                 </button>
 
                 <div className="rounded-2xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] p-4 text-sm leading-6 cc-text-secondary">
                   ¿Ya quieres crear la cuenta y subir archivos ahora?{" "}
                   <Link href="/admin-onboarding" className="font-bold text-[#733D24] underline underline-offset-4">
-                    Ir a Activacion Inteligente
+                    Ir a Activación Inteligente
                   </Link>
                 </div>
               </form>

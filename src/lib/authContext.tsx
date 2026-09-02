@@ -19,7 +19,7 @@ interface AuthContextType {
     // Supabase mode
     supabaseUser: SupabaseUser | null;
     session: Session | null;
-    signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+    signIn: (email: string, password: string) => Promise<{ error: Error | null; role?: User["role"] | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Fetch real profile from public.profiles table (Source of Truth)
-    const fetchUserProfile = async (sbUser: SupabaseUser) => {
+    const fetchUserProfile = async (sbUser: SupabaseUser): Promise<User["role"] | null> => {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (error) {
                 console.warn("[auth] Profile unavailable, using auth metadata fallback:", error.message || error);
                 // Fallback to metadata if profile fails
-                mapSupabaseUserFromMetadata(sbUser);
+                return mapSupabaseUserFromMetadata(sbUser);
             } else if (profile) {
                 // Extract a readable display name from email as last resort
                 const emailFirstPart = sbUser.email?.split('@')[0]?.split('.')?.[0];
@@ -141,7 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     || 'Usuario';
 
                 const features = profile.communities?.pricing_tiers?.features || {};
-                const profileRole = profile.role || 'resident';
+                const profileRole: User["role"] =
+                    profile.role === "admin" || profile.role === "concierge" ? profile.role : "resident";
                 const profileUnitId = typeof profile.unit_id === 'string' ? profile.unit_id : undefined;
                 const profileDepartmentNumber = typeof profile.department_number === 'string' ? profile.department_number.trim() : '';
 
@@ -164,10 +165,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (profileRole === 'resident' && !profileUnitId) {
                     ensureResidentUnitForUser();
                 }
+                return profileRole;
             }
+            return mapSupabaseUserFromMetadata(sbUser);
         } catch (err) {
             console.warn("[auth] Profile fetch failed, using auth metadata fallback:", err);
-            mapSupabaseUserFromMetadata(sbUser);
+            return mapSupabaseUserFromMetadata(sbUser);
         } finally {
             setLoading(false);
         }
@@ -216,12 +219,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Fallback Helper
-    const mapSupabaseUserFromMetadata = (sbUser: SupabaseUser) => {
+    const mapSupabaseUserFromMetadata = (sbUser: SupabaseUser): User["role"] | null => {
         const metadataRole = sbUser.user_metadata?.role;
         if (metadataRole !== 'admin' && metadataRole !== 'resident' && metadataRole !== 'concierge') {
             console.error('[auth] No authoritative profile role is available; refusing to invent a client role.');
             setUser(null);
-            return;
+            return null;
         }
 
         setUser({
@@ -232,14 +235,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             unitId: sbUser.user_metadata?.unit_id,
             unitName: sbUser.user_metadata?.unit_number ? `Depto ${sbUser.user_metadata.unit_number}` : undefined,
         });
+        return metadataRole;
     };
     // Supabase sign in
     const signIn = async (email: string, password: string) => {
         try {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            return { error };
+            // Una sesión de otro rol deja cookies/localStorage vivos. Sin este
+            // signOut, signInWithPassword puede “tener éxito” y el shell anterior
+            // (p. ej. admin) sigue montado hasta un logout manual.
+            setUser(null);
+            setSupabaseUser(null);
+            setSession(null);
+            await supabase.auth.signOut({ scope: "local" });
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) return { error, role: null };
+            const role = data.user ? await fetchUserProfile(data.user) : null;
+            return { error: null, role };
         } catch (error) {
-            return { error: error as Error };
+            return { error: error as Error, role: null };
         }
     };
 

@@ -11,6 +11,7 @@ import { AlertCircle, ArrowRight, ArrowLeftRight, BellRing, Calculator, FileText
 import Link from "next/link";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { useAuth } from "@/lib/authContext";
 
 const fallbackFinances: CommunityFinance = {
     period: new Date().toISOString().slice(0, 7),
@@ -32,6 +33,7 @@ const fallbackFinances: CommunityFinance = {
 };
 
 export default function AdminFinanzasPage() {
+    const { user } = useAuth();
     const [finances, setFinances] = useState<CommunityFinance | null>(null);
     const [loading, setLoading] = useState(true);
     const [usingFallback, setUsingFallback] = useState(false);
@@ -40,7 +42,7 @@ export default function AdminFinanzasPage() {
         const loadFinances = async () => {
             try {
                 setLoading(true);
-                setFinances(await AdminFinanceService.getOverview());
+                setFinances(await AdminFinanceService.getOverview(user?.communityId));
             } catch {
                 console.warn("Finance stats unavailable; showing empty operational state.");
                 setUsingFallback(true);
@@ -50,7 +52,7 @@ export default function AdminFinanzasPage() {
             }
         };
         loadFinances();
-    }, []);
+    }, [user?.communityId]);
 
     if (loading && !finances) {
         return (

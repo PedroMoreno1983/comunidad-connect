@@ -186,15 +186,15 @@ export default function AdminOnboardingPage() {
                         <BrandWordmark className="text-xl text-brand-600" />
                     </Link>
                     <div className="space-y-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Activacion Inteligente</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Activación Inteligente</p>
                         <h1 className="text-5xl font-semibold leading-tight cc-text-primary">Crea el edificio y deja a CoCo listo para cargarlo.</h1>
                         <p className="text-lg leading-8 cc-text-secondary">
-                            Primero creamos la comunidad y el administrador. Luego CoCo interpreta archivos, detecta brechas y prepara la sincronizacion con aprobacion.
+                            Primero creamos la comunidad y el administrador. Luego CoCo interpreta archivos, detecta brechas y prepara la sincronización con aprobación.
                         </p>
                     </div>
                     <div className="rounded-lg border border-subtle bg-surface p-5">
-                        <p className="text-sm font-semibold cc-text-primary">Activacion premium desde el primer dia</p>
-                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Sube nominas, gastos o reglamentos despues de crear la cuenta. CoCo los convierte en datos revisables antes de tocar produccion.</p>
+                        <p className="text-sm font-semibold cc-text-primary">Activación premium desde el primer día</p>
+                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Sube nóminas, gastos o reglamentos después de crear la cuenta. CoCo los convierte en datos revisables antes de tocar producción.</p>
                     </div>
                 </aside>
 

@@ -221,7 +221,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "SERVICIOS DE LA COMUNIDAD",
       links: [
-        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["resident", "admin"] },
+        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["resident"] },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
         { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },

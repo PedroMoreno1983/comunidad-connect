@@ -14,6 +14,7 @@ import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
+import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
 
 interface Expense {
     id: string;
@@ -73,6 +74,7 @@ export default function ExpensesPage() {
     const [step, setStep] = useState<"review" | "success">("review");
     const [contributionType, setContributionType] = useState<string>("none");
     const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number; paidAt?: string | null } | null>(null);
+    const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
 
     const targetUnitId = user?.unitId;
     const paymentReturnExpenseId = searchParams.get("payment") === "return"
@@ -121,6 +123,12 @@ export default function ExpensesPage() {
                 }
 
                 setExpenses(mapped);
+                const unpaid = mapped.filter(expense => expense.status === "pending" || expense.status === "overdue");
+                setSelectedExpenseId(current => {
+                    if (current && unpaid.some(expense => expense.id === current)) return current;
+                    const oldest = [...unpaid].sort((a, b) => a.month.localeCompare(b.month))[0];
+                    return oldest?.id || null;
+                });
             } catch (error: unknown) {
                 console.error("Error fetching expenses:", error);
                 setExpenses([]);
@@ -134,7 +142,11 @@ export default function ExpensesPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [targetUnitId, paymentReturnExpenseId]);
 
-    const activeExpense = expenses.find(e => e.status !== 'paid');
+    const paymentSummary = summarizeResidentPaymentStatus(expenses);
+    const pendingExpenses = expenses
+        .filter(expense => expense.status === "pending" || expense.status === "overdue")
+        .sort((a, b) => a.month.localeCompare(b.month) || a.dueDate.localeCompare(b.dueDate));
+    const activeExpense = pendingExpenses.find(expense => expense.id === selectedExpenseId) || pendingExpenses[0];
 
     const getContributionAmount = (type: string, base: number) => {
         switch (type) {
@@ -244,9 +256,11 @@ export default function ExpensesPage() {
     const totalAmount = paymentBaseAmount + serviceFee;
 
     // Format current period
-    const periodName = activeExpense
-        ? new Date(activeExpense.month + "-02").toLocaleDateString("es-CL", { month: "long", year: "numeric" })
-        : "Sin cobro vigente";
+    const periodName = pendingExpenses.length > 1
+        ? `${pendingExpenses.length} cobros pendientes`
+        : activeExpense
+            ? new Date(activeExpense.month + "-02").toLocaleDateString("es-CL", { month: "long", year: "numeric" })
+            : "Sin cobro vigente";
     const formattedPeriod = periodName.charAt(0).toUpperCase() + periodName.slice(1);
 
     // Format due date
@@ -316,24 +330,64 @@ export default function ExpensesPage() {
                         {/* Period */}
                         <Eyebrow className="mb-2">{formattedPeriod}</Eyebrow>
                         <DisplayHeading size={42}>
-                            Tu cuenta <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>del mes</em>
+                            {pendingExpenses.length > 1 ? (
+                                <>Tus cuentas <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>pendientes</em></>
+                            ) : (
+                                <>Tu cuenta <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>del mes</em></>
+                            )}
                         </DisplayHeading>
 
                         {/* Amount Box */}
                         <div className="mt-6 pb-5 border-b" style={{ borderColor: "var(--cc-line)" }}>
                             <div className="text-[12px] flex justify-between items-center" style={{ color: "var(--cc-ink-tertiary)", marginBottom: 8 }}>
-                                <span>Total a pagar antes del {formattedDueDate}</span>
-                                {activeExpense?.status === "paid" && (
+                                <span>
+                                    {pendingExpenses.length > 1
+                                        ? `Total de ${pendingExpenses.length} periodos`
+                                        : `Total a pagar antes del ${formattedDueDate}`}
+                                </span>
+                                {paymentSummary.al_dia && (
                                     <Tag tone="sage" solid dot>Al día</Tag>
                                 )}
                             </div>
                             <div className="flex items-baseline gap-1.5">
                                 <span style={{ fontSize: 18, color: "var(--cc-ink-muted)" }}>$</span>
                                 <span style={{ fontFamily: "var(--cc-font-display)", fontSize: 56, lineHeight: 1, letterSpacing: "-0.02em" }}>
-                                    {totalAmount.toLocaleString("es-CL")}
+                                    {paymentSummary.pending_amount.toLocaleString("es-CL")}
                                 </span>
                             </div>
                         </div>
+
+                        {pendingExpenses.length > 0 && (
+                            <div className="mt-5 mb-2">
+                                <Eyebrow className="mb-3">Cobros por pagar</Eyebrow>
+                                <div className="space-y-2">
+                                    {pendingExpenses.map((expense) => {
+                                        const selected = activeExpense?.id === expense.id;
+                                        const label = new Date(`${expense.month}-02`).toLocaleDateString("es-CL", { month: "long", year: "numeric" });
+                                        return (
+                                            <button
+                                                key={expense.id}
+                                                type="button"
+                                                onClick={() => setSelectedExpenseId(expense.id)}
+                                                className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
+                                                style={{
+                                                    borderColor: selected ? "var(--cc-copper)" : "var(--cc-line)",
+                                                    background: selected ? "rgba(156, 86, 54, 0.06)" : "transparent",
+                                                }}
+                                            >
+                                                <div>
+                                                    <div className="text-sm font-semibold capitalize">{label}</div>
+                                                    <div className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
+                                                        {expense.status === "overdue" ? "Vencido" : "Pendiente"} · vence {new Date(expense.dueDate).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })}
+                                                    </div>
+                                                </div>
+                                                <div className="font-mono text-sm">${expense.amount.toLocaleString("es-CL")}</div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Breakdown */}
                         <div className="mt-5 mb-6">
@@ -493,6 +547,11 @@ export default function ExpensesPage() {
                                         <><span className="flex-1 text-left">Pagar con Webpay · ${totalAmount.toLocaleString("es-CL")}</span><ArrowRight size={16} /></>
                                     )}
                                 </Button>
+                                {pendingExpenses.length > 1 && (
+                                    <div className="text-center mt-2 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
+                                        El pago corresponde al periodo seleccionado, no al total acumulado.
+                                    </div>
+                                )}
                                 <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
                                         Webpay vía Tuu/Haulmer, comisión e IVA incluidos
                                 </div>
@@ -504,7 +563,7 @@ export default function ExpensesPage() {
                                     style={{ background: "var(--cc-paper-warm)", border: "1px solid var(--cc-line)" }}
                                 >
                                     <div className="text-sm font-semibold" style={{ color: "var(--cc-ink)" }}>
-                                        Tienes ${totalAmount.toLocaleString("es-CL")} por pagar
+                                        Tienes ${paymentSummary.pending_amount.toLocaleString("es-CL")} por pagar
                                     </div>
                                     <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
                                         El pago en línea todavía no está habilitado en tu comunidad.

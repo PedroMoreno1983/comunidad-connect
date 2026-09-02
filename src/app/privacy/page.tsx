@@ -61,7 +61,7 @@ export default function PrivacyPage() {
         <main className="min-h-screen bg-slate-50 p-5 pt-10 text-slate-950 dark:bg-[#0B0F19] dark:text-white sm:p-8 md:p-16">
             <div className="mx-auto max-w-4xl">
                 <Link href="/" className="mb-8 inline-flex min-h-11 items-center gap-2 font-semibold text-emerald-700 transition-opacity hover:opacity-80">
-                    <ArrowLeft className="h-5 w-5" /> Regresar
+                    <ArrowLeft className="h-5 w-5" /> Volver
                 </Link>
                 <h1 className="mb-4 text-4xl font-extrabold">Política de privacidad</h1>
                 <p className="mb-3 text-base leading-7 text-slate-600 dark:text-slate-300">

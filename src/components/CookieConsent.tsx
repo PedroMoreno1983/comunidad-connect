@@ -38,8 +38,8 @@ export function CookieConsent() {
             <div>
                 <p className="text-sm font-bold">Privacidad y cookies</p>
                 <p className="mt-1 text-xs leading-5 text-[#524A40]">
-                    Usamos cookies necesarias y medicion agregada para operar Convive, mantener sesiones seguras y mejorar la experiencia.
-                    Revisa la <Link href="/privacy" className="font-semibold text-[#733D24] underline">politica de privacidad</Link>.
+                    Usamos cookies necesarias y medición agregada para operar Convive, mantener sesiones seguras y mejorar la experiencia.
+                    Revisa la <Link href="/privacy" className="font-semibold text-[#733D24] underline">política de privacidad</Link>.
                 </p>
             </div>
             <button

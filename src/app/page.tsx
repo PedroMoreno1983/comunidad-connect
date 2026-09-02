@@ -92,6 +92,7 @@ const roles = [
   {
     id: 'admin',
     title: 'Administración',
+    exploreHref: '/recorrido#administracion',
     Icon: Shield,
     desc: 'Panel de control centralizado. Finanzas, auditoría y gestión de comunidad integral.',
     items: [
@@ -106,6 +107,7 @@ const roles = [
   {
     id: 'resident',
     title: 'Residente',
+    exploreHref: '/recorrido#residentes',
     Icon: Home,
     desc: 'Gastos comunes, reservas y comunicación vecinal en una experiencia web simple.',
     items: [
@@ -119,6 +121,7 @@ const roles = [
   {
     id: 'concierge',
     title: 'Conserjería',
+    exploreHref: '/recorrido#conserjeria',
     Icon: KeyRound,
     desc: 'Registro de visitas, accesos y paquetería con permisos definidos por rol.',
     items: [
@@ -392,7 +395,7 @@ export default function LandingPage() {
                   </div>
                   <div className="mb-2.5 text-2xl tracking-tight sm:text-3xl" style={{ fontFamily: 'var(--cc-font-display)' }}>{r.title}</div>
                   <p className="mb-5 max-w-xs text-sm leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>{r.desc}</p>
-                  <Link href="/login" className="inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: 'var(--cc-copper)' }}>
+                  <Link href={r.exploreHref} className="inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: 'var(--cc-copper)' }}>
                     Explorar funciones <ArrowRight size={13} />
                   </Link>
                 </div>
@@ -671,7 +674,7 @@ function ContactAdminFormModal({ onClose }: ContactAdminModalProps) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Pedro Moreno"
+                placeholder="Nombre y apellido"
                 required
                 className="w-full rounded-xl border px-4 py-2.5 text-xs transition-all focus:outline-none focus:ring-2"
                 style={{ borderColor: "var(--cc-line-strong)", background: 'var(--cc-paper-warm)' }}

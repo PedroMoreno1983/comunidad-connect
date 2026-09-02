@@ -29,14 +29,14 @@ export default function Image() {
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 74, lineHeight: 0.95, letterSpacing: 0, fontWeight: 800, maxWidth: 900 }}>
-            Tu edificio, mas humano que nunca.
+            Tu edificio, más humano que nunca.
           </div>
           <div style={{ marginTop: 28, fontSize: 28, lineHeight: 1.35, color: "#524A40", maxWidth: 880 }}>
-            Gestion comunitaria, CoCo IA, WhatsApp, apoyo mutuo y convivencia vecinal para condominios en Chile.
+            Gestión comunitaria, CoCo IA, WhatsApp, apoyo mutuo y convivencia vecinal para condominios en Chile.
           </div>
         </div>
         <div style={{ display: "flex", gap: 14, fontSize: 22, color: "#9C5636", fontWeight: 700 }}>
-          <span>Activacion IA</span>
+          <span>Activación IA</span>
           <span>|</span>
           <span>Ley 21.442</span>
           <span>|</span>

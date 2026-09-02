@@ -139,7 +139,7 @@ export default function HomePage() {
                                     {statsData.bookingsCount} {statsData.bookingsCount === 1 ? "reserva activa" : "reservas activas"}
                                 </span>
                                 <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: statsData.pendingExpensesCount > 0 ? "rgba(190,105,69,0.82)" : "rgba(105,135,84,0.78)" }}>
-                                    {statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} pago pendiente` : "Pagos al día"}
+                                    {statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} ${statsData.pendingExpensesCount === 1 ? "pago pendiente" : "pagos pendientes"}` : "Pagos al día"}
                                 </span>
                             </div>
                         </div>
@@ -179,7 +179,9 @@ export default function HomePage() {
                         <div>
                             <Eyebrow style={{ color: "rgba(244,239,230,0.55)", marginBottom: 10 }}>Gasto común</Eyebrow>
                             <div style={{ fontSize: 13, color: "rgba(244,239,230,0.75)" }}>
-                                {statsData.pendingExpensesCount > 0 ? "Mes actual · vence pronto" : "Al día · sin deuda"}
+                            {statsData.pendingExpensesCount > 0
+                                ? `${statsData.pendingExpensesCount} ${statsData.pendingExpensesCount === 1 ? "cobro pendiente" : "cobros pendientes"}`
+                                : "Al día · sin deuda"}
                             </div>
                         </div>
                         <Tag tone="ink" solid dot={statsData.pendingExpensesCount > 0}>
