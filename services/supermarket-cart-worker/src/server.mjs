@@ -274,6 +274,27 @@ function sessionResponse(session) {
   };
 }
 
+async function slotReady(slot) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2_500);
+  try {
+    const response = await fetch(`${slot.webDriverUrl}/status`, { signal: controller.signal });
+    const payload = await response.json();
+    return response.ok && payload?.value?.ready === true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function pickSlot() {
+  const free = slots.filter(candidate => !candidate.sessionId);
+  if (free.length === 0) return null;
+  const ready = await Promise.all(free.map(slotReady));
+  return free[ready.indexOf(true)] || free[0];
+}
+
 async function createSession(request, response) {
   const userId = await verifyUser(request);
   if (!userId) return json(response, 401, { error: 'Sesión de Convive inválida o expirada.' });
@@ -297,7 +318,7 @@ async function createSession(request, response) {
     return json(response, 429, { error: 'Alcanzaste el límite temporal de aperturas. Intenta nuevamente más tarde.' });
   }
 
-  const slot = slots.find(candidate => !candidate.sessionId);
+  const slot = await pickSlot();
   if (!slot) {
     return json(response, 503, { error: 'Los tres navegadores están ocupados. Intenta nuevamente en unos minutos.' }, {
       'Retry-After': '60',
