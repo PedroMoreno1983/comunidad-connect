@@ -142,6 +142,18 @@ async function firstVisible(driver, selectors) {
   return null;
 }
 
+async function settledPageText(driver, config) {
+  const deadline = Date.now() + 15_000;
+  let text = await bodyText(driver);
+  while (Date.now() < deadline) {
+    if (containsAny(text, UNAVAILABLE_TEXT) || containsAny(text, BLOCKED_TEXT)) return text;
+    if (await firstVisible(driver, config.addSelectors)) return text;
+    await sleep(750);
+    text = await bodyText(driver);
+  }
+  return text;
+}
+
 async function nativeClick(driver, element) {
   await driver.executeScript('arguments[0].scrollIntoView({block:"center",inline:"center"})', element).catch(() => undefined);
   await sleep(200);
@@ -202,7 +214,7 @@ async function addExtraQuantity(driver, config, quantity) {
 }
 
 async function automaticItemAttempt(driver, config, item) {
-  const text = await bodyText(driver);
+  const text = await settledPageText(driver, config);
   if (containsAny(text, UNAVAILABLE_TEXT)) return { kind: 'unavailable' };
   const before = await cartSignature(driver, config);
   if (containsAny(text, BLOCKED_TEXT)) return { kind: 'blocked', before };
