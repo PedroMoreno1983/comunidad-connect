@@ -159,6 +159,16 @@ async function settledPageText(driver, config) {
 async function nativeClick(driver, element) {
   await driver.executeScript('arguments[0].scrollIntoView({block:"center",inline:"center"})', element).catch(() => undefined);
   await sleep(200);
+  const reachable = await driver.executeScript(`
+    const element = arguments[0];
+    const rect = element.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return top === element || element.contains(top);
+  `, element).catch(() => true);
+  if (!reachable) {
+    await driver.executeScript('arguments[0].click()', element);
+    return;
+  }
   try {
     await driver.actions({ async: true }).move({ origin: element }).click().perform();
   } catch {
