@@ -53,11 +53,11 @@ services:
     env_file: .env
     depends_on:
       browser-1:
-        condition: service_healthy
+        condition: service_started
       browser-2:
-        condition: service_healthy
+        condition: service_started
       browser-3:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "127.0.0.1:4387:4387"
     mem_limit: 512m
