@@ -145,7 +145,7 @@ async function firstVisible(driver, selectors) {
 }
 
 async function settledPageText(driver, config) {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 25_000;
   let text = await bodyText(driver);
   while (Date.now() < deadline) {
     if (containsAny(text, UNAVAILABLE_TEXT) || containsAny(text, BLOCKED_TEXT)) return text;
@@ -259,7 +259,9 @@ async function processManagedItem(driver, session, hooks, item) {
       ? 'La tienda pide una verificación humana. Complétala en el navegador y continúa.'
       : result.kind === 'intervention'
         ? 'La tienda necesita ubicación, despacho o inicio de sesión. Completa el paso y continúa.'
-        : 'No pudimos confirmar el botón. Agrégalo manualmente si aparece y luego continúa.';
+        : result.kind === 'unconfirmed'
+          ? 'Hicimos clic en agregar, pero el carro no cambió. Revisa si la tienda pide algo más y continúa.'
+          : 'No encontramos el botón de agregar. Agrégalo manualmente si aparece y luego continúa.';
     const resumed = await hooks.waitForUser(detail);
     if (!resumed) hooks.assertOpen();
     const after = await cartSignature(driver, session.config);
