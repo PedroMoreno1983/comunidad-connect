@@ -26,7 +26,7 @@ export const STORE_CONFIGS = Object.freeze({
     directHosts: [],
     cartUrl: 'https://super.lider.cl/cart',
     cartMode: 'dom',
-    addSelectors: ['button[data-automation-id="add-to-cart"]', 'button[aria-label*="Agregar al carro" i]', '[data-testid="add-to-cart-section"] button', '[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])'],
+    addSelectors: ['button[data-automation-id="atc"]', '[data-testid="add-to-cart-section"] button', 'button[data-automation-id="add-to-cart"]', 'button[aria-label*="Agregar al carro" i]', '[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])'],
     plusSelectors: ['button[aria-label*="Aumentar" i]', 'button[aria-label="Agregar otro"]', 'button[data-testid*="increment"]'],
     quantitySelectors: ['input[aria-label*="Cantidad" i]', '[data-testid*="quantity"] input'],
     cartSelectors: ['button[data-automation-id="cart-button-header"]', 'button[aria-label*="carro" i]', '[data-testid*="cart"]'],
