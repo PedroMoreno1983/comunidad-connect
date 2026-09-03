@@ -50,6 +50,8 @@ const INTERVENTION_TEXT = [
 
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+const ITEM_PACING_MS = 4_000;
+
 function normalize(value) {
   return String(value || '')
     .normalize('NFD')
@@ -341,6 +343,7 @@ export async function runCartAutomation(driver, session, hooks) {
       itemName: item.name,
       detail: `Cargando producto ${index + 1} de ${session.items.length}…`,
     });
+    if (index > 0) await sleep(ITEM_PACING_MS);
     const result = await processManagedItem(driver, session, hooks, item);
     if (result.added) session.added += 1;
     else {
