@@ -400,7 +400,7 @@ function viewerHtml(session) {
     async function refresh(){
       try{
         const response=await fetch(endpoint+'/status',{cache:'no-store'});
-        if(!response.ok){state.textContent='Sesión finalizada';return;}
+        if(!response.ok){state.textContent='Sesión finalizada';detail.textContent='La sesión expiró o se cerró. Vuelve a Convive y carga el carro otra vez.';resume.style.display='none';return;}
         const data=await response.json();
         state.textContent=labels[data.status]||data.status;
         detail.textContent=data.detail||'';
