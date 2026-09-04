@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { ACTION_SUMMARY_MAX, CONVERSATIONAL_SUMMARY_MAX, summaryLimitFor } from '@/lib/agent-center/domain';
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 
 // askCoCo se mockea para no llamar a la API real: probamos el wiring, no el LLM.
@@ -174,6 +175,21 @@ describe('puente coco_action (Fase 3)', () => {
         const action = buildCoCoAction({ reply: 'Listo para emitir.', pending });
         expect(action.summary).toContain('Listo para emitir.');
         expect(action.summary).toContain('Emitir cobro depto 504');
+    });
+
+    it('emite el summary en markdown, con los pasos separados del reply', () => {
+        const action = buildCoCoAction({ reply: 'Listo para emitir.', pending });
+        // La tarjeta de aprobacion renderiza markdown: los pasos van como lista y
+        // separados por una linea en blanco, o se leen como una frase corrida.
+        expect(action.summary).toContain('- **Emitir cobro depto 504**');
+        expect(action.summary).toContain('Listo para emitir.\n\n-');
+    });
+
+    it('el summary de coco_action no se recorta como una etiqueta de accion', () => {
+        // Regresion: normalizeAction capaba todo summary a 280 caracteres, y el de
+        // coco_action lleva la explicacion completa de CoCo, no una etiqueta.
+        expect(summaryLimitFor('coco_action')).toBe(CONVERSATIONAL_SUMMARY_MAX);
+        expect(summaryLimitFor('coco_action')).toBeGreaterThan(ACTION_SUMMARY_MAX);
     });
 
     it('resumeCoCoAction reanuda la sesion (derivada del perfil) con resolutions=approved y devuelve el resultado', async () => {
