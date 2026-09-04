@@ -155,8 +155,12 @@ export type AgentAction = {
 export const ACTION_SUMMARY_MAX = 280;
 export const CONVERSATIONAL_SUMMARY_MAX = 6000;
 
+// `coco_action` esta en la misma situacion: su resumen es la respuesta de CoCo
+// mas los pasos que va a ejecutar, no una etiqueta.
+const CONVERSATIONAL_SUMMARY_TOOLS: ToolName[] = ['clarify_intent', 'coco_action'];
+
 export function summaryLimitFor(toolName: ToolName): number {
-    return toolName === 'clarify_intent' ? CONVERSATIONAL_SUMMARY_MAX : ACTION_SUMMARY_MAX;
+    return CONVERSATIONAL_SUMMARY_TOOLS.includes(toolName) ? CONVERSATIONAL_SUMMARY_MAX : ACTION_SUMMARY_MAX;
 }
 
 export type AgentStep = {

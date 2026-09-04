@@ -91,10 +91,11 @@ export async function conversationalCoCoReply(message: string, profile: AgentPro
 /** Envuelve la(s) accion(es) pendiente(s) de CoCo en una AgentAction aprobable. */
 export function buildCoCoAction(turn: CoCoTurn): AgentAction {
     const first = turn.pending[0];
-    const summary = [
-        turn.reply,
-        ...turn.pending.map(step => `• ${step.title}: ${step.summary}`),
-    ].filter(Boolean).join('\n');
+    // Markdown, y con una linea en blanco entre la respuesta y los pasos: la
+    // tarjeta de aprobacion renderiza markdown, y una lista pegada al parrafo
+    // anterior se leia como una sola frase corrida.
+    const stepLines = turn.pending.map(step => `- **${step.title}**: ${step.summary}`);
+    const summary = [turn.reply, stepLines.join('\n')].filter(Boolean).join('\n\n');
 
     return {
         agentKey: 'community',
