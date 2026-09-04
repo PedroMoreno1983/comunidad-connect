@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildBasketComparison } from '@/lib/supermarketBasket';
+import {
+  buildBasketComparison,
+  HIDDEN_SUPERMARKET_STORES,
+  SUPERMARKET_STORES,
+} from '@/lib/supermarketBasket';
 
 function row(store: string, name: string, price: number) {
   return {
@@ -60,13 +64,13 @@ describe('buildBasketComparison', () => {
     expect(result.recommended?.items[0].name).toContain('1 L');
   });
 
-  it('includes Tottus when it has the cheapest complete basket', () => {
+  it('elige la cadena con la canasta completa mas barata', () => {
     const result = buildBasketComparison(['arroz', 'leche'], {
-      arroz: [row('Jumbo', 'Arroz 1 kg', 1500), row('Tottus', 'Arroz 1 kg', 900)],
-      leche: [row('Jumbo', 'Leche 1 L', 1200), row('Tottus', 'Leche 1 L', 1000)],
+      arroz: [row('Jumbo', 'Arroz 1 kg', 1500), row('Unimarc', 'Arroz 1 kg', 900)],
+      leche: [row('Jumbo', 'Leche 1 L', 1200), row('Unimarc', 'Leche 1 L', 1000)],
     });
 
-    expect(result.recommended?.store).toBe('Tottus');
+    expect(result.recommended?.store).toBe('Unimarc');
     expect(result.recommended?.subtotal).toBe(1900);
   });
 
@@ -97,7 +101,7 @@ describe('buildBasketComparison', () => {
 
   it('buys enough measured packs to cover requested kilograms', () => {
     const result = buildBasketComparison(['papas'], {
-      papas: [{ ...row('Tottus', 'Papa Mix Bolsa 650 g', 1790), match_relevance: 140 }],
+      papas: [{ ...row('Unimarc', 'Papa Mix Bolsa 650 g', 1790), match_relevance: 140 }],
     }, { papas: 3 }, { papas: 'kg' });
 
     expect(result.recommended?.items[0]).toMatchObject({
@@ -115,7 +119,6 @@ describe('buildBasketComparison', () => {
         row('Unimarc', 'Detergente en polvo 2.5 kg', 5090),
         row('Jumbo', 'Detergente en polvo 2.5 kg', 5190),
         row('Santa Isabel', 'Detergente en polvo 2.5 kg', 5290),
-        row('Tottus', 'Detergente en polvo 2.5 kg', 5290),
       ],
     }, { 'detergente en polvo': 700 }, { 'detergente en polvo': 'g' });
 
@@ -144,13 +147,13 @@ describe('buildBasketComparison', () => {
   it('rejects incompatible or unprovable package units for measured requests', () => {
     const result = buildBasketComparison(['yogur'], {
       yogur: [
-        row('Tottus', 'Yogur griego 150 g', 570),
-        row('Tottus', 'Yogur bebible 1 L', 2500),
+        row('Unimarc', 'Yogur griego 150 g', 570),
+        row('Unimarc', 'Yogur bebible 1 L', 2500),
         row('Lider', 'Yogur familiar', 1200),
       ],
     }, { yogur: 1 }, { yogur: 'l' });
 
-    expect(result.recommended?.store).toBe('Tottus');
+    expect(result.recommended?.store).toBe('Unimarc');
     expect(result.recommended?.items[0].name).toBe('Yogur bebible 1 L');
     expect(result.comparisons.find(basket => basket.store === 'Lider')).toMatchObject({
       coveredCount: 0,
@@ -160,7 +163,7 @@ describe('buildBasketComparison', () => {
     });
   });
 
-  it.each(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'])(
+  it.each([...SUPERMARKET_STORES])(
     'permite que %s gane cuando tiene la canasta completa disponible',
     store => {
       const result = buildBasketComparison(['arroz'], {
@@ -168,16 +171,22 @@ describe('buildBasketComparison', () => {
       });
 
       expect(result.recommended?.store).toBe(store);
-      expect(result.comparisons).toHaveLength(7);
-      expect(new Set(result.comparisons.map(basket => basket.store))).toEqual(new Set([
-        'Jumbo',
-        'Santa Isabel',
-        'Lider',
-        'Unimarc',
-        'Tottus',
-        'aCuenta',
-        'Irurzun',
-      ]));
+      expect(result.comparisons).toHaveLength(SUPERMARKET_STORES.length);
+      expect(new Set(result.comparisons.map(basket => basket.store)))
+        .toEqual(new Set(SUPERMARKET_STORES));
+    },
+  );
+
+  // Se siguen scrapeando, pero no deben aparecer en la comparacion.
+  it.each([...HIDDEN_SUPERMARKET_STORES])(
+    'deja %s fuera de la comparacion aunque tenga precio vigente',
+    store => {
+      const result = buildBasketComparison(['arroz'], {
+        arroz: [row(store, 'Arroz grado 2 bolsa 1 kg', 900)],
+      });
+
+      expect(result.comparisons.map(basket => basket.store)).not.toContain(store);
+      expect(result.recommended?.store).not.toBe(store);
     },
   );
 
