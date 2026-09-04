@@ -146,6 +146,19 @@ export type AgentAction = {
     runId?: string | null;
 };
 
+// El `summary` de una AgentAction cumple dos papeles muy distintos. En una
+// tarjeta de accion es una etiqueta corta y 280 caracteres sobran. En
+// `clarify_intent` transporta texto conversacional completo: la tarjeta curada
+// de capacidades o una respuesta de CoCo. Aplicar 280 a ese caso cortaba el
+// mensaje a media palabra -- la tarjeta de capacidades mide 1.114 caracteres, y
+// cuatro de sus cinco flujos nunca llegaban a la pantalla.
+export const ACTION_SUMMARY_MAX = 280;
+export const CONVERSATIONAL_SUMMARY_MAX = 6000;
+
+export function summaryLimitFor(toolName: ToolName): number {
+    return toolName === 'clarify_intent' ? CONVERSATIONAL_SUMMARY_MAX : ACTION_SUMMARY_MAX;
+}
+
 export type AgentStep = {
     kind: 'reasoning' | 'tool' | 'confirmation' | 'result' | 'warning';
     title: string;

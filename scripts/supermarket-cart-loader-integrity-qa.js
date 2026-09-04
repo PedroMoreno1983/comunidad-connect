@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.11', 'La versión que rechaza carros vacíos debe ser 0.3.11.');
+check(/^\d+\.\d+\.\d+$/.test(manifest.version), 'La version del manifest debe ser semver.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -86,8 +86,8 @@ check(
   'Una frase comercial genérica vuelve a activar un falso CAPTCHA.',
 );
 check(
-  configs.Lider.searchUrl('leche').startsWith('https://www.lider.cl/'),
-  'Lider conserva la ruta 404 de super.lider.cl para búsquedas.',
+  configs.Lider.searchUrl('leche').startsWith('https://super.lider.cl/search?'),
+  'Lider conserva la ruta antigua de www.lider.cl que hoy redirige a la home y pierde la búsqueda.',
 );
 check(
   configs.Irurzun.searchUrl('arroz').startsWith('https://irurzun.cl/search?'),
@@ -330,5 +330,47 @@ check(
     && !page.includes('carga manual'),
   'La comparación todavía obliga a rehacer el carro en alguna de las siete tiendas.',
 );
+
+// --- Invariantes de la carga por API (2026-08-17) ---
+// Regresion concreta: el cargador llamaba a `/api/cart/items` y a una mutacion
+// GraphQL inventadas, daba por buena la respuesta con `res.ok` y, si "acertaba"
+// en la mitad, marcaba TODOS los productos como agregados. Estas tiendas son
+// apps Next.js que responden 200 con HTML en rutas inexistentes, asi que el
+// carro se informaba lleno y llegaba vacio. Contrato real en
+// extensions/convive-cart-loader/ADAPTADORES.md
+const loaderSource = fs.readFileSync(path.join(extensionRoot, 'retailer-loader.js'), 'utf8');
+const backgroundSource = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
+
+check(!loaderSource.includes('/api/cart/items'), 'Volvio el endpoint de carro inventado.');
+check(!loaderSource.includes('AddItemToCart'), 'Volvio la mutacion GraphQL inventada.');
+check(!/length\s*\*\s*0\.5/.test(loaderSource), 'Volvio el umbral que daba la carga por buena a medias.');
+check(!backgroundSource.includes('COMPLETE_BATCH_CART'), 'Volvio el cierre en bloque que marcaba todo como agregado.');
+check(
+  backgroundSource.includes('resultsFromConfirmation'),
+  'La carga por API no se cierra con lo que la tienda confirmo.',
+);
+check(
+  /sku: safeText\(item\?\.sku/.test(backgroundSource) && /offerId: safeText\(item\?\.offerId/.test(backgroundSource),
+  'El sku o el offerId de la web no llegan al cargador.',
+);
+
+// Un adaptador de API solo puede existir si devuelve el carro leido: sin esa
+// lectura no hay forma de saber que entro.
+for (const [storeName, storeConfig] of Object.entries(configs)) {
+  if (!storeConfig.cartApi) continue;
+  check(typeof storeConfig.cartApi.load === 'function', `${storeName}.cartApi.load debe ser funcion.`);
+  check(Boolean(storeConfig.cartUrl), `${storeName} con cartApi debe declarar cartUrl.`);
+}
+// Sin captura propia, declarar adaptador por parecido de plataforma seria una
+// suposicion: solo Lider esta verificado.
+check(
+  Object.entries(configs).filter(([, storeConfig]) => storeConfig.cartApi).map(([name]) => name).join(',') === 'Lider',
+  'Solo Lider debe declarar adaptador de API.',
+);
+// Al terminar, la pestana debe quedar en el carro de la tienda, no en Google.
+for (const storeName of stores) {
+  if (storeName === 'Irurzun') continue;
+  check(Boolean(configs[storeName].cartUrl), `${storeName} no declara cartUrl y la carga terminaria fuera de la tienda.`);
+}
 
 console.log('Multistore cart loader integrity QA passed.');

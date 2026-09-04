@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isCapabilityOrGreeting, buildCapabilitiesAction } from '@/lib/agent-center/capabilities';
-import { AGENT_PLAYBOOKS } from '@/lib/agent-center/domain';
+import { ACTION_SUMMARY_MAX, AGENT_PLAYBOOKS, summaryLimitFor } from '@/lib/agent-center/domain';
 
 describe('isCapabilityOrGreeting', () => {
     it('reconoce saludos cortos (con y sin acentos/variantes)', () => {
@@ -37,6 +37,35 @@ describe('buildCapabilitiesAction', () => {
         // El texto se deriva de los playbooks reales del sistema, no inventado.
         for (const playbook of AGENT_PLAYBOOKS) {
             expect(action.summary).toContain(playbook.name);
+        }
+    });
+});
+
+describe('limite de resumen segun el tipo de accion', () => {
+    // Regresion: normalizeAction recortaba TODO summary a 280 caracteres. La
+    // tarjeta de capacidades mide mas de mil, asi que llegaba a pantalla cortada
+    // a media palabra ('...prepara notifi') y perdia cuatro de sus cinco flujos.
+    it('deja pasar la tarjeta de capacidades completa', () => {
+        const summary = buildCapabilitiesAction('hola').summary;
+        expect(summary.length).toBeGreaterThan(ACTION_SUMMARY_MAX);
+        expect(summary.length).toBeLessThanOrEqual(summaryLimitFor('clarify_intent'));
+        // La descripcion completa de cada flujo sobrevive, no solo el nombre.
+        for (const playbook of AGENT_PLAYBOOKS) {
+            expect(summary).toContain(playbook.description);
+        }
+        // Y la ultima linea, la que quedaba fuera del corte.
+        expect(summary).toContain('prepara la cobranza del mes');
+    });
+
+    it('mantiene el limite corto para las tarjetas de accion', () => {
+        expect(summaryLimitFor('run_playbook')).toBe(ACTION_SUMMARY_MAX);
+        expect(summaryLimitFor('create_announcement')).toBe(ACTION_SUMMARY_MAX);
+    });
+
+    it('la tarjeta se emite en markdown para que la vista la pueda pintar', () => {
+        const summary = buildCapabilitiesAction('hola').summary;
+        for (const playbook of AGENT_PLAYBOOKS) {
+            expect(summary).toContain(`- **${playbook.name}**:`);
         }
     });
 });

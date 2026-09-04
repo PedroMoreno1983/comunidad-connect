@@ -10,8 +10,11 @@ import {
   UploadCloud,
   XCircle,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
+import { normalizeAgentMarkdown } from "@/lib/agent-center/markdown";
 import type { AgentTaskStatus, AgentTaskSummary, AgentTriggerRuleSummary } from "@/lib/agent-center/domain";
 
 type AgentKey = "finance" | "maintenance" | "concierge" | "community";
@@ -203,6 +206,58 @@ const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
     steps: ["Redactar", "Confirmar", "Auditar"],
   },
 ];
+
+/**
+ * CoCo responde en markdown: tablas de morosidad, montos en negrita, listas.
+ * El Agent Center lo pintaba como texto plano dentro de un <span>, asi que en
+ * pantalla se leia `**805**` con los asteriscos a la vista y una tabla entera
+ * quedaba aplastada en una sola linea de pipes. Se renderiza con el mismo
+ * ReactMarkdown + remark-gfm que ya usan /chat y CoCo.tsx, con la tipografia
+ * del centro de operaciones y las tablas con scroll propio para que una cartola
+ * ancha no rompa el layout de la conversacion.
+ */
+function AgentMarkdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p className="mb-2 text-[13px] leading-relaxed last:mb-0">{children}</p>,
+        strong: ({ children }) => <strong className="font-semibold cc-text-primary">{children}</strong>,
+        ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>,
+        li: ({ children }) => <li className="text-[13px] leading-relaxed">{children}</li>,
+        h1: ({ children }) => <p className="mb-2 text-[13px] font-semibold cc-text-primary last:mb-0">{children}</p>,
+        h2: ({ children }) => <p className="mb-2 text-[13px] font-semibold cc-text-primary last:mb-0">{children}</p>,
+        h3: ({ children }) => <p className="mb-2 text-[13px] font-semibold cc-text-primary last:mb-0">{children}</p>,
+        table: ({ children }) => (
+          <div className="mb-2 overflow-x-auto last:mb-0">
+            <table className="w-full border-collapse text-[12.5px]">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="whitespace-nowrap border-b px-2 py-1.5 text-left font-medium cc-text-primary" style={{ borderColor: "var(--cc-line)" }}>
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border-b px-2 py-1.5 align-top" style={{ borderColor: "var(--cc-line)" }}>
+            {children}
+          </td>
+        ),
+        a: ({ children, href }) => (
+          <a href={href} className="underline underline-offset-2" style={{ color: "var(--cc-copper)" }}>
+            {children}
+          </a>
+        ),
+        code: ({ children }) => (
+          <code className="rounded px-1 py-0.5 text-[12px]" style={{ background: "var(--cc-line)" }}>{children}</code>
+        ),
+      }}
+    >
+      {normalizeAgentMarkdown(text)}
+    </ReactMarkdown>
+  );
+}
 
 function nowId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -592,7 +647,9 @@ export default function AgentCenterPage() {
                   >
                     {message.status === "executed" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
                     {message.status === "rejected" && <XCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-rose)" }} />}
-                    <span className="cc-text-secondary">{message.result?.message || message.content}</span>
+                    <div className="min-w-0 flex-1 cc-text-secondary">
+                      <AgentMarkdown text={message.result?.message || message.content} />
+                    </div>
                   </div>
                 )
               ))}

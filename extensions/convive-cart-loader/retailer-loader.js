@@ -190,7 +190,7 @@
       <button type="button" class="coco-loader__retry" hidden>Reanudar carga</button>
       <p class="coco-loader__safety">CoCo agrega productos. Nunca confirma ni paga la compra.</p>
     `;
-    overlay.querySelector('.coco-loader__badge').textContent = `${store} · v1.0.0`;
+    overlay.querySelector('.coco-loader__badge').textContent = `${store} · v1.2.0`;
     document.documentElement.appendChild(overlay);
     return overlay;
   }
@@ -220,7 +220,11 @@
 
   function parseCartCount(config) {
     for (const selector of config.cartSelectors) {
-      const elements = [...document.querySelectorAll(selector)].filter(isVisible);
+      // Con allowHiddenControls se leen también contadores ocultos: Shopify
+      // (Irurzun) esconde el badge cuando el carro está en 0 y lo muestra al
+      // agregar; si no se lee el 0 inicial, no hay con qué comparar después.
+      const elements = [...document.querySelectorAll(selector)]
+        .filter(element => config.allowHiddenControls || isVisible(element));
       for (const element of elements) {
         const label = [
           element.textContent,
@@ -334,71 +338,53 @@
     await retryFromOverlay(overlay);
   }
 
-  function extractSkuFromLink(url) {
-    if (!url) return '';
-    const match = url.match(/-([0-9]{5,12})(?:\?|#|$)/) || url.match(/\/p\/.*?(\d+)(?:\?|#|$)/);
-    return match ? match[1] : '';
-  }
+  /**
+   * Intenta cargar toda la canasta con la API de la tienda.
+   *
+   * Devuelve true solo si la tienda confirmo al menos un producto. Ante
+   * cualquier otra cosa devuelve false y la carga sigue por la interfaz, que
+   * es mas lenta pero verifica producto a producto. Nunca se informa un
+   * resultado que la tienda no haya devuelto.
+   */
+  async function tryCartApi(job, config, overlay) {
+    if (!config.cartApi || job.currentIndex > 0) return false;
+    if (config.cartApiHosts && !config.cartApiHosts.includes(window.location.hostname)) return false;
 
-  async function tryBatchCartAddition(job, overlay) {
-    if (!job.allItems || job.allItems.length === 0) return false;
-    if (job.currentIndex > 0) return false;
+    const items = (job.allItems || []).filter(entry => entry.sku && entry.offerId);
+    if (items.length === 0) return false;
 
-    let successCount = 0;
-    for (const entry of job.allItems) {
-      const sku = entry.sku || extractSkuFromLink(entry.productUrl);
-      if (!sku) continue;
+    render(overlay, {
+      added: 0,
+      failed: 0,
+      total: job.total,
+      item: null,
+      detail: `Cargando ${items.length} productos en el carro de ${job.store}...`,
+    });
 
-      try {
-        if (job.store === 'Lider' || job.store === 'aCuenta') {
-          const res = await window.fetch('/api/cart/items', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ sku: String(sku), quantity: Number(entry.quantity) || 1 }),
-          }).catch(() => null);
-
-          if (res && (res.ok || res.status === 200 || res.status === 201)) {
-            successCount += 1;
-            continue;
-          }
-
-          const gqlRes = await window.fetch('/api/graphql', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({
-              operationName: 'AddItemToCart',
-              query: 'mutation AddItemToCart($sku: String!, $quantity: Int!) { addItem(sku: $sku, quantity: $quantity) { id } }',
-              variables: { sku: String(sku), quantity: Number(entry.quantity) || 1 },
-            }),
-          }).catch(() => null);
-
-          if (gqlRes && gqlRes.ok) {
-            successCount += 1;
-          }
-        }
-      } catch {
-        // Fallback
-      }
+    let landed;
+    try {
+      landed = await config.cartApi.load(items);
+    } catch {
+      return false;
     }
+    if (!(landed instanceof Map) || landed.size === 0) return false;
 
-    if (successCount >= Math.ceil(job.allItems.length * 0.5)) {
-      await runtimeMessage({ type: 'COMPLETE_BATCH_CART' });
-      render(overlay, {
-        added: successCount,
-        failed: job.allItems.length - successCount,
-        total: job.allItems.length,
-        item: null,
-        detail: `Carro de ${job.store} listo: ${successCount} productos agregados.`,
-      });
-      const config = STORE_CONFIGS[job.store];
-      if (window.location.pathname.includes('/cart') || window.location.pathname.includes('/carro')) {
-        window.location.reload();
-      } else if (config?.cartUrl) {
-        window.location.assign(config.cartUrl);
-      }
-      return true;
-    }
-    return false;
+    const confirmed = items
+      .map(entry => ({ itemId: entry.id, quantity: Number(landed.get(String(entry.sku))) || 0 }))
+      .filter(entry => entry.quantity > 0);
+    if (confirmed.length === 0) return false;
+
+    const response = await runtimeMessage({ type: 'REPORT_CART_API_RESULTS', confirmed });
+    if (!response?.ok) return false;
+
+    render(overlay, {
+      added: response.progress.added,
+      failed: response.progress.failed,
+      total: response.progress.total,
+      item: null,
+      detail: response.progress.detail,
+    });
+    return true;
   }
 
   async function run() {
@@ -426,11 +412,9 @@
     }
     if (job.status !== 'loading') return;
 
-    // Intento de carga batch directa por API antes de navegación individual
-    if (job.currentIndex === 0 && (job.store === 'Lider' || job.store === 'aCuenta')) {
-      const batchSuccess = await tryBatchCartAddition(job, overlay);
-      if (batchSuccess) return;
-    }
+    // Camino rapido: una sola llamada carga toda la canasta y la tienda
+    // devuelve el carro. Si no se puede, sigue el recorrido por la interfaz.
+    if (await tryCartApi(job, config, overlay)) return;
 
     if (pageIsBlocked(config)) {
       await pause(
@@ -448,6 +432,30 @@
       return;
     }
 
+    // Algunas tiendas (aCuenta) no muestran el catálogo hasta que la persona
+    // elige modo de entrega: la búsqueda redirige a la home y no hay
+    // productos ni botones. En ese caso abrimos el selector y pausamos;
+    // al reanudar, la carga vuelve sola a la búsqueda (ver más abajo).
+    // El botón del header tarda en hidratar (React), por eso se espera.
+    if (config.deliveryOpenerText && !findAddControl(config) && !findBestProductLink(item)) {
+      const opener = await waitFor(() => {
+        // Si mientras tanto aparecieron productos, ya no hace falta.
+        if (findAddControl(config) || findBestProductLink(item)) return null;
+        return [...document.querySelectorAll('button, a, div[role="button"]')]
+          .find(el => isVisible(el)
+            && (el.textContent || '').trim().length < 80
+            && normalize(el.textContent).includes(normalize(config.deliveryOpenerText)));
+      }, 8000);
+      if (opener) {
+        opener.click();
+        await pause(
+          overlay,
+          `${job.store} necesita que elijas despacho, retiro o ubicación. Hazlo aquí y luego pulsa “Reanudar carga”.`,
+        );
+        return;
+      }
+    }
+
     if (job.inFlightItemId === item.id) {
       await pause(
         overlay,
@@ -456,8 +464,25 @@
       return;
     }
 
-    // Comprobación rápida de stock agotado
-    if (pageIsOutOfStock(config)) {
+    // Comprobación rápida de stock agotado. Solo cuando la URL es claramente
+    // la ficha del producto: en una lista de resultados (que tiene h1 y
+    // precios) el "agotado" de OTRO producto sería un falso positivo.
+    const pathIsProduct = ['/articulo/', '/p/', '/product/', '/ip/', '/item/']
+      .some(fragment => window.location.pathname.toLowerCase().includes(fragment));
+    const onProductDetail = pathIsProduct
+      || (item.productUrl && sameProductPage(item.productUrl))
+      || Boolean(document.querySelector('meta[property="og:type"][content="product"]'));
+    if (onProductDetail && pageIsOutOfStock(config)) {
+      // Hay que reclamar el producto antes de cerrarlo: el servicio rechaza
+      // cierres de productos no reclamados y la carga quedaría congelada.
+      const stockClaim = await runtimeMessage({ type: 'CLAIM_CART_ITEM', itemId: item.id });
+      if (!stockClaim?.ok) {
+        await pause(
+          overlay,
+          'Este producto ya estaba en proceso. Revisa el carro antes de reanudar para evitar duplicados.',
+        );
+        return;
+      }
       await completeItem(
         overlay,
         item,
@@ -471,12 +496,29 @@
     const isProductPage = isProductDetailPage() || (item.productUrl && sameProductPage(item.productUrl)) || Boolean(initialAddControl && document.querySelector('h1'));
 
     if (!isProductPage) {
+      // Tras una pausa (p.ej. elegir modo de entrega) la pestaña puede quedar
+      // en la home: hay que volver a la búsqueda del producto. El marcador
+      // en sessionStorage evita un bucle si la tienda redirige otra vez.
+      const navKey = `coco-nav-${item.id}`;
+      const onTarget = Boolean(job.targetUrl)
+        && productPath(job.targetUrl) === window.location.pathname.replace(/\/+$/, '');
+      if (job.targetUrl && !onTarget && !sessionStorage.getItem(navKey)
+        && !findAddControl(config) && !findBestProductLink(item)) {
+        sessionStorage.setItem(navKey, '1');
+        window.location.assign(job.targetUrl);
+        return;
+      }
+
       const productLink = await waitFor(() => findBestProductLink(item), 3500);
       if (productLink) {
         productLink.click();
-        return;
-      }
-      if (item.productUrl && window.location.href !== item.productUrl) {
+        // La tienda puede abrir un quick-view (modal SPA SIN cambio de URL) en
+        // vez de navegar a la ficha. Si aparece un control de compra, seguimos
+        // en esta misma pasada; si no, la navegacion real re-ejecuta run().
+        await waitFor(() => findAddControl(config), 8000);
+        // Si sigue sin haber control ni cambio de contexto, no hay mas que hacer aqui.
+        if (!findAddControl(config) && !isProductDetailPage()) return;
+      } else if (item.productUrl && window.location.href !== item.productUrl) {
         window.location.assign(item.productUrl);
         return;
       }
@@ -485,6 +527,15 @@
     let addControl = initialAddControl || await waitFor(() => findAddControl(config), 3000);
     if (!addControl) {
       const outOfStock = pageIsOutOfStock(config);
+      // Mismo motivo: el servicio solo cierra productos reclamados.
+      const noControlClaim = await runtimeMessage({ type: 'CLAIM_CART_ITEM', itemId: item.id });
+      if (!noControlClaim?.ok) {
+        await pause(
+          overlay,
+          'Este producto ya estaba en proceso. Revisa el carro antes de reanudar para evitar duplicados.',
+        );
+        return;
+      }
       await completeItem(
         overlay,
         item,
@@ -584,7 +635,31 @@
     await completeItem(overlay, item, true, detail);
   }
 
-  void run().catch(async error => {
+  /**
+   * Reejecuta el paso actual cuando la tienda navega por SPA (pushState)
+   * sin recargar el documento: en ese caso el content script NO se vuelve a
+   * inyectar y la carga quedaba congelada tras hacer clic en un producto.
+   */
+  let runInProgress = false;
+  async function runGuarded() {
+    if (runInProgress) return;
+    runInProgress = true;
+    try {
+      await run();
+    } finally {
+      runInProgress = false;
+    }
+  }
+
+  let lastObservedUrl = window.location.href;
+  window.setInterval(() => {
+    if (window.location.href === lastObservedUrl) return;
+    lastObservedUrl = window.location.href;
+    // Dar tiempo a que la nueva vista hidrate sus controles de compra.
+    window.setTimeout(() => void runGuarded(), 1500);
+  }, 800);
+
+  void runGuarded().catch(async error => {
     const stored = await chrome.storage.local.get('conviveActiveCartJob');
     const store = stored.conviveActiveCartJob?.store || 'Supermercado';
     const overlay = createOverlay(store);
