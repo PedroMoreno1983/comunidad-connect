@@ -240,9 +240,9 @@ export async function prepareDirectCartHandoff(
   return {
     supported: false,
     store,
-    mode: 'managed_webview',
+    mode: 'unavailable',
     plannedCount: 0,
     missingItems: [],
-    reason: 'Esta cadena necesita la sesión administrada de la app móvil.',
+    reason: 'Esta cadena no ofrece un enlace oficial de carro directo.',
   };
 }

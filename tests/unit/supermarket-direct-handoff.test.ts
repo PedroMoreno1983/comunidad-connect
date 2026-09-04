@@ -54,7 +54,7 @@ describe('direct supermarket cart handoff', () => {
     expect(result.plannedCount).toBe(1);
   });
 
-  it('routes stores without a direct checkout link to the managed mobile session', async () => {
+  it('reports stores without an official direct checkout link', async () => {
     const result = await prepareDirectCartHandoff('Tottus', [{
       id: 'item-1',
       name: 'Arroz',
@@ -62,6 +62,6 @@ describe('direct supermarket cart handoff', () => {
       quantity: 1,
     }]);
 
-    expect(result).toMatchObject({ supported: false, mode: 'managed_webview', store: 'Tottus' });
+    expect(result).toMatchObject({ supported: false, mode: 'unavailable', store: 'Tottus' });
   });
 });

@@ -1,0 +1,89 @@
+name: convive-cart
+
+x-browser: &browser
+  image: selenium/standalone-chromium:4.46.0-20260707
+  restart: unless-stopped
+  shm_size: 2gb
+  mem_limit: 2500m
+  cpus: 1.50
+  pids_limit: 512
+  environment: &browser-environment
+    TZ: America/Santiago
+    SE_SCREEN_WIDTH: "1440"
+    SE_SCREEN_HEIGHT: "900"
+    SE_SCREEN_DEPTH: "24"
+    SE_START_VNC: "true"
+    SE_VNC_NO_PASSWORD: "true"
+    SE_NODE_MAX_SESSIONS: "1"
+    SE_NODE_SESSION_TIMEOUT: "5400"
+    SE_DRAIN_AFTER_SESSION_COUNT: "1"
+    SE_ENABLE_BROWSER_LEFTOVERS_CLEANUP: "true"
+    SE_BROWSER_LEFTOVERS_PROCESSES_SECS: "7200"
+    SE_BROWSER_LEFTOVERS_TEMPFILES_DAYS: "1"
+    SE_RECORD_VIDEO: "false"
+    SE_LOG_LEVEL: WARNING
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://localhost:4444/wd/hub/status | grep -q '\"ready\": true'"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 30s
+  networks:
+    - cart-internal
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  browser-1:
+    <<: *browser
+
+  browser-2:
+    <<: *browser
+
+  browser-3:
+    <<: *browser
+
+  worker:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      browser-1:
+        condition: service_started
+      browser-2:
+        condition: service_started
+      browser-3:
+        condition: service_started
+    ports:
+      - "127.0.0.1:4387:4387"
+    mem_limit: 512m
+    cpus: 0.50
+    pids_limit: 128
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - cart-internal
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4387/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  cart-internal:
+    driver: bridge

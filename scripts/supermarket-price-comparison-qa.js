@@ -35,9 +35,11 @@ function pathContainsFiles(relativePath) {
 function assertReplacementIntegrity() {
   const page = read('src/app/(dashboard)/resident/supermercado/page.tsx');
   const basket = read('src/lib/supermarketBasket.ts');
-  const cartButton = read('src/components/resident/supermarket/ManagedCartButton.tsx');
+  const cartButton = read('src/components/resident/supermarket/RemoteCartButton.tsx');
   const directHandoff = read('src/lib/supermarketDirectHandoff.ts');
-  const managedCart = read('src/lib/supermarketManagedCart.ts');
+  const remoteCart = read('src/lib/supermarketRemoteCart.ts');
+  const worker = read('services/supermarket-cart-worker/src/server.mjs');
+  const compose = read('services/supermarket-cart-worker/compose.yaml');
   const packageJson = read('package.json');
 
   for (const store of stores) {
@@ -48,13 +50,15 @@ function assertReplacementIntegrity() {
   assert(page.includes('Una canasta incompleta nunca gana'), 'La interfaz explica el criterio de recomendación.');
   assert(basket.includes('const availableComparisons = comparisons.filter'), 'Solo canastas con productos participan de la recomendación.');
   assert(basket.includes('bestAvailable: availableComparisons[0] ?? null'), 'Una tienda vacía no puede ser la mejor disponible.');
-  assert(page.includes('<ManagedCartButton'), 'La canasta elegida ofrece traspaso al carro.');
+  assert(page.includes('<RemoteCartButton'), 'La canasta elegida ofrece traspaso al carro remoto.');
   assert(cartButton.includes('prepareHandoff'), 'El control prepara el carro antes de abrir la tienda.');
   assert(directHandoff.includes('/checkout/cart/add?'), 'Las cadenas compatibles usan su checkout oficial.');
   assert(directHandoff.includes("store === 'Irurzun'"), 'Irurzun usa un enlace oficial de carro.');
-  assert(managedCart.includes('openManagedRetailerCart'), 'Las cadenas restantes tienen carga en sesión móvil administrada.');
-  assert(managedCart.includes('persistWebViewData: true'), 'La sesión del supermercado permanece local en el teléfono.');
-  assert(packageJson.includes('@capgo/capacitor-inappbrowser'), 'La app incluye la ventana móvil administrada.');
+  assert(remoteCart.includes("mode: 'remote_browser'"), 'Las siete cadenas convergen en una sesión web remota.');
+  assert(worker.includes('/auth/v1/user'), 'El worker valida nuevamente la sesión de Convive.');
+  assert(worker.includes('HttpOnly; Secure; SameSite=Lax'), 'El visor usa una cookie temporal protegida.');
+  assert((compose.match(/^  browser-[123]:/gm) || []).length === 3, 'El VPS limita la capacidad a tres navegadores aislados.');
+  assert(!packageJson.includes('@capgo/capacitor-inappbrowser'), 'El traspaso dejó de depender de una ventana móvil nativa.');
 
   const removedPaths = [
     'extensions/convive-cart-loader',
@@ -63,7 +67,9 @@ function assertReplacementIntegrity() {
     'src/app/(dashboard)/resident/supermercado/cargador',
     'src/app/api/supermarket/cart-url',
     'src/components/resident/supermarket/CartLoaderButton.tsx',
+    'src/components/resident/supermarket/ManagedCartButton.tsx',
     'src/hooks/useSupermarketCartLoader.ts',
+    'src/lib/supermarketManagedCart.ts',
   ];
   for (const relativePath of removedPaths) {
     assert(!pathContainsFiles(relativePath), `Se eliminó ${relativePath}.`);
@@ -71,6 +77,7 @@ function assertReplacementIntegrity() {
   assert(!packageJson.includes('qa:supermarket-cart-loader'), 'Los comandos del cargador salieron del proyecto.');
   assert(!page.includes('convive-cart-loader'), 'La interfaz ya no detecta la extensión antigua.');
   assert(!cartButton.includes('chrome.runtime'), 'El traspaso no depende de una extensión Chrome.');
+  assert(!cartButton.includes('Capacitor'), 'El traspaso tampoco depende de una app nativa.');
 }
 
 async function countRows(query) {

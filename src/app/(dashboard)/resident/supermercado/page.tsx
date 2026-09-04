@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
-import { ManagedCartButton } from '@/components/resident/supermarket/ManagedCartButton';
+import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartButton';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
@@ -268,8 +268,8 @@ export default function SupermarketPage() {
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
           Revisamos la misma lista y las mismas cantidades en siete cadenas. Una canasta incompleta nunca gana
-          solo porque su subtotal sea menor. En la app móvil puedes cargar la selección dentro de una sesión local
-          de la tienda, sin extensiones ni entregar tu clave a Convive.
+          solo porque su subtotal sea menor. Al elegir una tienda abrimos un navegador seguro y temporal que carga
+          la selección, sin extensiones ni app; solo intervienes si la cadena pide ubicación, login o verificación.
         </p>
       </header>
 
@@ -491,7 +491,7 @@ export default function SupermarketPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ManagedCartButton store={selectedBasket.store} items={selectedBasket.items} />
+                  <RemoteCartButton store={selectedBasket.store} items={selectedBasket.items} />
                   <a
                     href={STORE_HOME[selectedBasket.store]}
                     target="_blank"

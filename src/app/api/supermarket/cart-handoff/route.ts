@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
-import { prepareDirectCartHandoff } from '@/lib/supermarketDirectHandoff';
+import { prepareRemoteCartHandoff } from '@/lib/supermarketRemoteCart';
 import type { SupermarketCartHandoffItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
     const supabaseUser = await getSupabaseUserClient();
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { data: { session } } = await supabaseUser.auth.getSession();
+    if (!session?.access_token) return NextResponse.json({ error: 'Sesión expirada' }, { status: 401 });
 
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const store = cleanText(body.store, 40);
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     const items = parseItems(body);
     if (items.length === 0) return NextResponse.json({ error: 'La lista llegó vacía.' }, { status: 400 });
 
-    return NextResponse.json(await prepareDirectCartHandoff(store, items));
+    return NextResponse.json(await prepareRemoteCartHandoff(store, items, session.access_token));
   } catch (error) {
     return apiErrorResponse(req, '/api/supermarket/cart-handoff', error, {
       publicMessage: 'No se pudo preparar el carro del supermercado.',
