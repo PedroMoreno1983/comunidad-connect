@@ -54,6 +54,59 @@ describe('direct supermarket cart handoff', () => {
     expect(result.plannedCount).toBe(1);
   });
 
+  it('no sustituye por otro producto cuando el precio se aleja del cotizado', async () => {
+    // El sku cotizado no aparece disponible, asi que cae a buscar por nombre.
+    // "Avena Quaker tradicional" contiene todas las palabras esperadas, o sea
+    // puntua 1.0, pero cuesta $1.000 mas: es otro producto.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([{
+      productName: 'Avena Quaker tradicional 700 g',
+      items: [{
+        itemId: '888888',
+        nameComplete: 'Avena Quaker tradicional 700 g',
+        sellers: [{ sellerId: '1', commertialOffer: { AvailableQuantity: 40, Price: 2_790 } }],
+      }],
+    }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+
+    const result = await prepareDirectCartHandoff('Unimarc', [{
+      id: 'avena-1',
+      name: 'Avena Tradicional 700 g',
+      requestedTerm: 'avena',
+      quantity: 1,
+      sku: '111111',
+      price: 1_790,
+      productUrl: 'https://www.unimarc.cl/avena-tradicional/p',
+    }]);
+
+    expect(result.supported).toBe(false);
+    expect(result.plannedCount).toBe(0);
+    expect(result.missingItems).toEqual(['Avena Tradicional 700 g']);
+  });
+
+  it('acepta el reemplazo cuando el precio se movio poco', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([{
+      productName: 'Avena Tradicional 700 g',
+      items: [{
+        itemId: '888888',
+        nameComplete: 'Avena Tradicional 700 g',
+        sellers: [{ sellerId: '1', commertialOffer: { AvailableQuantity: 40, Price: 1_900 } }],
+      }],
+    }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+
+    const result = await prepareDirectCartHandoff('Unimarc', [{
+      id: 'avena-1',
+      name: 'Avena Tradicional 700 g',
+      requestedTerm: 'avena',
+      quantity: 1,
+      sku: '111111',
+      price: 1_790,
+      productUrl: 'https://www.unimarc.cl/avena-tradicional/p',
+    }]);
+
+    expect(result.supported).toBe(true);
+    expect(result.cartUrl).toContain('sku=888888');
+    expect(result.missingItems).toEqual([]);
+  });
+
   it('reports stores without an official direct checkout link', async () => {
     const result = await prepareDirectCartHandoff('Tottus', [{
       id: 'item-1',

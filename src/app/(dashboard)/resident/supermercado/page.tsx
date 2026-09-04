@@ -246,7 +246,8 @@ export default function SupermarketPage() {
         'Comparación de supermercados · Convive Connect',
         ...rows,
         '',
-        'Totales de productos; despacho, membresías y medios de pago no incluidos.',
+        'Estimado sumando el precio de cada producto. No incluye promociones por volumen,',
+        'montos mínimos de despacho, membresías ni medios de pago.',
       ].join('\n'));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2_000);
@@ -406,6 +407,10 @@ export default function SupermarketPage() {
                     {winner.store} ahorra {money(winnerSavings)} frente a la siguiente canasta completa.
                   </p>
                 )}
+                <p className="mt-2 max-w-xl text-xs cc-text-tertiary">
+                  Estimado sumando el precio de cada producto. Las promociones por volumen y los montos
+                  mínimos de despacho pueden cambiar el total en la tienda.
+                </p>
               </div>
               <button
                 type="button"

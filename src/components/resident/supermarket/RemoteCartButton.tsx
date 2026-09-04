@@ -31,6 +31,7 @@ export function RemoteCartButton({ store, items }: SupermarketCartButtonProps) {
         sku: item.sku,
         offerId: item.offerId,
         productUrl: item.productUrl,
+        price: item.price,
       }));
       const handoff = await SupermarketCartService.prepareHandoff(store, handoffItems);
       const targetUrl = handoff.sessionUrl ?? handoff.cartUrl;
