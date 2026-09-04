@@ -13,7 +13,7 @@ import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/agent-center/planner';
 import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
-import { upgradeClarificationWithCoCo } from '@/lib/agent-center/conversationalFallback';
+import { upgradeClarificationWithCoCo, resumeCoCoAction, rejectCoCoAction } from '@/lib/agent-center/conversationalFallback';
 import { buildCapabilitiesAction, isCapabilityOrGreeting } from '@/lib/agent-center/capabilities';
 import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
@@ -97,6 +97,7 @@ const TOOL_LABELS: Record<ToolName, string> = {
     clarify_intent: 'Solicitar precision',
     run_playbook: 'Preparar revision',
     run_mission: 'Mision multi-agente',
+    coco_action: 'Ejecutar accion preparada por CoCo',
 };
 
 function humanizeArgKey(key: string) {
@@ -1344,6 +1345,12 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         return executeAgentMission(action, profile, executeAction);
     }
 
+    if (action.toolName === 'coco_action') {
+        // Puente al cerebro de CoCo: reanuda su sesion con la confirmacion humana
+        // y CoCo ejecuta la accion con sus propias tools y guardas.
+        return resumeCoCoAction(action, profile);
+    }
+
     throw new Error('Herramienta no soportada.');
 }
 
@@ -1507,6 +1514,9 @@ export async function POST(req: NextRequest) {
         }
         if (rejected) {
             await claimPersistedProposal(action, 'rejected');
+            // Al cancelar una accion de CoCo, limpiamos el tool_use pendiente en su
+            // sesion para que no bloquee el proximo mensaje.
+            if (action.toolName === 'coco_action') await rejectCoCoAction(action, profile);
             await recordApproval(profile, action, 'rejected', 'Usuario rechazo desde Agent Center');
             await markPersistedProposal(action, 'rejected');
             await logActivity(profile, action, 'rejected');

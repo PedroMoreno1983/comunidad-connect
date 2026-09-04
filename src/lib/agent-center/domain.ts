@@ -16,7 +16,10 @@ export type ToolName =
     | 'answer_community_question'
     | 'clarify_intent'
     | 'run_playbook'
-    | 'run_mission';
+    | 'run_mission'
+    // Puente al cerebro de CoCo: ejecuta una accion que CoCo propuso (reanudando
+    // su sesion con la confirmacion humana). Siempre requiere aprobacion.
+    | 'coco_action';
 
 export const AGENT_TOOL_NAMES: ToolName[] = [
     'create_booking',
@@ -33,6 +36,7 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'clarify_intent',
     'run_playbook',
     'run_mission',
+    'coco_action',
 ];
 
 export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
@@ -46,6 +50,7 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     create_unit_expense: 'finance',
     send_unit_payment_reminder: 'finance',
     answer_community_question: 'community',
+    coco_action: 'community',
 };
 
 // Solo lecturas reales: cualquier herramienta que escriba (incluidos cobros y
@@ -87,6 +92,7 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
     create_announcement: 'write_high',
     run_playbook: 'write_high',
     run_mission: 'write_high',
+    coco_action: 'write_high',
 };
 
 /**
@@ -105,7 +111,9 @@ export function effectiveRequiresConfirmation(
 ): boolean {
     const risk = TOOL_RISK_LEVELS[toolName];
     if (risk === 'read') return false;
-    if (toolName === 'run_playbook') return true;
+    // run_playbook y coco_action siempre pasan por revision humana, sin importar
+    // el nivel de autonomia: son operaciones abiertas o batch de alto impacto.
+    if (toolName === 'run_playbook' || toolName === 'coco_action') return true;
     if (policy.autonomyLevel === 'autonomous') return false;
     if (policy.autonomyLevel === 'semi_autonomous') return risk === 'write_high';
     return true;
@@ -147,8 +155,12 @@ export type AgentAction = {
 export const ACTION_SUMMARY_MAX = 280;
 export const CONVERSATIONAL_SUMMARY_MAX = 6000;
 
+// `coco_action` esta en la misma situacion: su resumen es la respuesta de CoCo
+// mas los pasos que va a ejecutar, no una etiqueta.
+const CONVERSATIONAL_SUMMARY_TOOLS: ToolName[] = ['clarify_intent', 'coco_action'];
+
 export function summaryLimitFor(toolName: ToolName): number {
-    return toolName === 'clarify_intent' ? CONVERSATIONAL_SUMMARY_MAX : ACTION_SUMMARY_MAX;
+    return CONVERSATIONAL_SUMMARY_TOOLS.includes(toolName) ? CONVERSATIONAL_SUMMARY_MAX : ACTION_SUMMARY_MAX;
 }
 
 export type AgentStep = {
