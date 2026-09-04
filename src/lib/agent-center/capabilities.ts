@@ -64,14 +64,18 @@ export function isCapabilityOrGreeting(message: string): boolean {
 
 /** Tarjeta curada de capacidades, construida desde los playbooks reales. */
 export function buildCapabilitiesAction(message: string): AgentAction {
+    // Markdown real, no vinetas tipograficas: la vista del Agent Center
+    // renderiza markdown, y un caracter de vineta con salto de linea simple se
+    // colapsaba en un solo parrafo corrido. Con `-` cada flujo queda en su linea.
     const playbookLines = AGENT_PLAYBOOKS
-        .map(playbook => `• ${playbook.name}: ${playbook.description}`)
+        .map(playbook => `- **${playbook.name}**: ${playbook.description}`)
         .join('\n');
 
     const summary = [
         'Soy CoCo en el centro de operaciones. Reviso los datos autorizados del edificio y te dejo acciones listas para aprobar; nada se ejecuta hasta que tú confirmas, y todo queda en la bitácora.',
         '',
         'Puedo preparar estos flujos:',
+        '',
         playbookLines,
         '',
         'También respondo consultas al instante: morosidad, tickets abiertos, reservas, estado general del edificio, o cualquier pregunta cruzando los datos de la comunidad.',
