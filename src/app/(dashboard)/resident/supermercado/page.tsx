@@ -268,7 +268,7 @@ export default function SupermarketPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          Revisamos la misma lista y las mismas cantidades en siete cadenas. Una canasta incompleta nunca gana
+          Revisamos la misma lista y las mismas cantidades en {SUPERMARKET_STORES.length} cadenas. Una canasta incompleta nunca gana
           solo porque su subtotal sea menor. Al elegir una tienda abrimos un navegador seguro y temporal que carga
           la selección, sin extensiones ni app; solo intervienes si la cadena pide ubicación, login o verificación.
         </p>
@@ -398,7 +398,7 @@ export default function SupermarketPage() {
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Resultado de las siete cadenas</p>
+                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Resultado de las {SUPERMARKET_STORES.length} cadenas</p>
                 <h2 className="mt-1 text-2xl font-bold cc-text-primary">
                   {completeBaskets.length > 0 ? 'Mejor compra completa' : 'Mayor cobertura disponible'}
                 </h2>
@@ -661,7 +661,7 @@ export default function SupermarketPage() {
       {basketOptions.length > 0 && !hasResults && !loading && compared && (
         <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
           <AlertTriangle className="mx-auto h-10 w-10" style={{ color: 'var(--cc-amber)' }} />
-          <p className="mt-3 font-bold cc-text-secondary">Las siete cadenas quedaron sin resultados vigentes para esta lista.</p>
+          <p className="mt-3 font-bold cc-text-secondary">Las {SUPERMARKET_STORES.length} cadenas quedaron sin resultados vigentes para esta lista.</p>
           <p className="mt-1 text-sm cc-text-tertiary">Prueba nombres más simples o vuelve a intentar cuando se actualicen los catálogos.</p>
         </section>
       )}
@@ -669,7 +669,7 @@ export default function SupermarketPage() {
       {basketOptions.length === 0 && !loading && !compared && (
         <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
           <Info className="mx-auto h-10 w-10 cc-text-disabled" />
-          <p className="mt-3 font-bold cc-text-secondary">Pega tu lista para comparar las siete cadenas.</p>
+          <p className="mt-3 font-bold cc-text-secondary">Pega tu lista para comparar las {SUPERMARKET_STORES.length} cadenas.</p>
           <p className="mt-1 text-sm cc-text-tertiary">No mezclaremos una canasta incompleta con una completa.</p>
         </section>
       )}

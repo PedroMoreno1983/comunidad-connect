@@ -3,7 +3,24 @@ import { foldAccents, matchAnchor, significantWords } from '@/lib/supermarketTex
 import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
 
 
-export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
+/**
+ * Cadenas que se comparan y se muestran al vecino. Reducirla oculta una cadena
+ * de toda la pantalla: comparacion, tarjetas y carga de carro.
+ */
+export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'] as const;
+
+/**
+ * Cadenas que el scraper nocturno sigue recorriendo y guardando, pero que hoy
+ * no se muestran. El pipeline de ingesta es Python y no lee esta constante, asi
+ * que sus precios siguen al dia y volver a mostrarlas es moverlas de lista.
+ *
+ * Tottus: Cloudflare interpone un desafio humano alrededor del segundo producto
+ * al cargar el carro desde el VPS, reproducible tres de tres veces. Pausar la
+ * navegacion no lo evito.
+ *
+ * Irurzun: mayorista; se saca junto con Tottus por decision de producto.
+ */
+export const HIDDEN_SUPERMARKET_STORES = ['Tottus', 'Irurzun'] as const;
 
 export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
 
