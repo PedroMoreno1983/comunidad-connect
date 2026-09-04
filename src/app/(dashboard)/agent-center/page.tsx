@@ -559,7 +559,9 @@ export default function AgentCenterPage() {
 
                   <div className="min-w-0 flex-1">
                     <p className="text-[15px] font-medium leading-snug cc-text-primary">{action.title}</p>
-                    <p className="mt-0.5 text-[13px] leading-snug cc-text-tertiary">{action.summary}</p>
+                    <div className="mt-0.5 text-[13px] leading-snug cc-text-tertiary">
+                      <AgentMarkdown text={action.summary} />
+                    </div>
                   </div>
 
                   <div className="flex shrink-0 flex-wrap gap-2">
