@@ -1,19 +1,17 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
   Check,
+  CheckCircle2,
   Copy,
   ExternalLink,
   Loader2,
-  ShoppingCart,
-  Sparkles,
-  Share2,
-  ListChecks,
-  AlertCircle,
-  CheckCircle2,
   Puzzle,
-  Layers,
+  Share2,
+  ShoppingCart,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -29,19 +27,40 @@ const STORE_HOME: Record<string, string> = {
   Irurzun: 'https://irurzun.cl',
 };
 
-const VTEX_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
+const INSTALL_GUIDE_URL = '/resident/supermercado/cargador';
 
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
+  /**
+   * Flujo principal: elegir la tienda ya es la orden de carga. La página
+   * incrementa esta llave con cada selección explícita y aquí se gatilla la
+   * carga automática (con extensión) o la guía de instalación (sin ella).
+   */
+  autoLoadKey?: number;
 }
 
-export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
+/**
+ * Carga del carro — extension-first.
+ *
+ * Las cadenas cerraron todos los caminos server-side (VTEX eliminó el carro
+ * anónimo por URL — Jumbo redirige a login, Santa Isabel/Unimarc devuelven
+ * 404 — y Walmart protege Lider/aCuenta con Queue-it). La unica via que
+ * funciona en TODAS las tiendas es la extension CoCo, que opera dentro del
+ * navegador del usuario con su propia sesion.
+ *
+ * Reglas de honestidad:
+ *  - Sin extension: jamas se muestra "carro cargado". Se ofrece instalar el
+ *    cargador y, como alternativas manuales, copiar la lista o abrir fichas.
+ *  - Jumbo: si la canasta trae SKUs, se ofrece ademas el enlace directo de
+ *    VTEX, que funciona cuando el usuario ya inicio sesion en jumbo.cl.
+ */
+export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
   const [hasExtension, setHasExtension] = useState(false);
+  const [extensionVersion, setExtensionVersion] = useState<string | null>(null);
+  const [loadStarted, setLoadStarted] = useState(false);
   const [extensionProgress, setExtensionProgress] = useState<{
     status?: string;
     added?: number;
@@ -52,18 +71,20 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
 
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
-  const [directResult, setDirectResult] = useState<{
-    cartUrl: string;
-    mode: string;
-    loaded: number;
-    missing: string[];
-    confidence?: 'verified' | 'attempt';
-    cartTotal?: number;
-    items?: Array<{ name: string; quantity: number; productUrl?: string; searchUrl?: string }>;
-  } | null>(null);
-
-  const isVtex = VTEX_STORES.has(basket.store);
   const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
+
+  /** Enlace directo VTEX (solo Jumbo, solo con sesion iniciada en jumbo.cl). */
+  const jumboDirectUrl = useMemo(() => {
+    if (basket.store !== 'Jumbo') return null;
+    const withSku = basket.items.filter(item => item.sku);
+    if (withSku.length === 0) return null;
+    const params = withSku.flatMap(item => [
+      `sku=${encodeURIComponent(item.sku!)}`,
+      `qty=${Math.max(1, Math.round(item.quantity))}`,
+      'seller=1',
+    ]);
+    return `https://www.jumbo.cl/checkout/cart/add?${params.join('&')}&redirect=true&sc=1`;
+  }, [basket]);
 
   // Detectar si la extensión de Chrome está activa
   useEffect(() => {
@@ -71,6 +92,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
       if (event.data.type === 'CONVIVE_CART_LOADER_READY') {
         setHasExtension(true);
+        setExtensionVersion(event.data.payload?.version ?? null);
       }
       if (event.data.type === 'CONVIVE_CART_LOADER_PROGRESS') {
         setExtensionProgress(event.data.payload);
@@ -118,92 +140,58 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener');
   };
 
-  const handleLoadCart = async () => {
-    setLoading(true);
-    setError(null);
+  const handleLoadCart = () => {
     setOpened(true);
 
-    try {
-      if (isVtex) {
-        // 1. Carga nativa directa de VTEX (Santa Isabel, Jumbo, Unimarc)
-        const response = await fetch('/api/supermarket/cart-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            store: basket.store,
-            items: basket.items.map((item) => ({
-              id: item.id,
-              name: item.name,
-              productUrl: item.productUrl,
-              quantity: Math.max(1, Math.round(item.quantity)),
-            })),
-          }),
-        });
-
-        const data = await response.json().catch(() => ({}));
-        const cartUrl = data.cartUrl || storeUrl;
-
-        setDirectResult({
-          cartUrl,
-          mode: data.mode || 'direct-link',
-          loaded: data.loadedCount || basket.items.length,
-          missing: data.missingItems || [],
-          confidence: data.confidence,
-          cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
-          items: data.items || basket.items,
-        });
-
-        window.open(cartUrl, '_blank', 'noopener');
-        toast({
-          title: `Carro cargado en ${basket.store}`,
-          description: 'Se abrió la tienda oficial con todos tus productos en el carro.',
-          variant: 'success',
-        });
-      } else if (hasExtension) {
-        // 2. Carga automatizada en 1 sola pestaña vía extensión de navegador (Líder, Tottus, aCuenta)
-        window.postMessage(
-          {
-            source: 'convive-connect',
-            type: 'CONVIVE_CART_LOADER_START',
-            payload: {
-              version: 1,
-              store: basket.store,
-              items: basket.items.map((item, idx) => ({
-                id: item.id || `item-${idx + 1}`,
-                name: item.name,
-                requestedTerm: item.requestedTerm || item.name,
-                quantity: Math.max(1, Math.round(item.quantity)),
-                productUrl: item.productUrl,
-              })),
-            },
-          },
-          '*'
-        );
-        toast({
-          title: `Preparando carro en ${basket.store}`,
-          description: 'Cargando productos en tu sesión y abriendo el carro oficial.',
-          variant: 'success',
-        });
-      } else {
-        // 3. Fallback directo sin extensión: abre la tienda y las fichas
-        basket.items.forEach((item) => {
-          if (item.productUrl) {
-            window.open(item.productUrl, '_blank', 'noopener');
-          }
-        });
-        toast({
-          title: `Abriendo ${basket.store}`,
-          description: 'Se prepararon las pestañas de tus productos en la tienda.',
-          variant: 'success',
-        });
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
-      window.open(storeUrl, '_blank', 'noopener');
-    } finally {
-      setLoading(false);
+    if (!hasExtension) {
+      // Sin extension NO hay carga automatica posible: ser honestos.
+      toast({
+        title: 'Falta el Cargador de Convive',
+        description: 'Instálalo una vez y después cargas cualquier carro con un solo click.',
+      });
+      return;
     }
+
+    // Carga automatizada en 1 sola pestaña via extensión (todas las tiendas).
+    setLoadStarted(true);
+    setExtensionProgress(null);
+    window.postMessage(
+      {
+        source: 'convive-connect',
+        type: 'CONVIVE_CART_LOADER_START',
+        payload: {
+          version: 1,
+          store: basket.store,
+          items: basket.items.map((item, idx) => ({
+            id: item.id || `item-${idx + 1}`,
+            name: item.name,
+            requestedTerm: item.requestedTerm || item.name,
+            quantity: Math.max(1, Math.round(item.quantity)),
+            productUrl: item.productUrl,
+            sku: item.sku,
+            offerId: item.offerId,
+          })),
+        },
+      },
+      '*'
+    );
+    toast({
+      title: `Cargando tu carro en ${basket.store}`,
+      description: 'CoCo agrega y verifica cada producto en una pestaña del supermercado. Luego revisas, aceptas y pagas ahí.',
+      variant: 'success',
+    });
   };
+
+  // Elegir la tienda gatilla la carga sin pasar por este botón. La llave 0 es
+  // el estado inicial (selección por defecto tras comparar): ahí no se carga
+  // nada hasta que la persona elija explícitamente.
+  const lastAutoLoadKey = React.useRef(0);
+  useEffect(() => {
+    if (autoLoadKey <= 0 || autoLoadKey === lastAutoLoadKey.current) return;
+    lastAutoLoadKey.current = autoLoadKey;
+    handleLoadCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoadKey]);
 
   const handleOpenAllProducts = () => {
     let openedCount = 0;
@@ -225,23 +213,31 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const progressFailed = extensionProgress?.status === 'failed';
+  const progressDone = extensionProgress
+    && typeof extensionProgress.total === 'number'
+    && extensionProgress.total > 0
+    && (extensionProgress.added ?? 0) + (extensionProgress.failed ?? 0) >= extensionProgress.total;
+
   return (
     <div className="space-y-3">
-      {/* Botón Principal Homologado */}
+      {/* Botón Principal: con el flujo automático sirve para re-cargar (p. ej.
+          si cambiaste algo en la tienda o quieres repetir la carga). */}
       <Button
         type="button"
-        disabled={loading}
         onClick={handleLoadCart}
         className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl cursor-pointer"
         style={{ background: 'var(--cc-ink, #1F2937)' }}
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-white" />
-        ) : (
-          <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
-        )}
-        <span>Cargar Carro en {basket.store}</span>
+        <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
+        <span>{loadStarted ? `Recargar Carro en ${basket.store}` : `Cargar Carro en ${basket.store}`}</span>
       </Button>
+      {hasExtension && (
+        <p className="text-[11px] cc-text-secondary text-center leading-4">
+          Se carga automáticamente al elegir la tienda. Al terminar, revisa el carro en
+          la pestaña de {basket.store}, acepta y paga — ese paso es siempre tuyo.
+        </p>
+      )}
 
       {/* Botones de acción rápida: Copiar lista y WhatsApp */}
       <div className="grid grid-cols-2 gap-2">
@@ -265,37 +261,86 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         </button>
       </div>
 
-      {error && (
-        <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Panel de Estado / Checklist de productos */}
+      {/* Panel de estado / instalación */}
       {opened && (
         <div
           className="space-y-3 rounded-xl border p-4 animate-in fade-in duration-200"
           style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
         >
-          <div className="flex items-start justify-between gap-2">
+          {hasExtension ? (
             <div>
               <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                {basket.store} preparado
+                {progressFailed ? (
+                  <AlertCircle className="h-4 w-4 text-rose-600" />
+                ) : progressDone ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-[var(--cc-copper)]" />
+                )}
+                {progressFailed
+                  ? `La carga en ${basket.store} se detuvo`
+                  : progressDone
+                    ? `${basket.store}: carga terminada`
+                    : loadStarted
+                      ? `CoCo está cargando tu carro en ${basket.store}`
+                      : `Cargador listo para ${basket.store}`}
               </p>
               {extensionProgress?.detail && (
-                <p className="mt-1 text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
+                <p className={`mt-1 text-[11px] font-medium p-2 rounded border ${
+                  progressFailed
+                    ? 'text-rose-800 bg-rose-50 border-rose-200'
+                    : 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                }`}>
                   {extensionProgress.detail}
                 </p>
               )}
               <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
-                {isVtex
-                  ? 'Revisa el carro en la pestaña del supermercado, confirma tu dirección y paga.'
-                  : `Se abrió ${basket.store}. Puedes revisar el carro oficial o abrir cualquier producto puntual:`}
+                Revisa la pestaña del supermercado: ahí verás el progreso producto a producto.
+                CoCo nunca confirma ni paga la compra; ese paso es siempre tuyo.
               </p>
+              {extensionVersion && (
+                <p className="mt-1 text-[10px] cc-text-tertiary">Cargador v{extensionVersion}</p>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5">
+                <Puzzle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--cc-copper)]" />
+                <div>
+                  <p className="text-xs font-bold cc-text-primary">
+                    Para cargar el carro con un click necesitas el Cargador de Convive
+                  </p>
+                  <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
+                    Es una extensión de Chrome/Edge que se activa una sola vez y funciona con
+                    Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e Irurzun. Las tiendas
+                    no permiten cargar carros desde fuera del navegador; el cargador lo hace
+                    dentro de tu sesión, producto por producto y con verificación.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={INSTALL_GUIDE_URL}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-bold text-white hover:brightness-110 transition-all"
+                style={{ background: 'var(--cc-copper, #E07A5F)' }}
+              >
+                <Puzzle className="h-4 w-4" />
+                Instalar el Cargador de Convive (2 min)
+              </a>
+
+              {jumboDirectUrl && (
+                <a
+                  href={jumboDirectUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-9 w-full items-center justify-center gap-2 rounded-lg border text-[11px] font-semibold cc-text-primary hover:bg-subtle/50 transition-colors"
+                  style={{ borderColor: 'var(--cc-line)' }}
+                >
+                  <Zap className="h-3.5 w-3.5 text-[var(--cc-amber)]" />
+                  Probar carga directa en Jumbo (requiere sesión iniciada en jumbo.cl)
+                </a>
+              )}
+            </div>
+          )}
 
           {/* Checklist de productos interactivo */}
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
@@ -348,7 +393,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               Abrir fichas en pestañas
             </button>
             <a
-              href={directResult?.cartUrl || storeUrl}
+              href={storeUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"

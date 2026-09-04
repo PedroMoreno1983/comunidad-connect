@@ -90,6 +90,22 @@ export default function SupermarketPage() {
   const [requestedItems, setRequestedItems] = useState<SupermarketRequestedItem[]>([]);
   const [basketOptions, setBasketOptions] = useState<SupermarketBasketCandidate[]>([]);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  // Si el Cargador de Convive (extensión) está activo, todas las tiendas
+  // cargan con un click y el badge debe reflejarlo.
+  const [cartLoaderReady, setCartLoaderReady] = useState(false);
+  // Flujo: el usuario elige tienda y el carro se carga solo en el supermercado;
+  // cada selección explícita incrementa esta llave y gatilla la carga.
+  const [autoLoadKey, setAutoLoadKey] = useState(0);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
+      if (event.data.type === 'CONVIVE_CART_LOADER_READY') setCartLoaderReady(true);
+    };
+    window.addEventListener('message', handleMessage);
+    window.postMessage({ source: 'convive-connect', type: 'CONVIVE_CART_LOADER_PING' }, '*');
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -113,6 +129,9 @@ export default function SupermarketPage() {
   ) => {
     const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
     setSelectedStore(basket.store);
+    // Elegir la tienda ES la orden de cargar: el carro se prepara de inmediato
+    // en el supermercado elegido y la persona solo revisa, acepta y paga.
+    setAutoLoadKey(key => key + 1);
     setList(requested.map(requestedItem => {
       const candidate = byTerm.get(requestedItem.term);
       return candidate ? {
@@ -302,7 +321,9 @@ export default function SupermarketPage() {
                     </div>
                     <p className="mt-4 text-xl font-bold cc-text-primary">{basket.store}</p>
                     {(() => {
-                      const badge = LOADABILITY_BADGE[storeLoadability(basket.store)];
+                      const badge = cartLoaderReady
+                        ? LOADABILITY_BADGE.direct
+                        : LOADABILITY_BADGE[storeLoadability(basket.store)];
                       return (
                         <span
                           className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -351,7 +372,7 @@ export default function SupermarketPage() {
                 </div>
                 <div className="w-full space-y-2 sm:w-80">
                   {selectedBasket.complete ? (
-                    <CartLoaderButton basket={selectedBasket} />
+                    <CartLoaderButton basket={selectedBasket} autoLoadKey={autoLoadKey} />
                   ) : selectedBasket.coveredCount > 0 ? (
                     <>
                       {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
@@ -364,7 +385,7 @@ export default function SupermarketPage() {
                           {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
                         </p>
                       </div>
-                      <CartLoaderButton basket={selectedBasket} />
+                      <CartLoaderButton basket={selectedBasket} autoLoadKey={autoLoadKey} />
                     </>
                   ) : (
                     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>

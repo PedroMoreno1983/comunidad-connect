@@ -263,6 +263,13 @@ export interface SupermarketSearchCandidate {
   id: string;
   name: string;
   brand?: string;
+  /** Codigo de la tienda. Sin el no se puede cargar el carro por API. */
+  sku?: string;
+  /**
+   * Lider/Walmart: identificador de oferta que exige la mutacion `updateItems`.
+   * Es distinto del sku y solo existe para esa cadena.
+   */
+  offerId?: string;
   requestedTerm: string;
   requestedQuantity: number;
   requestedUnit?: SupermarketMeasurementUnit;
@@ -374,6 +381,10 @@ export interface SupermarketCartLoadItem {
   requestedTerm: string;
   quantity: number;
   productUrl?: string;
+  /** Codigo de la tienda. Sin el la extension solo puede recorrer la interfaz. */
+  sku?: string;
+  /** Lider: exigido junto al sku para cargar el carro por API. */
+  offerId?: string;
 }
 
 export interface SupermarketCartLoadRequest {

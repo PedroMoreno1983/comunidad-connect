@@ -58,7 +58,7 @@ export async function comparePersistedSupermarkets(
     const pattern = anchor.length <= 2 ? `${anchor}%` : `%${anchor}%`;
     const { data, error } = await supabaseAdmin
       .from('supermarket_products')
-      .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
+      .select('id,sku,offer_id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
       .eq('in_stock', true)
       .gte('last_seen_at', cutoff)
       .ilike('name', pattern)
@@ -74,7 +74,7 @@ export async function comparePersistedSupermarkets(
     const fallbackRows = (await Promise.all(missingStores.map(async store => {
       const { data: storeData, error: storeError } = await supabaseAdmin
         .from('supermarket_products')
-        .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
+        .select('id,sku,offer_id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
         .eq('in_stock', true)
         .eq('store', store)
         .gte('last_seen_at', cutoff)
@@ -121,7 +121,7 @@ export async function comparePersistedSupermarkets(
       const pattern = anchor.length <= 2 ? `${anchor}%` : `%${anchor}%`;
       const { data, error } = await supabaseAdmin
         .from('supermarket_products')
-        .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
+        .select('id,sku,offer_id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
         .eq('in_stock', true)
         .gte('last_seen_at', cutoff)
         .ilike('name', pattern)
