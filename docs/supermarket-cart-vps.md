@@ -43,6 +43,39 @@ La forma correcta es abrir un Chromium real por WebDriver y mirar el título y e
 
 **Ojo con los slots al probar.** `SE_DRAIN_AFTER_SESSION_COUNT: 1` recicla cada navegador después de una sola sesión, y `SE_NODE_MAX_SESSIONS: 1` deja un solo espacio por contenedor. Una sesión que se abre y no se cierra deja ese contenedor inutilizable hasta que expire `SESSION_HARD_SECONDS` (90 minutos). Cierra siempre con `DELETE /session/:id`, o reinicia con `docker compose restart browser-N`.
 
+## Qué camino usa cada tienda
+
+Verificado con cargas reales de punta a punta, con usuario logueado, entre el 2026-09-02 y el 2026-09-04.
+
+| Camino | Tiendas | Estado |
+|---|---|---|
+| URL directa de checkout | Unimarc, Jumbo, Santa Isabel (VTEX), Irurzun (Shopify) | Unimarc verificado con 6 productos; no usa navegador remoto |
+| Navegador remoto en el VPS | Lider, aCuenta | Ambos verificados, carro completo de 6 productos |
+| Con fricción | Tottus | Carga, pero Cloudflare interpone un desafío en el segundo producto |
+
+**Tottus.** Tres pruebas seguidas dieron el mismo resultado: el desafío de Cloudflare aparece en el segundo producto. Pausar la navegación a cuatro segundos entre fichas no lo evitó. La sesión no queda bloqueada —la persona resuelve el checkbox y continúa— pero es fricción real. Si molesta en uso cotidiano, la alternativa es enrutar Tottus al WebView del teléfono, donde la IP residencial del usuario no despierta esa protección.
+
+**aCuenta** exige elegir despacho o retiro, y una dirección, antes de aceptar el primer producto. Es el caso `intervention`: la sesión pausa, la persona lo resuelve una vez en la misma ventana y la carga continúa sola.
+
+## Los totales no coinciden con la comparación
+
+Medido sobre la misma canasta de 6 productos, el mismo día:
+
+| Tienda | Comparación | Carro real | Desvío |
+|---|---|---|---|
+| aCuenta | $9.390 | $8.105 | −$1.285 |
+| Unimarc | $7.813 | $8.380 | +$567 |
+| Lider | $9.900 | $9.175 | −$725 |
+
+El orden se invierte: la comparación pone a Unimarc primera y a aCuenta tercera, cuando aCuenta es la más barata de las tres.
+
+Dos causas identificadas, ninguna resuelta todavía:
+
+- **Promociones por volumen.** `supermarketBasket.ts` calcula `lineTotal: price * packs` y suma. No hay forma de representar "Combina 4 x 5990" (Lider) ni "4 X $990" (aCuenta), y el esquema solo guarda `price` y `list_price`.
+- **Monto mínimo de pedido.** aCuenta avisa "Te faltan $16.895 para completar el pedido mínimo" sobre una canasta de $8.105. La comparación puede recomendar una tienda donde la compra no se puede cursar.
+
 ## Lo que todavía no está verificado
 
-Que las tiendas sirvan su página no garantiza que la automatización agregue productos: los selectores de "agregar" son los mismos que usaba el WebView y se rompen igual cuando una tienda cambia su HTML. Falta una carga de carro completa de punta a punta, que requiere un JWT de un usuario real de Convive.
+Los selectores dependen del HTML de cada tienda y se rompen cuando una cambia su maquetado. Ya pasó durante estas pruebas: el botón principal de Lider lleva `data-automation-id="atc"`, mientras que los 24 del carrusel de relacionados llevan `"add-to-cart"`. Como ese era el primer selector de la lista, el worker agregaba un producto del carrusel en vez del pedido. No fallaba de forma ruidosa: llenaba el carro con otra cosa.
+
+De ahí la regla para mantener esto: **cuando una tienda falle, medir antes de suponer.** Abrir un Chromium por WebDriver contra la ficha real y preguntarle al DOM qué hay, en vez de ajustar selectores a ciegas. Tres hipótesis razonables sobre Lider resultaron falsas —plantillas distintas, tiempo de renderizado, y que exigiera modo de entrega— y la causa apareció recién al comparar qué botón elegía `firstVisible` contra cuál era el correcto.
