@@ -220,7 +220,7 @@ async function main() {
       );
     }
     assert(await page.getByText(/Despacho separado del precio de productos/i).isVisible(), 'Delivery is explicitly excluded from the product total');
-    assert(await page.getByRole('button', { name: /Cargar carro/i }).count() === 0, 'No cart-loader action remains');
+    assert(await page.getByRole('button', { name: /Cargar .* en /i }).count() === 1, 'The selected store exposes one remote cart action');
     await page.getByRole('button', { name: 'Copiar comparación' }).click();
     const copiedComparison = await page.evaluate(() => navigator.clipboard.readText());
     assert(expectedStores.every(store => copiedComparison.includes(store)), 'Copied comparison includes all seven stores');

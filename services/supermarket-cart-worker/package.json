@@ -1,0 +1,17 @@
+{
+  "name": "convive-supermarket-cart-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "http-proxy": "1.18.1",
+    "selenium-webdriver": "4.48.0"
+  }
+}
