@@ -31,6 +31,9 @@ function parseItems(body: Record<string, unknown>): SupermarketCartHandoffItem[]
       sku: cleanText(item.sku, 80) || undefined,
       offerId: cleanText(item.offerId, 160) || undefined,
       productUrl: cleanText(item.productUrl, 700) || undefined,
+      price: Number.isFinite(Number(item.price)) && Number(item.price) > 0
+        ? Math.round(Number(item.price))
+        : undefined,
     }];
   });
 }
