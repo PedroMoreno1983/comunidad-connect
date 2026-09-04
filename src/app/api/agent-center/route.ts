@@ -41,6 +41,7 @@ import {
     type AgentWorkflow,
     type AutonomyLevel,
     type ToolName,
+    summaryLimitFor,
 } from '@/lib/agent-center/domain';
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -920,7 +921,7 @@ function normalizeAction(action: AgentAction): AgentAction {
         args: safeArgs,
         requiresConfirmation: writesRequireConfirmation ? true : Boolean(action.requiresConfirmation),
         title: playbook ? `Preparar revision: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
-        summary: playbook?.description || cleanText(action.summary, 280) || 'CoCo preparo una accion operacional.',
+        summary: playbook?.description || cleanText(action.summary, summaryLimitFor(action.toolName)) || 'CoCo preparo una accion operacional.',
         targetHref: playbook?.targetHref || cleanText(action.targetHref, 120) || '/agent-center',
         decision: action.decision ? {
             intent: cleanText(action.decision.intent, 120),
