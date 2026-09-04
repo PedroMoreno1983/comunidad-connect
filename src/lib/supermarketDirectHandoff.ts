@@ -14,6 +14,12 @@ const VTEX_STORES: Partial<Record<SupermarketStore, string>> = {
 };
 
 const MAX_URL_LENGTH = 7_500;
+/**
+ * Margen sobre el precio cotizado. El precio del catalogo puede tener hasta
+ * cuatro dias, asi que un movimiento chico es normal; uno grande significa que
+ * estamos por agregar otro producto, no el que la persona eligio.
+ */
+const PRICE_TOLERANCE = 0.15;
 const FETCH_TIMEOUT_MS = 10_000;
 const LOOKUP_CONCURRENCY = 8;
 
@@ -57,6 +63,11 @@ async function fetchJson(url: string): Promise<unknown> {
 
 function productWords(value: string): string[] {
   return foldAccents(value).split(/[^a-z0-9]+/).filter(word => word.length > 1);
+}
+
+function pricePlausible(quoted: number | undefined, offered: number): boolean {
+  if (!quoted || quoted <= 0) return true;
+  return Math.abs(offered - quoted) <= quoted * PRICE_TOLERANCE;
 }
 
 function nameScore(expected: string, candidate: string): number {
@@ -113,20 +124,24 @@ async function resolveVtexItem(
     if (exact) return { ...exact, quantity: item.quantity };
   }
 
+  const acceptable = (candidate: { score: number; price: number }) => (
+    candidate.score >= 0.5 && pricePlausible(item.price, candidate.price)
+  );
+
   const slug = vtexSlug(item.productUrl);
   if (slug) {
     const products = records(await fetchJson(
       `${base}/api/catalog_system/pub/products/search/${slug}`,
     ));
-    const offer = availableVtexOffers(products, item.name)[0];
-    if (offer && offer.score >= 0.5) return { ...offer, quantity: item.quantity };
+    const offer = availableVtexOffers(products, item.name).find(acceptable);
+    if (offer) return { ...offer, quantity: item.quantity };
   }
 
   const products = records(await fetchJson(
     `${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(item.name)}&_from=0&_to=19`,
   ));
-  const offer = availableVtexOffers(products, item.name)[0];
-  return offer && offer.score >= 0.5 ? { ...offer, quantity: item.quantity } : null;
+  const offer = availableVtexOffers(products, item.name).find(acceptable);
+  return offer ? { ...offer, quantity: item.quantity } : null;
 }
 
 async function resolveInChunks<T, R>(
@@ -180,7 +195,7 @@ async function resolveShopifyVariant(item: SupermarketCartHandoffItem) {
     const wanted = text(item.sku);
     const variant = variants.find(entry => (
       text(entry.id) === wanted || text(entry.sku) === wanted || text(entry.barcode) === wanted
-    )) ?? variants.find(entry => entry.available !== false) ?? variants[0];
+    )) ?? variants.find(entry => entry.available !== false);
     const id = text(variant?.id);
     return id ? { id, quantity: item.quantity, name: item.name } : null;
   } catch {
