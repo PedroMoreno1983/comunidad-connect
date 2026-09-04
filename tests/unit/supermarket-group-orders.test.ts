@@ -209,7 +209,7 @@ describe('supermarket group orders', () => {
         },
         {
           id: 'wholesale',
-          store: 'Irurzun',
+          store: 'aCuenta',
           name: 'Arroz 1 kg manga 10 unidades',
           price: 12000,
           pack_units: 10,
@@ -220,16 +220,16 @@ describe('supermarket group orders', () => {
     };
     const result = buildBasketComparison(['arroz'], rows, { arroz: 18 });
     const lider = result.comparisons.find(item => item.store === 'Lider');
-    const irurzun = result.comparisons.find(item => item.store === 'Irurzun');
+    const acuenta = result.comparisons.find(item => item.store === 'aCuenta');
     expect(lider?.subtotal).toBe(27000);
-    expect(irurzun?.subtotal).toBe(24000);
-    expect(irurzun?.items[0]).toMatchObject({
+    expect(acuenta?.subtotal).toBe(24000);
+    expect(acuenta?.items[0]).toMatchObject({
       requestedQuantity: 18,
       quantity: 2,
       packUnits: 10,
       suppliedQuantity: 20,
       lineTotal: 24000,
     });
-    expect(result.recommended?.store).toBe('Irurzun');
+    expect(result.recommended?.store).toBe('aCuenta');
   });
 });
