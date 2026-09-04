@@ -382,6 +382,11 @@ export interface SupermarketCartHandoffItem {
   sku?: string;
   offerId?: string;
   productUrl?: string;
+  /**
+   * Precio unitario con el que se cotizo la canasta. Sirve para no sustituir en
+   * silencio por otro producto cuando el sku exacto no esta disponible.
+   */
+  price?: number;
 }
 
 export interface SupermarketCartHandoff {
