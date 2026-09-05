@@ -126,6 +126,8 @@ export default function SupermarketPage() {
   const [realTotal, setRealTotal] = useState<{ supported: boolean; total?: number; discount?: number } | null>(null);
   const [realTotalStore, setRealTotalStore] = useState<string | null>(null);
   const [realTotalLoading, setRealTotalLoading] = useState(false);
+  const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
+  const [repurchases, setRepurchases] = useState<Array<{ term: string; daysSinceLast: number }>>([]);
 
   const importShoppingList = async (file: File | undefined) => {
     if (!file) return;
@@ -227,6 +229,23 @@ export default function SupermarketPage() {
       setSelectedStore(nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null);
       setList(data.items);
 
+      // Sin esperar: la ruta ignora la escritura si el vecino no activo la
+      // memoria, y guardar no debe demorar la comparacion que si pidio.
+      if (historyEnabled) {
+        void fetch('/api/supermarket/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            store: nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null,
+            terms: nextRequested.map(requested => ({
+              term: requested.term,
+              quantity: requested.quantity,
+              unit: requested.unit,
+            })),
+          }),
+        }).catch(() => null);
+      }
+
       toast({
         title: nextOptions.some(basket => basket.complete)
           ? 'Siete cadenas comparadas'
@@ -242,6 +261,50 @@ export default function SupermarketPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshHistory = async () => {
+    try {
+      const response = await fetch('/api/supermarket/history');
+      if (!response.ok) return;
+      const data = await response.json() as {
+        enabled?: boolean;
+        suggestions?: Array<{ term: string; daysSinceLast: number }>;
+      };
+      setHistoryEnabled(data.enabled === true);
+      setRepurchases(data.suggestions ?? []);
+    } catch {
+      // La memoria es accesoria: si no carga, la pantalla sigue sirviendo.
+    }
+  };
+
+  useEffect(() => { void refreshHistory(); }, []);
+
+  const toggleHistory = async (enabled: boolean) => {
+    try {
+      const response = await fetch('/api/supermarket/history', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) throw new Error('No se pudo cambiar la preferencia.');
+      setHistoryEnabled(enabled);
+      if (!enabled) setRepurchases([]);
+      else void refreshHistory();
+      toast({
+        title: enabled ? 'Convive recordará tus compras' : 'Historial borrado',
+        description: enabled
+          ? 'Necesita dos compras del mismo producto para proponerte la recompra.'
+          : 'Se eliminó lo que habíamos guardado.',
+        variant: 'success',
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo cambiar',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -401,6 +464,52 @@ export default function SupermarketPage() {
               <li><strong className="text-white">2.</strong> Compara y resuelve faltantes</li>
               <li><strong className="text-white">3.</strong> Carga el carro elegido</li>
             </ol>
+            {historyEnabled === false ? (
+              <div className="mt-4 rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.18)' }}>
+                <p className="text-xs text-white/80">
+                  ¿Quieres que Convive recuerde lo que compras y te proponga la recompra?
+                  Se guarda solo lo que pides, nadie más lo ve, y puedes borrarlo cuando quieras.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void toggleHistory(true)}
+                  className="mt-2 rounded-full border px-3 py-1.5 text-xs font-bold text-white hover:bg-white/10"
+                  style={{ borderColor: 'rgba(255,255,255,0.3)' }}
+                >
+                  Activar memoria de compras
+                </button>
+              </div>
+            ) : null}
+
+            {repurchases.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-white/60">Toca reponer</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {repurchases.slice(0, 8).map(item => (
+                    <button
+                      key={item.term}
+                      type="button"
+                      onClick={() => setShoppingInput(current => (
+                        current.trim() ? `${current.trim()}
+${item.term}` : item.term
+                      ))}
+                      className="rounded-full border px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
+                      style={{ borderColor: 'rgba(255,255,255,0.18)' }}
+                    >
+                      {item.term} · hace {item.daysSinceLast} d
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void toggleHistory(false)}
+                  className="mt-2 text-[11px] text-white/50 underline hover:text-white/80"
+                >
+                  Dejar de recordar y borrar lo guardado
+                </button>
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap gap-2">
               {LIST_SUGGESTIONS.map(suggestion => (
                 <button
