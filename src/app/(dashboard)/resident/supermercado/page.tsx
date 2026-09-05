@@ -123,6 +123,9 @@ export default function SupermarketPage() {
   const [sealsStore, setSealsStore] = useState<string | null>(null);
   const [sealsLoading, setSealsLoading] = useState(false);
   const [sealsUnsupported, setSealsUnsupported] = useState(false);
+  const [realTotal, setRealTotal] = useState<{ supported: boolean; total?: number; discount?: number } | null>(null);
+  const [realTotalStore, setRealTotalStore] = useState<string | null>(null);
+  const [realTotalLoading, setRealTotalLoading] = useState(false);
 
   const importShoppingList = async (file: File | undefined) => {
     if (!file) return;
@@ -171,6 +174,7 @@ export default function SupermarketPage() {
     [basketOptions, selectedStore],
   );
   const showingSeals = seals !== null && sealsStore === selectedBasket?.store;
+  const showingRealTotal = realTotal !== null && realTotalStore === selectedBasket?.store;
   const completeBaskets = basketOptions.filter(basket => basket.complete);
   const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
   const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
@@ -238,6 +242,36 @@ export default function SupermarketPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRealTotal = async () => {
+    const store = selectedBasket?.store;
+    if (!store) return;
+    setRealTotalLoading(true);
+    try {
+      const response = await fetch('/api/supermarket/real-total', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store,
+          items: list
+            .filter(item => item.available && item.sku)
+            .map(item => ({ sku: item.sku, quantity: item.quantity })),
+        }),
+      });
+      const data = await response.json() as { supported?: boolean; total?: number; discount?: number; error?: string };
+      if (!response.ok) throw new Error(data.error || 'No se pudo consultar el total real.');
+      setRealTotal({ supported: data.supported === true, total: data.total, discount: data.discount });
+      setRealTotalStore(store);
+    } catch (error) {
+      toast({
+        title: 'No se pudo ver el total real',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente en un momento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRealTotalLoading(false);
     }
   };
 
@@ -598,6 +632,21 @@ export default function SupermarketPage() {
               <div>
                 <h2 className="text-lg font-bold cc-text-primary">Detalle de la canasta</h2>
                 <p className="text-xs cc-text-secondary">Producto equivalente, cantidad calculada y precio observado.</p>
+                {showingRealTotal ? (
+                  realTotal?.supported && typeof realTotal.total === 'number' ? (
+                    <p className="mt-1 text-xs font-bold" style={{ color: 'var(--cc-sage)' }}>
+                      {selectedBasket?.store} cobra {money(realTotal.total)} por esta canasta
+                      {selectedBasket && Math.abs(realTotal.total - selectedBasket.subtotal) >= 1
+                        ? ` · ${money(Math.abs(realTotal.total - selectedBasket.subtotal))} ${realTotal.total < selectedBasket.subtotal ? 'menos' : 'más'} que el estimado`
+                        : ' · igual que el estimado'}
+                      {realTotal.discount ? ` · incluye ${money(realTotal.discount)} de promociones` : ''}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>
+                      {selectedBasket?.store} no permite consultar el total antes de comprar.
+                    </p>
+                  )
+                ) : null}
                 {showingSeals && sealsUnsupported ? (
                   <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>
                     {selectedBasket?.store} no publica los sellos de advertencia en su catálogo.
@@ -605,6 +654,16 @@ export default function SupermarketPage() {
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadRealTotal()}
+                  disabled={realTotalLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold cc-text-primary disabled:opacity-60"
+                  style={{ borderColor: 'var(--cc-line)' }}
+                >
+                  {realTotalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  Ver total real
+                </button>
                 <button
                   type="button"
                   onClick={() => void loadSeals()}
