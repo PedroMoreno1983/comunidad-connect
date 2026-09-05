@@ -7,7 +7,7 @@ import type {
   SupermarketStore,
 } from '@/lib/types';
 
-const VTEX_STORES: Partial<Record<SupermarketStore, string>> = {
+export const VTEX_STORES: Partial<Record<SupermarketStore, string>> = {
   Jumbo: 'https://jumbo.vtexcommercestable.com.br',
   'Santa Isabel': 'https://santaisabel.vtexcommercestable.com.br',
   Unimarc: 'https://unimarc.vtexcommercestable.com.br',
