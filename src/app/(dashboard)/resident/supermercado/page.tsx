@@ -118,6 +118,11 @@ export default function SupermarketPage() {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [compared, setCompared] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Los sellos son opcionales a proposito: se piden solo si el vecino los pide.
+  const [seals, setSeals] = useState<Record<string, string[]> | null>(null);
+  const [sealsStore, setSealsStore] = useState<string | null>(null);
+  const [sealsLoading, setSealsLoading] = useState(false);
+  const [sealsUnsupported, setSealsUnsupported] = useState(false);
 
   const importShoppingList = async (file: File | undefined) => {
     if (!file) return;
@@ -165,6 +170,7 @@ export default function SupermarketPage() {
       ?? null,
     [basketOptions, selectedStore],
   );
+  const showingSeals = seals !== null && sealsStore === selectedBasket?.store;
   const completeBaskets = basketOptions.filter(basket => basket.complete);
   const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
   const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
@@ -232,6 +238,37 @@ export default function SupermarketPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSeals = async () => {
+    const store = selectedBasket?.store;
+    if (!store) return;
+    if (sealsStore === store && seals) { setSeals(null); setSealsStore(null); return; }
+    setSealsLoading(true);
+    setSealsUnsupported(false);
+    try {
+      const response = await fetch('/api/supermarket/seals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store,
+          skus: list.map(item => item.sku).filter(Boolean),
+        }),
+      });
+      const data = await response.json() as { supported?: boolean; seals?: Record<string, string[]>; error?: string };
+      if (!response.ok) throw new Error(data.error || 'No se pudieron consultar los sellos.');
+      setSealsUnsupported(data.supported === false);
+      setSeals(data.seals ?? {});
+      setSealsStore(store);
+    } catch (error) {
+      toast({
+        title: 'No se pudieron ver los sellos',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente en un momento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSealsLoading(false);
     }
   };
 
@@ -561,10 +598,27 @@ export default function SupermarketPage() {
               <div>
                 <h2 className="text-lg font-bold cc-text-primary">Detalle de la canasta</h2>
                 <p className="text-xs cc-text-secondary">Producto equivalente, cantidad calculada y precio observado.</p>
+                {showingSeals && sealsUnsupported ? (
+                  <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>
+                    {selectedBasket?.store} no publica los sellos de advertencia en su catálogo.
+                  </p>
+                ) : null}
               </div>
-              <span className="rounded-full px-3 py-1.5 text-xs font-bold cc-text-secondary" style={{ background: 'var(--cc-paper-warm)' }}>
-                {list.filter(item => item.available).length} de {list.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadSeals()}
+                  disabled={sealsLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold cc-text-primary disabled:opacity-60"
+                  style={{ borderColor: 'var(--cc-line)' }}
+                >
+                  {sealsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {showingSeals ? 'Ocultar sellos' : 'Ver sellos'}
+                </button>
+                <span className="rounded-full px-3 py-1.5 text-xs font-bold cc-text-secondary" style={{ background: 'var(--cc-paper-warm)' }}>
+                  {list.filter(item => item.available).length} de {list.length}
+                </span>
+              </div>
             </div>
 
             <div className="max-h-[34rem] overflow-auto">
@@ -601,6 +655,23 @@ export default function SupermarketPage() {
                               {item.brand || selectedBasket?.store}
                               {item.isOffer ? ' · oferta observada' : ''}
                             </p>
+                            {showingSeals && item.sku ? (
+                              (seals?.[item.sku] ?? []).length > 0 ? (
+                                <span className="mt-1 flex flex-wrap gap-1">
+                                  {(seals?.[item.sku] ?? []).map(seal => (
+                                    <span
+                                      key={seal}
+                                      className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                                      style={{ background: '#1a1a1a', color: '#fff' }}
+                                    >
+                                      {seal}
+                                    </span>
+                                  ))}
+                                </span>
+                              ) : (
+                                <span className="mt-1 block text-[10px] cc-text-tertiary">Sin sellos</span>
+                              )
+                            ) : null}
                           </>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
