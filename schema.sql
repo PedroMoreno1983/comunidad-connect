@@ -1680,4 +1680,27 @@ REVOKE ALL ON FUNCTION public.finalize_supermarket_catalog_refresh(TEXT, TIMESTA
 GRANT EXECUTE ON FUNCTION public.finalize_supermarket_catalog_refresh(TEXT, TIMESTAMPTZ, TIMESTAMPTZ)
   TO service_role;
 
+-- Memoria de compras del hogar. Ver 20260905120000_supermarket_purchase_history.sql
+-- para el razonamiento: se guarda el termino pedido y no el sku ganador, porque
+-- el catalogo se mueve todos los dias y lo que la persona quiere no.
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS supermarket_history_enabled BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS public.supermarket_purchase_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  term TEXT NOT NULL CHECK (char_length(term) BETWEEN 1 AND 120),
+  quantity NUMERIC(10, 2) NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  unit TEXT CHECK (unit IS NULL OR char_length(unit) <= 16),
+  store TEXT CHECK (store IS NULL OR char_length(store) <= 40),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS supermarket_purchase_history_user_term_idx
+  ON public.supermarket_purchase_history (user_id, term, created_at DESC);
+CREATE INDEX IF NOT EXISTS supermarket_purchase_history_user_recent_idx
+  ON public.supermarket_purchase_history (user_id, created_at DESC);
+
+ALTER TABLE public.supermarket_purchase_history ENABLE ROW LEVEL SECURITY;
+
 COMMIT;
