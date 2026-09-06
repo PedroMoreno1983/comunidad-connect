@@ -9,6 +9,7 @@ import {
   joinSupermarketGroupOrder,
   listSupermarketGroupOrders,
   lockSupermarketGroupOrder,
+  settleSupermarketGroupMember,
   parseGroupShoppingList,
 } from '@/lib/supermarketGroupOrders';
 
@@ -69,6 +70,13 @@ export async function POST(request: NextRequest) {
       );
     } else if (action === 'lock') {
       order = await lockSupermarketGroupOrder(profile, orderId);
+    } else if (action === 'settle') {
+      order = await settleSupermarketGroupMember(
+        profile,
+        orderId,
+        clean(body.memberUserId, 80),
+        body.paid === true,
+      );
     } else {
       return NextResponse.json({ error: 'Acción no válida.' }, { status: 400 });
     }
@@ -86,7 +94,9 @@ export async function POST(request: NextRequest) {
         ? 'Compra grupal creada'
         : action === 'join'
           ? 'Aporte agregado a compra grupal'
-          : 'Compra grupal preparada para el supermercado',
+          : action === 'settle'
+            ? (body.paid === true ? 'Pago recibido en compra grupal' : 'Pago revertido en compra grupal')
+            : 'Compra grupal preparada para el supermercado',
       metadata: {
         title: order.title,
         members: order.members.length,

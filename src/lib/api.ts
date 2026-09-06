@@ -2216,6 +2216,17 @@ export const SupermarketGroupService = {
         return data.order;
     },
 
+    /** Registra que el organizador dio por recibido el pago de un vecino. */
+    async settle(orderId: string, memberUserId: string, paid: boolean): Promise<SupermarketGroupOrder> {
+        const response = await fetch('/api/supermarket/group-orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'settle', orderId, memberUserId, paid }),
+        });
+        const data = await readJsonResponse<{ order: SupermarketGroupOrder }>(response);
+        return data.order;
+    },
+
     async join(orderId: string, shoppingList: string): Promise<SupermarketGroupOrder> {
         const response = await fetch('/api/supermarket/group-orders', {
             method: 'POST',

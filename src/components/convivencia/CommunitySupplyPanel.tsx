@@ -173,6 +173,22 @@ export function CommunitySupplyPanel() {
     }
   };
 
+  const settlePayment = async (orderId: string, memberUserId: string, paid: boolean) => {
+    setBusy(`settle:${orderId}:${memberUserId}`);
+    try {
+      const order = await SupermarketGroupService.settle(orderId, memberUserId, paid);
+      setOrders(previous => previous.map(item => item.id === order.id ? order : item));
+    } catch (error) {
+      toast({
+        title: 'No se pudo registrar el pago',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const share = async (order: SupermarketGroupOrder) => {
     if (typeof window === 'undefined') return;
     const url = `${window.location.origin}/convivencia?lane=abasto&order=${order.id}`;
@@ -371,21 +387,61 @@ export function CommunitySupplyPanel() {
                           <CircleDollarSign className="h-4 w-4" style={{ color: 'var(--cc-copper)' }} />
                           <p className="text-xs font-bold uppercase cc-text-tertiary">Quién paga cuánto</p>
                         </div>
+                        {(() => {
+                          // Lo primero que necesita saber el organizador es cuanto
+                          // le falta por recibir, no la lista completa.
+                          const pendientes = order.settlements.filter(s => !s.isOrganizer && !s.paidAt);
+                          const porCobrar = pendientes.reduce((sum, s) => sum + s.amount, 0);
+                          return pendientes.length > 0 ? (
+                            <p className="mt-2 text-sm font-bold" style={{ color: 'var(--cc-amber)' }}>
+                              Faltan {pendientes.length} {pendientes.length === 1 ? 'pago' : 'pagos'} · {money(porCobrar)}
+                            </p>
+                          ) : (
+                            <p className="mt-2 text-sm font-bold" style={{ color: 'var(--cc-sage)' }}>
+                              Todos pagaron.
+                            </p>
+                          );
+                        })()}
                         <div className="mt-2 space-y-2">
                           {order.settlements.map(settlement => (
-                            <div key={settlement.userId} className="flex items-center justify-between rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
-                              <div>
+                            <div key={settlement.userId} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
+                              <div className="min-w-0">
                                 <p className="text-sm font-semibold cc-text-primary">{settlement.memberName}</p>
                                 <p className="text-xs cc-text-tertiary">
-                                  {settlement.isOrganizer ? 'Parte del organizador' : `Debe pagar a ${settlement.payeeName}`}
+                                  {settlement.isOrganizer
+                                    ? 'Parte del organizador'
+                                    : settlement.paidAt
+                                      ? `Pagó a ${settlement.payeeName}`
+                                      : `Debe pagar a ${settlement.payeeName}`}
                                 </p>
                               </div>
-                              <span className="font-bold cc-text-primary">{money(settlement.amount)}</span>
+                              <div className="flex shrink-0 items-center gap-2">
+                                <span
+                                  className="font-bold"
+                                  style={{ color: settlement.paidAt ? 'var(--cc-sage)' : 'var(--cc-text-primary)' }}
+                                >
+                                  {money(settlement.amount)}
+                                </span>
+                                {order.canManage && !settlement.isOrganizer ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void settlePayment(order.id, settlement.userId, !settlement.paidAt)}
+                                    disabled={busy === `settle:${order.id}:${settlement.userId}`}
+                                    className="rounded-lg border px-2 py-1 text-[11px] font-bold cc-text-secondary disabled:opacity-50"
+                                    style={{ borderColor: 'var(--cc-line)' }}
+                                  >
+                                    {settlement.paidAt ? 'Deshacer' : 'Recibí'}
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                           ))}
                         </div>
                         <p className="mt-2 text-xs cc-text-tertiary">
-                          Este reparto queda registrado como referencia. La transferencia y su confirmación se realizan fuera de Convive Connect.
+                          El dinero se transfiere fuera de Convive Connect. Aquí solo queda la cuenta:
+                          {order.canManage
+                            ? ' marca “Recibí” cuando el pago llegue.'
+                            : ' quien organizó marca cada pago cuando lo recibe.'}
                         </p>
                       </div>
                     )}
