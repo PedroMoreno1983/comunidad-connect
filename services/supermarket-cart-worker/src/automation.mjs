@@ -53,6 +53,12 @@ const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, millise
 
 const ITEM_PACING_MS = 4_000;
 
+/** Mismos valores que compose.yaml le da al contenedor del navegador. */
+function integerEnv(name, fallback) {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback;
+}
+
 async function seleniumReady(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 4_000);
@@ -78,6 +84,13 @@ export async function createDriver(webDriverUrl) {
     '--disable-search-engine-choice-screen',
     '--no-default-browser-check',
     '--no-first-run',
+    // Que la ventana llene la pantalla remota. Flotando sobre un escritorio
+    // vacio se ve como si uno estuviera mirando el computador de otra persona,
+    // y nadie mete su compra ahi. Llenando el marco se lee como lo que es: un
+    // navegador que Convive maneja para ti.
+    '--start-maximized',
+    '--window-position=0,0',
+    `--window-size=${integerEnv('SE_SCREEN_WIDTH', 1440)},${integerEnv('SE_SCREEN_HEIGHT', 900)}`,
   );
   options.setUserPreferences({
     'credentials_enable_service': false,
@@ -91,7 +104,12 @@ export async function createDriver(webDriverUrl) {
     .usingServer(webDriverUrl)
     .build();
   await driver.manage().setTimeouts({ implicit: 0, pageLoad: 60_000, script: 20_000 });
-  await driver.manage().window().setRect({ x: 0, y: 0, width: 1440, height: 900 });
+  await driver.manage().window().setRect({
+    x: 0,
+    y: 0,
+    width: integerEnv('SE_SCREEN_WIDTH', 1440),
+    height: integerEnv('SE_SCREEN_HEIGHT', 900),
+  });
   return driver;
 }
 
