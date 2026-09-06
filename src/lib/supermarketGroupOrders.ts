@@ -95,7 +95,7 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
   const [membersResult, itemsResult] = await Promise.all([
     admin
       .from('supermarket_group_order_members')
-      .select('order_id,user_id,joined_at')
+      .select('order_id,user_id,joined_at,paid_at')
       .in('order_id', orderIds),
     admin
       .from('supermarket_group_order_items')
@@ -128,6 +128,7 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
         userId: asString(member.user_id),
         name: names.get(asString(member.user_id)) || 'Vecino',
         joinedAt: asString(member.joined_at),
+        paidAt: asString(member.paid_at) || null,
       }));
     const items: SupermarketGroupOrderItem[] = (itemsResult.data || [])
       .filter(item => asString(item.order_id) === orderId)
@@ -169,6 +170,10 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
       payeeUserId: createdBy,
       payeeName,
       isOrganizer: userId === createdBy,
+      // El organizador no se paga a si mismo: su parte se considera saldada.
+      paidAt: userId === createdBy
+        ? null
+        : members.find(member => member.userId === userId)?.paidAt ?? null,
     }));
 
     return {
@@ -360,6 +365,55 @@ export async function lockSupermarketGroupOrder(profile: GroupProfile, orderId: 
     .select('*')
     .single();
   if (error || !data) throw error || new Error('No se pudo cerrar la compra grupal.');
+  return (await hydrateOrders(profile, [data as Record<string, unknown>]))[0];
+}
+
+/**
+ * Marca o desmarca el pago de un vecino en una compra grupal.
+ *
+ * Mientras no exista pasarela, el dinero se mueve fuera de Convive
+ * -transferencia, efectivo, lo que acuerden- y lo unico que corresponde es
+ * llevar la cuenta clara. Esto no cobra nada: registra que el organizador dio
+ * el pago por recibido.
+ *
+ * Solo pueden marcarlo quien organizo la compra o la administracion. El que
+ * recibe el dinero es el unico que sabe si llego; dejar que cada quien se
+ * declare pagado inventa un limbo de "declarado pero no confirmado" que genera
+ * mas discusiones de las que evita.
+ */
+export async function settleSupermarketGroupMember(
+  profile: GroupProfile,
+  orderId: string,
+  memberUserId: string,
+  paid: boolean,
+): Promise<SupermarketGroupOrder> {
+  const order = await assertVisibleOrder(profile, orderId);
+  if (asString(order.created_by) !== profile.id && profile.role !== 'admin') {
+    throw new Error('Solo quien organizó la compra o la administración puede registrar los pagos.');
+  }
+  if (!memberUserId) throw new Error('Falta indicar de quién es el pago.');
+  if (memberUserId === asString(order.created_by)) {
+    throw new Error('El organizador no se paga a sí mismo.');
+  }
+
+  const { error } = await getSupabaseAdmin()
+    .from('supermarket_group_order_members')
+    .update({
+      paid_at: paid ? new Date().toISOString() : null,
+      paid_marked_by: paid ? profile.id : null,
+    })
+    .eq('order_id', orderId)
+    .eq('community_id', requireIdentity(profile))
+    .eq('user_id', memberUserId);
+  if (error) throw error;
+
+  const { data, error: readError } = await getSupabaseAdmin()
+    .from('supermarket_group_orders')
+    .select('*')
+    .eq('id', orderId)
+    .eq('community_id', requireIdentity(profile))
+    .single();
+  if (readError || !data) throw readError || new Error('No se pudo actualizar el pago.');
   return (await hydrateOrders(profile, [data as Record<string, unknown>]))[0];
 }
 

@@ -196,7 +196,6 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
         { href: "/comunicaciones", label: role === "conserje" ? "Comunicaciones y avisos" : "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
-        { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["resident", "admin"] },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["concierge"], feature: "amenities" },
       ]
@@ -225,6 +224,10 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
         { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
+        // Convivencia vive aca y no en COMUNIDAD porque su carril principal es
+        // el abasto comunitario, que es un servicio: queda junto al Supermercado
+        // individual, que es la version de una sola familia de lo mismo.
+        { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
         { href: "/votaciones", label: "Votaciones", icon: Vote, roles: ["resident", "admin"], feature: "voting" },
       ]

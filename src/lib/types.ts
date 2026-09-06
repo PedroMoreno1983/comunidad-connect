@@ -194,6 +194,8 @@ export interface SupermarketGroupOrderMember {
   userId: string;
   name: string;
   joinedAt: string;
+  /** Cuando el organizador dio por recibido su pago. null = pendiente. */
+  paidAt: string | null;
 }
 
 export interface SupermarketGroupSettlement {
@@ -203,6 +205,7 @@ export interface SupermarketGroupSettlement {
   payeeUserId: string;
   payeeName: string;
   isOrganizer: boolean;
+  paidAt: string | null;
 }
 
 export interface SupermarketGroupOrder {
