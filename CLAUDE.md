@@ -211,11 +211,11 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 
    - **`npm run qa:schema-drift` es el guard que lo detecta.** Falla si `schema.sql` declara columnas que la base no tiene, si aparece una tabla nueva sin declarar, o si el historial de migraciones diverge. Correrlo antes de cualquier merge que toque la base.
 
-   - **`schema.sql` no es un retrato completo, y conviene saberlo antes de leerlo.** Medido el 2026-09-06: la base tiene 94 tablas y el archivo declara 40. Las otras 54 —parking, solidaridad, agentes, supermercado, cobranzas— viven solo en `supabase/migrations/`, así que buscar una tabla ahí y no encontrarla no significa que no exista.
+   - **`schema.sql` declara las 94 tablas de producción** desde el 2026-09-06. Hasta esa fecha declaraba 39, y las otras 55 —parking, solidaridad, agentes, cobranzas, supermercado— vivían solo en migraciones: quien buscaba una tabla en el archivo y no la encontraba no podía saber si faltaba del archivo o de la base. El guard tampoco lo veía, porque solo comparaba en una dirección.
 
-     La deuda está congelada en `UNDECLARED_TABLES_BASELINE`, dentro del guard: una tabla nueva sin declarar hace fallar `qa:schema-drift`, pero las 54 conocidas no bloquean. Declarar una y sacarla de esa lista es cómo se salda.
+     La parte completada sale de `supabase db dump` y usa el estilo de pg_dump (`"public"."tabla"`), a diferencia del estilo escrito a mano del resto. El guard reconoce las dos formas. Para regenerarla tras un cambio grande: `npx supabase db dump --schema public -f dump.sql`.
 
-     No se resolvió declarándolas de golpe a propósito: el DDL real —claves foráneas, defaults, políticas RLS— solo sale de un dump de la base, y una versión aproximada dejaría un archivo que parece completo y miente sobre las definiciones. Eso es peor que el hueco.
+   - **Al declarar una tabla nueva, agrégala también a `schema.sql`.** `qa:schema-drift` falla si aparece una tabla en la base que el archivo no declara, y `UNDECLARED_TABLES_BASELINE` —la lista de excepciones dentro del guard— está vacía a propósito: lo que entre ahí tiene que venir con su razón.
 
    - La fuente de verdad para *aplicar* cambios es `supabase/migrations/`.
 
