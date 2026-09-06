@@ -5,10 +5,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function simulation(totals: Array<{ id: string; value: number }>, items = 1) {
+function simulation(totals: Array<{ id: string; value: number }>, items = [{ id: '111151', quantity: 4, seller: '1', availability: 'available' }]) {
   return new Response(JSON.stringify({
     totals,
-    items: Array.from({ length: items }, (_, index) => ({ id: `sku-${index}` })),
+    items,
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
@@ -61,7 +61,7 @@ describe('simulacion del total real', () => {
   });
 
   it('avisa cuando la tienda reconocio menos lineas de las pedidas', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => simulation([{ id: 'Items', value: 100_000 }], 1)));
+    vi.stubGlobal('fetch', vi.fn(async () => simulation([{ id: 'Items', value: 100_000 }], [{ id: '111', quantity: 1, seller: '1', availability: 'available' }])));
 
     const result = await simulateBasketTotal('Jumbo', [
       { sku: '111', quantity: 1 },
@@ -69,13 +69,15 @@ describe('simulacion del total real', () => {
     ]);
 
     expect(result.resolvedItems).toBe(1);
+    expect(result.complete).toBe(false);
+    expect(result.total).toBeUndefined();
   });
 
   it('no rompe la comparacion cuando la tienda falla', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('sin red'); }));
 
     expect(await simulateBasketTotal('Jumbo', [{ sku: '111', quantity: 1 }]))
-      .toEqual({ supported: false });
+      .toMatchObject({ supported: true, complete: false });
   });
 
   it('no consulta a una cadena sin simulacion', async () => {

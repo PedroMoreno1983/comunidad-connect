@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { VTEX_STORES } from '@/lib/supermarketDirectHandoff';
-import type { SupermarketStore } from '@/lib/types';
+import type { SupermarketStore, SupermarketSimulationItem, SupermarketSimulationResult } from '@/lib/types';
 
 /**
  * `supermarketBasket.ts` suma precio unitario por cantidad. Eso no puede
@@ -24,21 +24,8 @@ const MAX_ITEMS = 60;
 /** VTEX responde en centavos: 215000 es $2.150. */
 const CENTS = 100;
 
-export interface SimulationItem {
-  sku: string;
-  quantity: number;
-  seller?: string;
-}
-
-export interface SimulationResult {
-  supported: boolean;
-  /** Total que la tienda dice que cobra, en pesos. */
-  total?: number;
-  /** Descuentos aplicados, en pesos y positivo. */
-  discount?: number;
-  /** Cuantas lineas reconocio la tienda, para detectar productos caidos. */
-  resolvedItems?: number;
-}
+export type SimulationItem = SupermarketSimulationItem;
+export type SimulationResult = SupermarketSimulationResult;
 
 export function supportsSimulation(store: string): boolean {
   return Object.prototype.hasOwnProperty.call(VTEX_STORES, store);
@@ -58,18 +45,19 @@ function totalsOf(payload: Record<string, unknown>): Record<string, number> {
 }
 
 /**
- * Nunca lanza: si la tienda no responde, se devuelve `supported: false` y la
- * pantalla sigue mostrando el estimado en vez de quedarse sin comparacion.
+ * Never expose a partial total as the basket total. Unsupported stores and
+ * temporary failures are distinct; the estimate remains available in both cases.
  */
 export async function simulateBasketTotal(
   store: string,
   items: SimulationItem[],
 ): Promise<SimulationResult> {
   const base = VTEX_STORES[store as SupermarketStore];
-  const wanted = items
-    .filter(item => item.sku.trim() && item.quantity > 0)
-    .slice(0, MAX_ITEMS);
-  if (!base || wanted.length === 0) return { supported: false };
+  if (!base) return { supported: false };
+  if (items.length === 0 || items.length > MAX_ITEMS || items.some(item => (
+    !item.sku.trim() || !Number.isInteger(item.quantity) || item.quantity <= 0 || item.quantity > 99
+  ))) return { supported: true, complete: false, reason: 'La consulta admite hasta 60 productos con cantidades enteras de 1 a 99. No se calculó un total parcial.' };
+  const wanted = items;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -88,23 +76,48 @@ export async function simulateBasketTotal(
         })),
       }),
     });
-    if (!response.ok) return { supported: false };
+    if (!response.ok) return { supported: true, complete: false, reason: 'La tienda no respondió. Intenta nuevamente.' };
     const payload = await response.json() as unknown;
-    if (payload === null || typeof payload !== 'object') return { supported: false };
+    if (payload === null || typeof payload !== 'object') return { supported: true, complete: false, reason: 'La tienda devolvió una respuesta inválida.' };
 
     const record = payload as Record<string, unknown>;
     const totals = totalsOf(record);
-    if (!('Items' in totals)) return { supported: false };
+    const returned = Array.isArray(record.items) ? record.items : [];
+    const expected = new Map<string, number>();
+    for (const item of wanted) {
+      const key = JSON.stringify([item.sku.trim(), item.seller?.trim() || '1']);
+      expected.set(key, (expected.get(key) ?? 0) + item.quantity);
+    }
+    const resolved = new Map<string, number>();
+    for (const entry of returned) {
+      if (!entry || typeof entry !== 'object') continue;
+      const row = entry as Record<string, unknown>;
+      if (row.availability !== 'available' || !Number.isInteger(row.quantity) || Number(row.quantity) <= 0) continue;
+      const key = JSON.stringify([String(row.id), String(row.seller)]);
+      resolved.set(key, (resolved.get(key) ?? 0) + Number(row.quantity));
+    }
+    const resolvedItems = wanted.filter(item => {
+      const key = JSON.stringify([item.sku.trim(), item.seller?.trim() || '1']);
+      return resolved.get(key) === expected.get(key);
+    }).length;
+    const hasErrors = Array.isArray(record.messages) && record.messages.some(message => (
+      message && typeof message === 'object' && (message as Record<string, unknown>).status === 'error'
+    ));
+    const total = (totals.Items - Math.abs(totals.Discounts ?? 0)) / CENTS;
+    if (hasErrors || resolvedItems !== wanted.length || resolved.size !== expected.size || !Number.isFinite(total) || total < 0) {
+      return { supported: true, complete: false, resolvedItems, reason: 'No se pudo verificar toda la canasta con sus cantidades. Revisa los faltantes en la tienda.' };
+    }
 
     const discount = Math.abs(totals.Discounts ?? 0) / CENTS;
     return {
       supported: true,
-      total: (totals.Items - Math.abs(totals.Discounts ?? 0)) / CENTS,
+      complete: true,
+      total,
       discount,
-      resolvedItems: Array.isArray(record.items) ? record.items.length : 0,
+      resolvedItems,
     };
   } catch {
-    return { supported: false };
+    return { supported: true, complete: false, reason: 'No se pudo contactar a la tienda. Intenta nuevamente.' };
   } finally {
     clearTimeout(timeout);
   }
