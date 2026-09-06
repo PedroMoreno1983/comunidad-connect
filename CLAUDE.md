@@ -209,9 +209,15 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 
      Ese círculo ya ocurrió: entre julio y agosto de 2026 dejó 33 migraciones sin registrar, 13 registros duplicados, y una migración de seguridad (`harden_public_functions_and_storage_listing`) aplicada en producción y nunca versionada. Sobre todo, dejó que `public.units` perdiera las columnas `type` y `resident_profile_id` mientras el trigger `handle_new_user()` seguía usándolas: **ningún residente que escribiera su número de departamento podía registrarse**, y nadie lo detectó durante semanas.
 
-   - **`npm run qa:schema-drift` es el guard que lo detecta.** Falla si `schema.sql` declara columnas que la base no tiene, o si el historial de migraciones diverge. Correrlo antes de cualquier merge que toque la base.
+   - **`npm run qa:schema-drift` es el guard que lo detecta.** Falla si `schema.sql` declara columnas que la base no tiene, si aparece una tabla nueva sin declarar, o si el historial de migraciones diverge. Correrlo antes de cualquier merge que toque la base.
 
-   - `schema.sql` es el retrato consolidado del esquema y debe coincidir con producción. La fuente de verdad para *aplicar* cambios es `supabase/migrations/`.
+   - **`schema.sql` no es un retrato completo, y conviene saberlo antes de leerlo.** Medido el 2026-09-06: la base tiene 94 tablas y el archivo declara 40. Las otras 54 —parking, solidaridad, agentes, supermercado, cobranzas— viven solo en `supabase/migrations/`, así que buscar una tabla ahí y no encontrarla no significa que no exista.
+
+     La deuda está congelada en `UNDECLARED_TABLES_BASELINE`, dentro del guard: una tabla nueva sin declarar hace fallar `qa:schema-drift`, pero las 54 conocidas no bloquean. Declarar una y sacarla de esa lista es cómo se salda.
+
+     No se resolvió declarándolas de golpe a propósito: el DDL real —claves foráneas, defaults, políticas RLS— solo sale de un dump de la base, y una versión aproximada dejaría un archivo que parece completo y miente sobre las definiciones. Eso es peor que el hueco.
+
+   - La fuente de verdad para *aplicar* cambios es `supabase/migrations/`.
 
    - Si el editor SQL es inevitable (por ejemplo, sin acceso al CLI), registrar el cambio después:
      `INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES (...)`.
