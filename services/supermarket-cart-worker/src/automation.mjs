@@ -88,6 +88,12 @@ export async function createDriver(webDriverUrl) {
     // vacio se ve como si uno estuviera mirando el computador de otra persona,
     // y nadie mete su compra ahi. Llenando el marco se lee como lo que es: un
     // navegador que Convive maneja para ti.
+    // Kiosco: sin pestanas, sin barra de direcciones, sin botones de ventana.
+    // Flotando con su marco sobre un escritorio vacio, la sesion se leia como el
+    // computador de otra persona y nadie mete su compra ahi. El dominio del
+    // supermercado se muestra en la cabecera de Convive, que la tienda no puede
+    // falsificar, asi que no se pierde la senal de en que sitio se esta.
+    '--kiosk',
     '--start-maximized',
     '--window-position=0,0',
     `--window-size=${integerEnv('SE_SCREEN_WIDTH', 1440)},${integerEnv('SE_SCREEN_HEIGHT', 900)}`,
