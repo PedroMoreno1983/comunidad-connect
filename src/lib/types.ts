@@ -1703,3 +1703,31 @@ export interface ParkingPassDetail {
   remainingMinutes: number;
 }
 
+export interface SupermarketSimulationItem {
+    sku: string;
+    quantity: number;
+    seller?: string;
+}
+
+export interface SupermarketSimulationResult {
+    supported: boolean;
+    complete?: boolean;
+    total?: number;
+    discount?: number;
+    resolvedItems?: number;
+    reason?: string;
+    error?: string;
+}
+
+export interface SupermarketHistoryResponse {
+    enabled?: boolean;
+    recorded?: number;
+    error?: string;
+    suggestions?: Array<{ term: string; daysSinceLast: number }>;
+}
+
+export interface SupermarketSealsResponse {
+    supported?: boolean;
+    seals?: Record<string, string[]>;
+    error?: string;
+}

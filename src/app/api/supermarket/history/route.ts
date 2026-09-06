@@ -34,11 +34,12 @@ async function historyEnabled(
   supabase: Awaited<ReturnType<typeof getSupabaseUserClient>>,
   userId: string,
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('supermarket_history_enabled')
     .eq('id', userId)
     .maybeSingle();
+  if (error) throw error;
   return data?.supermarket_history_enabled === true;
 }
 
@@ -51,12 +52,14 @@ export async function GET(req: NextRequest) {
     if (!enabled) return NextResponse.json({ enabled: false, suggestions: [] });
 
     const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('supermarket_purchase_history')
       .select('term,created_at')
+      .eq('confirmed', true)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(2_000);
+    if (error) throw error;
 
     const records: PurchaseRecord[] = (data ?? []).map(row => ({
       term: String(row.term ?? ''),
@@ -71,7 +74,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Registra los productos de una comparacion. Silencioso si no hay opt-in. */
+/** Registra solo compras confirmadas por la persona, nunca comparaciones. */
 export async function POST(req: NextRequest) {
   const limited = await enforceDistributedRateLimit(req, 'supermarket.history.write', {
     limit: 30,
@@ -87,6 +90,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    if (body.confirmed !== true) {
+      return NextResponse.json({ error: 'Confirma que compraste estos productos antes de guardarlos.' }, { status: 400 });
+    }
     const store = typeof body.store === 'string' ? body.store.trim().slice(0, 40) : null;
     const rows = (Array.isArray(body.terms) ? body.terms : [])
       .flatMap(entry => {
@@ -98,6 +104,7 @@ export async function POST(req: NextRequest) {
         const unit = typeof item.unit === 'string' ? item.unit.trim().slice(0, 16) : null;
         return [{
           user_id: user.id,
+          confirmed: true,
           term,
           quantity: Number.isFinite(quantity) && quantity > 0 ? Math.min(9_999, quantity) : 1,
           unit: unit || null,
@@ -133,17 +140,9 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const enabled = body.enabled === true;
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ supermarket_history_enabled: enabled })
-      .eq('id', user.id);
+    // Preference and deletion commit together; a failed deletion rolls back both.
+    const { error } = await supabase.rpc('set_supermarket_history_enabled', { p_enabled: enabled });
     if (error) throw error;
-
-    // Apagar y conservar lo guardado seria quedarse con el dato despues de que
-    // la persona dijo que no. Se borra.
-    if (!enabled) {
-      await supabase.from('supermarket_purchase_history').delete().eq('user_id', user.id);
-    }
 
     return NextResponse.json({ enabled });
   } catch (error) {

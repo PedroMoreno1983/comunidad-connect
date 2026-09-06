@@ -28,12 +28,16 @@ import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartBu
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
+import { supermarketBasketIdentity } from '@/lib/supermarketBasketIdentity';
 import type {
   SupermarketBasketCandidate,
   SupermarketComparisonSource,
   SupermarketRequestedItem,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
+  SupermarketSimulationResult,
+  SupermarketHistoryResponse,
+  SupermarketSealsResponse,
 } from '@/lib/types';
 
 const LIST_SUGGESTIONS = [
@@ -123,11 +127,14 @@ export default function SupermarketPage() {
   const [sealsStore, setSealsStore] = useState<string | null>(null);
   const [sealsLoading, setSealsLoading] = useState(false);
   const [sealsUnsupported, setSealsUnsupported] = useState(false);
-  const [realTotal, setRealTotal] = useState<{ supported: boolean; total?: number; discount?: number } | null>(null);
+  const [realTotal, setRealTotal] = useState<SupermarketSimulationResult | null>(null);
   const [realTotalStore, setRealTotalStore] = useState<string | null>(null);
   const [realTotalLoading, setRealTotalLoading] = useState(false);
   const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
-  const [repurchases, setRepurchases] = useState<Array<{ term: string; daysSinceLast: number }>>([]);
+  const [repurchases, setRepurchases] = useState<NonNullable<SupermarketHistoryResponse['suggestions']>>([]);
+  const [basketRevision, setBasketRevision] = useState(0);
+  const [recordingPurchase, setRecordingPurchase] = useState(false);
+  const [recordedBasket, setRecordedBasket] = useState<string | null>(null);
 
   const importShoppingList = async (file: File | undefined) => {
     if (!file) return;
@@ -175,8 +182,9 @@ export default function SupermarketPage() {
       ?? null,
     [basketOptions, selectedStore],
   );
-  const showingSeals = seals !== null && sealsStore === selectedBasket?.store;
-  const showingRealTotal = realTotal !== null && realTotalStore === selectedBasket?.store;
+  const basketKey = `${basketRevision}:${supermarketBasketIdentity(selectedBasket?.store, list)}`;
+  const showingSeals = seals !== null && sealsStore === basketKey;
+  const showingRealTotal = realTotal !== null && realTotalStore === basketKey;
   const completeBaskets = basketOptions.filter(basket => basket.complete);
   const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
   const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
@@ -207,6 +215,7 @@ export default function SupermarketPage() {
   const processShoppingList = async () => {
     if (!shoppingInput.trim()) return;
     setLoading(true);
+    setBasketRevision(value => value + 1);
     try {
       const response = await fetch('/api/supermarket', {
         method: 'POST',
@@ -228,23 +237,6 @@ export default function SupermarketPage() {
       setCompared(true);
       setSelectedStore(nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null);
       setList(data.items);
-
-      // Sin esperar: la ruta ignora la escritura si el vecino no activo la
-      // memoria, y guardar no debe demorar la comparacion que si pidio.
-      if (historyEnabled) {
-        void fetch('/api/supermarket/history', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            store: nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null,
-            terms: nextRequested.map(requested => ({
-              term: requested.term,
-              quantity: requested.quantity,
-              unit: requested.unit,
-            })),
-          }),
-        }).catch(() => null);
-      }
 
       toast({
         title: nextOptions.some(basket => basket.complete)
@@ -268,10 +260,7 @@ export default function SupermarketPage() {
     try {
       const response = await fetch('/api/supermarket/history');
       if (!response.ok) return;
-      const data = await response.json() as {
-        enabled?: boolean;
-        suggestions?: Array<{ term: string; daysSinceLast: number }>;
-      };
+      const data = await response.json() as SupermarketHistoryResponse;
       setHistoryEnabled(data.enabled === true);
       setRepurchases(data.suggestions ?? []);
     } catch {
@@ -280,6 +269,35 @@ export default function SupermarketPage() {
   };
 
   useEffect(() => { void refreshHistory(); }, []);
+
+  const recordPurchase = async () => {
+    if (!selectedBasket || !historyEnabled || recordingPurchase) return;
+    setRecordingPurchase(true);
+    try {
+      const response = await fetch('/api/supermarket/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirmed: true,
+          store: selectedBasket.store,
+          terms: list.filter(item => item.available).map(item => ({
+            term: item.requestedTerm,
+            quantity: item.requestedQuantity,
+            unit: item.requestedUnit,
+          })),
+        }),
+      });
+      const data = await response.json() as SupermarketHistoryResponse;
+      if (!response.ok || !data.recorded) throw new Error(data.error || 'No se guardó la compra. Revisa que la memoria siga activa.');
+      setRecordedBasket(basketKey);
+      toast({ title: 'Compra registrada', description: 'Se guardaron los productos disponibles de esta canasta que confirmaste haber comprado.', variant: 'success' });
+      void refreshHistory();
+    } catch (error) {
+      toast({ title: 'No se pudo registrar la compra', description: error instanceof Error ? error.message : 'Intenta nuevamente.', variant: 'destructive' });
+    } finally {
+      setRecordingPurchase(false);
+    }
+  };
 
   const toggleHistory = async (enabled: boolean) => {
     try {
@@ -311,6 +329,11 @@ export default function SupermarketPage() {
   const loadRealTotal = async () => {
     const store = selectedBasket?.store;
     if (!store) return;
+    if (list.some(item => !item.available || !item.sku)) {
+      toast({ title: 'Canasta incompleta', description: 'No se puede consultar el total de toda la canasta mientras haya productos faltantes o sin código.', variant: 'destructive' });
+      return;
+    }
+    setRealTotal(null);
     setRealTotalLoading(true);
     try {
       const response = await fetch('/api/supermarket/real-total', {
@@ -318,15 +341,13 @@ export default function SupermarketPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           store,
-          items: list
-            .filter(item => item.available && item.sku)
-            .map(item => ({ sku: item.sku, quantity: item.quantity })),
+          items: list.map(item => ({ sku: item.sku, quantity: item.quantity })),
         }),
       });
-      const data = await response.json() as { supported?: boolean; total?: number; discount?: number; error?: string };
+      const data = await response.json() as SupermarketSimulationResult;
       if (!response.ok) throw new Error(data.error || 'No se pudo consultar el total real.');
-      setRealTotal({ supported: data.supported === true, total: data.total, discount: data.discount });
-      setRealTotalStore(store);
+      setRealTotal(data);
+      setRealTotalStore(basketKey);
     } catch (error) {
       toast({
         title: 'No se pudo ver el total real',
@@ -341,7 +362,7 @@ export default function SupermarketPage() {
   const loadSeals = async () => {
     const store = selectedBasket?.store;
     if (!store) return;
-    if (sealsStore === store && seals) { setSeals(null); setSealsStore(null); return; }
+    if (showingSeals) { setSeals(null); setSealsStore(null); return; }
     setSealsLoading(true);
     setSealsUnsupported(false);
     try {
@@ -353,11 +374,11 @@ export default function SupermarketPage() {
           skus: list.map(item => item.sku).filter(Boolean),
         }),
       });
-      const data = await response.json() as { supported?: boolean; seals?: Record<string, string[]>; error?: string };
+      const data = await response.json() as SupermarketSealsResponse;
       if (!response.ok) throw new Error(data.error || 'No se pudieron consultar los sellos.');
       setSealsUnsupported(data.supported === false);
       setSeals(data.seals ?? {});
-      setSealsStore(store);
+      setSealsStore(basketKey);
     } catch (error) {
       toast({
         title: 'No se pudieron ver los sellos',
@@ -518,7 +539,7 @@ export default function SupermarketPage() {
             {historyEnabled === false ? (
               <p className="mt-6 text-[11px] leading-5 text-white/40">
                 ¿Que Convive recuerde lo que compras y te proponga la recompra? Se guarda solo lo
-                que pides y puedes borrarlo cuando quieras.{' '}
+                que confirmas haber comprado y puedes borrarlo cuando quieras.{' '}
                 <button
                   type="button"
                   onClick={() => void toggleHistory(true)}
@@ -693,6 +714,17 @@ export default function SupermarketPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <RemoteCartButton store={selectedBasket.store} items={selectedBasket.items} />
+                  {historyEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => void recordPurchase()}
+                      disabled={recordingPurchase || loading || recordedBasket === basketKey || !list.some(item => item.available)}
+                      className="rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary disabled:opacity-50"
+                      style={{ borderColor: 'var(--cc-line)' }}
+                    >
+                      {recordingPurchase ? 'Guardando…' : recordedBasket === basketKey ? 'Compra registrada' : 'Ya compré esta canasta'}
+                    </button>
+                  ) : null}
                   <a
                     href={STORE_HOME[selectedBasket.store]}
                     target="_blank"
@@ -758,9 +790,9 @@ export default function SupermarketPage() {
                 <h2 className="text-lg font-bold cc-text-primary">Detalle de la canasta</h2>
                 <p className="text-xs cc-text-secondary">Producto equivalente, cantidad calculada y precio observado.</p>
                 {showingRealTotal ? (
-                  realTotal?.supported && typeof realTotal.total === 'number' ? (
+                  realTotal?.complete && typeof realTotal.total === 'number' ? (
                     <p className="mt-1 text-xs font-bold" style={{ color: 'var(--cc-sage)' }}>
-                      {selectedBasket?.store} cobra {money(realTotal.total)} por esta canasta
+                      Subtotal consultado en {selectedBasket?.store}: {money(realTotal.total)} · sin despacho
                       {selectedBasket && Math.abs(realTotal.total - selectedBasket.subtotal) >= 1
                         ? ` · ${money(Math.abs(realTotal.total - selectedBasket.subtotal))} ${realTotal.total < selectedBasket.subtotal ? 'menos' : 'más'} que el estimado`
                         : ' · igual que el estimado'}
@@ -768,7 +800,7 @@ export default function SupermarketPage() {
                     </p>
                   ) : (
                     <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>
-                      {selectedBasket?.store} no permite consultar el total antes de comprar.
+                      {realTotal?.supported ? realTotal.reason || 'No se pudo verificar toda la canasta.' : `${selectedBasket?.store} no permite consultar el total antes de comprar.`}
                     </p>
                   )
                 ) : null}
@@ -853,7 +885,9 @@ export default function SupermarketPage() {
                                   ))}
                                 </span>
                               ) : (
-                                <span className="mt-1 block text-[10px] cc-text-tertiary">Sin sellos</span>
+                                <span className="mt-1 block text-[10px] cc-text-tertiary">
+                                  {Object.prototype.hasOwnProperty.call(seals, item.sku) ? 'Sin sellos informados por la tienda' : 'Sin información de sellos'}
+                                </span>
                               )
                             ) : null}
                           </>

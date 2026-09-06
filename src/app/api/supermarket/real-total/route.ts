@@ -19,10 +19,10 @@ function parseItems(value: unknown): SimulationItem[] {
     const sku = typeof item.sku === 'string' || typeof item.sku === 'number'
       ? String(item.sku).trim().slice(0, 80)
       : '';
-    const quantity = Math.round(Number(item.quantity));
-    if (!sku || !Number.isFinite(quantity) || quantity <= 0) return [];
-    return [{ sku, quantity: Math.min(99, quantity) }];
-  }).slice(0, MAX_ITEMS);
+    const quantity = Number(item.quantity);
+    if (!sku || !Number.isInteger(quantity) || quantity <= 0 || quantity > 99) return [];
+    return [{ sku, quantity }];
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
     if (!supportsSimulation(store)) return NextResponse.json({ supported: false });
 
     const items = parseItems(body.items);
-    if (items.length === 0) return NextResponse.json({ supported: false });
+    if (!Array.isArray(body.items) || items.length === 0 || items.length > MAX_ITEMS || items.length !== body.items.length) {
+      return NextResponse.json({ error: 'Consulta hasta 60 productos, todos con SKU y cantidades enteras de 1 a 99. No se calculó un total parcial.' }, { status: 400 });
+    }
 
     return NextResponse.json(await simulateBasketTotal(store, items));
   } catch (error) {

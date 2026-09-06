@@ -76,6 +76,8 @@ export async function fetchSealsBySku(
     for (const entry of payload) {
       if (entry === null || typeof entry !== 'object') continue;
       const product = entry as Record<string, unknown>;
+      // An absent or malformed specification is unknown, not proof of no seals.
+      if (!Array.isArray(product[source.field])) continue;
       const seals = cleanSeals(product[source.field]);
       for (const sku of skuOf(product)) {
         if (wanted.includes(sku)) bySku[sku] = seals;
