@@ -384,7 +384,7 @@ function viewerHtml(session) {
     *{box-sizing:border-box}html,body{height:100%;margin:0}body{display:grid;grid-template-rows:auto 1fr;background:var(--cream);color:var(--ink);font:15px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
     header{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,520px) auto;gap:18px;align-items:center;padding:12px 18px;background:var(--white);border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(23,34,29,.08);z-index:2}
     .brand{display:flex;align-items:center;gap:10px;font-weight:800}.brand svg{width:30px;height:30px;color:var(--green)}.store{color:var(--green)}
-    .status{min-width:0}.status-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}progress{display:block;width:100%;height:8px;accent-color:var(--green)}
+    .status{min-width:0}.status-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}.missing{margin-top:4px;font-size:12px;color:var(--amber,#b45309);white-space:normal}progress{display:block;width:100%;height:8px;accent-color:var(--green)}
     .actions{display:flex;gap:8px}button{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--white);color:var(--ink);font:inherit;font-weight:750;cursor:pointer}button.primary{display:none;border-color:var(--green);background:var(--green);color:#fff}button.danger{color:var(--danger)}button:disabled{cursor:wait;opacity:.6}
     main{min-height:0;padding:10px}iframe{width:100%;height:100%;border:1px solid var(--line);border-radius:14px;background:#e8ece9;box-shadow:0 6px 28px rgba(23,34,29,.10)}
     .privacy{position:fixed;right:22px;bottom:18px;z-index:3;max-width:410px;padding:8px 12px;border-radius:9px;background:rgba(23,34,29,.88);color:#fff;font-size:12px;pointer-events:none}
@@ -400,6 +400,7 @@ function viewerHtml(session) {
     <div class="status" aria-live="polite">
       <div class="status-row"><strong id="state">Iniciando…</strong><span id="counter">0 / ${session.total}</span></div>
       <div id="detail" class="detail">${session.detail}</div>
+      <div id="missing" class="missing" hidden></div>
       <progress id="progress" max="${Math.max(1, session.total)}" value="0"></progress>
     </div>
     <div class="actions">
@@ -413,6 +414,7 @@ function viewerHtml(session) {
     const endpoint = ${JSON.stringify(sessionPath)};
     const state = document.querySelector('#state');
     const detail = document.querySelector('#detail');
+    const missing = document.querySelector('#missing');
     const counter = document.querySelector('#counter');
     const progress = document.querySelector('#progress');
     const resume = document.querySelector('#resume');
@@ -430,6 +432,13 @@ function viewerHtml(session) {
           ?' · La tienda cobra $'+Number(data.cartTotal).toLocaleString('es-CL')
           :'');
         counter.textContent=String(data.current)+' / '+String(data.total);
+        // Un carro con menos productos de los pedidos tiene que decir cuales
+        // faltan. Callarlo obliga a la persona a contar en la caja.
+        const faltan=Array.isArray(data.missingItems)?data.missingItems:[];
+        missing.hidden=faltan.length===0;
+        missing.textContent=faltan.length
+          ?'No pudimos agregar: '+faltan.join(', ')+'. Búscalos en la tienda si los necesitas.'
+          :'';
         progress.max=Math.max(1,data.total);progress.value=data.current;
         resume.style.display=data.status==='needs_user'?'inline-block':'none';
       }catch{detail.textContent='Reconectando con el navegador seguro…'}
