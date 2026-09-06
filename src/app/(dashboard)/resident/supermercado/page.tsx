@@ -464,65 +464,81 @@ export default function SupermarketPage() {
               <li><strong className="text-white">2.</strong> Compara y resuelve faltantes</li>
               <li><strong className="text-white">3.</strong> Carga el carro elegido</li>
             </ol>
-            {historyEnabled === false ? (
-              <div className="mt-4 rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.18)' }}>
-                <p className="text-xs text-white/80">
-                  ¿Quieres que Convive recuerde lo que compras y te proponga la recompra?
-                  Se guarda solo lo que pides, nadie más lo ve, y puedes borrarlo cuando quieras.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void toggleHistory(true)}
-                  className="mt-2 rounded-full border px-3 py-1.5 text-xs font-bold text-white hover:bg-white/10"
-                  style={{ borderColor: 'rgba(255,255,255,0.3)' }}
-                >
-                  Activar memoria de compras
-                </button>
-              </div>
-            ) : null}
+            {/*
+              Las dos filas de chips hacen lo mismo -rellenar la lista- asi que
+              van juntas y rotuladas. Lo personal primero y en solido; las
+              plantillas despues y en contorno, para que no compitan.
+            */}
+            <div className="mt-6 space-y-4">
+              {repurchases.length > 0 ? (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                    Toca reponer
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {repurchases.slice(0, 6).map(item => (
+                      <button
+                        key={item.term}
+                        type="button"
+                        onClick={() => setShoppingInput(current => (
+                          current.trim() ? `${current.trim()}\n${item.term}` : item.term
+                        ))}
+                        className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/20"
+                        style={{ background: 'rgba(255,255,255,0.12)' }}
+                      >
+                        {item.term}
+                        <span className="ml-1.5 font-normal text-white/45">{item.daysSinceLast} d</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
-            {repurchases.length > 0 ? (
-              <div className="mt-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/60">Toca reponer</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {repurchases.slice(0, 8).map(item => (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                  Listas de ejemplo
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {LIST_SUGGESTIONS.map(suggestion => (
                     <button
-                      key={item.term}
+                      key={suggestion.title}
                       type="button"
-                      onClick={() => setShoppingInput(current => (
-                        current.trim() ? `${current.trim()}
-${item.term}` : item.term
-                      ))}
-                      className="rounded-full border px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
-                      style={{ borderColor: 'rgba(255,255,255,0.18)' }}
+                      onClick={() => setShoppingInput(suggestion.items.join('\n'))}
+                      className="rounded-full border px-3 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10"
+                      style={{ borderColor: 'rgba(255,255,255,0.16)' }}
                     >
-                      {item.term} · hace {item.daysSinceLast} d
+                      {suggestion.title}
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Ofrecimiento secundario: una linea al pie, no una tarjeta que compita. */}
+            {historyEnabled === false ? (
+              <p className="mt-6 text-[11px] leading-5 text-white/40">
+                ¿Que Convive recuerde lo que compras y te proponga la recompra? Se guarda solo lo
+                que pides y puedes borrarlo cuando quieras.{' '}
+                <button
+                  type="button"
+                  onClick={() => void toggleHistory(true)}
+                  className="font-semibold text-white/75 underline underline-offset-2 hover:text-white"
+                >
+                  Activar
+                </button>
+              </p>
+            ) : null}
+            {historyEnabled === true ? (
+              <p className="mt-6 text-[11px] text-white/30">
                 <button
                   type="button"
                   onClick={() => void toggleHistory(false)}
-                  className="mt-2 text-[11px] text-white/50 underline hover:text-white/80"
+                  className="underline underline-offset-2 hover:text-white/60"
                 >
-                  Dejar de recordar y borrar lo guardado
+                  Dejar de recordar mis compras
                 </button>
-              </div>
+              </p>
             ) : null}
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {LIST_SUGGESTIONS.map(suggestion => (
-                <button
-                  key={suggestion.title}
-                  type="button"
-                  onClick={() => setShoppingInput(suggestion.items.join('\n'))}
-                  className="rounded-full border px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
-                  style={{ borderColor: 'rgba(255,255,255,0.18)' }}
-                >
-                  {suggestion.title}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="rounded-2xl border p-5" style={{ borderColor: 'rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.08)' }}>
