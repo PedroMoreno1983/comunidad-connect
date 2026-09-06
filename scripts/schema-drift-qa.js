@@ -93,6 +93,70 @@ async function liveSchema() {
     return tables;
 }
 
+/**
+ * Tablas que existen en la base y que schema.sql todavía no declara.
+ *
+ * Medido el 2026-09-06: la base tiene 94 tablas y schema.sql declara 40. O sea
+ * que el archivo que el CLAUDE.md llama "el retrato consolidado del esquema"
+ * cubre el 43%, y hasta hoy nada lo detectaba: la comprobación de columnas solo
+ * mira en una dirección, de lo declarado hacia la base, así que una tabla que
+ * nunca se escribió en schema.sql era invisible para el guard.
+ *
+ * No se resuelve declarándolas de golpe. El DDL real -claves foráneas, defaults,
+ * políticas RLS- solo sale de un dump de la base, y escribir una versión
+ * aproximada dejaría un schema.sql que parece completo y miente sobre las
+ * definiciones, que es peor que el hueco.
+ *
+ * Esta lista es un trinquete: congela la deuda conocida para que no crezca. Una
+ * tabla nueva sin declarar rompe la comprobación; ir borrando nombres de aquí a
+ * medida que se declaran es la forma de saldarla.
+ */
+const UNDECLARED_TABLES_BASELINE = new Set([
+    'agent_action_approvals', 'agent_activity_log', 'agent_memories', 'agent_policies',
+    'agent_runs', 'agent_task_steps', 'agent_tasks', 'agent_tool_calls',
+    'agent_trigger_events', 'agent_trigger_rules', 'ai_budgets', 'ai_usage_events',
+    'annual_budgets', 'api_rate_limits', 'bank_transactions', 'billing_runs',
+    'building_assets', 'chat_messages', 'coco_sessions', 'coco_user_memory',
+    'community_expenses', 'instagram_connections', 'maintenance_logs', 'maintenance_tasks',
+    'marketing_reel_campaigns', 'marketing_reels', 'marketplace_chats', 'marketplace_messages',
+    'onboarding_import_batches', 'onboarding_import_documents', 'onboarding_import_rows',
+    'operation_events', 'parking_access_events', 'parking_bookings', 'parking_community_access',
+    'parking_drivers', 'parking_spot_availability', 'parking_spots', 'platform_operation_events',
+    'reserve_fund_movements', 'solidarity_contributions',
+    'solidarity_funds', 'solidarity_ledger', 'solidarity_tasks', 'supermarket_cart_plans',
+    'supermarket_group_order_items', 'supermarket_group_order_members', 'supermarket_group_orders',
+    'supermarket_price_history', 'supermarket_products', 'supermarket_scrape_runs',
+    'unit_charges', 'unit_payments', 'visitors',
+]);
+
+function checkUndeclaredTables(declared, live) {
+    const undeclared = Object.keys(live).filter(table => !declared[table]);
+    const nuevas = undeclared.filter(table => !UNDECLARED_TABLES_BASELINE.has(table));
+    const saldadas = [...UNDECLARED_TABLES_BASELINE].filter(table => live[table] && declared[table]);
+
+    if (nuevas.length) {
+        fail(
+            'Hay tablas en la base que schema.sql no declara y que tampoco están en la deuda conocida. '
+            + 'Cada tabla ausente es una parte del esquema que nadie puede leer en el repositorio, y que '
+            + 'el guard de columnas no puede vigilar. Decláralas en schema.sql, o agrégalas al baseline '
+            + 'con una razón si de verdad no corresponde declararlas.',
+            { nuevas },
+        );
+    } else {
+        pass('Ninguna tabla nueva quedó fuera de schema.sql', {
+            tablasEnLaBase: Object.keys(live).length,
+            declaradas: Object.keys(declared).length,
+            deudaConocida: undeclared.length,
+        });
+    }
+
+    if (saldadas.length) {
+        report.skipped.push(
+            `Ya se declararon en schema.sql y pueden salir de UNDECLARED_TABLES_BASELINE: ${saldadas.join(', ')}`,
+        );
+    }
+}
+
 function checkMigrationHistory() {
     let raw;
     try {
@@ -175,6 +239,7 @@ async function main() {
         report.skipped.push(`Tablas declaradas que PostgREST no expone: ${missingTables.join(', ')}`);
     }
 
+    checkUndeclaredTables(declared, live);
     checkMigrationHistory();
     report.passed = report.failures.length === 0;
 }
