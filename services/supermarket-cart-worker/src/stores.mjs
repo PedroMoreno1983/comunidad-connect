@@ -160,6 +160,10 @@ export function publicStatus(session) {
     failed: session.failed,
     detail: session.detail,
     itemName: session.itemName || undefined,
+    // Lo que la tienda dice que cobra, leido de su propio carro. Para Lider y
+    // aCuenta es el unico total real que llegamos a ver: no exponen una
+    // simulacion como las cadenas VTEX.
+    cartTotal: session.cartTotal || undefined,
     missingItems: session.missingItems,
     expiresAt: new Date(session.expiresAt).toISOString(),
   };

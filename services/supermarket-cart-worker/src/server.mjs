@@ -424,7 +424,11 @@ function viewerHtml(session) {
         if(!response.ok){state.textContent='Sesión finalizada';detail.textContent='La sesión expiró o se cerró. Vuelve a Convive y carga el carro otra vez.';resume.style.display='none';return;}
         const data=await response.json();
         state.textContent=labels[data.status]||data.status;
-        detail.textContent=data.detail||'';
+        // El total sale del carro de la tienda, no de nuestra estimacion: es el
+        // numero que la persona va a pagar y conviene que lo vea antes.
+        detail.textContent=(data.detail||'')+(data.cartTotal
+          ?' · La tienda cobra $'+Number(data.cartTotal).toLocaleString('es-CL')
+          :'');
         counter.textContent=String(data.current)+' / '+String(data.total);
         progress.max=Math.max(1,data.total);progress.value=data.current;
         resume.style.display=data.status==='needs_user'?'inline-block':'none';
