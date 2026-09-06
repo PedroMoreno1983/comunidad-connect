@@ -1,5 +1,6 @@
 import { Browser, Builder, By } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
+import { normalize, parseCartTotal } from './cartTotal.mjs';
 
 const BLOCKED_TEXT = [
   'robot or human',
@@ -51,15 +52,6 @@ const INTERVENTION_TEXT = [
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 const ITEM_PACING_MS = 4_000;
-
-function normalize(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 async function seleniumReady(url) {
   const controller = new AbortController();
@@ -314,6 +306,10 @@ async function processDirectCart(driver, session, hooks) {
   return false;
 }
 
+async function readCartTotal(driver) {
+  return parseCartTotal(await bodyText(driver));
+}
+
 async function openCart(driver, config) {
   const button = config.openCartSelectors
     ? await firstVisible(driver, config.openCartSelectors)
@@ -366,10 +362,14 @@ export async function runCartAutomation(driver, session, hooks) {
   }
 
   await openCart(driver, session.config);
+  // La tienda ya muestra su total aca. Es el unico numero real que tenemos para
+  // Lider y aCuenta, que no exponen una simulacion como las cadenas VTEX.
+  session.cartTotal = await readCartTotal(driver).catch(() => 0);
   hooks.update({
     status: session.failed === 0 ? 'ready' : 'partial',
     current: session.total,
     itemName: '',
+    cartTotal: session.cartTotal,
     detail: session.failed === 0
       ? `Carro verificado con ${session.added} productos. Revísalo antes de pagar.`
       : `Carro abierto: ${session.added} productos confirmados y ${session.failed} pendientes.`,
