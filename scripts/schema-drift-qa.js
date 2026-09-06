@@ -51,33 +51,41 @@ function declaredSchema() {
     const sql = fs.readFileSync(path.join(process.cwd(), 'schema.sql'), 'utf8');
     const tables = {};
 
-    const createBlock = /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?public\.([a-zA-Z0-9_]+)\s*\(([\s\S]*?)\n\);/gi;
+    // Acepta las dos formas que convivien en el archivo: la escrita a mano
+    // (public.tabla) y la que produce pg_dump ("public"."tabla").
+    const createBlock = /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?"?public"?\."?([a-zA-Z0-9_]+)"?\s*\(([\s\S]*?)\n\);/gi;
     let match;
     while ((match = createBlock.exec(sql))) {
         const table = match[1].toLowerCase();
         const columns = match[2].split('\n')
             .map(line => line.trim())
             .filter(line => line && !/^(CONSTRAINT|PRIMARY KEY|UNIQUE|FOREIGN KEY|CHECK|--)/i.test(line))
-            .map(line => (line.match(/^"?([a-zA-Z0-9_]+)"?\s+[A-Za-z]/) || [])[1])
+            .map(line => (line.match(/^"?([a-zA-Z0-9_]+)"?\s+"?[A-Za-z]/) || [])[1])
             .filter(Boolean)
             .map(column => column.toLowerCase());
         tables[table] = new Set([...(tables[table] || []), ...columns]);
     }
 
-    const addColumn = /ALTER TABLE\s+(?:IF EXISTS\s+)?public\.([a-zA-Z0-9_]+)\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?"?([a-zA-Z0-9_]+)"?/gi;
+    // Solo cuenta como declarada la que tiene CREATE TABLE. Sin esto una tabla
+    // con un ALTER suelto parecia declarada aunque su definicion no estuviera:
+    // paso con solidarity_applications, y el chequeo de columnas terminaba
+    // validando unicamente las alteradas, con falsa confianza.
+    const created = new Set(Object.keys(tables));
+
+    const addColumn = /ALTER TABLE\s+(?:IF EXISTS\s+)?"?public"?\."?([a-zA-Z0-9_]+)"?\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?"?([a-zA-Z0-9_]+)"?/gi;
     while ((match = addColumn.exec(sql))) {
         const table = match[1].toLowerCase();
         (tables[table] = tables[table] || new Set()).add(match[2].toLowerCase());
     }
 
     // Un DROP posterior gana sobre la declaración original.
-    const dropColumn = /ALTER TABLE\s+(?:IF EXISTS\s+)?public\.([a-zA-Z0-9_]+)\s+DROP COLUMN\s+(?:IF EXISTS\s+)?"?([a-zA-Z0-9_]+)"?/gi;
+    const dropColumn = /ALTER TABLE\s+(?:IF EXISTS\s+)?"?public"?\."?([a-zA-Z0-9_]+)"?\s+DROP COLUMN\s+(?:IF EXISTS\s+)?"?([a-zA-Z0-9_]+)"?/gi;
     while ((match = dropColumn.exec(sql))) {
         const table = match[1].toLowerCase();
         if (tables[table]) tables[table].delete(match[2].toLowerCase());
     }
 
-    return tables;
+    return { tables, created };
 }
 
 async function liveSchema() {
@@ -112,27 +120,15 @@ async function liveSchema() {
  * medida que se declaran es la forma de saldarla.
  */
 const UNDECLARED_TABLES_BASELINE = new Set([
-    'agent_action_approvals', 'agent_activity_log', 'agent_memories', 'agent_policies',
-    'agent_runs', 'agent_task_steps', 'agent_tasks', 'agent_tool_calls',
-    'agent_trigger_events', 'agent_trigger_rules', 'ai_budgets', 'ai_usage_events',
-    'annual_budgets', 'api_rate_limits', 'bank_transactions', 'billing_runs',
-    'building_assets', 'chat_messages', 'coco_sessions', 'coco_user_memory',
-    'community_expenses', 'instagram_connections', 'maintenance_logs', 'maintenance_tasks',
-    'marketing_reel_campaigns', 'marketing_reels', 'marketplace_chats', 'marketplace_messages',
-    'onboarding_import_batches', 'onboarding_import_documents', 'onboarding_import_rows',
-    'operation_events', 'parking_access_events', 'parking_bookings', 'parking_community_access',
-    'parking_drivers', 'parking_spot_availability', 'parking_spots', 'platform_operation_events',
-    'reserve_fund_movements', 'solidarity_contributions',
-    'solidarity_funds', 'solidarity_ledger', 'solidarity_tasks', 'supermarket_cart_plans',
-    'supermarket_group_order_items', 'supermarket_group_order_members', 'supermarket_group_orders',
-    'supermarket_price_history', 'supermarket_products', 'supermarket_scrape_runs',
-    'unit_charges', 'unit_payments', 'visitors',
+    // Vacio desde el 2026-09-06: las 55 tablas que faltaban se declararon con su
+    // DDL real, sacado de `supabase db dump`. Si algo entra aca de nuevo, tiene
+    // que venir con la razon por la que no corresponde declararlo.
 ]);
 
-function checkUndeclaredTables(declared, live) {
-    const undeclared = Object.keys(live).filter(table => !declared[table]);
+function checkUndeclaredTables(created, live) {
+    const undeclared = Object.keys(live).filter(table => !created.has(table));
     const nuevas = undeclared.filter(table => !UNDECLARED_TABLES_BASELINE.has(table));
-    const saldadas = [...UNDECLARED_TABLES_BASELINE].filter(table => live[table] && declared[table]);
+    const saldadas = [...UNDECLARED_TABLES_BASELINE].filter(table => live[table] && created.has(table));
 
     if (nuevas.length) {
         fail(
@@ -145,7 +141,7 @@ function checkUndeclaredTables(declared, live) {
     } else {
         pass('Ninguna tabla nueva quedó fuera de schema.sql', {
             tablasEnLaBase: Object.keys(live).length,
-            declaradas: Object.keys(declared).length,
+            declaradas: created.size,
             deudaConocida: undeclared.length,
         });
     }
@@ -209,7 +205,7 @@ async function main() {
         return;
     }
 
-    const declared = declaredSchema();
+    const { tables: declared, created } = declaredSchema();
     const live = await liveSchema();
 
     const missingColumns = [];
@@ -239,7 +235,7 @@ async function main() {
         report.skipped.push(`Tablas declaradas que PostgREST no expone: ${missingTables.join(', ')}`);
     }
 
-    checkUndeclaredTables(declared, live);
+    checkUndeclaredTables(created, live);
     checkMigrationHistory();
     report.passed = report.failures.length === 0;
 }
