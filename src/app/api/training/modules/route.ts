@@ -2,6 +2,7 @@
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
+import type { TrainingModule } from '@/lib/types';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -22,7 +23,11 @@ export async function GET(req: NextRequest) {
         .select('id,title,description,target_audience,is_active,community_id,created_at,training_lessons(id,title,content,order_index)')
         .eq('is_active', true)
         .or(`community_id.is.null,community_id.eq.${profile.community_id}`)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        // La pantalla abre `training_lessons[0]`. Sin este orden, cual es la
+        // primera lo decidia el motor, y un modulo con varias lecciones podia
+        // abrir cualquiera.
+        .order('order_index', { referencedTable: 'training_lessons', ascending: true });
 
     if (profile.role !== 'admin') {
         query = query.in('target_audience', ['all', profile.role]);
@@ -33,7 +38,8 @@ export async function GET(req: NextRequest) {
         console.error('[training/modules] Read failed:', error.message);
         return NextResponse.json({ error: 'No se pudieron cargar los cursos.' }, { status: 500 });
     }
-    return NextResponse.json(data || []);
+    const modules: TrainingModule[] = (data || []) as TrainingModule[];
+    return NextResponse.json(modules);
 }
 
 export async function POST(req: NextRequest) {

@@ -2314,3 +2314,86 @@ export interface MarketplacePublicationSummary {
     imageCount: number;
     createdAt: string;
 }
+
+// ─── Reels Agent (marketing) ────────────────────────────────────────────────
+
+/** Lo que hay configurado hoy: cada bandera es una credencial presente o no. */
+export interface MarketingCapabilities {
+    aiScriptGeneration: boolean;
+    videoRendering: boolean;
+    professionalAudio: boolean;
+    videoAiGeneration: boolean;
+    videoAiProvider: string | null;
+    instagramPublishing: boolean;
+    instagramOAuth: boolean;
+    cronSecretConfigured: boolean;
+}
+
+export interface MarketingReelsDashboard {
+    campaigns: MarketingCampaign[];
+    reels: MarketingReelRecord[];
+    instagram: InstagramConnectionSummary;
+    capabilities: MarketingCapabilities;
+}
+
+/** El POST devuelve el mismo panel más el reel recién generado. */
+export interface MarketingReelsDashboardResponse extends Partial<MarketingReelsDashboard> {
+    error?: string;
+    reel?: MarketingReelRecord;
+}
+
+// ─── Aula virtual ───────────────────────────────────────────────────────────
+
+export interface TrainingLesson {
+    id: string;
+    title: string;
+    content: string;
+    order_index: number;
+}
+
+export interface TrainingModule {
+    id: string;
+    title: string;
+    description: string;
+    target_audience?: string | null;
+    is_active?: boolean | null;
+    community_id?: string | null;
+    created_at?: string | null;
+    training_lessons: TrainingLesson[];
+}
+
+export interface TrainingProgressRecord {
+    module_id: string;
+    status: 'in_progress' | 'completed';
+    last_slide_index: number;
+    started_at?: string | null;
+    completed_at?: string | null;
+    updated_at?: string | null;
+}
+
+// ─── Invitaciones QR de un residente ────────────────────────────────────────
+
+export interface QrInvitation {
+    id: string;
+    residentId: string;
+    guestName: string;
+    guestDni: string;
+    status: 'active' | 'used' | 'expired' | 'cancelled';
+    validFrom: string;
+    validTo: string;
+    qrCode: string;
+}
+
+export interface QrInvitationDatabaseRow {
+    id: string;
+    resident_id?: string | null;
+    unit_id?: string | null;
+    guest_name?: string | null;
+    guest_dni?: string | null;
+    status?: QrInvitation['status'] | null;
+    valid_from?: string | null;
+    valid_to?: string | null;
+    qr_code?: string | null;
+    community_id?: string | null;
+    created_at?: string | null;
+}

@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { 
-    Amenity, ChatMessage, ChatMessageSummary, Conversation, CreatePackageInput, Package as CommunityPackage, PackageDatabaseRow, PackageUnitLookupRow, ProfileSummary, VisitorLogDatabaseRow
+    Amenity, ChatMessage, ChatMessageSummary, Conversation, CreatePackageInput, Package as CommunityPackage, PackageDatabaseRow, PackageUnitLookupRow, ProfileSummary, QrInvitationDatabaseRow, VisitorLogDatabaseRow
 } from '../types';
 
 // ==========================================
@@ -406,7 +406,7 @@ export const CondoFeeService = {
 // QR Invitations Service
 // ==========================================
 export const InvitationService = {
-    async getByResident(residentId: string) {
+    async getByResident(residentId: string): Promise<QrInvitationDatabaseRow[]> {
         const { data, error } = await supabase
             .from('qr_invitations')
             .select('*')
@@ -414,7 +414,7 @@ export const InvitationService = {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return (data || []) as QrInvitationDatabaseRow[];
     },
 
     async create(invitation: {

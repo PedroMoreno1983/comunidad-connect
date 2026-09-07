@@ -11,30 +11,9 @@ import {
 import { motion } from "framer-motion";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import type { QrInvitation, QrInvitationDatabaseRow } from "@/lib/types";
 
-interface Invitation {
-    id: string;
-    residentId: string;
-    guestName: string;
-    guestDni: string;
-    status: 'active' | 'used' | 'expired' | 'cancelled';
-    validFrom: string;
-    validTo: string;
-    qrCode: string;
-}
-
-type InvitationRow = {
-    id: string;
-    resident_id?: string | null;
-    guest_name?: string | null;
-    guest_dni?: string | null;
-    status?: Invitation["status"] | null;
-    valid_from?: string | null;
-    valid_to?: string | null;
-    qr_code?: string | null;
-};
-
-function mapInvitationRow(invitation: InvitationRow): Invitation {
+function mapInvitationRow(invitation: QrInvitationDatabaseRow): QrInvitation {
     return {
         id: invitation.id,
         residentId: invitation.resident_id || "",
@@ -49,7 +28,7 @@ function mapInvitationRow(invitation: InvitationRow): Invitation {
 
 export default function ResidentInvitationsPage() {
     const { user } = useAuth();
-    const [invitations, setInvitations] = useState<Invitation[]>([]);
+    const [invitations, setInvitations] = useState<QrInvitation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -58,7 +37,7 @@ export default function ResidentInvitationsPage() {
             try {
                 setIsLoading(true);
                 const data = await InvitationService.getByResident(user.id);
-                if (data) setInvitations((data as InvitationRow[]).map(mapInvitationRow));
+                if (data) setInvitations(data.map(mapInvitationRow));
             } catch (error) {
                 console.error("Error fetching invitations:", error);
             } finally {
