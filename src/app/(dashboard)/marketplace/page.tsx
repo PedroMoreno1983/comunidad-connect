@@ -6,7 +6,7 @@ import { MarketplaceService } from "@/lib/api";
 import {
     CheckCircle2, ExternalLink, Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info
 } from "lucide-react";
-import { MarketplaceItem } from "@/lib/types";
+import type { MarketplaceItem, MarketplacePublicationSummary } from "@/lib/types";
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Dialog,
@@ -49,14 +49,6 @@ const categoryConfig: Record<string, {
     other: { icon: Package, gradient: 'from-[#10B981] to-[#0D9488]', bg: 'bg-success-bg' },
 };
 
-type PublicationSummary = {
-    title: string;
-    modes: string[];
-    imageCount: number;
-    createdAt: string;
-};
-
-
 export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [items, setItems] = useState<MarketplaceItem[]>([]);
@@ -71,7 +63,7 @@ export default function MarketplacePage() {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatItem, setChatItem] = useState<MarketplaceItem | null>(null);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-    const [publicationSummary, setPublicationSummary] = useState<PublicationSummary | null>(null);
+    const [publicationSummary, setPublicationSummary] = useState<MarketplacePublicationSummary | null>(null);
     const [newItem, setNewItem] = useState({
         title: '',
         price: '',
@@ -260,7 +252,7 @@ export default function MarketplacePage() {
         setSortMode('recent');
     };
 
-    const showPublicationSummary = (summary: PublicationSummary) => {
+    const showPublicationSummary = (summary: MarketplacePublicationSummary) => {
         setPublicationSummary(summary);
         window.setTimeout(() => {
             publicationSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });

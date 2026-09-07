@@ -15,37 +15,9 @@ import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
+import type { ExpenseDatabaseRow, UnitExpenseView } from "@/lib/types";
 
-interface Expense {
-    id: string;
-    unitId: string;
-    month: string;
-    amount: number;
-    status: 'paid' | 'pending' | 'overdue' | string;
-    dueDate: string;
-    paidAt?: string | null;
-    paymentAmount?: number | null;
-    breakdown?: { label: string; amount: number }[];
-}
-
-type ExpenseItemRow = {
-    label?: string | null;
-    amount?: number | string | null;
-};
-
-type SupabaseExpenseRow = {
-    id: string;
-    unit_id?: string | null;
-    month?: string | null;
-    amount?: number | string | null;
-    status?: Expense["status"] | null;
-    due_date?: string | null;
-    paid_at?: string | null;
-    payment_metadata?: { amount?: number | string | null } | null;
-    items?: ExpenseItemRow[] | null;
-};
-
-function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
+function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
     return {
         id: expense.id,
         unitId: expense.unit_id || "",
@@ -55,7 +27,10 @@ function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
         dueDate: expense.due_date || new Date().toISOString(),
         paidAt: expense.paid_at || null,
         paymentAmount: expense.payment_metadata?.amount != null ? Number(expense.payment_metadata.amount) : null,
+        // `expense_items.category` es NOT NULL y esta acotada por CHECK, pero el
+        // mapeo la descartaba: el desglose llegaba sin saber de que es cada linea.
         breakdown: (expense.items || []).map(item => ({
+            category: item.category || "other",
             label: item.label || "Concepto",
             amount: Number(item.amount || 0),
         })),
@@ -68,7 +43,7 @@ export default function ExpensesPage() {
     const { toast } = useToast();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expenses, setExpenses] = useState<UnitExpenseView[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPaying, setIsPaying] = useState<string | null>(null);
     const [step, setStep] = useState<"review" | "success">("review");
@@ -91,12 +66,12 @@ export default function ExpensesPage() {
 
             try {
                 setIsLoading(true);
-                let mapped = ((await ExpensesService.getExpenses(targetUnitId) || []) as SupabaseExpenseRow[]).map(mapExpenseRow);
+                let mapped = ((await ExpensesService.getExpenses(targetUnitId) || [])).map(mapExpenseRow);
 
                 if (paymentReturnExpenseId) {
                     for (let attempt = 0; attempt < 3 && !mapped.some(expense => expense.id === paymentReturnExpenseId && expense.status === "paid"); attempt += 1) {
                         await new Promise(resolve => setTimeout(resolve, 1200));
-                        mapped = ((await ExpensesService.getExpenses(targetUnitId) || []) as SupabaseExpenseRow[]).map(mapExpenseRow);
+                        mapped = ((await ExpensesService.getExpenses(targetUnitId) || [])).map(mapExpenseRow);
                     }
 
                     const paidExpense = mapped.find(expense => expense.id === paymentReturnExpenseId && expense.status === "paid");

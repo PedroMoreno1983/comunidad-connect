@@ -22,7 +22,8 @@
  * disponible, se conserva la clarificacion original como red de seguridad.
  */
 
-import { askCoCo, type CoCoPendingAction } from '@/lib/coco/agent';
+import { askCoCo } from '@/lib/coco/agent';
+import type { CoCoPendingAction } from '@/lib/types';
 import { getSession, saveSession } from '@/lib/coco/session-store';
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 

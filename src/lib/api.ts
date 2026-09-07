@@ -66,7 +66,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, ExpenseDatabaseRow, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function sendBookingConfirmation(payload: {
     bookingId: string;
@@ -1903,7 +1903,7 @@ export const PollsService = {
 // ==========================================
 export const ExpensesService = {
     // Fetch expenses for a specific unit, automatically joining items
-    async getExpenses(unitId: string) {
+    async getExpenses(unitId: string): Promise<ExpenseDatabaseRow[]> {
         const { data, error } = await supabase
             .from('expenses')
             .select(`
@@ -1918,7 +1918,7 @@ export const ExpensesService = {
             throw error;
         }
 
-        return data;
+        return (data || []) as ExpenseDatabaseRow[];
     }
 };
 
@@ -2084,14 +2084,14 @@ export const ResidentFinanceService = {
 // FEED / ANUNCIOS (ANNOUNCEMENTS)
 // ==========================================
 export const AnnouncementsService = {
-    async getAnnouncements() {
+    async getAnnouncements(): Promise<AnnouncementDatabaseRow[]> {
         const { data, error } = await supabase
             .from('announcements')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return (data || []) as AnnouncementDatabaseRow[];
     },
 
     async createAnnouncement(announcementData: CreateAnnouncementInput) {

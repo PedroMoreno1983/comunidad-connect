@@ -14,6 +14,7 @@ import type { ConversationMessage, SessionData } from './session-store';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
+import type { CoCoPendingAction, CoCoResolutions } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 const anthropic = new Anthropic({
@@ -33,14 +34,6 @@ export interface CoCoImageAttachment {
     data: string;
 }
 
-export interface CoCoPendingAction {
-    toolUseId: string;
-    name: string;
-    input: Record<string, unknown>;
-    title: string;
-    summary: string;
-}
-
 export interface CoCoResponse {
     reply: string;
     navigate?: string;
@@ -50,8 +43,6 @@ export interface CoCoResponse {
     pendingActions?: CoCoPendingAction[];
 }
 
-/** Resoluciones del usuario a una tanda de acciones pendientes, indexadas por tool_use_id. */
-export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
 
 export class CoCoPendingResolutionError extends Error {
     constructor(message: string) {

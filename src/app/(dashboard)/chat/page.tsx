@@ -10,31 +10,7 @@ import remarkGfm from "remark-gfm";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
 import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
-
-interface PendingAction {
-    toolUseId: string;
-    name: string;
-    input: Record<string, unknown>;
-    title: string;
-    summary: string;
-}
-
-interface Message {
-    id: string;
-    role: "user" | "assistant";
-    text: string;
-    nav?: string;
-    action?: string;
-    pendingActions?: PendingAction[];
-    resolvedActions?: Record<string, "approved" | "rejected">;
-}
-
-interface CoCoApiResponse {
-    reply?: string;
-    navigate?: string;
-    action?: string;
-    pendingActions?: PendingAction[];
-}
+import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction } from "@/lib/types";
 
 function CoCoMarkdown({ text }: { text: string }) {
     return (
@@ -66,7 +42,7 @@ const CHIPS = [
 export default function CoCoChatPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
-    const [msgs, setMsgs] = useState<Message[]>([
+    const [msgs, setMsgs] = useState<CoCoChatMessage[]>([
         {
             id: "welcome",
             role: "assistant",
@@ -174,7 +150,7 @@ export default function CoCoChatPage() {
 
     const resolveAction = async (
         messageId: string,
-        pendingActions: PendingAction[],
+        pendingActions: CoCoPendingAction[],
         toolUseId: string,
         decision: "approved" | "rejected",
     ) => {

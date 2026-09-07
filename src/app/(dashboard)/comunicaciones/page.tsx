@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
-import type { Announcement, AnnouncementDatabaseRow } from "@/lib/types";
+import type { Announcement } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
@@ -39,7 +39,7 @@ export default function ComunicacionesPage() {
         const fetch = async () => {
             try {
                 const data = await AnnouncementsService.getAnnouncements();
-                const mapped = (data as AnnouncementDatabaseRow[]).map((ann): Announcement => ({
+                const mapped = data.map((ann): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
