@@ -6,32 +6,7 @@ import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
-
-type WhatsAppStatus = {
-    configured: boolean;
-    webhookConfigured: boolean;
-    accountSidMasked: string;
-    fromMasked: string;
-    webhookUrl: string;
-    requiredEnv: Record<string, boolean>;
-    setup?: {
-        provider: string;
-        inboundMethod: string;
-        inboundContentType: string;
-        inboundPath: string;
-        outboundPath: string;
-    };
-};
-
-type BroadcastResult = {
-    sent: number;
-    skipped: number;
-    failed: number;
-    recipients: number;
-    truncated?: boolean;
-    detail?: string;
-    failures?: { userId: string; reason: string }[];
-};
+import type { WhatsAppBroadcastResponse, WhatsAppBroadcastResult, WhatsAppStatus } from "@/lib/types";
 
 /**
  * Envio de un aviso a toda la comunidad.
@@ -47,7 +22,7 @@ function BroadcastPanel() {
     const [audience, setAudience] = useState<number | null>(null);
     const [checking, setChecking] = useState(false);
     const [sending, setSending] = useState(false);
-    const [result, setResult] = useState<BroadcastResult | null>(null);
+    const [result, setResult] = useState<WhatsAppBroadcastResult | null>(null);
 
     const checkAudience = async () => {
         setChecking(true);
@@ -58,9 +33,9 @@ function BroadcastPanel() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title: title.trim() || "consulta", dryRun: true }),
             });
-            const data = await response.json();
+            const data = await response.json() as WhatsAppBroadcastResponse;
             if (!response.ok) throw new Error(data.error || "No se pudo consultar.");
-            setAudience(data.recipients);
+            setAudience(data.recipients ?? 0);
         } catch (error: unknown) {
             toast({
                 title: "No se pudo consultar",
@@ -89,13 +64,24 @@ function BroadcastPanel() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title: title.trim(), body: body.trim() }),
             });
-            const data = await response.json();
+            const data = await response.json() as WhatsAppBroadcastResponse;
             if (!response.ok) throw new Error(data.error || "No se pudo enviar.");
-            setResult(data);
+            // La consulta previa y el envio real comparten endpoint pero no
+            // forma: los contadores solo llegan en el envio.
+            const summary: WhatsAppBroadcastResult = {
+                sent: data.sent ?? 0,
+                skipped: data.skipped ?? 0,
+                failed: data.failed ?? 0,
+                recipients: data.recipients ?? 0,
+                truncated: data.truncated,
+                detail: data.detail,
+                failures: data.failures,
+            };
+            setResult(summary);
             toast({
                 title: "Aviso procesado",
-                description: `${data.sent} enviado(s), ${data.skipped} omitido(s), ${data.failed} con error.`,
-                variant: data.failed > 0 ? "destructive" : "success",
+                description: `${summary.sent} enviado(s), ${summary.skipped} omitido(s), ${summary.failed} con error.`,
+                variant: summary.failed > 0 ? "destructive" : "success",
             });
         } catch (error: unknown) {
             toast({
@@ -206,7 +192,7 @@ export default function AdminWhatsAppPage() {
     const loadStatus = async () => {
         setLoading(true);
         const response = await fetch("/api/whatsapp/status", { cache: "no-store" });
-        const data = await response.json();
+        const data = await response.json() as WhatsAppStatus;
         setStatus(data);
         setLoading(false);
     };
@@ -216,7 +202,7 @@ export default function AdminWhatsAppPage() {
 
         async function fetchInitialStatus() {
             const response = await fetch("/api/whatsapp/status", { cache: "no-store" });
-            const data = await response.json();
+            const data = await response.json() as WhatsAppStatus;
             if (!mounted) return;
             setStatus(data);
             setLoading(false);

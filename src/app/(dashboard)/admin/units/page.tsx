@@ -11,19 +11,7 @@ import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 import { useToast } from "@/components/ui/Toast";
 import { WaterService } from "@/lib/api";
 import { equalSplitPermille } from "@/lib/finance/prorration";
-import { Unit } from "@/lib/types";
-
-interface Profile {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-}
-
-type UnitRow = Unit & {
-    profiles?: { name: string; email: string } | null;
-    share_permille?: number | string | null;
-};
+import type { UnitProfileOption, UnitRow } from "@/lib/types";
 
 function getResidentName(unit: UnitRow) {
     return unit.profiles?.name || unit.profiles?.email || "";
@@ -58,7 +46,7 @@ function parsePermille(raw: string): number | null | undefined {
 export default function UnitsPage() {
     const { toast } = useToast();
     const [units, setUnits] = useState<UnitRow[]>([]);
-    const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [profiles, setProfiles] = useState<UnitProfileOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState("");
 
@@ -83,10 +71,10 @@ export default function UnitsPage() {
                 WaterService.getUnits(),
                 WaterService.getProfiles(),
             ]);
-            const rows = unitsData as UnitRow[];
+            const rows = unitsData;
             setUnits(rows);
             setPermilleDrafts(Object.fromEntries(rows.map(unit => [unit.id, fmtPermille(readPermille(unit))])));
-            setProfiles(profilesData as Profile[]);
+            setProfiles(profilesData);
         } catch (error) {
             console.error("Error loading units:", error);
             toast({

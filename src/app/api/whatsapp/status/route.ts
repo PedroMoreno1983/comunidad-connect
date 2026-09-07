@@ -4,6 +4,7 @@ import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
 import { isPlatformCreatorEmail } from "@/lib/platformAccess";
 import { ensureAllTemplates } from "@/lib/server/twilioContentTemplate";
+import type { WhatsAppStatus } from "@/lib/types";
 
 async function requirePlatformCreator(request: NextRequest, rateLimitKey: string) {
     const limited = enforceRateLimit(request, rateLimitKey, { limit: 10, windowMs: 60_000 });
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     const auth = await requirePlatformCreator(request, "whatsapp.status");
     if (auth.response) return auth.response;
 
-    return NextResponse.json({
+    const payload: WhatsAppStatus = {
         ...getWhatsAppConfigStatus(),
         setup: {
             provider: "Twilio WhatsApp",
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
             outboundPath: "/api/whatsapp-notify",
             paymentTemplateSetupPath: "/api/whatsapp/status",
         },
-    });
+    };
+    return NextResponse.json(payload);
 }
 
 export async function POST(request: NextRequest) {
