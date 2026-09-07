@@ -225,15 +225,30 @@ CREATE TABLE IF NOT EXISTS public.poll_votes (
 -- 9. GASTOS COMUNES Y COBROS (INTEGRACIÓN FACTURA/BOLETA CHILE)
 -- =====================================================================
 
+-- Verificado contra producción el 2026-09-07 leyendo el esquema que expone
+-- PostgREST. Este bloque declaraba unit_id como UUID con FK a units y omitía
+-- amount y billing_run_id; las tres cosas eran falsas o faltaban:
+--
+--   - amount existe y es la que escribe `issueBilling`. No estaba declarada ni
+--     aquí ni en ninguna migración: venía de antes del historial.
+--   - billing_run_id la agrega 20260728140000_community_expenses_and_billing,
+--     pero este retrato no la mostraba.
+--   - unit_id es TEXT y NO tiene foreign key. Declararla como UUID REFERENCES
+--     units(id) ON DELETE CASCADE prometía una integridad que la base no
+--     aplica: borrar una unidad no borra sus cobros, y nada impide un cobro
+--     apuntando a una unidad inexistente. Corregirlo en la base es una
+--     migración con datos de por medio, así que aquí se declara lo que hay.
 CREATE TABLE IF NOT EXISTS public.expenses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE NOT NULL,
+  unit_id TEXT NOT NULL,
   month TEXT NOT NULL, -- Formato YYYY-MM
+  amount NUMERIC,
   status TEXT DEFAULT 'pending' CHECK (status IN ('paid', 'pending', 'overdue')),
   due_date DATE NOT NULL,
   paid_at TIMESTAMPTZ,
   payment_metadata JSONB DEFAULT '{}'::jsonb, -- Datos tributarios (Haulmer Link, boleta electrónica, etc.)
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  billing_run_id UUID REFERENCES public.billing_runs(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(unit_id, month)
 );
