@@ -8,27 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
+import type { FinanceSettings, MonthlyFinanceReport, ReserveFund } from "@/lib/types";
 
-interface Report {
-    month: string;
-    expenses: { total: number; byCategory: Array<{ category: string; total: number }> };
-    charged: { gastoComun: number; otherCharges: number; total: number };
-    collected: { total: number; byMethod: Array<{ method: string; total: number }> };
-    collectionRate: number;
-    result: number;
-}
 
-interface Fund {
-    balance: number;
-    totalContributions: number;
-    totalWithdrawals: number;
-    movements: Array<{ id: string; kind: string; amount: number; month: string; label: string }>;
-}
 
-interface Settings {
-    lateInterestMonthlyRate: number;
-    reserveFundRate: number;
-}
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const currentMonth = () => new Date().toISOString().slice(0, 7);
@@ -36,9 +19,9 @@ const currentMonth = () => new Date().toISOString().slice(0, 7);
 export default function RendicionPage() {
     const { toast } = useToast();
     const [month, setMonth] = useState(currentMonth);
-    const [report, setReport] = useState<Report | null>(null);
-    const [fund, setFund] = useState<Fund | null>(null);
-    const [settings, setSettings] = useState<Settings | null>(null);
+    const [report, setReport] = useState<MonthlyFinanceReport | null>(null);
+    const [fund, setFund] = useState<ReserveFund | null>(null);
+    const [settings, setSettings] = useState<FinanceSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
 
