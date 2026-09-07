@@ -111,15 +111,21 @@ describe('alternativas con menos sellos', () => {
     expect(entry.options.map(option => option.sku)).toEqual(['B', 'D', 'C']);
   });
 
-  it('pide los sellos en tandas de 60 cuando hay más SKU que eso', async () => {
-    // El `.limit()` real acota a CANDIDATES_PER_TERM; aquí se devuelven más para
-    // ejercitar el troceo, que es lo que evita que la tienda corte en 60 y deje
-    // al resto como "desconocido" sin avisar.
-    mocks.rows = Array.from({ length: 70 }, (_, index) => ({
+  it('consulta los sellos de todo de una vez, sin repetir SKU', async () => {
+    // El troceo por el limite de VTEX vive en `fetchSealsBySku`
+    // (`supermarket-seals.test.ts`). Aca solo importa que se pida una vez y que
+    // el producto actual viaje junto a sus candidatos: sin su conteo no hay
+    // contra que comparar.
+    mocks.rows = Array.from({ length: 20 }, (_, index) => ({
       sku: `S${index}`, name: `Leche Marca ${index} 1 L`, price: 1000 + index,
     }));
+    const items = Array.from({ length: 4 }, (_, index) => ({
+      ...current, sku: `A${index}`,
+    }));
 
-    await findLowerSealAlternatives('Jumbo', [current]);
-    expect(mocks.sealCalls.map(chunk => chunk.length)).toEqual([60, 11]);
+    await findLowerSealAlternatives('Jumbo', items);
+    expect(mocks.sealCalls).toHaveLength(1);
+    // 20 candidatos compartidos + 4 actuales.
+    expect(mocks.sealCalls[0]).toHaveLength(24);
   });
 });

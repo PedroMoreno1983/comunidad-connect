@@ -38,7 +38,7 @@ describe('sellos nutricionales', () => {
     expect(cleanSeals(['Alto en Sodio', 'Alto en Sodio'])).toEqual(['Alto en Sodio']);
   });
 
-  it('pide todos los sku en una sola consulta y los devuelve por sku', async () => {
+  it('pide los sku de una tanda en una sola consulta y los devuelve por sku', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify([
       vtexProduct('1868', 'Flag Nutricional', ['Alto en Azúcares', 'Alto en Calorías']),
       vtexProduct('112556', 'Flag Nutricional', []),
@@ -55,6 +55,44 @@ describe('sellos nutricionales', () => {
       1868: ['Alto en Azúcares', 'Alto en Calorías'],
       112556: [],
     });
+  });
+
+  it('parte en tandas de 50 porque VTEX rechaza un rango mayor', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const to = Number(new URL(String(url)).searchParams.get('_to'));
+      // La tienda responde 400 con "Parameter _to can't be greater than 50".
+      if (to > 50) return new Response('Rango invalido', { status: 400 });
+      const skus = [...String(url).matchAll(/fq=skuId:(\d+)/g)].map(match => match[1]);
+      return new Response(JSON.stringify(
+        skus.map(sku => vtexProduct(sku, 'Flag Nutricional', ['Alto en Azúcares'])),
+      ), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const skus = Array.from({ length: 120 }, (_, index) => String(1000 + index));
+    const result = await fetchSealsBySku('Jumbo', skus);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.every(call => (
+      Number(new URL(String(call[0])).searchParams.get('_to')) <= 49
+    ))).toBe(true);
+    // Sin el troceo, la unica consulta volvia 400 y esto era {}.
+    expect(Object.keys(result)).toHaveLength(120);
+  });
+
+  it('una tanda caida no se lleva a las demas', async () => {
+    let call = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      call += 1;
+      if (call === 1) return new Response('nope', { status: 500 });
+      const skus = [...String(url).matchAll(/fq=skuId:(\d+)/g)].map(match => match[1]);
+      return new Response(JSON.stringify(
+        skus.map(sku => vtexProduct(sku, 'Flag Nutricional', [])),
+      ), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+
+    const result = await fetchSealsBySku('Jumbo', Array.from({ length: 60 }, (_, i) => String(2000 + i)));
+    expect(Object.keys(result)).toHaveLength(10);
   });
 
   it('lee el campo propio de Unimarc', async () => {

@@ -41,8 +41,6 @@ import type {
 const CANDIDATES_PER_TERM = 24;
 /** Productos de la canasta que se analizan en una consulta. */
 const MAX_TERMS = 12;
-/** `fetchSealsBySku` corta en 60 SKU por peticion; sobre eso se pide por tandas. */
-const SEALS_PER_REQUEST = 60;
 
 interface CatalogRow {
   sku: string | null;
@@ -56,17 +54,6 @@ export interface BasketItemForAlternatives {
   sku?: string;
   name: string;
   price: number;
-}
-
-/** Sellos de todos los SKU pedidos, en tandas del tamano que admite la tienda. */
-async function sealsForAll(store: string, skus: string[]): Promise<Record<string, string[]>> {
-  const unique = [...new Set(skus.filter(Boolean))];
-  const chunks: string[][] = [];
-  for (let index = 0; index < unique.length; index += SEALS_PER_REQUEST) {
-    chunks.push(unique.slice(index, index + SEALS_PER_REQUEST));
-  }
-  const pages = await Promise.all(chunks.map(chunk => fetchSealsBySku(store, chunk)));
-  return Object.assign({}, ...pages) as Record<string, string[]>;
 }
 
 export async function findLowerSealAlternatives(
@@ -114,10 +101,12 @@ export async function findLowerSealAlternatives(
 
   // Una sola tanda de sellos para todo, incluido el producto actual: sin su
   // conteo no hay contra que comparar.
-  const seals = await sealsForAll(store, byTerm.flatMap(entry => [
+  // Sin deduplicar, un candidato que sirve a varios terminos gastaria un lugar
+  // del tope por cada uno.
+  const seals = await fetchSealsBySku(store, [...new Set(byTerm.flatMap(entry => [
     entry.item.sku as string,
     ...entry.rows.map(row => String(row.sku)),
-  ]));
+  ]))]);
 
   return byTerm.flatMap(({ item, rows }): SupermarketSealAlternative[] => {
     const currentSeals = seals[item.sku as string];

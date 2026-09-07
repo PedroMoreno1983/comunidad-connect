@@ -18,7 +18,17 @@ const SEAL_SOURCES: Partial<Record<SupermarketStore, { base: string; field: stri
 };
 
 const FETCH_TIMEOUT_MS = 8_000;
-const MAX_SKUS = 60;
+/**
+ * VTEX rechaza el rango con 400 y el texto "Parameter _to can't be greater
+ * than 50" -verificado el 2026-09-07 en Jumbo, Santa Isabel y Unimarc-, asi que
+ * los SKU se piden de a 50. Antes se mandaban hasta 60 en una sola peticion:
+ * el 400 caia en el `catch`, la funcion devolvia {} sin decir nada, y una
+ * canasta de mas de 51 productos mostraba "sin informacion de sellos" en TODOS
+ * sus productos como si las tiendas no los publicaran.
+ */
+const SKUS_PER_REQUEST = 50;
+/** Tope duro por consulta. Cada llamador acota ademas su propia entrada. */
+const MAX_SKUS = 300;
 
 export function supportsSeals(store: string): boolean {
   return Object.prototype.hasOwnProperty.call(SEAL_SOURCES, store);
@@ -56,6 +66,18 @@ export async function fetchSealsBySku(
   const wanted = [...new Set(skus.map(sku => sku.trim()).filter(Boolean))].slice(0, MAX_SKUS);
   if (!source || wanted.length === 0) return {};
 
+  const batches: string[][] = [];
+  for (let index = 0; index < wanted.length; index += SKUS_PER_REQUEST) {
+    batches.push(wanted.slice(index, index + SKUS_PER_REQUEST));
+  }
+  const pages = await Promise.all(batches.map(batch => fetchSealBatch(source, batch)));
+  return Object.assign({}, ...pages) as Record<string, string[]>;
+}
+
+async function fetchSealBatch(
+  source: { base: string; field: string },
+  wanted: string[],
+): Promise<Record<string, string[]>> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
