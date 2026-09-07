@@ -469,7 +469,7 @@ export const VisitorService = {
         purpose?: string;
         registered_by: string;
         is_qr?: boolean;
-    }) {
+    }): Promise<VisitorLogDatabaseRow> {
         const { data, error } = await supabase
             .from('visitor_logs')
             .insert(visitor)

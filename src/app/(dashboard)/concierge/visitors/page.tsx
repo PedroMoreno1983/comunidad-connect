@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { QRAccessValidator } from "@/components/admin/QRAccessValidator";
 import { useAuth } from "@/lib/authContext";
-import { VisitorLog } from "@/lib/types";
+import type { UnitRow, VisitorLog, VisitorLogDatabaseRow } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { WaterService } from "@/lib/api";
 import {
@@ -25,24 +25,7 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 // interface VisitorLog moved to @/lib/types.ts
 
-interface Unit {
-    id: string;
-    number: string;
-}
-
-type VisitorRow = {
-    id: string;
-    visitor_name?: string | null;
-    unit_id?: string | null;
-    entry_time?: string | null;
-    exit_time?: string | null;
-    is_qr?: boolean | null;
-    units?: {
-        number?: string | null;
-    } | null;
-};
-
-function mapVisitorRow(row: VisitorRow): VisitorLog {
+function mapVisitorRow(row: VisitorLogDatabaseRow): VisitorLog {
     return {
         id: row.id,
         visitorName: row.visitor_name || "Visita",
@@ -75,7 +58,7 @@ async function notifyResidentOfVisit(unitId: string, visitorName: string, unitNu
 export default function VisitorsPage() {
     const { user } = useAuth();
     const [visitors, setVisitors] = useState<VisitorLog[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
+    const [units, setUnits] = useState<UnitRow[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedVisitor, setSelectedVisitor] = useState<VisitorLog | null>(null);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
@@ -92,7 +75,7 @@ export default function VisitorsPage() {
             try {
 
                 const logs = await VisitorService.getAll();
-                setVisitors(((logs || []) as VisitorRow[]).map(mapVisitorRow));
+                setVisitors((logs || []).map(mapVisitorRow));
 
                 const uns = await WaterService.getUnits();
                 setUnits(uns);
@@ -118,9 +101,13 @@ export default function VisitorsPage() {
             // Avisa al residente que su visita ingresó (best-effort, server-side).
             void notifyResidentOfVisit(newVisitor.unit, newVisitor.name);
 
+            // Sin unidad encontrada se manda null y `mapVisitorRow` cae al
+            // unit_id, en vez de un `{ number: undefined }` que no es ninguna
+            // de las dos cosas.
+            const unitNumber = units.find(unit => unit.id === data.unit_id)?.number;
             const visitor = mapVisitorRow({
-                ...(data as VisitorRow),
-                units: { number: units.find(unit => unit.id === (data as VisitorRow).unit_id)?.number },
+                ...data,
+                units: unitNumber ? { number: unitNumber } : null,
             });
 
             setVisitors([visitor, ...visitors]);

@@ -14,35 +14,7 @@ import {
     Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
-
-type OperationEvent = {
-    id: string;
-    action: string;
-    entity_type: string;
-    entity_id?: string | null;
-    severity: "info" | "success" | "warning" | "error";
-    status: "success" | "error" | "blocked" | "pending";
-    summary: string;
-    metadata?: Record<string, unknown> | null;
-    created_at: string;
-};
-
-type OperationsResponse = {
-    summary: {
-        total: number;
-        success: number;
-        warnings: number;
-        errors: number;
-        pending: number;
-    };
-    events: OperationEvent[];
-};
-
-type HealthResponse = {
-    status?: string;
-    checkedAt?: string;
-    checks?: Record<string, Record<string, boolean>>;
-};
+import type { HealthResponse, OperationEvent, OperationsResponse } from "@/lib/types";
 
 
 function statusTone(status: OperationEvent["status"], severity: OperationEvent["severity"]) {
@@ -71,11 +43,15 @@ function timeAgo(value: string) {
     return date.toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
 }
 
+/**
+ * Solo cuentan las banderas. `checks.integrationDetail` trae objetos anidados y
+ * un texto, y contarlos por truthy inflaba tanto los sanos como el total.
+ */
 function countHealthyChecks(health: HealthResponse | null) {
-    const groups = Object.values(health?.checks || {});
-    const total = groups.flatMap(group => Object.values(group)).length;
-    const ok = groups.flatMap(group => Object.values(group)).filter(Boolean).length;
-    return { ok, total };
+    const flags = Object.values(health?.checks || {})
+        .flatMap(group => Object.values(group))
+        .filter((value): value is boolean => typeof value === "boolean");
+    return { ok: flags.filter(Boolean).length, total: flags.length };
 }
 
 export default function AdminOperationsPage() {
@@ -104,7 +80,7 @@ export default function AdminOperationsPage() {
             ]);
 
             if (!opsRes.ok) {
-                const data = await opsRes.json().catch(() => ({}));
+                const data = await opsRes.json().catch(() => ({})) as Partial<OperationsResponse>;
                 throw new Error(data.error || "No se pudo cargar el centro operativo");
             }
 

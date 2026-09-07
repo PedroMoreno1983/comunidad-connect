@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { OperationEvent, OperationsResponse } from '@/lib/types';
 
 const MAX_LIMIT = 100;
 
@@ -86,10 +87,11 @@ export async function GET(request: NextRequest) {
             return acc;
         }, { total: 0, success: 0, warnings: 0, errors: 0, pending: 0 });
 
-        return NextResponse.json({
+        const payload: OperationsResponse = {
             summary,
-            events: events || [],
-        });
+            events: (events || []) as OperationEvent[],
+        };
+        return NextResponse.json(payload);
     } catch (error) {
         console.error('[operations/events] failed:', error);
         return NextResponse.json(
