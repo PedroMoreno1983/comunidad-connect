@@ -7,39 +7,15 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import type { ReconciliationData, ReconciliationSuggestion } from "@/lib/types";
 
-interface Txn {
-    id: string;
-    txnDate: string;
-    amount: number;
-    description: string;
-    reference: string | null;
-    status: string;
-    matchedPaymentId: string | null;
-}
-interface Payment {
-    id: string;
-    unitLabel: string;
-    amount: number;
-    paidAt: string;
-    method: string;
-    reference: string | null;
-    matched: boolean;
-}
-interface Suggestion { transactionId: string; paymentId: string; dayGap: number; referenceMatch: boolean; }
-interface Data {
-    transactions: Txn[];
-    unmatchedPayments: Payment[];
-    suggestions: Suggestion[];
-    summary: { totalTransactions: number; matched: number; pending: number; ignored: number; unexplainedDeposits: number; pendingInflowAmount: number; };
-}
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function ConciliacionPage() {
     const { toast } = useToast();
-    const [data, setData] = useState<Data | null>(null);
+    const [data, setData] = useState<ReconciliationData | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [form, setForm] = useState({ txnDate: today(), amount: "", description: "", reference: "" });
@@ -61,7 +37,7 @@ export default function ConciliacionPage() {
     useEffect(() => { void load(); }, [load]);
 
     const suggestionByTxn = useMemo(() => {
-        const map = new Map<string, Suggestion>();
+        const map = new Map<string, ReconciliationSuggestion>();
         for (const suggestion of data?.suggestions ?? []) map.set(suggestion.transactionId, suggestion);
         return map;
     }, [data]);

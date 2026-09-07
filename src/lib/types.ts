@@ -1731,3 +1731,194 @@ export interface SupermarketSealsResponse {
     seals?: Record<string, string[]>;
     error?: string;
 }
+
+// ============================================================================
+// Finanzas del condominio
+// ----------------------------------------------------------------------------
+// Estaban definidos dentro de cada pagina de /admin/finanzas, contra la regla
+// del CLAUDE.md. Un tipo que vive en la pagina no lo puede reutilizar nadie y
+// se desincroniza del Service que produce esos datos: cuando cambia la forma de
+// la respuesta, la pagina sigue compilando con la forma vieja.
+//
+// Varios llegaban con nombres que no sobreviven a un archivo compartido -Data,
+// Txn, Report, Settings, Preview- asi que se renombraron por lo que son.
+// ============================================================================
+
+/** Certificado de deuda de una unidad. Antes `Certificate` en certificado/page. */
+export interface DebtCertificate {
+    community: { name: string; address: string | null };
+    unit: { label: string; ownerName: string | null };
+    issuedAt: string;
+    issuedBy: string | null;
+    balance: number;
+    overdueAmount: number;
+    oldestOverdueMonth: string | null;
+    pendingByMonth: Array<{ month: string; concepts: Array<{ label: string; amount: number }>; total: number }>;
+    isUpToDate: boolean;
+}
+
+/** Una linea del presupuesto anual frente a lo realmente gastado. */
+export interface BudgetLine {
+    category: string;
+    categoryLabel: string;
+    annualBudget: number;
+    expectedToDate: number;
+    actualToDate: number;
+    variance: number;
+    variancePercent: number;
+}
+
+/** Presupuesto contra ejecucion del año. Antes `Comparison` en presupuesto/page. */
+export interface BudgetComparison {
+    year: number;
+    lines: BudgetLine[];
+    totals: { annualBudget: number; expectedToDate: number; actualToDate: number; variance: number };
+    monthsElapsed: number;
+}
+
+/** Rendicion mensual: que se gasto, que se cobro y que se recaudo. Antes `Report`. */
+export interface MonthlyFinanceReport {
+    month: string;
+    expenses: { total: number; byCategory: Array<{ category: string; total: number }> };
+    charged: { gastoComun: number; otherCharges: number; total: number };
+    collected: { total: number; byMethod: Array<{ method: string; total: number }> };
+    collectionRate: number;
+    result: number;
+}
+
+/** Fondo de reserva del condominio y sus movimientos. Antes `Fund`. */
+export interface ReserveFund {
+    balance: number;
+    totalContributions: number;
+    totalWithdrawals: number;
+    movements: Array<{ id: string; kind: string; amount: number; month: string; label: string }>;
+}
+
+/** Tasas que la comunidad define para su cobranza. Antes `Settings`. */
+export interface FinanceSettings {
+    lateInterestMonthlyRate: number;
+    reserveFundRate: number;
+}
+
+/** Saldo de una unidad: cuanto se le cobro, cuanto pago y cuanto debe. */
+export interface UnitBalance {
+    unitId: string;
+    label: string;
+    balance: number;
+    overdueAmount: number;
+    oldestOverdueMonth: string | null;
+    totalCharged: number;
+    totalPaid: number;
+}
+
+/** Los saldos de toda la comunidad, con sus totales de morosidad. */
+export interface CommunityBalances {
+    units: UnitBalance[];
+    totalDebt: number;
+    totalOverdue: number;
+    unitsWithDebt: number;
+    unitsOverdue: number;
+}
+
+/** Un movimiento de la cartola de una unidad. */
+export interface StatementEntry {
+    id: string;
+    date: string;
+    kind: string;
+    label: string;
+    amount: number;
+    balance: number;
+    reference: string | null;
+}
+
+/** Cartola de una unidad: sus movimientos y el saldo que dejan. */
+export interface UnitStatement {
+    unitLabel: string;
+    entries: StatementEntry[];
+    balance: number;
+    overdueAmount: number;
+    totalCharged: number;
+    totalPaid: number;
+}
+
+/** Movimiento del banco a conciliar. Antes `Txn` en conciliacion/page. */
+export interface BankTransaction {
+    id: string;
+    txnDate: string;
+    amount: number;
+    description: string;
+    reference: string | null;
+    status: string;
+    matchedPaymentId: string | null;
+}
+
+/** Pago registrado por una unidad. Antes `Payment`, demasiado generico. */
+export interface UnitPayment {
+    id: string;
+    unitLabel: string;
+    amount: number;
+    paidAt: string;
+    method: string;
+    reference: string | null;
+    matched: boolean;
+}
+
+/** Calce propuesto entre un movimiento del banco y un pago. */
+export interface ReconciliationSuggestion {
+    transactionId: string;
+    paymentId: string;
+    dayGap: number;
+    referenceMatch: boolean;
+}
+
+/** Todo lo que la pantalla de conciliacion necesita. Antes `Data`. */
+export interface ReconciliationData {
+    transactions: BankTransaction[];
+    unmatchedPayments: UnitPayment[];
+    suggestions: ReconciliationSuggestion[];
+    summary: {
+        totalTransactions: number;
+        matched: number;
+        pending: number;
+        ignored: number;
+        unexplainedDeposits: number;
+        pendingInflowAmount: number;
+    };
+}
+
+/** Gasto del condominio a prorratear entre las unidades. */
+export interface CommunityExpense {
+    id: string;
+    category: string;
+    label: string;
+    amount: number;
+    provider: string | null;
+    prorate_method: "share" | "equal";
+}
+
+/** Una emision de gastos comunes ya realizada. Antes `IssuedRun`. */
+export interface IssuedBillingRun {
+    id: string;
+    total_amount: number;
+    units_count: number;
+    due_date: string;
+    issued_at: string;
+}
+
+/** Lo que le tocaria pagar a una unidad en una emision. Antes `PreviewUnit`. */
+export interface BillingPreviewUnit {
+    unitId: string;
+    label: string;
+    sharePermille: number | null;
+    total: number;
+}
+
+/** Simulacion de una emision antes de cursarla. Antes `Preview`. */
+export interface BillingPreview {
+    unitCount: number;
+    totalExpenses: number;
+    totalCharged: number;
+    fellBackToEqualSplit: boolean;
+    warnings: string[];
+    units: BillingPreviewUnit[];
+}
