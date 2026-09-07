@@ -226,7 +226,11 @@ export function calculateProductQuantity(
   const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / packUnits));
   return { packs, suppliedQuantity: packs * packUnits };
 }
-function formatSignature(name: string): string {
+/**
+ * Formato declarado en el nombre ("1l", "200g", "6un"). Vacio cuando el nombre
+ * no lo dice, que es distinto de tenerlo en cero.
+ */
+export function formatSignature(name: string): string {
   const normalized = name
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
