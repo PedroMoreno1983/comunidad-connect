@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { assessResidents, extractResidentsFromBuffer, residentDedupeKey } from '@/lib/onboarding/documentExtractor';
+import type { OnboardingBatchDetailResponse, OnboardingBatchRetryResponse } from '@/lib/types';
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
     const profile = await getAuthenticatedAgentProfile();
@@ -14,10 +15,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
         admin.from('onboarding_import_rows').select('id, name, unit_number, email, phone, status, warnings, error, document_id').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
     ]);
     if (error || !batch) return NextResponse.json({ error: 'Lote no encontrado.' }, { status: 404 });
-    return NextResponse.json({
+    const payload: OnboardingBatchDetailResponse = {
         batch, documents: documents || [],
-        data: (rows || []).map(row => ({ id: row.id, name: row.name, unit_id: row.unit_number, email: row.email, phone: row.phone, status: row.status, warnings: row.warnings, error: row.error, documentId: row.document_id })),
-    });
+        data: (rows || []).map(row => ({
+            id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
+            email: row.email ?? '', phone: row.phone ?? '',
+            status: row.status, warnings: row.warnings, error: row.error, documentId: row.document_id,
+        })),
+    };
+    return NextResponse.json(payload);
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -71,8 +77,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         status: storedRows?.length ? 'review' : 'failed', row_count: storedRows?.length || 0,
         valid_row_count: assessment.validRows, warning_count: warnings.length, warnings, updated_at: new Date().toISOString(),
     }).eq('id', id);
-    return NextResponse.json({
+    const payload: OnboardingBatchRetryResponse = {
         recovered, remaining, assessment: { ...assessment, warnings },
-        data: (storedRows || []).map(row => ({ id: row.id, name: row.name, unit_id: row.unit_number, email: row.email, phone: row.phone })),
-    });
+        data: (storedRows || []).map(row => ({
+            id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
+            email: row.email ?? '', phone: row.phone ?? '',
+        })),
+    };
+    return NextResponse.json(payload);
 }

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { assessResidents, extractResidentsFromBuffer, MAX_ONBOARDING_BATCH_BYTES, MAX_ONBOARDING_BATCH_FILES, MAX_ONBOARDING_FILE_BYTES, residentDedupeKey, type ExtractedResident } from '@/lib/onboarding/documentExtractor';
+import { assessResidents, extractResidentsFromBuffer, MAX_ONBOARDING_BATCH_BYTES, MAX_ONBOARDING_BATCH_FILES, MAX_ONBOARDING_FILE_BYTES, residentDedupeKey } from '@/lib/onboarding/documentExtractor';
+import type { ExtractedResident, OnboardingBatchDocumentResult, OnboardingBatchExtractResponse } from '@/lib/types';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
         if (batchError || !batch) throw batchError || new Error('No se pudo crear el lote.');
         batchId = String(batch.id);
 
-        const documentResults: Array<{ id: string; fileName: string; status: string; rows: number; error?: string }> = [];
+        const documentResults: OnboardingBatchDocumentResult[] = [];
         const seenChecksums = new Set<string>();
         for (const file of files) {
             const documentId = randomUUID();
@@ -123,7 +124,14 @@ export async function POST(request: Request) {
             summary: `Lote procesado: ${files.length} documento(s), ${assessment.validRows} fila(s) listas`,
             metadata: { source, documents: documentResults, assessment, warnings }, requestId: getRequestId(request),
         });
-        return NextResponse.json({ batchId, status, data: (storedRows || []).map(row => ({ id: row.id, name: row.name, unit_id: row.unit_number, email: row.email, phone: row.phone })), assessment: { ...assessment, warnings }, documents: documentResults });
+        const payload: OnboardingBatchExtractResponse = {
+            batchId, status, assessment: { ...assessment, warnings }, documents: documentResults,
+            data: (storedRows || []).map(row => ({
+                id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
+                email: row.email ?? '', phone: row.phone ?? '',
+            })),
+        };
+        return NextResponse.json(payload);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'No se pudo procesar el lote.';
         if (batchId) await admin.from('onboarding_import_batches').update({ status: 'failed', warnings: [message], updated_at: new Date().toISOString() }).eq('id', batchId);

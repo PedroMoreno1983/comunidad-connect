@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Star, User, Zap } from "lucide-react";
+import type { AdminOnboardingRegisterResponse, GeocodeSuggestion, GeocodeSuggestionsResponse } from "@/lib/types";
 
 const PLANS = [
     {
@@ -38,20 +39,6 @@ const PLANS = [
 ];
 
 const STEP_LABELS = ["Plan", "Edificio", "Activador"];
-
-type GeocodeSuggestion = {
-    label: string;
-    latitude: number;
-    longitude: number;
-    placeId: string;
-    source: string;
-};
-
-type RegisterResponse = {
-    error?: string;
-    code?: string;
-    loginUrl?: string;
-};
 
 export default function AdminOnboardingPage() {
     const [step, setStep] = useState(0);
@@ -89,7 +76,7 @@ export default function AdminOnboardingPage() {
                     signal: controller.signal,
                     cache: "no-store",
                 });
-                const data = await response.json().catch(() => ({})) as { suggestions?: GeocodeSuggestion[] };
+                const data = await response.json().catch(() => ({})) as Partial<GeocodeSuggestionsResponse>;
                 setAddressSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
             } catch (error) {
                 if (!controller.signal.aborted) {
@@ -148,7 +135,7 @@ export default function AdminOnboardingPage() {
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({})) as RegisterResponse;
+                const data = await response.json().catch(() => ({})) as AdminOnboardingRegisterResponse;
                 if (response.status === 409 && data.code === "EMAIL_ALREADY_REGISTERED") {
                     toast({
                         title: "Cuenta existente",

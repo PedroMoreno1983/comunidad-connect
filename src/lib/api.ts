@@ -66,7 +66,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { ProductCapabilities } from './types';
+import type { ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function sendBookingConfirmation(payload: {
     bookingId: string;
@@ -1176,7 +1176,7 @@ export const WaterService = {
     },
 
     // Obtener todas las unidades (con sus perfiles de residentes si existen)
-    async getUnits() {
+    async getUnits(): Promise<UnitRow[]> {
         const { data, error } = await supabase
             .from('units')
             .select(`
@@ -1187,9 +1187,9 @@ export const WaterService = {
         if (error) {
             console.error('Error loading units:', error);
             // Return empty array instead of throwing so the page shows empty state
-            return [] as (Unit & { profiles: { name: string; email: string; } | null })[];
+            return [];
         }
-        return ((data || []) as (Unit & { profiles: { name: string; email: string; } | null })[])
+        return ((data || []) as UnitRow[])
             .sort((a, b) => {
                 const rowA = a as unknown as Record<string, unknown>;
                 const rowB = b as unknown as Record<string, unknown>;
@@ -1238,7 +1238,7 @@ export const WaterService = {
     },
 
     // Obtener lista de perfiles (para dropdown de asignación)
-    async getProfiles() {
+    async getProfiles(): Promise<UnitProfileOption[]> {
         const { data, error } = await supabase
             .from('profiles')
             .select('id, name, email, role')

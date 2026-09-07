@@ -1,23 +1,12 @@
 import { createHash } from 'node:crypto';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
+import type { ExtractedDocumentKnowledge, ExtractedResident, OnboardingAssessment } from '@/lib/types';
 
 export const MAX_ONBOARDING_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_ONBOARDING_BATCH_BYTES = 50 * 1024 * 1024;
 export const MAX_ONBOARDING_BATCH_FILES = 20;
 
-export type ExtractedResident = { name: string; unit_id: string; email: string; phone: string };
-export type OnboardingAssessment = {
-    totalRows: number;
-    validRows: number;
-    missingNameRows: number;
-    missingUnitRows: number;
-    missingContactRows: number;
-    duplicateUnits: string[];
-    confidenceScore: number;
-    warnings: string[];
-};
-export type ExtractedDocumentKnowledge = { title: string; documentKind: string; summary: string; searchText: string };
 
 type ExtractionContext = { userId: string; communityId?: string | null; role?: string | null };
 

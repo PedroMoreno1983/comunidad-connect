@@ -20,33 +20,15 @@ import { Button } from "@/components/ui/Button";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { interpretRosterExtractResponse } from "@/lib/onboarding/extractResult";
-
-interface ExtractedUser {
-    id: string;
-    name: string;
-    unit_id: string;
-    email: string;
-    phone: string;
-}
-
-interface SyncResult {
-    fileName: string;
-    rows: number;
-    success: number;
-    errors: number;
-    unitOnly: number;
-}
-
-interface OnboardingAssessment {
-    totalRows: number;
-    validRows: number;
-    missingNameRows: number;
-    missingUnitRows: number;
-    missingContactRows: number;
-    duplicateUnits: string[];
-    confidenceScore: number;
-    warnings: string[];
-}
+import type {
+    OnboardingAssessment,
+    OnboardingBatchDetailResponse,
+    OnboardingBatchExtractResponse,
+    OnboardingBatchRetryResponse,
+    OnboardingExtractedRow,
+    OnboardingSyncResult,
+    OnboardingUpsertResponse,
+} from "@/lib/types";
 
 
 
@@ -77,7 +59,7 @@ export default function AdminOnboardingPage() {
     const { toast } = useToast();
 
     const [isExtracting, setIsExtracting] = useState(false);
-    const [extractedData, setExtractedData] = useState<ExtractedUser[] | null>(null);
+    const [extractedData, setExtractedData] = useState<OnboardingExtractedRow[] | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -85,8 +67,8 @@ export default function AdminOnboardingPage() {
     const [lastFileName, setLastFileName] = useState("");
     const [batchId, setBatchId] = useState("");
     const [failedDocumentCount, setFailedDocumentCount] = useState(0);
-    const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-    const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
+    const [syncResult, setSyncResult] = useState<OnboardingSyncResult | null>(null);
+    const [syncedPreview, setSyncedPreview] = useState<OnboardingExtractedRow[]>([]);
     const [agentAssessment, setAgentAssessment] = useState<OnboardingAssessment | null>(null);
     const [extractError, setExtractError] = useState<string | null>(null);
     const activeSectionRef = useRef<HTMLElement | null>(null);
@@ -113,12 +95,12 @@ export default function AdminOnboardingPage() {
         setIsExtracting(true);
         fetch(`/api/onboarding/batches/${encodeURIComponent(requestedBatch)}`)
             .then(async response => {
-                const payload = await response.json();
+                const payload = await response.json() as OnboardingBatchDetailResponse;
                 if (!response.ok) throw new Error(payload.error || "batch-load-failed");
                 setBatchId(requestedBatch);
                 setExtractedData(payload.data || []);
-                setLastFileName((payload.documents || []).map((item: { file_name?: string }) => item.file_name).filter(Boolean).join(", "));
-                setFailedDocumentCount((payload.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
+                setLastFileName((payload.documents || []).map(item => item.file_name).filter(Boolean).join(", "));
+                setFailedDocumentCount((payload.documents || []).filter(item => item.status === "failed").length);
                 const batch = payload.batch || {};
                 setAgentAssessment({
                     totalRows: Number(batch.row_count || 0), validRows: Number(batch.valid_row_count || 0),
@@ -158,14 +140,14 @@ export default function AdminOnboardingPage() {
             uploadedFiles.forEach(file => formData.append("files", file));
             formData.append("source", "admin_onboarding");
             const response = await fetch("/api/onboarding/batches", { method: "POST", body: formData });
-            const extraction = await response.json();
+            const extraction = await response.json() as OnboardingBatchExtractResponse;
             const interpreted = interpretRosterExtractResponse(extraction, response.ok);
             if (!interpreted.ok) {
                 const message = friendlyError(interpreted.message);
                 setExtractError(message);
                 if (!extractedData) {
                     if (extraction.batchId) setBatchId(extraction.batchId);
-                    setFailedDocumentCount((extraction.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
+                    setFailedDocumentCount((extraction.documents || []).filter(item => item.status === "failed").length);
                     setLastFileName(pendingName);
                 }
                 toast({
@@ -176,7 +158,7 @@ export default function AdminOnboardingPage() {
                 return;
             }
             setBatchId(extraction.batchId || "");
-            setFailedDocumentCount((extraction.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
+            setFailedDocumentCount((extraction.documents || []).filter(item => item.status === "failed").length);
             setLastFileName(pendingName);
             setExtractedData(interpreted.rows);
             setAgentAssessment(extraction.assessment || null);
@@ -215,7 +197,7 @@ export default function AdminOnboardingPage() {
         if (droppedFiles.length) await processFiles(droppedFiles);
     };
 
-    const handleFieldChange = (id: string, field: keyof ExtractedUser, value: string) => {
+    const handleFieldChange = (id: string, field: keyof OnboardingExtractedRow, value: string) => {
         setExtractedData(prev =>
             prev ? prev.map(row => row.id === id ? { ...row, [field]: value } : row) : null
         );
@@ -228,7 +210,7 @@ export default function AdminOnboardingPage() {
             const response = await fetch(`/api/onboarding/batches/${encodeURIComponent(batchId)}`, {
                 method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "retry_failed" }),
             });
-            const payload = await response.json();
+            const payload = await response.json() as OnboardingBatchRetryResponse;
             const interpreted = interpretRosterExtractResponse(payload, response.ok);
             setFailedDocumentCount(Number(payload.remaining || 0));
             if (!interpreted.ok) {
@@ -273,7 +255,7 @@ export default function AdminOnboardingPage() {
             });
 
             if (res.ok) {
-                const result = await res.json().catch(() => ({}));
+                const result = await res.json().catch(() => ({})) as OnboardingUpsertResponse;
                 const success = typeof result.success === "number" ? result.success : rowsToSync.length;
                 const errors = typeof result.errors === "number" ? result.errors : 0;
                 const unitOnly = typeof result.unitOnly === "number" ? result.unitOnly : 0;

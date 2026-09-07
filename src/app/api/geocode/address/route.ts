@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import type { GeocodeSuggestion, GeocodeSuggestionsResponse } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-type GeocodeSuggestion = {
-    label: string;
-    latitude: number;
-    longitude: number;
-    placeId: string;
-    source: 'mapbox' | 'nominatim';
-};
 
 function cleanQuery(value: string | null) {
     return (value || '').replace(/\s+/g, ' ').trim().slice(0, 160);
@@ -122,7 +115,8 @@ export async function GET(request: NextRequest) {
             ? mapbox
             : await geocodeWithNominatim(query);
 
-        return NextResponse.json({ suggestions });
+        const payload: GeocodeSuggestionsResponse = { suggestions };
+        return NextResponse.json(payload);
     } catch (error) {
         console.warn('[geocode/address] failed:', error);
         return NextResponse.json({ suggestions: [] });

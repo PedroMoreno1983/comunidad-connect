@@ -3,6 +3,7 @@ import { enforceRateLimit } from "@/lib/security/rateLimit";
 import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { sendWhatsAppNotificationForUser } from "@/lib/server/whatsappNotify";
+import type { WhatsAppBroadcastFailure, WhatsAppBroadcastResponse } from "@/lib/types";
 
 /**
  * Aviso por WhatsApp a los residentes de una comunidad.
@@ -82,26 +83,28 @@ export async function POST(request: NextRequest) {
 
     // Permite ver a cuántos llegaría antes de gastar mensajes.
     if (dryRun) {
-        return NextResponse.json({
+        const preview: WhatsAppBroadcastResponse = {
             dryRun: true,
             recipients: recipients.length,
             truncated,
             limit: MAX_RECIPIENTS_PER_BROADCAST,
-        });
+        };
+        return NextResponse.json(preview);
     }
 
     if (recipients.length === 0) {
-        return NextResponse.json({
+        const empty: WhatsAppBroadcastResponse = {
             sent: 0,
             skipped: 0,
             failed: 0,
             recipients: 0,
             detail: "Ningún residente de la comunidad tiene WhatsApp activado con teléfono cargado.",
-        });
+        };
+        return NextResponse.json(empty);
     }
 
     const summary = { sent: 0, skipped: 0, failed: 0 };
-    const failures: { userId: string; reason: string }[] = [];
+    const failures: WhatsAppBroadcastFailure[] = [];
 
     // Secuencial y no en paralelo: Twilio limita la tasa por remitente, y un
     // Promise.all de doscientos envíos se traduce en rechazos por throttling.
@@ -128,10 +131,11 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    return NextResponse.json({
+    const result: WhatsAppBroadcastResponse = {
         ...summary,
         recipients: recipients.length,
         truncated,
         failures,
-    });
+    };
+    return NextResponse.json(result);
 }

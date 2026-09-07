@@ -1962,3 +1962,227 @@ export interface SupermarketAlternativesResponse {
     alternatives?: SupermarketSealAlternative[];
     error?: string;
 }
+
+// ─── Onboarding de nóminas ──────────────────────────────────────────────────
+// Vivían repartidos entre `documentExtractor.ts` y la página, que redeclaraba
+// `OnboardingAssessment` con su propia copia. Dos declaraciones de la misma
+// respuesta se separan en silencio: la página compila con la forma vieja.
+
+export interface ExtractedResident {
+    name: string;
+    unit_id: string;
+    email: string;
+    phone: string;
+}
+
+/** Fila ya guardada: la que vuelve del lote con su id. */
+export interface OnboardingExtractedRow extends ExtractedResident {
+    id: string;
+}
+
+export interface OnboardingAssessment {
+    totalRows: number;
+    validRows: number;
+    missingNameRows: number;
+    missingUnitRows: number;
+    missingContactRows: number;
+    duplicateUnits: string[];
+    confidenceScore: number;
+    warnings: string[];
+}
+
+export interface ExtractedDocumentKnowledge {
+    title: string;
+    documentKind: string;
+    summary: string;
+    searchText: string;
+}
+
+/**
+ * Los dos endpoints de lotes devuelven documentos con forma distinta bajo la
+ * misma llave `documents`, y por eso son dos tipos y no uno: el POST informa lo
+ * que acaba de procesar (camelCase, en memoria) y el GET devuelve la fila
+ * guardada (snake_case, tal como sale de la tabla).
+ */
+export interface OnboardingBatchDocumentResult {
+    id: string;
+    fileName: string;
+    status: string;
+    rows: number;
+    error?: string;
+}
+
+export interface OnboardingBatchDocumentRecord {
+    id: string;
+    file_name: string;
+    document_kind?: string | null;
+    summary?: string | null;
+    status?: string | null;
+    extracted_rows?: number | null;
+    error?: string | null;
+    size_bytes?: number | null;
+    created_at?: string | null;
+}
+
+export interface OnboardingBatchRecord {
+    id?: string;
+    status?: string | null;
+    row_count?: number | null;
+    valid_row_count?: number | null;
+    warnings?: string[] | null;
+}
+
+export interface OnboardingBatchExtractResponse {
+    error?: string;
+    batchId?: string | null;
+    status?: string;
+    data?: OnboardingExtractedRow[];
+    assessment?: OnboardingAssessment;
+    documents?: OnboardingBatchDocumentResult[];
+}
+
+/** El detalle del lote agrega el estado por fila, que el POST no tiene aun. */
+export interface OnboardingBatchStoredRow extends OnboardingExtractedRow {
+    status?: string | null;
+    warnings?: string[] | null;
+    error?: string | null;
+    documentId?: string | null;
+}
+
+export interface OnboardingBatchDetailResponse {
+    error?: string;
+    batch?: OnboardingBatchRecord;
+    documents?: OnboardingBatchDocumentRecord[];
+    data?: OnboardingBatchStoredRow[];
+}
+
+export interface OnboardingBatchRetryResponse {
+    error?: string;
+    recovered?: number;
+    remaining?: number;
+    assessment?: OnboardingAssessment;
+    data?: OnboardingExtractedRow[];
+}
+
+export interface OnboardingSyncRowResult {
+    name: string;
+    unit: string;
+    status: 'synced' | 'unit_only' | 'failed';
+    detail: string;
+}
+
+export interface OnboardingUpsertResponse {
+    error?: string;
+    message?: string;
+    processed?: number;
+    success?: number;
+    errors?: number;
+    unitOnly?: number;
+    destinations?: string[];
+    rowResults?: OnboardingSyncRowResult[];
+}
+
+/** Resumen que la pantalla arma tras sincronizar; no viaja por la API. */
+export interface OnboardingSyncResult {
+    fileName: string;
+    rows: number;
+    success: number;
+    errors: number;
+    unitOnly: number;
+}
+
+// ─── Geocodificación de la dirección del condominio ─────────────────────────
+
+export interface GeocodeSuggestion {
+    label: string;
+    latitude: number;
+    longitude: number;
+    placeId: string;
+    /** La página lo declaraba como `string`; el endpoint solo emite estos dos. */
+    source: 'mapbox' | 'nominatim';
+}
+
+export interface GeocodeSuggestionsResponse {
+    suggestions: GeocodeSuggestion[];
+}
+
+export interface AdminOnboardingRegisterResponse {
+    error?: string;
+    code?: string;
+    loginUrl?: string;
+}
+
+// ─── Unidades y alícuotas ───────────────────────────────────────────────────
+
+/** Perfil como opción de un selector de residente. */
+export interface UnitProfileOption {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+}
+
+/**
+ * Unidad con el perfil embebido por el join y la alícuota cruda. Supabase puede
+ * devolver `share_permille` como texto, y por eso el tipo lo admite en vez de
+ * mentir con `number`.
+ */
+export type UnitRow = Unit & {
+    profiles?: { name: string; email: string } | null;
+    share_permille?: number | string | null;
+};
+
+// ─── WhatsApp: estado de la integración y avisos masivos ────────────────────
+
+export interface WhatsAppSetupInfo {
+    provider: string;
+    inboundMethod: string;
+    inboundContentType: string;
+    inboundPath: string;
+    outboundPath: string;
+    paymentTemplateSetupPath?: string;
+}
+
+export interface WhatsAppStatus {
+    configured: boolean;
+    webhookConfigured: boolean;
+    accountSidMasked: string;
+    fromMasked: string;
+    webhookUrl: string;
+    requiredEnv: Record<string, boolean>;
+    setup?: WhatsAppSetupInfo;
+}
+
+export interface WhatsAppBroadcastFailure {
+    userId: string;
+    reason: string;
+}
+
+/** Lo que la pantalla muestra tras un envío real. */
+export interface WhatsAppBroadcastResult {
+    sent: number;
+    skipped: number;
+    failed: number;
+    recipients: number;
+    truncated?: boolean;
+    detail?: string;
+    failures?: WhatsAppBroadcastFailure[];
+}
+
+/**
+ * El mismo endpoint responde dos formas: el conteo previo (`dryRun`) no trae
+ * `sent`, `skipped` ni `failed`. Un solo tipo con todo obligatorio prometía
+ * campos que la consulta previa nunca devuelve.
+ */
+export interface WhatsAppBroadcastResponse {
+    error?: string;
+    dryRun?: boolean;
+    limit?: number;
+    sent?: number;
+    skipped?: number;
+    failed?: number;
+    recipients?: number;
+    truncated?: boolean;
+    detail?: string;
+    failures?: WhatsAppBroadcastFailure[];
+}

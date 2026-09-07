@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { OnboardingSyncRowResult, OnboardingUpsertResponse } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,13 +28,6 @@ type UnitInsertPayload = {
     unit_number?: string;
     tower: string;
     floor: number;
-};
-
-type SyncRowResult = {
-    name: string;
-    unit: string;
-    status: 'synced' | 'unit_only' | 'failed';
-    detail: string;
 };
 
 function cleanText(value: unknown) {
@@ -268,7 +262,7 @@ export async function POST(request: Request) {
         if (communityError || !community?.resident_code) {
             throw communityError || new Error('La comunidad no tiene código de residentes configurado.');
         }
-        const rowResults: SyncRowResult[] = [];
+        const rowResults: OnboardingSyncRowResult[] = [];
         let successCount = 0;
         let unitOnlyCount = 0;
         let errorCount = 0;
@@ -346,7 +340,7 @@ export async function POST(request: Request) {
             requestId: getRequestId(request),
         });
 
-        return NextResponse.json({
+        const payload: OnboardingUpsertResponse = {
             message: 'Sincronizacion completada',
             processed: residents.length,
             success: successCount,
@@ -354,7 +348,8 @@ export async function POST(request: Request) {
             errors: errorCount,
             destinations: ['profiles', 'units', 'auth.users'],
             rowResults,
-        });
+        };
+        return NextResponse.json(payload);
     } catch (error: unknown) {
         console.error('Upsert Error:', error);
         return NextResponse.json({ error: 'No se pudo sincronizar la nómina.' }, { status: 500 });
