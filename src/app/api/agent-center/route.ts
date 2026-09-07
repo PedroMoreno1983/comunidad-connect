@@ -31,7 +31,10 @@ import {
     TOOL_AGENT_KEYS,
     effectiveRequiresConfirmation,
     missionRequiresConfirmation,
+    summaryLimitFor,
     type AgentAction,
+    type AgentActivityRow,
+    type AgentCenterGetResponse,
     type AgentKey,
     type AgentMissionStep,
     type AgentPlaybook,
@@ -42,7 +45,6 @@ import {
     type AgentWorkflow,
     type AutonomyLevel,
     type ToolName,
-    summaryLimitFor,
 } from '@/lib/agent-center/domain';
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -1405,9 +1407,9 @@ export async function GET(req: NextRequest) {
         .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => typeof turn.content === 'string')
         .map(turn => ({ role: turn.role, content: turn.content }));
 
-    return NextResponse.json({
+    const payload: AgentCenterGetResponse = {
         conversation,
-        activity: data || [],
+        activity: (data || []) as AgentActivityRow[],
         policies: Object.values(policies),
         summary,
         workflows,
@@ -1420,7 +1422,8 @@ export async function GET(req: NextRequest) {
             model: getAgentPlannerModel(),
             reasoning: 'claude_tool_planning_with_authorized_sources',
         },
-    });
+    };
+    return NextResponse.json(payload);
 }
 
 export async function POST(req: NextRequest) {

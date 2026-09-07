@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
+import type { TrainingProgressRecord } from '@/lib/types';
 
 export async function GET(req: NextRequest) {
     const limited = await enforceDistributedRateLimit(req, 'training.progress.read', { limit: 60, windowMs: 60_000 });
@@ -18,7 +19,8 @@ export async function GET(req: NextRequest) {
         .eq('user_id', profile.id)
         .eq('community_id', profile.community_id);
     if (error) return NextResponse.json({ error: 'No se pudo cargar el progreso.' }, { status: 500 });
-    return NextResponse.json(data || []);
+    const progress: TrainingProgressRecord[] = (data || []) as TrainingProgressRecord[];
+    return NextResponse.json(progress);
 }
 
 export async function POST(req: NextRequest) {
@@ -70,5 +72,6 @@ export async function POST(req: NextRequest) {
         console.error('[training/progress] Write failed:', error.message);
         return NextResponse.json({ error: 'No se pudo guardar el progreso.' }, { status: 500 });
     }
-    return NextResponse.json(data);
+    const saved: TrainingProgressRecord = data as TrainingProgressRecord;
+    return NextResponse.json(saved);
 }

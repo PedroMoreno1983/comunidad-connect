@@ -294,6 +294,70 @@ export type AgentTaskSummary = {
     steps: AgentTaskStepSummary[];
 };
 
+/**
+ * Fila de `agent_activity_log` tal como la sirve `/api/agent-center`. Vive aca
+ * y no en la pagina porque la escribe el servidor: dos declaraciones de la
+ * misma bitacora se separan sin que nadie se entere.
+ */
+export type AgentActivityRow = {
+    id: string;
+    agent_key: AgentKey;
+    action: string;
+    severity: 'info' | 'success' | 'warning' | 'error';
+    summary: string;
+    created_at: string;
+    metadata?: {
+        displayAction?: string;
+        displaySummary?: string;
+        proposedAction?: {
+            title?: string;
+            summary?: string;
+            args?: Record<string, unknown>;
+        };
+    } | null;
+};
+
+export type AgentConversationTurn = {
+    role: 'user' | 'assistant';
+    content: string;
+};
+
+export type AgentEngineInfo = {
+    provider: string;
+    model: string;
+    reasoning: string;
+};
+
+/** Lo que devuelve el GET de `/api/agent-center`. */
+export type AgentCenterGetResponse = {
+    error?: string;
+    conversation?: AgentConversationTurn[];
+    activity?: AgentActivityRow[];
+    policies?: AgentPolicy[];
+    summary?: AgentSummary;
+    workflows?: AgentWorkflow[];
+    playbooks?: AgentPlaybook[];
+    tasks?: AgentTaskSummary[];
+    triggers?: AgentTriggerRuleSummary[];
+    proposals?: AgentAction[];
+    engine?: AgentEngineInfo;
+};
+
+/** Turno en el hilo del Agent Center, con la propuesta que lo acompaña. */
+export type AgentChatMessage = {
+    id: string;
+    role: 'user' | 'agent';
+    content: string;
+    status?: 'awaiting_confirmation' | 'executed' | 'error' | 'rejected';
+    steps?: AgentStep[];
+    action?: AgentAction;
+    result?: {
+        title?: string;
+        message?: string;
+        targetHref?: string;
+    };
+};
+
 export type AgentTriggerSignalKey = 'overdue_expenses' | 'maintenance_backlog' | 'onboarding_gap' | 'emergency_readiness';
 
 export type AgentTriggerRuleSummary = {

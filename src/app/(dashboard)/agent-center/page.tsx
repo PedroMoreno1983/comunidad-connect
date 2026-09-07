@@ -15,100 +15,20 @@ import remarkGfm from "remark-gfm";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
 import { normalizeAgentMarkdown } from "@/lib/agent-center/markdown";
-import type { AgentTaskStatus, AgentTaskSummary, AgentTriggerRuleSummary } from "@/lib/agent-center/domain";
-
-type AgentKey = "finance" | "maintenance" | "concierge" | "community";
-
-type AgentStep = {
-  kind: "reasoning" | "tool" | "confirmation" | "result" | "warning";
-  title: string;
-  detail: string;
-  metadata?: Record<string, unknown>;
-};
-
-type AgentAction = {
-  agentKey: AgentKey;
-  toolName: string;
-  args: Record<string, unknown>;
-  requiresConfirmation: boolean;
-  title: string;
-  summary: string;
-  targetHref: string;
-  proposalId?: string | null;
-  runId?: string | null;
-};
-
-type AgentMessage = {
-  id: string;
-  role: "user" | "agent";
-  content: string;
-  status?: "awaiting_confirmation" | "executed" | "error" | "rejected";
-  steps?: AgentStep[];
-  action?: AgentAction;
-  result?: {
-    title?: string;
-    message?: string;
-    targetHref?: string;
-  };
-};
-
-type ActivityRow = {
-  id: string;
-  agent_key: AgentKey;
-  action: string;
-  severity: "info" | "success" | "warning" | "error";
-  summary: string;
-  created_at: string;
-  metadata?: {
-    displayAction?: string;
-    displaySummary?: string;
-    proposedAction?: {
-      title?: string;
-      summary?: string;
-      args?: Record<string, unknown>;
-    };
-  } | null;
-};
-
-type AgentPolicy = {
-  agentKey: AgentKey;
-  autonomyLevel: "manual" | "semi_autonomous" | "autonomous";
-  active: boolean;
-  maxDailyActions: number;
-  updatedAt?: string | null;
-};
-
-type AgentSummary = {
-  totalRuns: number;
-  executedRuns: number;
-  pendingProposals: number;
-  failedRuns: number;
-  successRate: number;
-  estimatedMinutesSaved: number;
-};
-
-
-type AgentPlaybook = {
-  key: string;
-  agentKey: AgentKey;
-  name: string;
-  description: string;
-  targetHref: string;
-  requiresAdmin: boolean;
-  steps: string[];
-};
-
-type AgentCenterGetResponse = {
-  conversation?: { role: "user" | "assistant"; content: string }[];
-  activity?: ActivityRow[];
-  policies?: AgentPolicy[];
-  summary?: AgentSummary;
-
-  playbooks?: AgentPlaybook[];
-  tasks?: AgentTaskSummary[];
-  triggers?: AgentTriggerRuleSummary[];
-  proposals?: AgentAction[];
-};
+import type {
+  AgentAction,
+  AgentActivityRow,
+  AgentCenterGetResponse,
+  AgentChatMessage,
+  AgentKey,
+  AgentPlaybook,
+  AgentPolicy,
+  AgentStep,
+  AgentSummary,
+  AgentTaskStatus,
+  AgentTaskSummary,
+  AgentTriggerRuleSummary,
+} from "@/lib/agent-center/domain";
 
 const TASK_STATUS_LABELS: Record<AgentTaskStatus, string> = {
   planned: "Planificada",
@@ -273,8 +193,8 @@ function policyListToMap(policies?: AgentPolicy[]) {
 
 export default function AgentCenterPage() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [messages, setMessages] = useState<AgentChatMessage[]>([]);
+  const [activity, setActivity] = useState<AgentActivityRow[]>([]);
   const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
 
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
@@ -301,7 +221,7 @@ export default function AgentCenterPage() {
         setMessages((current) => [
           ...persisted.map((turn) => ({
             id: nowId(),
-            role: (turn.role === "user" ? "user" : "agent") as AgentMessage["role"],
+            role: (turn.role === "user" ? "user" : "agent") as AgentChatMessage["role"],
             content: turn.content,
             status: turn.role === "assistant" ? ("executed" as const) : undefined,
           })),
@@ -333,7 +253,7 @@ export default function AgentCenterPage() {
     });
     setMessages((current) => {
       const sessionMessages = current.filter((message) => !message.id.startsWith("proposal-"));
-      const proposalMessages: AgentMessage[] = pending.map((action) => ({
+      const proposalMessages: AgentChatMessage[] = pending.map((action) => ({
         id: `proposal-${action.proposalId}`,
         role: "agent",
         content: action.summary,
@@ -363,10 +283,10 @@ export default function AgentCenterPage() {
       const data = await response.json().catch(() => ({})) as AgentCenterGetResponse & {
         error?: string;
         reply?: string;
-        status?: AgentMessage["status"];
+        status?: AgentChatMessage["status"];
         steps?: AgentStep[];
         action?: AgentAction;
-        result?: AgentMessage["result"];
+        result?: AgentChatMessage["result"];
       };
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "No se pudo ejecutar CoCo.");
 
