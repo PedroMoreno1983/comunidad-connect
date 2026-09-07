@@ -2238,3 +2238,79 @@ export interface HealthResponse {
     runtime?: HealthRuntimeInfo;
     checks?: Record<string, HealthCheckGroup>;
 }
+
+// ─── Gasto común visto por el residente ─────────────────────────────────────
+
+/**
+ * Fila cruda de `expenses` con su desglose. `unit_id` es TEXT en la base, no
+ * UUID, y `amount` llega como número o texto segun el driver: por eso el tipo
+ * los admite en vez de prometer lo que la base no garantiza.
+ */
+export interface ExpenseDatabaseRow {
+    id: string;
+    unit_id?: string | null;
+    month?: string | null;
+    amount?: number | string | null;
+    status?: ExpenseRecord['status'] | null;
+    due_date?: string | null;
+    paid_at?: string | null;
+    payment_metadata?: { amount?: number | string | null } | null;
+    items?: ExpenseItemDatabaseRow[] | null;
+}
+
+export interface ExpenseItemDatabaseRow {
+    category?: ExpenseBreakdown['category'] | null;
+    label?: string | null;
+    amount?: number | string | null;
+}
+
+/**
+ * Lo que la pantalla del residente muestra: el cobro mas lo que se sabe del
+ * pago. `ExpenseRecord` describe el cobro nomas y no tiene donde poner el monto
+ * efectivamente pagado, que puede diferir del emitido.
+ */
+export interface UnitExpenseView extends Omit<ExpenseRecord, 'paidAt'> {
+    /** `null` es "no pagado" y llega asi desde la base; no es lo mismo que ausente. */
+    paidAt?: string | null;
+    paymentAmount?: number | null;
+}
+
+// ─── CoCo en el chat del residente ──────────────────────────────────────────
+
+export interface CoCoPendingAction {
+    toolUseId: string;
+    name: string;
+    input: Record<string, unknown>;
+    title: string;
+    summary: string;
+}
+
+/** Resoluciones del usuario a una tanda de acciones pendientes, por tool_use_id. */
+export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
+
+/** Lo que `/api/coco` devuelve al navegador. */
+export interface CoCoApiResponse {
+    reply?: string;
+    navigate?: string;
+    action?: string;
+    pendingActions?: CoCoPendingAction[];
+}
+
+export interface CoCoChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    nav?: string;
+    action?: string;
+    pendingActions?: CoCoPendingAction[];
+    resolvedActions?: CoCoResolutions;
+}
+
+// ─── Marketplace: resumen de la publicación recién creada ───────────────────
+
+export interface MarketplacePublicationSummary {
+    title: string;
+    modes: string[];
+    imageCount: number;
+    createdAt: string;
+}

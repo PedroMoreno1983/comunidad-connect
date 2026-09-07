@@ -4,7 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo, CoCoPendingResolutionError, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoResolutions } from '@/lib/coco/agent';
+import { askCoCo, CoCoPendingResolutionError, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
+import type { CoCoApiResponse, CoCoResolutions } from '@/lib/types';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
@@ -626,19 +627,21 @@ export async function POST(req: NextRequest) {
         // (y por lo tanto tampoco un "caso" que registrar) hasta que el usuario
         // confirme o rechace desde el cliente.
         if (pendingActions && pendingActions.length > 0) {
-            return NextResponse.json({
+            const waiting: CoCoApiResponse = {
                 reply: reply || 'Antes de continuar, necesito tu confirmación:',
                 pendingActions,
-            }, { status: 200 });
+            };
+            return NextResponse.json(waiting, { status: 200 });
         }
 
         // Un caso operativo solo se crea si el residente confirma create_claim
         // (herramienta que muta). No abrir casos al consultar gastos, parking, etc.
-        return NextResponse.json({
+        const answer: CoCoApiResponse = {
             reply,
             navigate: getSafeCoCoNavigation(navigate),
             action,
-        }, { status: 200 });
+        };
+        return NextResponse.json(answer, { status: 200 });
 
     } catch (err) {
         if (isAiBudgetExceededError(err)) {

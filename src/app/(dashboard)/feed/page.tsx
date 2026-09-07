@@ -11,15 +11,6 @@ import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 
 type FilterTab = 'all' | 'alert' | 'event' | 'info';
-type AnnouncementRow = {
-    id: string;
-    title: string;
-    content: string;
-    author_name?: string | null;
-    priority: Announcement["priority"];
-    created_at: string;
-};
-
 export default function FeedPage() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +22,7 @@ export default function FeedPage() {
             try {
                 setIsLoading(true);
                 const data = await AnnouncementsService.getAnnouncements();
-                const mappedData = (data as AnnouncementRow[]).map((ann): Announcement => ({
+                const mappedData = data.map((ann): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
