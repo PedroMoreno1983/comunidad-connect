@@ -15,6 +15,7 @@ import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/a
 import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
 import { upgradeClarificationWithCoCo, resumeCoCoAction, rejectCoCoAction } from '@/lib/agent-center/conversationalFallback';
 import { buildCapabilitiesAction, isCapabilityOrGreeting } from '@/lib/agent-center/capabilities';
+import { cocoActionAuditLabel, cocoActionRequiresConfirmation, cocoActionRisk, type CoCoActionStep } from '@/lib/agent-center/cocoRisk';
 import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
@@ -189,6 +190,13 @@ function traceStepsForAction(action: AgentAction): AgentStep[] {
 function activityDisplayForAction(action: AgentAction) {
     const playbook = action.toolName === 'run_playbook' ? getPlaybook(action.args.playbookKey) : null;
     if (playbook) return playbook.name;
+    // Sin esto, toda accion ejecutada por CoCo quedaba en la bitacora como
+    // "Ejecutar accion preparada por CoCo": un post social era indistinguible de
+    // una emision de gastos comunes. CoCo ya redacta un titulo por paso.
+    if (action.toolName === 'coco_action') {
+        const label = cocoActionAuditLabel((action.args.pending as CoCoActionStep[]) || []);
+        if (label) return label;
+    }
     return TOOL_LABELS[action.toolName] || 'Actividad CoCo';
 }
 
@@ -964,6 +972,14 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
             displayAction,
             displaySummary,
             targetHref: action.targetHref,
+            // Para una accion de CoCo, deja consultables las herramientas que
+            // realmente se ejecutaron y cuanto pesaban. `tool_name` en
+            // agent_tool_calls dice 'coco_action' para todas por igual, asi que
+            // sin esto la bitacora no permite responder "que cobros emitio CoCo".
+            ...(action.toolName === 'coco_action' ? {
+                cocoTools: ((action.args.pending as CoCoActionStep[]) || []).map(step => step?.name).filter(Boolean),
+                cocoRisk: cocoActionRisk((action.args.pending as CoCoActionStep[]) || []),
+            } : {}),
             proposedAction: {
                 agentKey: action.agentKey,
                 toolName: action.toolName,
@@ -1549,9 +1565,16 @@ export async function POST(req: NextRequest) {
         action.args = validateAgentActionArgs(action);
         // La confirmacion efectiva depende de la politica de autonomia del agente
         // (o de la combinacion de agentes, en el caso de una mision multi-agente).
+        //
+        // Para una `coco_action` se miran los pasos que CoCo propuso: su riesgo es
+        // el del paso mas pesado. Tratarla como una caja opaca obligaba a asumir
+        // `write_high` siempre, y eso dejaba el modelo de autonomia graduada sin
+        // efecto para todo lo que pasara por CoCo.
         const needsConfirmation = action.toolName === 'run_mission'
             ? missionRequiresConfirmation((action.args.steps as AgentMissionStep[]) || [], policies)
-            : effectiveRequiresConfirmation(action.toolName, policy);
+            : action.toolName === 'coco_action'
+                ? cocoActionRequiresConfirmation((action.args.pending as CoCoActionStep[]) || [], policy)
+                : effectiveRequiresConfirmation(action.toolName, policy);
         action.requiresConfirmation = needsConfirmation;
         const steps: AgentStep[] = traceStepsForAction(action);
 
