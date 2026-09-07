@@ -30,15 +30,20 @@ import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import { supermarketBasketIdentity } from '@/lib/supermarketBasketIdentity';
 import type {
+  SupermarketAlternativesResponse,
   SupermarketBasketCandidate,
   SupermarketComparisonSource,
+  SupermarketHistoryResponse,
   SupermarketRequestedItem,
+  SupermarketSealAlternative,
+  SupermarketSealsResponse,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
   SupermarketSimulationResult,
-  SupermarketHistoryResponse,
-  SupermarketSealsResponse,
 } from '@/lib/types';
+
+/** Dos alternativas alcanzan para decidir; mas convierte la tabla en ruido. */
+const MAX_ALTERNATIVES_SHOWN = 2;
 
 const LIST_SUGGESTIONS = [
   { title: 'Compra semanal', items: ['Pechuga de pollo', 'Arroz', 'Paltas', 'Huevos', 'Leche', 'Pan molde'] },
@@ -127,6 +132,11 @@ export default function SupermarketPage() {
   const [sealsStore, setSealsStore] = useState<string | null>(null);
   const [sealsLoading, setSealsLoading] = useState(false);
   const [sealsUnsupported, setSealsUnsupported] = useState(false);
+  // Las alternativas cuelgan de los sellos: sin sellos a la vista no hay contra
+  // que comparar, y es una segunda consulta voluntaria dentro de una voluntaria.
+  const [alternatives, setAlternatives] = useState<SupermarketSealAlternative[] | null>(null);
+  const [alternativesStore, setAlternativesStore] = useState<string | null>(null);
+  const [alternativesLoading, setAlternativesLoading] = useState(false);
   const [realTotal, setRealTotal] = useState<SupermarketSimulationResult | null>(null);
   const [realTotalStore, setRealTotalStore] = useState<string | null>(null);
   const [realTotalLoading, setRealTotalLoading] = useState(false);
@@ -185,6 +195,11 @@ export default function SupermarketPage() {
   const basketKey = `${basketRevision}:${supermarketBasketIdentity(selectedBasket?.store, list)}`;
   const showingSeals = seals !== null && sealsStore === basketKey;
   const showingRealTotal = realTotal !== null && realTotalStore === basketKey;
+  const showingAlternatives = alternatives !== null && alternativesStore === basketKey;
+  const alternativesBySku = useMemo(
+    () => Object.fromEntries((showingAlternatives ? alternatives ?? [] : []).map(entry => [entry.current.sku, entry])),
+    [showingAlternatives, alternatives],
+  );
   /**
    * El ranking se calcula con estimados. Cuando se conoce el total real de una
    * cadena y no coincide, el orden deja de ser comparable: el resto sigue
@@ -400,6 +415,46 @@ export default function SupermarketPage() {
       });
     } finally {
       setSealsLoading(false);
+    }
+  };
+
+  /**
+   * No reordena ni recomienda: consulta si la misma tienda tiene un producto
+   * equivalente con menos sellos y cuanto cuesta el cambio. El presupuesto y el
+   * criterio quedan de quien compra.
+   */
+  const loadAlternatives = async () => {
+    const store = selectedBasket?.store;
+    if (!store) return;
+    if (showingAlternatives) { setAlternatives(null); setAlternativesStore(null); return; }
+    setAlternativesLoading(true);
+    try {
+      const response = await fetch('/api/supermarket/alternatives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store,
+          items: list.filter(item => item.available && item.sku).map(item => ({
+            sku: item.sku,
+            requestedTerm: item.requestedTerm,
+            requestedUnit: item.requestedUnit,
+            name: item.name,
+            price: item.price,
+          })),
+        }),
+      });
+      const data = await response.json() as SupermarketAlternativesResponse;
+      if (!response.ok) throw new Error(data.error || 'No se pudieron buscar alternativas.');
+      setAlternatives(data.alternatives ?? []);
+      setAlternativesStore(basketKey);
+    } catch (error) {
+      toast({
+        title: 'No se pudieron buscar alternativas',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente en un momento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAlternativesLoading(false);
     }
   };
 
@@ -851,6 +906,13 @@ export default function SupermarketPage() {
                     {selectedBasket?.store} no publica los sellos de advertencia en su catálogo.
                   </p>
                 ) : null}
+                {showingAlternatives ? (
+                  <p className="mt-1 text-xs cc-text-tertiary">
+                    Mismo formato, misma tienda, menos sellos informados. Los sellos advierten sobre
+                    azúcares, sodio, grasas y calorías: menos sellos no garantiza una compra más sana.
+                    La comparación de precios no cambia.
+                  </p>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -873,6 +935,18 @@ export default function SupermarketPage() {
                   {sealsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                   {showingSeals ? 'Ocultar sellos' : 'Ver sellos'}
                 </button>
+                {showingSeals && !sealsUnsupported ? (
+                  <button
+                    type="button"
+                    onClick={() => void loadAlternatives()}
+                    disabled={alternativesLoading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold cc-text-primary disabled:opacity-60"
+                    style={{ borderColor: 'var(--cc-line)' }}
+                  >
+                    {alternativesLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    {showingAlternatives ? 'Ocultar alternativas' : 'Con menos sellos'}
+                  </button>
+                ) : null}
                 <span className="rounded-full px-3 py-1.5 text-xs font-bold cc-text-secondary" style={{ background: 'var(--cc-paper-warm)' }}>
                   {list.filter(item => item.available).length} de {list.length}
                 </span>
@@ -929,6 +1003,28 @@ export default function SupermarketPage() {
                               ) : (
                                 <span className="mt-1 block text-[10px] cc-text-tertiary">
                                   {Object.prototype.hasOwnProperty.call(seals, item.sku) ? 'Sin sellos informados por la tienda' : 'Sin información de sellos'}
+                                </span>
+                              )
+                            ) : null}
+                            {showingAlternatives && item.sku && alternativesBySku[item.sku] ? (
+                              alternativesBySku[item.sku].unknownCurrent ? (
+                                <span className="mt-1 block text-[10px] cc-text-tertiary">
+                                  Sin sellos conocidos de este producto no hay con qué comparar.
+                                </span>
+                              ) : alternativesBySku[item.sku].options.length === 0 ? (
+                                <span className="mt-1 block text-[10px] cc-text-tertiary">
+                                  Sin equivalentes con menos sellos en este formato.
+                                </span>
+                              ) : (
+                                <span className="mt-1 block space-y-0.5">
+                                  {alternativesBySku[item.sku].options.slice(0, MAX_ALTERNATIVES_SHOWN).map(option => (
+                                    <span key={option.sku} className="block text-[11px] cc-text-secondary">
+                                      {option.name} · {option.seals.length} sello{option.seals.length === 1 ? '' : 's'} ·{' '}
+                                      {option.priceDelta === 0
+                                        ? 'mismo precio'
+                                        : `${option.priceDelta > 0 ? '+' : '−'}${money(Math.abs(option.priceDelta))}`}
+                                    </span>
+                                  ))}
                                 </span>
                               )
                             ) : null}

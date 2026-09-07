@@ -1934,3 +1934,31 @@ export interface BillingPreview {
     warnings: string[];
     units: BillingPreviewUnit[];
 }
+
+/** Una alternativa concreta con menos sellos informados que el producto elegido. */
+export interface SupermarketSealAlternativeOption {
+    sku: string;
+    name: string;
+    price: number;
+    seals: string[];
+    /** Diferencia contra el producto actual. Positivo = cuesta mas. */
+    priceDelta: number;
+}
+
+/**
+ * Alternativas para un producto de la canasta. `seals: null` en `current`
+ * significa que no se pudieron consultar, no que el producto no tenga: sin ese
+ * dato no hay contra que comparar y `options` viene vacio.
+ */
+export interface SupermarketSealAlternative {
+    requestedTerm: string;
+    current: { sku: string; name: string; price: number; seals: string[] | null };
+    options: SupermarketSealAlternativeOption[];
+    unknownCurrent: boolean;
+}
+
+export interface SupermarketAlternativesResponse {
+    supported?: boolean;
+    alternatives?: SupermarketSealAlternative[];
+    error?: string;
+}
