@@ -109,12 +109,23 @@ export async function simulateBasketTotal(
     }
 
     const discount = Math.abs(totals.Discounts ?? 0) / CENTS;
+    // La tienda declara su minimo aca, en centavos como el resto. Un 0 no es
+    // "no hay minimo": la consulta va sin direccion de despacho, y el minimo
+    // puede aparecer o cambiar al elegir comuna o metodo de entrega. Por eso 0
+    // se devuelve como desconocido en vez de como cero.
+    const rawMinimum = Number(record.minimumOrderValue);
+    const minimumOrder = Number.isFinite(rawMinimum) && rawMinimum > 0
+      ? rawMinimum / CENTS
+      : undefined;
+
     return {
       supported: true,
       complete: true,
       total,
       discount,
       resolvedItems,
+      minimumOrder,
+      minimumOrderWithoutAddress: true,
     };
   } catch {
     return { supported: true, complete: false, reason: 'No se pudo contactar a la tienda. Intenta nuevamente.' };
