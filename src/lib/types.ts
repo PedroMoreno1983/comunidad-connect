@@ -2186,3 +2186,55 @@ export interface WhatsAppBroadcastResponse {
     detail?: string;
     failures?: WhatsAppBroadcastFailure[];
 }
+
+// ─── Centro operativo y salud del sistema ───────────────────────────────────
+
+export interface OperationEvent {
+    id: string;
+    action: string;
+    entity_type: string;
+    entity_id?: string | null;
+    severity: 'info' | 'success' | 'warning' | 'error';
+    status: 'success' | 'error' | 'blocked' | 'pending';
+    summary: string;
+    metadata?: Record<string, unknown> | null;
+    created_at: string;
+}
+
+export interface OperationEventsSummary {
+    total: number;
+    success: number;
+    warnings: number;
+    errors: number;
+    pending: number;
+}
+
+export interface OperationsResponse {
+    error?: string;
+    summary: OperationEventsSummary;
+    events: OperationEvent[];
+}
+
+/**
+ * Un grupo de `/api/health` no es solo banderas: `integrationDetail` anida
+ * objetos y hasta un texto (`iotMode`). Declararlo como
+ * `Record<string, boolean>` hacia que el conteo de chequeos sanos sumara esos
+ * objetos por ser truthy, e inflaba las dos cifras a la vez.
+ */
+export type HealthCheckGroup = Record<string, unknown>;
+
+export interface HealthRuntimeInfo {
+    productionReady: boolean;
+    fullPaidProductionReady: boolean;
+    missingProduction: string[];
+    deferredProduction: string[];
+}
+
+export interface HealthResponse {
+    ok?: boolean;
+    status?: string;
+    service?: string;
+    checkedAt?: string;
+    runtime?: HealthRuntimeInfo;
+    checks?: Record<string, HealthCheckGroup>;
+}

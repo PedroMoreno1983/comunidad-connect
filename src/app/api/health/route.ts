@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { HealthResponse } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +92,7 @@ export async function GET() {
         ...(!automation.agentScheduler ? ['automation.scheduledAgentTriggers'] : []),
     ];
 
-    return NextResponse.json({
+    const payload: HealthResponse = {
         ok: appReady,
         status: productionReady ? (deferredProduction.length ? 'ready_with_deferred_integrations' : 'ready') : appReady ? 'operational_needs_production_config' : 'not_ready',
         service: 'convive-connect',
@@ -110,7 +111,8 @@ export async function GET() {
             automation,
             integrationDetail,
         },
-    }, {
+    };
+    return NextResponse.json(payload, {
         status: appReady ? 200 : 503,
         headers: {
             'Cache-Control': 'no-store',
