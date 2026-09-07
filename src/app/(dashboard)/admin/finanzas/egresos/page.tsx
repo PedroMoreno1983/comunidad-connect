@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
+import type { BillingPreview, CommunityExpense, IssuedBillingRun } from "@/lib/types";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
@@ -20,38 +21,9 @@ const CATEGORIES = [
     { value: "other", label: "Otros" },
 ] as const;
 
-interface CommunityExpense {
-    id: string;
-    category: string;
-    label: string;
-    amount: number;
-    provider: string | null;
-    prorate_method: "share" | "equal";
-}
 
-interface IssuedRun {
-    id: string;
-    total_amount: number;
-    units_count: number;
-    due_date: string;
-    issued_at: string;
-}
 
-interface PreviewUnit {
-    unitId: string;
-    label: string;
-    sharePermille: number | null;
-    total: number;
-}
 
-interface Preview {
-    unitCount: number;
-    totalExpenses: number;
-    totalCharged: number;
-    fellBackToEqualSplit: boolean;
-    warnings: string[];
-    units: PreviewUnit[];
-}
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const currentMonth = () => new Date().toISOString().slice(0, 7);
@@ -66,8 +38,8 @@ export default function EgresosPage() {
     const [month, setMonth] = useState(currentMonth);
     const [dueDate, setDueDate] = useState(defaultDueDate);
     const [expenses, setExpenses] = useState<CommunityExpense[]>([]);
-    const [issuedRun, setIssuedRun] = useState<IssuedRun | null>(null);
-    const [preview, setPreview] = useState<Preview | null>(null);
+    const [issuedRun, setIssuedRun] = useState<IssuedBillingRun | null>(null);
+    const [preview, setPreview] = useState<BillingPreview | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [issuing, setIssuing] = useState(false);
