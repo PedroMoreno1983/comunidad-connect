@@ -185,6 +185,19 @@ export default function SupermarketPage() {
   const basketKey = `${basketRevision}:${supermarketBasketIdentity(selectedBasket?.store, list)}`;
   const showingSeals = seals !== null && sealsStore === basketKey;
   const showingRealTotal = realTotal !== null && realTotalStore === basketKey;
+  /**
+   * El ranking se calcula con estimados. Cuando se conoce el total real de una
+   * cadena y no coincide, el orden deja de ser comparable: el resto sigue
+   * estimado. Se marca la duda en vez de reordenar con datos de dos naturalezas.
+   */
+  const realTotalStoreName = selectedBasket?.store ?? '';
+  const rankingEnDuda = Boolean(
+    showingRealTotal
+    && realTotal?.complete
+    && typeof realTotal.total === 'number'
+    && selectedBasket
+    && Math.abs(realTotal.total - selectedBasket.subtotal) >= 1,
+  );
   const completeBaskets = basketOptions.filter(basket => basket.complete);
   const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
   const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
@@ -621,13 +634,26 @@ export default function SupermarketPage() {
                 </h2>
                 {winnerSavings > 0 && winner && (
                   <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--cc-sage)' }}>
-                    {winner.store} ahorra {money(winnerSavings)} frente a la siguiente canasta completa.
+                    Según los estimados, {winner.store} sale {money(winnerSavings)} más barata que la
+                    siguiente canasta completa.
                   </p>
                 )}
                 <p className="mt-2 max-w-xl text-xs cc-text-tertiary">
                   Estimado sumando el precio de cada producto. Las promociones por volumen y los montos
                   mínimos de despacho pueden cambiar el total en la tienda.
                 </p>
+                {/*
+                  Un total real y un estimado no son comparables entre si. Mezclarlos
+                  en el orden daria una recomendacion que parece firme y no lo es, asi
+                  que el ranking se deja como esta y se dice que quedo en duda.
+                */}
+                {rankingEnDuda ? (
+                  <p className="mt-2 max-w-xl text-xs font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                    Consultaste el total real de {realTotalStoreName} y difiere del estimado. El orden de
+                    arriba sigue calculado con estimados, así que esta comparación quedó en duda:
+                    consulta el total real de las otras cadenas antes de decidir.
+                  </p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -803,6 +829,22 @@ export default function SupermarketPage() {
                       {realTotal?.supported ? realTotal.reason || 'No se pudo verificar toda la canasta.' : `${selectedBasket?.store} no permite consultar el total antes de comprar.`}
                     </p>
                   )
+                ) : null}
+                {/*
+                  Un minimo desconocido y un minimo inexistente no son lo mismo.
+                  La consulta va sin direccion, asi que la tienda puede exigir un
+                  minimo que aca no aparece: aCuenta pide sobre $25.000 y ninguna
+                  API disponible lo anticipa. Se dice lo que se sabe y hasta donde.
+                */}
+                {showingRealTotal && realTotal?.complete ? (
+                  <p className="mt-1 text-xs cc-text-tertiary">
+                    {typeof realTotal.minimumOrder === 'number'
+                      ? `Pedido mínimo declarado por ${selectedBasket?.store}: ${money(realTotal.minimumOrder)}`
+                      : `${selectedBasket?.store} no declaró un pedido mínimo en esta consulta`}
+                    {realTotal.minimumOrderWithoutAddress
+                      ? ' · consultado sin dirección, puede cambiar al elegir comuna o retiro'
+                      : ''}
+                  </p>
                 ) : null}
                 {showingSeals && sealsUnsupported ? (
                   <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>

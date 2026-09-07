@@ -1717,6 +1717,18 @@ export interface SupermarketSimulationResult {
     resolvedItems?: number;
     reason?: string;
     error?: string;
+    /**
+     * Monto minimo de pedido que la tienda declara, en pesos.
+     *
+     * `undefined` significa desconocido, no ausencia de minimo, y la diferencia
+     * importa: la consulta se hace sin direccion de despacho, y el minimo puede
+     * aparecer o cambiar al elegir comuna o metodo de entrega. aCuenta avisa
+     * "Te faltan $16.895 para completar el pedido minimo" en su propio carro, y
+     * ninguna API disponible lo anticipa.
+     */
+    minimumOrder?: number;
+    /** Si el minimo se consulto sin direccion, y por lo tanto puede cambiar. */
+    minimumOrderWithoutAddress?: boolean;
 }
 
 export interface SupermarketHistoryResponse {

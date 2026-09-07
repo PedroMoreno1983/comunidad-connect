@@ -73,6 +73,45 @@ describe('simulacion del total real', () => {
     expect(result.total).toBeUndefined();
   });
 
+  it('convierte a pesos el minimo que la tienda declara', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      totals: [{ id: 'Items', value: 130_000 }],
+      items: [{ id: '111151', quantity: 4, seller: '1', availability: 'available' }],
+      minimumOrderValue: 50_000,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+
+    const result = await simulateBasketTotal('Unimarc', [{ sku: '111151', quantity: 4 }]);
+
+    expect(result.minimumOrder).toBe(500);
+    expect(result.minimumOrderWithoutAddress).toBe(true);
+  });
+
+  it('trata un minimo en cero como desconocido, no como ausencia de minimo', async () => {
+    // La consulta va sin direccion de despacho. Un 0 aca no prueba que la tienda
+    // no exija un minimo: puede aparecer al elegir comuna o retiro, como pasa en
+    // aCuenta, que pide sobre $25.000 y ninguna API disponible lo anticipa.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      totals: [{ id: 'Items', value: 130_000 }],
+      items: [{ id: '111151', quantity: 4, seller: '1', availability: 'available' }],
+      minimumOrderValue: 0,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+
+    const result = await simulateBasketTotal('Jumbo', [{ sku: '111151', quantity: 4 }]);
+
+    expect(result.minimumOrder).toBeUndefined();
+  });
+
+  it('deja el minimo desconocido cuando la tienda no informa el campo', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      totals: [{ id: 'Items', value: 130_000 }],
+      items: [{ id: '111151', quantity: 4, seller: '1', availability: 'available' }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+
+    const result = await simulateBasketTotal('Jumbo', [{ sku: '111151', quantity: 4 }]);
+
+    expect(result.minimumOrder).toBeUndefined();
+  });
+
   it('no rompe la comparacion cuando la tienda falla', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('sin red'); }));
 
