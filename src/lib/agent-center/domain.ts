@@ -105,18 +105,38 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
  * - autonomous:       write_low y write_high corren sin confirmacion (playbooks
  *                   excluidos); todo queda auditado igual.
  */
+/**
+ * El nucleo de la decision, en funcion del riesgo ya resuelto. Se expone aparte
+ * porque el mismo criterio tiene que aplicarse a herramientas que no son del
+ * Agent Center: los pasos que propone CoCo dentro de una `coco_action` se
+ * evaluan con esta misma regla (ver `cocoRisk.ts`), en vez de tener una segunda
+ * politica de autonomia que se desincronice de esta.
+ */
+export function riskRequiresConfirmation(
+    risk: ToolRiskLevel,
+    policy: Pick<AgentPolicy, 'autonomyLevel'>,
+): boolean {
+    if (risk === 'read') return false;
+    if (policy.autonomyLevel === 'autonomous') return false;
+    if (policy.autonomyLevel === 'semi_autonomous') return risk === 'write_high';
+    return true;
+}
+
 export function effectiveRequiresConfirmation(
     toolName: ToolName,
     policy: Pick<AgentPolicy, 'autonomyLevel'>,
 ): boolean {
     const risk = TOOL_RISK_LEVELS[toolName];
     if (risk === 'read') return false;
-    // run_playbook y coco_action siempre pasan por revision humana, sin importar
-    // el nivel de autonomia: son operaciones abiertas o batch de alto impacto.
+    // run_playbook es una operacion abierta: siempre pasa por revision humana.
+    //
+    // coco_action tambien, PERO solo cuando se la evalua a ciegas. Su riesgo real
+    // depende de los pasos que CoCo propuso, y quien los tenga a mano debe usar
+    // `cocoActionRequiresConfirmation` (cocoRisk.ts), que los mira uno a uno.
+    // Este `true` es el default seguro para cualquier camino que llegue aqui sin
+    // esa informacion.
     if (toolName === 'run_playbook' || toolName === 'coco_action') return true;
-    if (policy.autonomyLevel === 'autonomous') return false;
-    if (policy.autonomyLevel === 'semi_autonomous') return risk === 'write_high';
-    return true;
+    return riskRequiresConfirmation(risk, policy);
 }
 
 export type PlaybookKey =
