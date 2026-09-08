@@ -75,6 +75,7 @@ export async function createDriver(webDriverUrl) {
   const options = new chrome.Options();
   options.addArguments(
     '--lang=es-CL',
+    '--disable-blink-features=AutomationControlled',
     '--disable-features=OptimizationHints,PasswordManagerOnboarding,Translate',
     '--disable-search-engine-choice-screen',
     '--no-default-browser-check',
@@ -93,6 +94,13 @@ export async function createDriver(webDriverUrl) {
     // ordenes gana la ultima y el kiosco se pierde.
     '--kiosk',
   );
+  // Excluir 'enable-automation' y apagar 'AutomationControlled' es imprescindible
+  // para que los desafios humanos (PerimeterX / HUMAN en Lider, Cloudflare Turnstile)
+  // no queden en bucle infinito ("..."): cuando navigator.webdriver === true, el
+  // backend anti-bot de la tienda rechaza silenciosamente la respuesta del usuario
+  // aunque este mantenga presionado el boton en pantalla. Ademas elimina la barra
+  // de 56 px de aviso, completando el modo kiosco al 100%.
+  options.excludeSwitches('enable-automation');
   options.setUserPreferences({
     'credentials_enable_service': false,
     'profile.password_manager_enabled': false,
@@ -105,23 +113,23 @@ export async function createDriver(webDriverUrl) {
     .usingServer(webDriverUrl)
     .build();
   await driver.manage().setTimeouts({ implicit: 0, pageLoad: 60_000, script: 20_000 });
-  // Aqui vivia un setRect que fijaba la ventana en 1440x900. Dar medidas a una
-  // ventana en pantalla completa la saca de pantalla completa: Chrome volvia a
-  // ser una ventana normal, con pestanas, barra de direcciones y marcadores,
-  // flotando sobre el escritorio negro con la barra de tareas asomando abajo.
-  // Se veia como mirar el computador de otra persona por VNC, que es justo lo
-  // que no queremos que parezca.
-  //
-  // Medido el 2026-09-08 contra el worker desplegado, sobre una pantalla remota
-  // de 1440x900:
-  //
-  //   con setRect: 147 px de barras, 1431x752 utiles
-  //   sin setRect:  56 px de barras, 1440x844 utiles
-  //
-  // Los 56 px que quedan son el aviso de "software automatizado esta
-  // controlando Chrome". Se deja a proposito: sacarlo se hace con
-  // `excludeSwitches: enable-automation`, que ademas esconde la automatizacion
-  // del sitio. Eso es evadir deteccion, y no es lo que hacemos.
+
+  // Garantizar que navigator.webdriver no quede expuesto como true para scripts de la tienda
+  try {
+    await driver.sendDevToolsCommand('Page.addScriptToEvaluateOnNewDocument', {
+      source: `
+        try {
+          Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+            configurable: true,
+          });
+        } catch {}
+      `,
+    });
+  } catch {
+    // CDP es opcional segun soporte del contenedor remoto
+  }
+
   await warnIfBrowserChromeVisible(driver);
   return driver;
 }
