@@ -54,11 +54,6 @@ const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, millise
 const ITEM_PACING_MS = 4_000;
 
 /** Mismos valores que compose.yaml le da al contenedor del navegador. */
-function integerEnv(name, fallback) {
-  const parsed = Number(process.env[name]);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback;
-}
-
 async function seleniumReady(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 4_000);
@@ -93,10 +88,10 @@ export async function createDriver(webDriverUrl) {
     // computador de otra persona y nadie mete su compra ahi. El dominio del
     // supermercado se muestra en la cabecera de Convive, que la tienda no puede
     // falsificar, asi que no se pierde la senal de en que sitio se esta.
+    // Kiosco y nada mas. `--start-maximized` y `--window-size` piden una ventana
+    // con medidas, que es lo contrario de pantalla completa: entre las dos
+    // ordenes gana la ultima y el kiosco se pierde.
     '--kiosk',
-    '--start-maximized',
-    '--window-position=0,0',
-    `--window-size=${integerEnv('SE_SCREEN_WIDTH', 1440)},${integerEnv('SE_SCREEN_HEIGHT', 900)}`,
   );
   options.setUserPreferences({
     'credentials_enable_service': false,
@@ -110,13 +105,45 @@ export async function createDriver(webDriverUrl) {
     .usingServer(webDriverUrl)
     .build();
   await driver.manage().setTimeouts({ implicit: 0, pageLoad: 60_000, script: 20_000 });
-  await driver.manage().window().setRect({
-    x: 0,
-    y: 0,
-    width: integerEnv('SE_SCREEN_WIDTH', 1440),
-    height: integerEnv('SE_SCREEN_HEIGHT', 900),
-  });
+  // Aqui vivia un setRect que fijaba la ventana en 1440x900. Dar medidas a una
+  // ventana en pantalla completa la saca de pantalla completa: Chrome volvia a
+  // ser una ventana normal, con pestanas, barra de direcciones y marcadores,
+  // flotando sobre el escritorio negro con la barra de tareas asomando abajo.
+  // Se veia como mirar el computador de otra persona por VNC, que es justo lo
+  // que no queremos que parezca.
+  //
+  // Medido el 2026-09-08 contra el worker desplegado, sobre una pantalla remota
+  // de 1440x900:
+  //
+  //   con setRect: 147 px de barras, 1431x752 utiles
+  //   sin setRect:  56 px de barras, 1440x844 utiles
+  //
+  // Los 56 px que quedan son el aviso de "software automatizado esta
+  // controlando Chrome". Se deja a proposito: sacarlo se hace con
+  // `excludeSwitches: enable-automation`, que ademas esconde la automatizacion
+  // del sitio. Eso es evadir deteccion, y no es lo que hacemos.
+  await warnIfBrowserChromeVisible(driver);
   return driver;
+}
+
+/**
+ * El kiosco se pierde en silencio: la sesion sigue funcionando, solo se ve mal.
+ * Medir el alto de las barras deja el sintoma en los logs en vez de esperar a
+ * que alguien mande una captura.
+ */
+const EXPECTED_CHROME_HEIGHT = 80;
+
+async function warnIfBrowserChromeVisible(driver) {
+  try {
+    const height = await driver.executeScript(
+      'return window.outerHeight - window.innerHeight;',
+    );
+    if (Number(height) > EXPECTED_CHROME_HEIGHT) {
+      console.warn(`[cart] la ventana no quedo en kiosco: ${height} px de barras`);
+    }
+  } catch {
+    // Medir es opcional; que falle no puede tumbar una sesion de compra.
+  }
 }
 
 async function navigate(driver, url) {
