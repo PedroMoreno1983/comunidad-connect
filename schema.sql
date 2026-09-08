@@ -1532,6 +1532,38 @@ ALTER TABLE public.communities
   ADD COLUMN IF NOT EXISTS iot_autonomy_enabled_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS iot_autonomy_enabled_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 
+-- Autocompletado y correccion de la lista de compras.
+--
+-- El vocabulario son los terminos que el catalogo puede responder de verdad.
+-- Se guarda en tabla porque calcularlo recorre las ~92.000 filas del catalogo
+-- (medido el 2026-09-08: entre 1,5 y 5,5 s) y la pregunta llega mientras
+-- alguien escribe. Se rehace al terminar la carga nocturna, que es lo unico
+-- que puede cambiar el resultado.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS supermarket_products_name_trgm_idx
+  ON public.supermarket_products USING gin (name gin_trgm_ops);
+
+CREATE TABLE IF NOT EXISTS public.supermarket_search_terms (
+  term TEXT PRIMARY KEY,
+  products INTEGER NOT NULL CHECK (products > 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS supermarket_search_terms_products_idx
+  ON public.supermarket_search_terms (products DESC);
+
+ALTER TABLE public.supermarket_search_terms ENABLE ROW LEVEL SECURITY;
+
+-- Son nombres de productos de gondola: no dicen nada de nadie. Escribir es
+-- cosa del proceso de carga, que corre con service_role y no pasa por RLS.
+DROP POLICY IF EXISTS "supermarket_search_terms_read" ON public.supermarket_search_terms;
+CREATE POLICY "supermarket_search_terms_read"
+  ON public.supermarket_search_terms
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
 -- Reconcile stock only after a complete, safely covered supermarket crawl.
 BEGIN;
 
