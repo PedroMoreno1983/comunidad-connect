@@ -388,4 +388,61 @@ describe('puente coco_action end-to-end (checklist de QA del PR #68)', () => {
         expect(data.action.toolName).not.toBe('coco_action');
         expect(data.action.summary).toContain('$437.900');
     });
+
+    /**
+     * El puente era una caja opaca: toda `coco_action` valia `write_high` y pedia
+     * confirmacion, sin importar si dentro venia un post o una emision de cobros.
+     * Ahora el Agent Center mira los pasos y aplica su politica de autonomia. Estos
+     * dos tests comprueban que eso tiene efecto de verdad a traves de la ruta, no
+     * solo en la funcion pura.
+     */
+    describe('el riesgo de una coco_action se calcula por sus pasos', () => {
+        function turnoConMutacion(name: string, title: string) {
+            mocks.askCoCo.mockResolvedValue({
+                reply: 'Preparado.',
+                pendingActions: [{ toolUseId: 'toolu_x1', name, input: {}, title, summary: title }],
+                updatedHistory: [{ role: 'assistant', content: 'tool_use' }],
+            });
+        }
+
+        it('un paso de alto impacto sigue exigiendo aprobacion humana', async () => {
+            turnoConMutacion('issue_billing', 'Emitir gasto comun de mayo');
+
+            const response = await POST(post({ message: UNRECOGNIZED_MESSAGE }));
+            const data = await response.json();
+
+            expect(data.status).toBe('awaiting_confirmation');
+            expect(data.action.toolName).toBe('coco_action');
+            // Un solo askCoCo: se propuso, no se ejecuto.
+            expect(mocks.askCoCo).toHaveBeenCalledTimes(1);
+        });
+
+        it('un paso de bajo impacto se ejecuta con la politica de fabrica', async () => {
+            // `coco_action` es del agente community, semi_autonomous por defecto.
+            turnoConMutacion('create_social_post', 'Publicar aviso en el muro');
+
+            const response = await POST(post({ message: UNRECOGNIZED_MESSAGE }));
+            const data = await response.json();
+
+            expect(data.status).toBe('executed');
+            // Dos llamadas: la que propuso y la que reanudo para ejecutar.
+            expect(mocks.askCoCo).toHaveBeenCalledTimes(2);
+            const [, , , options] = mocks.askCoCo.mock.calls[1] as [string, unknown, unknown, { resolutions: Record<string, string> }];
+            expect(options.resolutions).toEqual({ toolu_x1: 'approved' });
+        });
+
+        it('la bitacora registra que hizo CoCo, no una etiqueta generica', async () => {
+            turnoConMutacion('create_social_post', 'Publicar aviso en el muro');
+
+            await POST(post({ message: UNRECOGNIZED_MESSAGE }));
+
+            const run = mocks.inserts.find(i => i.table === 'agent_runs');
+            const metadata = run?.payload.metadata as Record<string, unknown>;
+            expect(metadata.displayAction).toBe('CoCo: Publicar aviso en el muro');
+            // Y las herramientas quedan consultables: `tool_name` dice 'coco_action'
+            // para todas por igual, asi que sin esto no se puede auditar que corrio.
+            expect(metadata.cocoTools).toEqual(['create_social_post']);
+            expect(metadata.cocoRisk).toBe('write_low');
+        });
+    });
 });
