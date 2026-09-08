@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BadgeDollarSign,
@@ -27,9 +27,20 @@ import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartButton';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
-import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
+import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList, type GroupItemInput } from '@/lib/supermarketGroupDomain';
+import {
+  lineAtCaret,
+  lineBoundsAtCaret,
+  replaceTermInLine,
+  shoppingListText,
+  termBeingTyped,
+} from '@/lib/supermarketListEditor';
 import { supermarketBasketIdentity } from '@/lib/supermarketBasketIdentity';
 import type {
+  ShoppingReviewResponse,
+  ShoppingSuggestionsResponse,
+  ShoppingTermReview,
+  ShoppingTermSuggestion,
   SupermarketAlternativesResponse,
   SupermarketBasketCandidate,
   SupermarketComparisonSource,
@@ -44,6 +55,9 @@ import type {
 
 /** Dos alternativas alcanzan para decidir; mas convierte la tabla en ruido. */
 const MAX_ALTERNATIVES_SHOWN = 2;
+
+/** Espera antes de preguntarle al catalogo, para no consultar por cada tecla. */
+const TYPING_PAUSE_MS = 280;
 
 const LIST_SUGGESTIONS = [
   { title: 'Compra semanal', items: ['Pechuga de pollo', 'Arroz', 'Paltas', 'Huevos', 'Leche', 'Pan molde'] },
@@ -119,6 +133,11 @@ function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingIt
 export default function SupermarketPage() {
   const { toast } = useToast();
   const [shoppingInput, setShoppingInput] = useState('');
+  // Lo que la persona esta escribiendo, para proponer sin adivinar la linea.
+  const [caret, setCaret] = useState(0);
+  const [suggestions, setSuggestions] = useState<ShoppingTermSuggestion[]>([]);
+  const [reviews, setReviews] = useState<Record<string, ShoppingTermReview>>({});
+  const listRef = useRef<HTMLTextAreaElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState<SupermarketShoppingItem[]>([]);
   const [requestedItems, setRequestedItems] = useState<SupermarketRequestedItem[]>([]);
@@ -145,6 +164,81 @@ export default function SupermarketPage() {
   const [basketRevision, setBasketRevision] = useState(0);
   const [recordingPurchase, setRecordingPurchase] = useState(false);
   const [recordedBasket, setRecordedBasket] = useState<string | null>(null);
+
+  /**
+   * Lo que la lista dice, leido con el mismo parser que usa la comparacion.
+   * No es una version aparte: si aca se ve "papel higienico x2", eso es
+   * exactamente lo que se va a comparar.
+   */
+  const parsedList = useMemo(() => parseGroupShoppingList(shoppingInput), [shoppingInput]);
+  const typedTerm = useMemo(
+    () => termBeingTyped(lineAtCaret(shoppingInput, caret)),
+    [shoppingInput, caret],
+  );
+
+  /** Reescribe la lista completa desde lo entendido, cambiando un producto. */
+  const rewriteList = (term: string, change: Partial<GroupItemInput> | null) => {
+    const next = parsedList.flatMap(item => {
+      if (item.term !== term) return [item];
+      if (change === null) return [];
+      return [{ ...item, ...change }];
+    });
+    setShoppingInput(shoppingListText(next));
+  };
+
+  useEffect(() => {
+    if (typedTerm.length < 2) { setSuggestions([]); return; }
+    let alive = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/supermarket/sugerencias?q=${encodeURIComponent(typedTerm)}`);
+        const data = await response.json() as ShoppingSuggestionsResponse;
+        if (alive && response.ok) setSuggestions(data.suggestions ?? []);
+      } catch {
+        // Sin sugerencias se escribe igual; no vale la pena interrumpir por esto.
+      }
+    }, TYPING_PAUSE_MS);
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, [typedTerm]);
+
+  useEffect(() => {
+    const terms = parsedList.map(item => item.term);
+    if (terms.length === 0) { setReviews({}); return; }
+    let alive = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/supermarket/revision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ terms }),
+        });
+        const data = await response.json() as ShoppingReviewResponse;
+        if (!alive || !response.ok) return;
+        setReviews(Object.fromEntries((data.items ?? []).map(item => [item.term, item])));
+      } catch {
+        // Que no se pueda revisar no invalida la lista: se compara igual.
+      }
+    }, TYPING_PAUSE_MS);
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, [parsedList]);
+
+  /** Cambia el producto de la linea que se esta escribiendo, sin tocar su cantidad. */
+  const applySuggestion = (term: string) => {
+    const text = shoppingInput;
+    const { start, end } = lineBoundsAtCaret(text, caret);
+    const replacement = replaceTermInLine(text.slice(start, end), term);
+    const next = text.slice(0, start) + replacement + text.slice(end);
+    setShoppingInput(next);
+    setSuggestions([]);
+    window.requestAnimationFrame(() => {
+      const node = listRef.current;
+      if (!node) return;
+      const position = start + replacement.length;
+      node.focus();
+      node.setSelectionRange(position, position);
+      setCaret(position);
+    });
+  };
 
   const importShoppingList = async (file: File | undefined) => {
     if (!file) return;
@@ -640,9 +734,16 @@ export default function SupermarketPage() {
                 className="min-h-44 w-full rounded-xl border p-4 pr-14 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
                 style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.10)' }}
                 placeholder={'2 arroz\nleche x 6\naceite\npapel higiénico 2'}
+                ref={listRef}
                 value={shoppingInput}
                 maxLength={MAX_SHOPPING_LIST_CHARS}
-                onChange={event => setShoppingInput(event.target.value)}
+                onChange={event => {
+                  setShoppingInput(event.target.value);
+                  setCaret(event.target.selectionStart ?? 0);
+                }}
+                onKeyUp={event => setCaret(event.currentTarget.selectionStart ?? 0)}
+                onClick={event => setCaret(event.currentTarget.selectionStart ?? 0)}
+                onBlur={() => setSuggestions([])}
               />
               <button
                 type="button"
@@ -655,6 +756,124 @@ export default function SupermarketPage() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
               </button>
             </div>
+            {/*
+              Sugerencias del catálogo para la línea que se está escribiendo.
+              Van en una fila y no en un desplegable sobre el texto: la lista se
+              escribe de corrido y un menú flotante taparía las líneas de abajo.
+              `onMouseDown` en vez de `onClick` porque el blur del textarea llega
+              antes y cerraría la fila sin llegar a aplicar nada.
+            */}
+            {suggestions.length > 0 ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  En el catálogo
+                </span>
+                {suggestions.map(suggestion => (
+                  <button
+                    key={suggestion.term}
+                    type="button"
+                    onMouseDown={event => { event.preventDefault(); applySuggestion(suggestion.term); }}
+                    className="rounded-full px-2.5 py-1 text-xs font-semibold text-white/85 hover:bg-white/20"
+                    style={{ background: 'rgba(255,255,255,0.12)' }}
+                  >
+                    {suggestion.term}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {/*
+              Cómo quedó leída la lista. Es la misma lectura que hará la
+              comparación, así que aquí se ve —y se corrige— antes de comparar,
+              en vez de descubrir al final que "papel hgienico" buscó cualquier
+              papel.
+            */}
+            {parsedList.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                  Así lo leí · {parsedList.length} producto{parsedList.length === 1 ? '' : 's'}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {parsedList.map(item => {
+                    const dudoso = reviews[item.term]?.status === 'unknown';
+                    return (
+                      <span
+                        key={item.term}
+                        className="inline-flex items-center gap-1 rounded-full py-1 pl-2.5 pr-1 text-xs"
+                        style={{
+                          background: dudoso ? 'rgba(224,168,90,0.18)' : 'rgba(255,255,255,0.10)',
+                          border: `1px solid ${dudoso ? 'rgba(224,168,90,0.45)' : 'transparent'}`,
+                        }}
+                      >
+                        <span className="font-semibold text-white/90">{item.term}</span>
+                        {item.unit ? (
+                          <span className="pr-1.5 text-white/50">{item.quantity} {item.unit}</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              aria-label={`Quitar una unidad de ${item.term}`}
+                              onClick={() => rewriteList(
+                                item.term,
+                                item.quantity > 1 ? { quantity: item.quantity - 1 } : null,
+                              )}
+                              className="rounded-full px-1.5 text-white/60 hover:bg-white/15 hover:text-white"
+                            >
+                              −
+                            </button>
+                            <span className="min-w-4 text-center font-bold text-white/90">{item.quantity}</span>
+                            <button
+                              type="button"
+                              aria-label={`Agregar una unidad de ${item.term}`}
+                              onClick={() => rewriteList(item.term, { quantity: item.quantity + 1 })}
+                              className="rounded-full px-1.5 text-white/60 hover:bg-white/15 hover:text-white"
+                            >
+                              +
+                            </button>
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/*
+                  Se propone, no se corrige solo: "arroz" y "arrollado" se
+                  escriben parecido, y sustituir por cuenta propia le cambiaría
+                  la compra a alguien sin preguntarle.
+                */}
+                {parsedList.map(item => {
+                  const review = reviews[item.term];
+                  if (review?.status !== 'unknown') return null;
+                  return (
+                    <p key={item.term} className="mt-2 text-[11px] leading-5 text-white/60">
+                      No encontré <span className="font-semibold text-white/85">{item.term}</span> en el catálogo.
+                      {review.suggestions.length > 0 ? (
+                        <>
+                          {' '}¿Quisiste decir{' '}
+                          {review.suggestions.map((suggestion, index) => (
+                            <span key={suggestion.term}>
+                              {index > 0 ? ', ' : ''}
+                              <button
+                                type="button"
+                                onClick={() => rewriteList(item.term, { term: suggestion.term })}
+                                className="font-semibold text-white/90 underline underline-offset-2 hover:text-white"
+                              >
+                                {suggestion.term}
+                              </button>
+                            </span>
+                          ))}
+                          ?
+                        </>
+                      ) : (
+                        <> Se buscará igual, pero puede volver vacío.</>
+                      )}
+                    </p>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-white/60">También puedes separar productos con coma o punto y coma.</p>
               <label

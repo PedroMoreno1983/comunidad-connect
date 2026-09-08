@@ -168,6 +168,41 @@ def finalize_stock_reconciliation(store_name: str, started_at: str) -> dict[str,
         ) from error
 
 
+def refresh_search_vocabulary() -> int | None:
+    """Recalcula el vocabulario que alimenta el autocompletado de la lista.
+
+    Depende del catalogo, asi que se rehace cuando el catalogo termina de
+    cargarse. Calcularlo bajo demanda tardaba entre 1,5 y 5,5 segundos, que es
+    inaceptable cuando la pregunta llega mientras alguien escribe.
+
+    No hace fallar la carga: un vocabulario viejo deja el autocompletado
+    desactualizado, y un catalogo sin ingerir deja a la gente sin precios. Lo
+    segundo pesa mas, asi que el error se informa y se sigue.
+    """
+    supabase_url, service_role_key = supabase_credentials()
+    request = Request(
+        f"{supabase_url}/rest/v1/rpc/refresh_supermarket_search_terms",
+        data=json.dumps({}).encode("utf-8"),
+        method="POST",
+        headers={
+            "apikey": service_role_key,
+            "Authorization": f"Bearer {service_role_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urlopen(request, timeout=120) as response:
+            body = response.read().decode("utf-8")
+            return int(body) if body.strip().isdigit() else None
+    except (HTTPError, URLError, ValueError) as error:
+        print(
+            json.dumps({"warning": f"No se pudo recalcular el vocabulario: {error}"}),
+            file=sys.stderr,
+        )
+        return None
+
+
 def crawl_store(
     store: str,
     batch_size: int,
@@ -317,9 +352,17 @@ def main() -> int:
         crawl_store(store, batch_size, max_pages, args.dry_run)
         for store in stores
     ]
+    # Solo si algo entro al catalogo: recalcular sobre una carga que fallo
+    # entera seria gastar dos minutos para llegar al mismo vocabulario.
+    vocabulary_terms = (
+        refresh_search_vocabulary()
+        if any(result["status"] in {"completed", "refreshed"} for result in results)
+        else None
+    )
     summary = {
         "started_at": started_at,
         "stores": results,
+        "search_vocabulary_terms": vocabulary_terms,
         "completed": sum(result["status"] == "completed" for result in results),
         "refreshed": sum(result["status"] == "refreshed" for result in results),
         "blocked": sum(result["status"] == "blocked" for result in results),

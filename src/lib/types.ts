@@ -2397,3 +2397,33 @@ export interface QrInvitationDatabaseRow {
     community_id?: string | null;
     created_at?: string | null;
 }
+
+// ─── Lista de compras: autocompletado y corrección ──────────────────────────
+
+export interface ShoppingTermSuggestion {
+    term: string;
+    /** Cuántos productos del catálogo responden a este término. */
+    products: number;
+}
+
+/**
+ * `unverified` no es `unknown`: el primero significa que no se pudo consultar el
+ * vocabulario, el segundo que sí se consultó y el término no aparece. Marcar lo
+ * no verificado como error haría que la pantalla le achacara a la persona un
+ * problema que es nuestro.
+ */
+export interface ShoppingTermReview {
+    term: string;
+    status: 'ok' | 'unknown' | 'unverified';
+    suggestions: ShoppingTermSuggestion[];
+}
+
+export interface ShoppingSuggestionsResponse {
+    error?: string;
+    suggestions?: ShoppingTermSuggestion[];
+}
+
+export interface ShoppingReviewResponse {
+    error?: string;
+    items?: ShoppingTermReview[];
+}
