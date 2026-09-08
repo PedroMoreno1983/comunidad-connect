@@ -101,6 +101,10 @@ export async function createDriver(webDriverUrl) {
   // aunque este mantenga presionado el boton en pantalla. Ademas elimina la barra
   // de 56 px de aviso, completando el modo kiosco al 100%.
   options.excludeSwitches('enable-automation');
+  const proxyServer = process.env.SUPERMARKET_HTTP_PROXY?.trim();
+  if (proxyServer) {
+    options.addArguments(`--proxy-server=${proxyServer}`);
+  }
   options.setUserPreferences({
     'credentials_enable_service': false,
     'profile.password_manager_enabled': false,
