@@ -46,12 +46,33 @@ services:
   browser-3:
     <<: *browser
 
+  vpn:
+    image: qmcgaw/gluetun:latest
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - WIREGUARD_ENDPOINT_IP=149.88.104.34
+      - WIREGUARD_ENDPOINT_PORT=51820
+      - WIREGUARD_PUBLIC_KEY=FdTRnh0g+FYFPj5UURQIcDbygd+2gMRrslErfmZxdDo=
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY:-QKVa16qQFBVBwwbyEL2SYb1awvW8ndR5y/ut9BpqP28=}
+      - WIREGUARD_ADDRESSES=10.14.0.2/16
+      - HTTPPROXY=on
+    networks:
+      - cart-internal
+
   worker:
     build:
       context: .
     restart: unless-stopped
     env_file: .env
     depends_on:
+      vpn:
+        condition: service_started
       browser-1:
         condition: service_started
       browser-2:
