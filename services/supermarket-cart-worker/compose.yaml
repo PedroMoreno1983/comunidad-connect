@@ -47,23 +47,18 @@ services:
     <<: *browser
 
   vpn:
-    image: qmcgaw/gluetun:latest
+    image: ginuerzh/gost:latest
     restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    environment:
-      - VPN_SERVICE_PROVIDER=custom
-      - VPN_TYPE=wireguard
-      - WIREGUARD_ENDPOINT_IP=149.88.104.34
-      - WIREGUARD_ENDPOINT_PORT=51820
-      - WIREGUARD_PUBLIC_KEY=FdTRnh0g+FYFPj5UURQIcDbygd+2gMRrslErfmZxdDo=
-      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY:-QKVa16qQFBVBwwbyEL2SYb1awvW8ndR5y/ut9BpqP28=}
-      - WIREGUARD_ADDRESSES=10.14.0.2/16
-      - HTTPPROXY=on
+    command:
+      - "-L=http://:8888"
+      - "-F=http://${RESIDENTIAL_PROXY_USER:-yUSXUuRYOB3Nj98s}:${RESIDENTIAL_PROXY_PASS:-g5kqNwULLAW8aXTl_country-cl_session-conviveCart_lifetime-24h}@${RESIDENTIAL_PROXY_HOST:-geo.iproyal.com}:${RESIDENTIAL_PROXY_PORT:-12321}"
     networks:
       - cart-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
   worker:
     build:
