@@ -30,7 +30,7 @@ docker compose logs --tail=100 worker
 curl -fsS http://127.0.0.1:4387/health
 ```
 
-La ruta pública es `https://radareducativo.datawiseconsultoria.com/convive-cart/`. El bloque de Nginx versionado está en `services/supermarket-cart-worker/deploy/nginx-location.conf`.
+La ruta pública es `https://cart.conviveconnect.com/`. El host virtual de Nginx está en `/etc/nginx/sites-available/cart.conviveconnect.com`.
 
 ## Cómo verificar si una tienda nos deja entrar
 
