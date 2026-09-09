@@ -6,7 +6,7 @@ import type {
   SupermarketCartHandoffItem,
 } from '@/lib/types';
 
-const DEFAULT_WORKER_URL = 'https://radareducativo.datawiseconsultoria.com/convive-cart';
+const DEFAULT_WORKER_URL = 'https://cart.conviveconnect.com';
 const WORKER_TIMEOUT_MS = 15_000;
 
 interface RemoteSessionResponse {
