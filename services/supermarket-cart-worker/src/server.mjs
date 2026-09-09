@@ -311,8 +311,11 @@ async function createSession(request, response) {
   const fingerprint = sessionFingerprint(userId, payload);
   const retry = existingRetry(userId, fingerprint);
   if (retry) return json(response, 200, sessionResponse(retry));
-  if (activeForUser(userId)) {
-    return json(response, 409, { error: 'Ya tienes un carro remoto abierto. Ciérralo antes de iniciar otro.' });
+
+  const existing = activeForUser(userId);
+  if (existing) {
+    console.log(`[cart] cerrando sesión previa ${existing.id} de usuario ${userId} para iniciar una nueva`);
+    await closeSession(existing, 'Reemplazado por nueva compra iniciada.');
   }
   if (!rateAllowed(userId)) {
     return json(response, 429, { error: 'Alcanzaste el límite temporal de aperturas. Intenta nuevamente más tarde.' });
@@ -493,6 +496,9 @@ function proxyBrowser(request, response, url, sessionId, rest) {
 
 async function handleRequest(request, response) {
   const url = new URL(request.url || '/', 'http://worker.local');
+  if (url.pathname !== '/health') {
+    console.log(`[cart] ${new Date().toISOString()} ${request.method} ${url.pathname}`);
+  }
   if (request.method === 'GET' && url.pathname === '/health') {
     const active = slots.filter(slot => slot.sessionId).length;
     return json(response, 200, { ok: true, active, capacity: slots.length });
