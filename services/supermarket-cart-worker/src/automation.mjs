@@ -1,6 +1,7 @@
 import { Browser, Builder, By } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import { normalize, parseCartTotal } from './cartTotal.mjs';
+import { verifyLiderCart, verifyDirectCart } from './cartVerification.mjs';
 
 const BLOCKED_TEXT = [
   'robot or human',
@@ -310,10 +311,10 @@ async function processManagedItem(driver, session, hooks, item) {
     const result = await automaticItemAttempt(driver, session.config, item);
     if (result.kind === 'added') {
       return {
-        added: true,
+        added: result.quantityComplete,
         detail: result.quantityComplete
-          ? `Agregado y verificado con cantidad ${item.quantity}.`
-          : 'Producto agregado; revisa la cantidad antes de pagar.',
+          ? `Carga intentada con cantidad ${item.quantity}; pendiente de comprobar en el carro.`
+          : 'No se completó la cantidad solicitada; revisa este producto en el carro.',
       };
     }
     if (result.kind === 'unavailable') {
@@ -331,40 +332,40 @@ async function processManagedItem(driver, session, hooks, item) {
     if (!resumed) hooks.assertOpen();
     const after = await cartSignature(driver, session.config);
     if (result.before && after && after !== result.before) {
-      return { added: true, detail: 'Cambio del carro confirmado después de tu intervención.' };
+      return { added: false, detail: 'La página cambió después de tu intervención; falta comprobar producto y cantidad en el carro.' };
     }
     if (attempt < 2) await sleep(500);
   }
   return { added: false, detail: 'No fue posible confirmar este producto en el carro.' };
 }
 
-async function cartLineCount(driver, mode) {
-  if (mode !== 'vtex' && mode !== 'shopify') return 0;
+async function directCartVerified(driver, session) {
+  const mode = session.config.cartMode;
+  if (mode !== 'vtex' && mode !== 'shopify') return false;
   const endpoint = mode === 'vtex' ? '/api/checkout/pub/orderForm' : '/cart.js';
-  return Number(await driver.executeAsyncScript(`
+  const payload = await driver.executeAsyncScript(`
     const endpoint = arguments[0];
     const done = arguments[arguments.length - 1];
     fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' } })
       .then(response => response.ok ? response.json() : null)
-      .then(payload => done(Array.isArray(payload?.items) ? payload.items.length : 0))
-      .catch(() => done(0));
-  `, endpoint).catch(() => 0)) || 0;
+      .then(payload => done(payload))
+      .catch(() => done(null));
+  `, endpoint).catch(() => null);
+  return verifyDirectCart(session.directCartUrl, mode, payload);
 }
 
 async function processDirectCart(driver, session, hooks) {
   await navigate(driver, session.directCartUrl);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     hooks.assertOpen();
-    const lines = await cartLineCount(driver, session.config.cartMode);
-    if (lines >= session.plannedCount) return true;
+    if (await directCartVerified(driver, session)) return true;
     const text = await bodyText(driver);
     const detail = containsAny(text, BLOCKED_TEXT)
       ? 'La tienda pide una verificación humana. Complétala y continúa.'
       : 'Revisa ubicación o inicio de sesión; aún no pudimos confirmar el carro y sus cantidades.';
     if (!await hooks.waitForUser(detail)) hooks.assertOpen();
-    const afterUser = await cartLineCount(driver, session.config.cartMode);
-    if (afterUser >= session.plannedCount) return true;
-    if (attempt < 2) await navigate(driver, session.directCartUrl);
+    if (await directCartVerified(driver, session)) return true;
+    // Reopening an add URL can duplicate products already present.
   }
   return false;
 }
@@ -394,7 +395,7 @@ export async function runCartAutomation(driver, session, hooks) {
     });
     const confirmed = await processDirectCart(driver, session, hooks);
     hooks.update({
-      status: confirmed ? 'ready' : 'partial',
+      status: confirmed && session.missingItems.length === 0 ? 'ready' : 'partial',
       current: session.total,
       added: confirmed ? session.plannedCount : 0,
       failed: confirmed ? 0 : session.plannedCount,
@@ -428,13 +429,41 @@ export async function runCartAutomation(driver, session, hooks) {
   // La tienda ya muestra su total aca. Es el unico numero real que tenemos para
   // Lider y aCuenta, que no exponen una simulacion como las cadenas VTEX.
   session.cartTotal = await readCartTotal(driver).catch(() => 0);
+  let verified = false;
+  if (session.store === 'Lider') {
+    const links = await driver.executeScript(`
+      return [...document.querySelectorAll('a[href]')]
+        .filter(a => /en el carro/i.test(a.getAttribute('aria-label') || ''))
+        .map(a => ({ href: a.href, label: a.getAttribute('aria-label') }));
+    `).catch(() => []);
+    const result = verifyLiderCart(session.items, links);
+    session.added = result.verified;
+    session.failed = session.items.length - result.verified;
+    const attemptedNames = new Set(session.items.map(item => item.name));
+    session.missingItems = [...new Set([
+      ...session.missingItems.filter(name => !attemptedNames.has(name)),
+      ...result.missingItems,
+      ...(result.unexpectedProducts.length > 0 ? ['El carro contiene productos no solicitados.'] : []),
+    ])];
+    verified = result.complete && session.missingItems.length === 0;
+  } else {
+    // These stores expose no cart API that lets us prove the final SKU and
+    // quantity. A click or changing header is only an attempt, so every item
+    // remains pending until the buyer checks the retailer's cart.
+    session.added = 0;
+    session.failed = session.items.length;
+    session.missingItems = [...new Set([
+      ...session.missingItems,
+      ...session.items.map(item => item.name),
+    ])];
+  }
   hooks.update({
-    status: session.failed === 0 ? 'ready' : 'partial',
+    status: verified ? 'ready' : 'partial',
     current: session.total,
     itemName: '',
     cartTotal: session.cartTotal,
-    detail: session.failed === 0
-      ? `Carro verificado con ${session.added} productos. Revísalo antes de pagar.`
-      : `Carro abierto: ${session.added} productos confirmados y ${session.failed} pendientes.`,
+    detail: verified
+      ? `Productos y cantidades verificados: ${session.added}. El acceso al pago aún depende de la tienda.`
+      : 'Carga terminada con revisión pendiente: no pudimos comprobar todos los productos y cantidades. El inicio de sesión o pago no está verificado.',
   });
 }

@@ -13,6 +13,21 @@ export function RemoteCartButton({ store, items }: SupermarketCartButtonProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  if (store === 'Lider') {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Líder no permite transferir un carro verificable entre sesiones sin una integración oficial."
+        className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold opacity-70"
+        style={{ borderColor: 'var(--cc-line)', color: 'var(--cc-text-secondary)' }}
+      >
+        <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+        Traspaso no disponible en Líder
+      </button>
+    );
+  }
+
   const loadCart = async () => {
     setLoading(true);
     const pendingWindow = window.open('about:blank', '_blank');
@@ -50,12 +65,13 @@ export function RemoteCartButton({ store, items }: SupermarketCartButtonProps) {
 
       toast({
         title: handoff.mode === 'remote_browser'
-          ? `Carro seguro abierto en ${store}`
-          : `Carro preparado en ${store}`,
-        description: handoff.missingItems.length === 0
-          ? `${handoff.plannedCount} productos enviados para carga y revisión.`
-          : `${handoff.plannedCount} enviados; ${handoff.missingItems.length} quedaron pendientes.`,
-        variant: handoff.missingItems.length === 0 ? 'success' : undefined,
+          ? `Sesión de revisión abierta en ${store}`
+          : `Carro oficial abierto en ${store}`,
+        description: handoff.mode === 'remote_browser'
+          ? `${handoff.plannedCount} productos por procesar. El visor mostrará el carro para que confirmes productos y cantidades.`
+          : handoff.missingItems.length === 0
+            ? `${handoff.plannedCount} productos solicitados. Confirma productos y cantidades antes de pagar.`
+            : `${handoff.plannedCount} productos solicitados; ${handoff.missingItems.length} no pudieron incluirse.`,
       });
     } catch (error) {
       pendingWindow?.close();
@@ -80,7 +96,7 @@ export function RemoteCartButton({ store, items }: SupermarketCartButtonProps) {
       {loading
         ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         : <ShoppingCart className="h-4 w-4" aria-hidden="true" />}
-      {loading ? 'Preparando…' : `Cargar ${items.length} en ${store}`}
+      {loading ? 'Preparando…' : `Abrir canasta en ${store}`}
       {!loading && <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
     </button>
   );

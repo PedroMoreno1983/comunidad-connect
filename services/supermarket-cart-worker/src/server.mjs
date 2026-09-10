@@ -440,13 +440,13 @@ function viewerHtml(session) {
         detail.textContent=(data.detail||'')+(data.cartTotal
           ?' · La tienda cobra $'+Number(data.cartTotal).toLocaleString('es-CL')
           :'');
-        counter.textContent=String(data.current)+' / '+String(data.total);
+        counter.textContent=String(data.current)+' / '+String(data.total)+' procesados';
         // Un carro con menos productos de los pedidos tiene que decir cuales
         // faltan. Callarlo obliga a la persona a contar en la caja.
         const faltan=Array.isArray(data.missingItems)?data.missingItems:[];
         missing.hidden=faltan.length===0;
         missing.textContent=faltan.length
-          ?'No pudimos agregar: '+faltan.join(', ')+'. Búscalos en la tienda si los necesitas.'
+          ?'Pendientes de verificar (producto o cantidad): '+faltan.join(', ')+'. Revisa el carro antes de continuar.'
           :'';
         progress.max=Math.max(1,data.total);progress.value=data.current;
         resume.style.display=data.status==='needs_user'?'inline-block':'none';
