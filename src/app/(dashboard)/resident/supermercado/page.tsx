@@ -586,8 +586,8 @@ export default function SupermarketPage() {
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
           Revisamos la misma lista y las mismas cantidades en {SUPERMARKET_STORES.length} cadenas. Una canasta incompleta nunca gana
-          solo porque su subtotal sea menor. Al elegir una tienda abrimos un navegador seguro y temporal que carga
-          la selección, sin extensiones ni app; solo intervienes si la cadena pide ubicación, login o verificación.
+          solo porque su subtotal sea menor. En las cadenas compatibles abrimos el carro oficial en tu navegador, sin instalar nada.
+          Si una tienda no permite transferir una canasta verificable, te lo indicamos antes de abrirla.
         </p>
       </header>
 

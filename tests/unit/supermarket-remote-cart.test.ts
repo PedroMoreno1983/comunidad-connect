@@ -2,14 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { prepareRemoteCartHandoff } from '@/lib/supermarketRemoteCart';
 
 afterEach(() => {
+  vi.resetAllMocks();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
 describe('remote supermarket cart handoff', () => {
-  it('creates an authenticated remote session and returns its short-lived viewer', async () => {
+  it('uses the direct retailer cart without creating a remote browser session', async () => {
     vi.stubEnv('SUPERMARKET_CART_WORKER_URL', 'https://worker.example/cart');
-    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url.includes('vtexcommercestable.com.br/api/catalog_system')) {
         return new Response(JSON.stringify([{
@@ -24,17 +25,7 @@ describe('remote supermarket cart handoff', () => {
           }],
         }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
-      expect(url).toBe('https://worker.example/cart/v1/sessions');
-      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer user-jwt');
-      const body = JSON.parse(String(init?.body)) as { directCartUrl?: string };
-      expect(body.directCartUrl).toContain('/checkout/cart/add?');
-      return new Response(JSON.stringify({
-        sessionId: 'session-1',
-        viewerUrl: 'https://worker.example/cart/session/session-1?token=short-lived',
-        expiresAt: '2026-09-02T20:00:00.000Z',
-        plannedCount: 1,
-        missingItems: [],
-      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+      throw new Error(`Unexpected remote request: ${url}`);
     }));
 
     const result = await prepareRemoteCartHandoff('Jumbo', [{
@@ -48,11 +39,12 @@ describe('remote supermarket cart handoff', () => {
 
     expect(result).toMatchObject({
       supported: true,
-      mode: 'remote_browser',
-      sessionId: 'session-1',
+      mode: 'direct_url',
       plannedCount: 1,
       missingItems: [],
     });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.cartUrl).toContain('/checkout/cart/add?');
   });
 
   it('keeps the official direct checkout as an outage fallback', async () => {
@@ -80,12 +72,9 @@ describe('remote supermarket cart handoff', () => {
     expect(result.cartUrl).toBe('https://irurzun.cl/cart/1234:2');
   });
 
-  it('reports the remote service failure for a store without a direct route', async () => {
-    vi.stubEnv('SUPERMARKET_CART_WORKER_URL', 'https://worker.example/cart');
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
-      error: 'Los tres navegadores están ocupados. Intenta nuevamente en unos minutos.',
-    }), { status: 503, headers: { 'Content-Type': 'application/json' } })));
-
+  it('does not claim a Lider handoff when the cart cannot cross browser sessions', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
     const result = await prepareRemoteCartHandoff('Lider', [{
       id: 'leche',
       name: 'Leche 1 L',
@@ -97,7 +86,35 @@ describe('remote supermarket cart handoff', () => {
     expect(result).toMatchObject({
       supported: false,
       mode: 'unavailable',
-      reason: 'Los tres navegadores están ocupados. Intenta nuevamente en unos minutos.',
+      plannedCount: 0,
+      missingItems: ['Leche 1 L'],
+      reason: 'Líder no permite transferir un carro verificable entre sesiones sin una integración oficial.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a remote worker failure for a store without a direct cart', async () => {
+    vi.stubEnv('SUPERMARKET_CART_WORKER_URL', 'https://worker.example/cart');
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(String(input)).toBe('https://worker.example/cart/v1/sessions');
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer user-jwt');
+      return new Response(JSON.stringify({
+        error: 'Los navegadores están ocupados. Intenta nuevamente en unos minutos.',
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }));
+
+    const result = await prepareRemoteCartHandoff('aCuenta', [{
+      id: 'leche',
+      name: 'Leche 1 L',
+      requestedTerm: 'leche',
+      quantity: 1,
+      productUrl: 'https://www.acuenta.cl/product/leche',
+    }], 'user-jwt');
+
+    expect(result).toMatchObject({
+      supported: false,
+      mode: 'unavailable',
+      reason: 'Los navegadores están ocupados. Intenta nuevamente en unos minutos.',
     });
   });
 });
