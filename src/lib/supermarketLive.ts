@@ -21,9 +21,8 @@ export interface ScrapedItem {
   /** SKU or EAN, when available. */
   sku?: string;
   /**
-   * Lider/Walmart: identificador de oferta, distinto del SKU y exigido por la
-   * mutacion `updateItems` para cargar el carro. Ver
-   * el contrato observado en las páginas de producto del retailer.
+   * Lider/Walmart: identificador de oferta, distinto del SKU y exigido por el
+   * enlace de canasta de la app oficial.
    */
   offerId?: string;
   /** Unidad de venta que espera la tienda al agregar al carro ('EACH', etc). */
@@ -599,6 +598,7 @@ function parseLiderProductsFromNextData(html: string, query: string): ScrapedIte
           : `https://super.lider.cl/ip/producto/${usItemId}`,
         sku: usItemId,
         offerId,
+        salesUnit: asString(record.salesUnit) || 'EACH',
       });
     }
     Object.values(record).forEach(walk);
@@ -609,7 +609,7 @@ function parseLiderProductsFromNextData(html: string, query: string): ScrapedIte
 
 export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
   const offerBySku = new Map(
-    parseLiderOfferRefs(html).map(ref => [ref.usItemId, ref.offerId]),
+    parseLiderOfferRefs(html).map(ref => [ref.usItemId, ref]),
   );
   const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   const products = scripts.flatMap(script => {
@@ -645,7 +645,8 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
       query,
       productUrl,
       sku,
-      offerId: sku ? offerBySku.get(sku) : undefined,
+      offerId: sku ? offerBySku.get(sku)?.offerId : undefined,
+      salesUnit: sku ? offerBySku.get(sku)?.salesUnit : undefined,
       imageUrl,
     }];
   });

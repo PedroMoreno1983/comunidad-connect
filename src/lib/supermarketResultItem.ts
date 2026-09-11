@@ -16,8 +16,8 @@ function optionalText(value: unknown): string | undefined {
 /**
  * Identificadores que el cargador necesita en TODAS las tiendas.
  *
- * `sku` abre el camino de API (Lider) y el de ficha. `offerId` es obligatorio
- * para Lider/Orchestra y viaja vacío en el resto. Si se pierden al serializar
+ * `sku` abre el camino oficial de Lider y el de ficha. `offerId` es obligatorio
+ * para la app de Lider y viaja vacío en el resto. Si se pierden al serializar
  * la canasta, cada supermercado falla igual: el puente no tiene qué cargar.
  */
 export function catalogOfferId(item: Record<string, unknown>): string | undefined {
@@ -52,6 +52,7 @@ export function toSupermarketShoppingItem(
     brand,
     sku: optionalText(item.sku),
     offerId: catalogOfferId(item),
+    salesUnit: optionalText(item.salesUnit) || optionalText(item.sales_unit),
     requestedTerm: requested.term,
     requestedQuantity,
     requestedUnit,

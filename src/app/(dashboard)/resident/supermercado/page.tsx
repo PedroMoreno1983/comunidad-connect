@@ -1013,7 +1013,11 @@ export default function SupermarketPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <RemoteCartButton store={selectedBasket.store} items={selectedBasket.items} />
+                  <RemoteCartButton
+                    store={selectedBasket.store}
+                    items={selectedBasket.items}
+                    complete={selectedBasket.complete}
+                  />
                   {historyEnabled ? (
                     <button
                       type="button"

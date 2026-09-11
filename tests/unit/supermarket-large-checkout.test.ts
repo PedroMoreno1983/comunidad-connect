@@ -20,6 +20,7 @@ function row(store: string, term: string, price: number) {
     channel_type: 'retail',
     pack_units: 1,
     minimum_packs: 1,
+    ...(store === 'Lider' ? { sku: '00780000000001', offer_id: 'offer-1' } : {}),
   };
 }
 

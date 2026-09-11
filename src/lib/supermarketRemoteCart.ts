@@ -38,18 +38,9 @@ export async function prepareRemoteCartHandoff(
   items: SupermarketCartHandoffItem[],
   userAccessToken: string,
 ): Promise<SupermarketCartHandoff> {
-  if (store === 'Lider') {
-    return {
-      supported: false,
-      store,
-      mode: 'unavailable',
-      plannedCount: 0,
-      missingItems: items.map(item => item.name),
-      reason: 'Líder no permite transferir un carro verificable entre sesiones sin una integración oficial.',
-    };
-  }
-
   const direct = await prepareDirectCartHandoff(store, items);
+  // Lider solo usa su app oficial; nunca cae al navegador remoto.
+  if (store === 'Lider') return direct;
   // Keep checkout in the buyer's own browser where the retailer supports it.
   if (direct.supported && direct.cartUrl) return direct;
   const controller = new AbortController();

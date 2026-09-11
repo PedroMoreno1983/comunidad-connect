@@ -1,11 +1,68 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { prepareDirectCartHandoff } from '@/lib/supermarketDirectHandoff';
+import {
+  prepareDirectCartHandoff,
+  supportsDirectCartHandoff,
+} from '@/lib/supermarketDirectHandoff';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('direct supermarket cart handoff', () => {
+  it('recognizes Lider as an official app handoff', async () => {
+    expect(supportsDirectCartHandoff('Lider')).toBe(true);
+    const result = await prepareDirectCartHandoff('Lider', [{
+      id: 'leche',
+      name: 'Leche 1 L',
+      requestedTerm: 'leche',
+      quantity: 1,
+      sku: '00780292000009',
+      offerId: '5105',
+    }]);
+
+    expect(result).toMatchObject({
+      supported: true,
+      mode: 'official_app_link',
+      plannedCount: 1,
+      missingItems: [],
+    });
+  });
+
+  it('recovers missing Lider identifiers from the exact product page', async () => {
+    const nextData = {
+      props: {
+        pageProps: {
+          product: {
+            usItemId: '00780292000009',
+            offerId: '5105',
+            salesUnit: 'EACH',
+            name: 'Leche Semidescremada Natural Caja 1 l',
+          },
+        },
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      `<script id=__NEXT_DATA__ type=application/json>${JSON.stringify(nextData)}</script>`,
+      { status: 200, headers: { 'Content-Type': 'text/html' } },
+    )));
+
+    const result = await prepareDirectCartHandoff('Lider', [{
+      id: 'leche',
+      name: 'Leche Semidescremada Natural Caja 1 l',
+      requestedTerm: 'leche',
+      quantity: 1,
+      productUrl: 'https://super.lider.cl/ip/leche/00780292000009',
+    }]);
+
+    expect(result).toMatchObject({
+      supported: true,
+      mode: 'official_app_link',
+      plannedCount: 1,
+      missingItems: [],
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('builds an official VTEX checkout link with live SKU and seller', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([{
       productName: 'Arroz Pregraneado 1 kg',

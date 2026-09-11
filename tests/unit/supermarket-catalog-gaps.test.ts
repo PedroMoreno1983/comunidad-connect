@@ -38,4 +38,26 @@ describe('catalog store gaps', () => {
       { store: 'Jumbo', term: 'pan ayuyitas' },
     ]);
   });
+
+  it('refreshes Lider rows that cannot build the official app link', () => {
+    const rowsByTerm = {
+      leche: [
+        row('Lider', 'Leche sin offerId'),
+        row('Jumbo', 'Leche entera 1 L'),
+      ],
+    };
+
+    expect(liveGapSearchPairs(rowsByTerm, ['leche'], ['Lider'], 12)).toEqual([
+      { store: 'Lider', term: 'leche' },
+    ]);
+
+    const merged = mergeMissingStoreRows(rowsByTerm, {
+      leche: [{
+        ...row('Lider', 'Leche entera 1 L'),
+        sku: '00780292000009',
+        offer_id: '5105',
+      }],
+    });
+    expect(merged.leche).toHaveLength(3);
+  });
 });

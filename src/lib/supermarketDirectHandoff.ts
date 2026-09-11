@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { prepareLiderAppCartHandoff } from '@/lib/supermarketLiderHandoff';
+import { parseLiderOfferRefs } from '@/lib/supermarketLive';
 import { foldAccents } from '@/lib/supermarketText';
 import type {
   SupermarketCartHandoff,
@@ -56,6 +58,28 @@ async function fetchJson(url: string): Promise<unknown> {
     return await response.json();
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchText(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'es-CL,es;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (compatible; ConviveConnect/1.0)',
+      },
+    });
+    return response.ok ? await response.text() : '';
+  } catch {
+    return '';
   } finally {
     clearTimeout(timeout);
   }
@@ -203,14 +227,39 @@ async function resolveShopifyVariant(item: SupermarketCartHandoffItem) {
   }
 }
 
+async function resolveLiderItem(
+  item: SupermarketCartHandoffItem,
+): Promise<SupermarketCartHandoffItem | null> {
+  if (item.sku && item.offerId) return item;
+  if (!item.productUrl) return null;
+  try {
+    const url = new URL(item.productUrl);
+    if (!['super.lider.cl', 'www.lider.cl', 'lider.cl'].includes(url.hostname)) return null;
+    const sku = item.sku ?? url.pathname.match(/\/([0-9]{8,20})\/?$/)?.[1];
+    if (!sku) return null;
+    const html = await fetchText(url.toString());
+    const ref = parseLiderOfferRefs(html).find(entry => entry.usItemId === sku);
+    return ref ? { ...item, sku, offerId: ref.offerId, salesUnit: ref.salesUnit } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function supportsDirectCartHandoff(store: string): boolean {
-  return store === 'Irurzun' || Object.prototype.hasOwnProperty.call(VTEX_STORES, store);
+  return store === 'Lider'
+    || store === 'Irurzun'
+    || Object.prototype.hasOwnProperty.call(VTEX_STORES, store);
 }
 
 export async function prepareDirectCartHandoff(
   store: string,
   items: SupermarketCartHandoffItem[],
 ): Promise<SupermarketCartHandoff> {
+  if (store === 'Lider') {
+    const resolved = await resolveInChunks(items, resolveLiderItem);
+    return prepareLiderAppCartHandoff(resolved.map((item, index) => item ?? items[index]));
+  }
+
   if (store === 'Irurzun') {
     const resolved = await resolveInChunks(items, resolveShopifyVariant);
     const available = resolved.filter((entry): entry is NonNullable<typeof entry> => entry !== null);

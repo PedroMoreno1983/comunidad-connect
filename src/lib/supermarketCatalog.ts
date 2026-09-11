@@ -25,7 +25,7 @@ import type { SupermarketMeasurementUnit } from '@/lib/types';
 const GLOBAL_CANDIDATE_LIMIT = 200;
 const STORE_FALLBACK_LIMIT = 250;
 const PACK_CANDIDATE_LIMIT = 300;
-const PRODUCT_COLUMNS = 'id,sku,offer_id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs';
+const PRODUCT_COLUMNS = 'id,sku,offer_id,sales_unit,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -135,6 +135,7 @@ function liveItemToRow(item: {
   imageUrl?: string;
   sku?: string;
   offerId?: string;
+  salesUnit?: string;
   originalPrice?: number;
   query: string;
 }): Record<string, unknown> {
@@ -154,6 +155,7 @@ function liveItemToRow(item: {
     minimum_packs: 1,
     sku: item.sku,
     offer_id: item.offerId,
+    sales_unit: item.salesUnit,
     requested_term: item.query,
   };
 }
