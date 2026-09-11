@@ -30,6 +30,7 @@ function parseItems(body: Record<string, unknown>): SupermarketCartHandoffItem[]
       quantity: Math.min(99, Math.max(1, Math.round(Number(item.quantity) || 1))),
       sku: cleanText(item.sku, 80) || undefined,
       offerId: cleanText(item.offerId, 160) || undefined,
+      salesUnit: cleanText(item.salesUnit, 32) || undefined,
       productUrl: cleanText(item.productUrl, 700) || undefined,
       price: Number.isFinite(Number(item.price)) && Number(item.price) > 0
         ? Math.round(Number(item.price))

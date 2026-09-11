@@ -11,13 +11,14 @@ describe('catalogOfferId', () => {
 });
 
 describe('toSupermarketShoppingItem', () => {
-  it('keeps sku and offerId so every store can load the same basket', () => {
+  it('keeps Lider identifiers and sales unit for the official app link', () => {
     const item = toSupermarketShoppingItem({
       id: 'lider-leche',
       name: 'Leche Colun 1 L',
       brand: 'Colun',
       sku: '00780433000693',
       offerId: '821920',
+      salesUnit: 'EACH',
       price: 1190,
       store: 'Lider',
       productUrl: 'https://www.lider.cl/ip/leche/00780433000693',
@@ -29,6 +30,7 @@ describe('toSupermarketShoppingItem', () => {
     expect(item).toMatchObject({
       sku: '00780433000693',
       offerId: '821920',
+      salesUnit: 'EACH',
       store: 'Lider',
       quantity: 2,
       available: true,
@@ -42,12 +44,14 @@ describe('toSupermarketShoppingItem', () => {
       name: 'Arroz Grado 2 1 kg',
       sku: '123',
       offer_id: 'offer-row',
+      sales_unit: 'WEIGHT',
       price: 1490,
       store: 'Jumbo',
       productUrl: 'https://www.jumbo.cl/arroz/p',
     }, { term: 'arroz', quantity: 1 }, 'catalog');
 
     expect(item.offerId).toBe('offer-row');
+    expect(item.salesUnit).toBe('WEIGHT');
     expect(item.sku).toBe('123');
   });
 });

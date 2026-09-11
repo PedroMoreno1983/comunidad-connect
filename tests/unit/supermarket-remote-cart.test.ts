@@ -72,7 +72,7 @@ describe('remote supermarket cart handoff', () => {
     expect(result.cartUrl).toBe('https://irurzun.cl/cart/1234:2');
   });
 
-  it('does not claim a Lider handoff when the cart cannot cross browser sessions', async () => {
+  it('uses the official Lider app link without creating a remote browser session', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const result = await prepareRemoteCartHandoff('Lider', [{
@@ -80,7 +80,31 @@ describe('remote supermarket cart handoff', () => {
       name: 'Leche 1 L',
       requestedTerm: 'leche',
       quantity: 1,
+      sku: '00780292000009',
+      offerId: '5105',
+      salesUnit: 'EACH',
       productUrl: 'https://super.lider.cl/ip/leche/123',
+    }], 'user-jwt');
+
+    expect(result).toMatchObject({
+      supported: true,
+      mode: 'official_app_link',
+      plannedCount: 1,
+      missingItems: [],
+    });
+    expect(result.cartUrl).toContain('https://super.lider.cl/cart?shoppableAdsCartValue=');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to a loader when a Lider identifier is missing', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await prepareRemoteCartHandoff('Lider', [{
+      id: 'leche',
+      name: 'Leche 1 L',
+      requestedTerm: 'leche',
+      quantity: 1,
+      sku: '00780292000009',
     }], 'user-jwt');
 
     expect(result).toMatchObject({
@@ -88,7 +112,6 @@ describe('remote supermarket cart handoff', () => {
       mode: 'unavailable',
       plannedCount: 0,
       missingItems: ['Leche 1 L'],
-      reason: 'Líder no permite transferir un carro verificable entre sesiones sin una integración oficial.',
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });

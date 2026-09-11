@@ -17,6 +17,7 @@ function row(store: string, name: string, price: number) {
     list_price: null,
     in_stock: true,
     last_seen_at: '2026-07-22T12:00:00.000Z',
+    ...(store === 'Lider' ? { sku: '00780000000001', offer_id: 'offer-1' } : {}),
   };
 }
 
@@ -48,6 +49,23 @@ describe('buildBasketComparison', () => {
     expect(result.recommended).toBeNull();
     expect(result.bestAvailable?.complete).toBe(false);
     expect(result.bestAvailable?.missingTerms).toHaveLength(1);
+  });
+
+  it('does not call a Lider basket complete when its cart identifiers are missing', () => {
+    const result = buildBasketComparison(['leche'], {
+      leche: [{
+        ...row('Lider', 'Leche entera 1 L', 1000),
+        sku: undefined,
+        offer_id: undefined,
+      }],
+    });
+
+    expect(result.recommended).toBeNull();
+    expect(result.comparisons.find(basket => basket.store === 'Lider')).toMatchObject({
+      complete: false,
+      coveredCount: 0,
+      missingTerms: ['leche'],
+    });
   });
 
   it('compares equivalent package sizes across stores', () => {

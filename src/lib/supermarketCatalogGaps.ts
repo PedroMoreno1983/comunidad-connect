@@ -11,8 +11,12 @@ export const STALE_PRICE_AGE_MS = 21 * 24 * 60 * 60 * 1000;
 
 export const LIVE_GAP_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
 
-export function storesWithHits(rows: Array<{ store?: unknown }>): Set<string> {
-  return new Set(rows.map(row => String(row.store || '')).filter(Boolean));
+export function storesWithHits(rows: Array<Record<string, unknown>>): Set<string> {
+  return new Set(rows.map(row => {
+    const store = String(row.store || '');
+    if (store === 'Lider' && (!row.sku || !row.offer_id)) return '';
+    return store;
+  }).filter(Boolean));
 }
 
 export function termsMissingAnyStore(

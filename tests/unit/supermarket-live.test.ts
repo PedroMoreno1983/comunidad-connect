@@ -142,6 +142,7 @@ describe('supermarket live catalog parsers', () => {
           results: [{
             usItemId: '00780226400121',
             offerId: '973536',
+            salesUnit: 'EACH',
             name: 'Avena Integral Multisemilla, 600 g',
             price: 2290,
             canonicalUrl: '/ip/cereales/00780226400121',
@@ -157,6 +158,7 @@ describe('supermarket live catalog parsers', () => {
       store: 'Lider',
       sku: '00780226400121',
       offerId: '973536',
+      salesUnit: 'EACH',
       productUrl: 'https://super.lider.cl/ip/cereales/00780226400121',
     });
   });

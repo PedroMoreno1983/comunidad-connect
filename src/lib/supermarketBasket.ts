@@ -272,11 +272,17 @@ function selectStoreRows(
   store: string,
 ): Record<string, unknown>[] {
   const storeRows = rows.filter(row => asString(row.store) === store);
-  const comparableStoreRows = comparableRows.filter(row => asString(row.store) === store);
+  const cartReadyRows = store === 'Lider'
+    ? storeRows.filter(row => asString(row.sku) && asString(row.offer_id))
+    : storeRows;
+  const comparableStoreRows = comparableRows.filter(row => (
+    asString(row.store) === store
+    && (store !== 'Lider' || (asString(row.sku) && asString(row.offer_id)))
+  ));
   // Prefer the presentation shared by the most stores so totals remain
   // comparable. If this store does not sell that exact format, keep its best
   // valid option instead of incorrectly declaring the whole product missing.
-  return comparableStoreRows.length > 0 ? comparableStoreRows : storeRows;
+  return comparableStoreRows.length > 0 ? comparableStoreRows : cartReadyRows;
 }
 
 export function buildSupermarketCandidate(
@@ -320,6 +326,7 @@ export function buildSupermarketCandidate(
     store,
     sku: asString(row.sku) || undefined,
     offerId: asString(row.offer_id) || undefined,
+    salesUnit: asString(row.sales_unit) || undefined,
     matchRelevance,
     channelType: asString(row.channel_type) || (WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail'),
     originalPrice: listPrice > price ? listPrice : undefined,

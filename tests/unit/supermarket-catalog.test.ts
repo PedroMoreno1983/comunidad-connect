@@ -69,6 +69,8 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
               data: [{
                 id: 'lider-leche-polvo',
                 store: 'Lider',
+                sku: '00780000000001',
+                offer_id: 'offer-1',
                 name: 'Leche en polvo entera 900 g',
                 brand: null,
                 product_url: 'https://super.lider.cl/leche-polvo',

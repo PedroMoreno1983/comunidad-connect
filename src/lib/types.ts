@@ -269,10 +269,12 @@ export interface SupermarketSearchCandidate {
   /** Codigo de la tienda. Sin el no se puede cargar el carro por API. */
   sku?: string;
   /**
-   * Lider/Walmart: identificador de oferta que exige la mutacion `updateItems`.
+   * Lider/Walmart: identificador de oferta que exige el enlace oficial de la app.
    * Es distinto del sku y solo existe para esa cadena.
    */
   offerId?: string;
+  /** Unidad de venta que Lider interpreta al procesar el enlace oficial. */
+  salesUnit?: string;
   requestedTerm: string;
   requestedQuantity: number;
   requestedUnit?: SupermarketMeasurementUnit;
@@ -375,6 +377,7 @@ export interface SupermarketSearchResponse {
 export interface SupermarketCartButtonProps {
   store: string;
   items: SupermarketSearchCandidate[];
+  complete?: boolean;
 }
 
 export interface SupermarketCartHandoffItem {
@@ -384,6 +387,7 @@ export interface SupermarketCartHandoffItem {
   quantity: number;
   sku?: string;
   offerId?: string;
+  salesUnit?: string;
   productUrl?: string;
   /**
    * Precio unitario con el que se cotizo la canasta. Sirve para no sustituir en
@@ -395,14 +399,28 @@ export interface SupermarketCartHandoffItem {
 export interface SupermarketCartHandoff {
   supported: boolean;
   store: string;
-  mode: 'remote_browser' | 'direct_url' | 'unavailable';
+  mode: 'remote_browser' | 'direct_url' | 'official_app_link' | 'unavailable';
   cartUrl?: string;
+  /** Enlaces consecutivos que, juntos, cubren toda la canasta en la app oficial. */
+  cartUrls?: string[];
   sessionUrl?: string;
   sessionId?: string;
   expiresAt?: string;
   plannedCount: number;
   missingItems: string[];
   reason?: string;
+}
+
+export interface LiderShoppableCartProduct {
+  upc: string;
+  oid: string;
+  q: string;
+  qu: string | null;
+}
+
+export interface LiderShoppableCartPayload {
+  rid: string;
+  cd: LiderShoppableCartProduct[];
 }
 export interface CommunityProject {
   id: string;
