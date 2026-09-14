@@ -40,6 +40,15 @@ describe('buildBasketComparison', () => {
     expect(new Set(result.recommended?.items.map(item => item.store))).toEqual(new Set(['Jumbo']));
   });
 
+  it('preserves the retailer image in the selected product', () => {
+    const imageUrl = 'https://jumbocl.vteximg.com.br/arquivos/ids/196704-250-250/arroz.jpg';
+    const result = buildBasketComparison(['arroz'], {
+      arroz: [{ ...row('Jumbo', 'Arroz premium 1 kg', 1600), image_url: imageUrl }],
+    });
+
+    expect(result.recommended?.items[0].imageUrl).toBe(imageUrl);
+  });
+
   it('does not mark an incomplete basket ready for checkout', () => {
     const result = buildBasketComparison(['arroz', 'leche'], {
       arroz: [row('Jumbo', 'Arroz premium 1 kg', 1600)],

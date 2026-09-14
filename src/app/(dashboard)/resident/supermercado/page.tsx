@@ -21,10 +21,12 @@ import {
   Tags,
   Trophy,
   Warehouse,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartButton';
+import { SupermarketProductThumbnail } from '@/components/resident/supermarket/SupermarketProductThumbnail';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { storeSearchUrl } from '@/lib/supermarketText';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList, type GroupItemInput } from '@/lib/supermarketGroupDomain';
@@ -285,6 +287,22 @@ export default function SupermarketPage() {
       ?? basketOptions.find(basket => basket.coveredCount > 0)
       ?? null,
     [basketOptions, selectedStore],
+  );
+  const comparisonMatchesInput = compared
+    && parsedList.length === requestedItems.length
+    && parsedList.every((item, index) => {
+      const requested = requestedItems[index];
+      return requested?.term === item.term
+        && requested.quantity === item.quantity
+        && requested.unit === item.unit;
+    });
+  const resolvedByTerm = useMemo(
+    () => new Map(
+      comparisonMatchesInput
+        ? list.filter(item => item.available).map(item => [item.requestedTerm, item])
+        : [],
+    ),
+    [comparisonMatchesInput, list],
   );
   const basketKey = `${basketRevision}:${supermarketBasketIdentity(selectedBasket?.store, list)}`;
   const showingSeals = seals !== null && sealsStore === basketKey;
@@ -724,14 +742,23 @@ export default function SupermarketPage() {
             ) : null}
           </div>
 
-          <div className="rounded-2xl border p-5" style={{ borderColor: 'rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.08)' }}>
-            <label className="text-xs font-bold uppercase tracking-widest text-white/70" htmlFor="shopping-list">
-              Tu lista
-            </label>
-            <div className="relative mt-2">
+          <div
+            data-testid="shopping-list-composer"
+            className="rounded-2xl border p-5"
+            style={{ borderColor: 'rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.08)' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-white/70" htmlFor="shopping-list">
+                Tu lista
+              </label>
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
+                {parsedList.length} de {MAX_SHOPPING_LIST_ITEMS}
+              </span>
+            </div>
+            <div className="mt-2">
               <textarea
                 id="shopping-list"
-                className="min-h-44 w-full rounded-xl border p-4 pr-14 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="min-h-36 w-full rounded-xl border p-4 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
                 style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.10)' }}
                 placeholder={'2 arroz\nleche x 6\naceite\npapel higiénico 2'}
                 ref={listRef}
@@ -745,16 +772,6 @@ export default function SupermarketPage() {
                 onClick={event => setCaret(event.currentTarget.selectionStart ?? 0)}
                 onBlur={() => setSuggestions([])}
               />
-              <button
-                type="button"
-                aria-label="Comparar lista"
-                onClick={() => void processShoppingList()}
-                disabled={loading || !shoppingInput.trim()}
-                className="absolute bottom-3 right-3 rounded-full p-3 disabled:opacity-50"
-                style={{ background: '#fff', color: 'var(--cc-copper)' }}
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
             </div>
             {/*
               Sugerencias del catálogo para la línea que se está escribiendo.
@@ -765,7 +782,7 @@ export default function SupermarketPage() {
             */}
             {suggestions.length > 0 ? (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70">
                   En el catálogo
                 </span>
                 {suggestions.map(suggestion => (
@@ -790,89 +807,144 @@ export default function SupermarketPage() {
             */}
             {parsedList.length > 0 ? (
               <div className="mt-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-                  Así lo leí · {parsedList.length} producto{parsedList.length === 1 ? '' : 's'}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70">
+                      Así lo leí · {parsedList.length} producto{parsedList.length === 1 ? '' : 's'}
+                    </p>
+                    <p className="mt-1 text-[10px] text-white/70">
+                      La foto aparece al comparar, cuando ya existe un producto exacto de la tienda.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 grid max-h-[22rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                   {parsedList.map(item => {
-                    const dudoso = reviews[item.term]?.status === 'unknown';
+                    const review = reviews[item.term];
+                    const dudoso = review?.status === 'unknown';
+                    const resolved = resolvedByTerm.get(item.term);
+                    const missingAfterComparison = comparisonMatchesInput && !resolved;
+                    const needsAttention = dudoso || missingAfterComparison;
                     return (
-                      <span
-                        key={item.term}
-                        className="inline-flex items-center gap-1 rounded-full py-1 pl-2.5 pr-1 text-xs"
+                      <article
+                        key={`${item.term}-${item.unit ?? 'unidad'}`}
+                        data-testid="parsed-shopping-item"
+                        className="rounded-xl border p-2.5"
                         style={{
-                          background: dudoso ? 'rgba(224,168,90,0.18)' : 'rgba(255,255,255,0.10)',
-                          border: `1px solid ${dudoso ? 'rgba(224,168,90,0.45)' : 'transparent'}`,
+                          background: needsAttention ? 'rgba(224,168,90,0.16)' : 'rgba(255,255,255,0.08)',
+                          borderColor: needsAttention ? 'rgba(224,168,90,0.48)' : 'rgba(255,255,255,0.12)',
                         }}
                       >
-                        <span className="font-semibold text-white/90">{item.term}</span>
-                        {item.unit ? (
-                          <span className="pr-1.5 text-white/50">{item.quantity} {item.unit}</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5">
-                            <button
-                              type="button"
-                              aria-label={`Quitar una unidad de ${item.term}`}
-                              onClick={() => rewriteList(
-                                item.term,
-                                item.quantity > 1 ? { quantity: item.quantity - 1 } : null,
-                              )}
-                              className="rounded-full px-1.5 text-white/60 hover:bg-white/15 hover:text-white"
-                            >
-                              −
-                            </button>
-                            <span className="min-w-4 text-center font-bold text-white/90">{item.quantity}</span>
-                            <button
-                              type="button"
-                              aria-label={`Agregar una unidad de ${item.term}`}
-                              onClick={() => rewriteList(item.term, { quantity: item.quantity + 1 })}
-                              className="rounded-full px-1.5 text-white/60 hover:bg-white/15 hover:text-white"
-                            >
-                              +
-                            </button>
-                          </span>
-                        )}
-                      </span>
+                        <div className="flex items-start gap-2.5">
+                          <SupermarketProductThumbnail
+                            imageUrl={resolved?.imageUrl}
+                            alt={resolved?.name ?? item.term}
+                            size="compact"
+                            tone="dark"
+                            pending={!resolved && !missingAfterComparison}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold capitalize text-white/90">{item.term}</p>
+                                <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-white/70">
+                                  {resolved?.name ?? (missingAfterComparison
+                                    ? 'No encontrado en la canasta seleccionada'
+                                    : dudoso ? 'Necesita revisión' : 'Listo para buscar en 7 cadenas')}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                aria-label={`Quitar ${item.term} de la lista`}
+                                onClick={() => rewriteList(item.term, null)}
+                                className="flex min-h-8 min-w-8 items-center justify-center rounded-full text-white/70 hover:bg-white/15 hover:text-white"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em]"
+                                style={{
+                                  background: needsAttention ? 'rgba(224,168,90,0.22)' : 'rgba(255,255,255,0.10)',
+                                  color: needsAttention ? '#F5C781' : 'rgba(255,255,255,0.78)',
+                                }}
+                              >
+                                {resolved ? 'Producto elegido' : missingAfterComparison ? 'No encontrado' : dudoso ? 'Revisar' : 'Por comparar'}
+                              </span>
+                              <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5">
+                                <button
+                                  type="button"
+                                  aria-label={`Disminuir cantidad de ${item.term}`}
+                                  onClick={() => rewriteList(
+                                    item.term,
+                                    item.quantity > 1 ? { quantity: item.quantity - 1 } : null,
+                                  )}
+                                  className="flex min-h-8 min-w-8 items-center justify-center text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                                >
+                                  −
+                                </button>
+                                <span className="min-w-8 px-1 text-center text-[10px] font-bold text-white/90">
+                                  {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  aria-label={`Aumentar cantidad de ${item.term}`}
+                                  onClick={() => rewriteList(item.term, { quantity: item.quantity + 1 })}
+                                  className="flex min-h-8 min-w-8 items-center justify-center text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                                >
+                                  +
+                                </button>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {dudoso ? (
+                          <div className="mt-2 border-t border-white/10 pt-2 text-[10px] leading-4 text-white/75">
+                            {review.suggestions.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span>¿Quisiste decir?</span>
+                                {review.suggestions.map(suggestion => (
+                                  <button
+                                    key={suggestion.term}
+                                    type="button"
+                                    onClick={() => rewriteList(item.term, { term: suggestion.term })}
+                                    className="rounded-full bg-white/10 px-2 py-0.5 font-semibold text-white/85 hover:bg-white/20"
+                                  >
+                                    {suggestion.term}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <span>
+                                {missingAfterComparison
+                                  ? 'No apareció en la canasta seleccionada.'
+                                  : 'No aparece en el catálogo; se buscará igual, pero puede volver vacío.'}
+                              </span>
+                            )}
+                          </div>
+                        ) : null}
+                      </article>
                     );
                   })}
                 </div>
-
-                {/*
-                  Se propone, no se corrige solo: "arroz" y "arrollado" se
-                  escriben parecido, y sustituir por cuenta propia le cambiaría
-                  la compra a alguien sin preguntarle.
-                */}
-                {parsedList.map(item => {
-                  const review = reviews[item.term];
-                  if (review?.status !== 'unknown') return null;
-                  return (
-                    <p key={item.term} className="mt-2 text-[11px] leading-5 text-white/60">
-                      No encontré <span className="font-semibold text-white/85">{item.term}</span> en el catálogo.
-                      {review.suggestions.length > 0 ? (
-                        <>
-                          {' '}¿Quisiste decir{' '}
-                          {review.suggestions.map((suggestion, index) => (
-                            <span key={suggestion.term}>
-                              {index > 0 ? ', ' : ''}
-                              <button
-                                type="button"
-                                onClick={() => rewriteList(item.term, { term: suggestion.term })}
-                                className="font-semibold text-white/90 underline underline-offset-2 hover:text-white"
-                              >
-                                {suggestion.term}
-                              </button>
-                            </span>
-                          ))}
-                          ?
-                        </>
-                      ) : (
-                        <> Se buscará igual, pero puede volver vacío.</>
-                      )}
-                    </p>
-                  );
-                })}
               </div>
             ) : null}
+
+            <button
+              type="button"
+              onClick={() => void processShoppingList()}
+              disabled={loading || !shoppingInput.trim()}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+              style={{ background: '#fff', color: 'var(--cc-copper)' }}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+              {loading
+                ? 'Comparando las 7 cadenas…'
+                : parsedList.length > 0
+                  ? `Comparar ${parsedList.length} producto${parsedList.length === 1 ? '' : 's'}`
+                  : 'Comparar lista'}
+            </button>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-white/60">También puedes separar productos con coma o punto y coma.</p>
@@ -1088,7 +1160,11 @@ export default function SupermarketPage() {
             </section>
           )}
 
-          <section className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+          <section
+            data-testid="basket-detail"
+            className="overflow-hidden rounded-2xl border"
+            style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--cc-line)' }}>
               <div>
                 <h2 className="text-lg font-bold cc-text-primary">Detalle de la canasta</h2>
@@ -1176,21 +1252,31 @@ export default function SupermarketPage() {
               </div>
             </div>
 
-            <div className="max-h-[34rem] overflow-auto">
-              <table className="w-full min-w-[760px] border-collapse text-left">
-                <thead className="sticky top-0 z-10" style={{ background: 'var(--cc-paper-warm)' }}>
-                  <tr className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">
-                    <th className="px-5 py-3">Pediste</th>
-                    <th className="px-5 py-3">Producto comparable</th>
-                    <th className="px-5 py-3">Cantidad</th>
-                    <th className="px-5 py-3 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map(item => (
-                    <tr key={`${item.requestedTerm}-${item.id}`} className="border-t" style={{ borderColor: 'var(--cc-line)' }}>
-                      <td className="px-5 py-3 text-sm font-semibold cc-text-primary">{item.requestedTerm}</td>
-                      <td className="px-5 py-3">
+            <div data-testid="basket-product-grid" className="p-4 md:max-h-[44rem] md:overflow-auto">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {list.map(item => (
+                  <article
+                    key={`${item.requestedTerm}-${item.id}`}
+                    data-testid="basket-product-card"
+                    data-product-name={item.available ? item.name : item.requestedTerm}
+                    className="flex min-h-64 flex-col rounded-2xl border p-4"
+                    style={{
+                      borderColor: item.available ? 'var(--cc-line)' : 'var(--cc-amber)',
+                      background: item.available ? 'var(--cc-paper)' : 'var(--cc-amber-tint)',
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <SupermarketProductThumbnail
+                        imageUrl={item.imageUrl}
+                        alt={item.available ? item.name : item.requestedTerm}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="inline-flex rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em]"
+                          style={{ background: 'var(--cc-paper-warm)', color: 'var(--cc-text-tertiary)' }}
+                        >
+                          Pediste {item.requestedTerm}
+                        </span>
                         {item.available ? (
                           <>
                             {item.productUrl ? (
@@ -1198,78 +1284,97 @@ export default function SupermarketPage() {
                                 href={item.productUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group inline-flex items-center gap-1.5 text-sm font-semibold cc-text-primary hover:text-[var(--cc-copper)]"
+                                className="group mt-2 flex items-start gap-1.5 text-sm font-bold leading-5 cc-text-primary hover:text-[var(--cc-copper)]"
                               >
-                                <span>{item.name}</span>
-                                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                                <span className="line-clamp-3">{item.name}</span>
+                                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-55" />
                               </a>
                             ) : (
-                              <p className="text-sm font-semibold cc-text-primary">{item.name}</p>
+                              <p className="mt-2 line-clamp-3 text-sm font-bold leading-5 cc-text-primary">{item.name}</p>
                             )}
-                            <p className="mt-0.5 text-xs cc-text-tertiary">
+                            <p className="mt-1 text-xs cc-text-tertiary">
                               {item.brand || selectedBasket?.store}
                               {item.isOffer ? ' · oferta observada' : ''}
                             </p>
-                            {showingSeals && item.sku ? (
-                              (seals?.[item.sku] ?? []).length > 0 ? (
-                                <span className="mt-1 flex flex-wrap gap-1">
-                                  {(seals?.[item.sku] ?? []).map(seal => (
-                                    <span
-                                      key={seal}
-                                      className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                                      style={{ background: '#1a1a1a', color: '#fff' }}
-                                    >
-                                      {seal}
-                                    </span>
-                                  ))}
-                                </span>
-                              ) : (
-                                <span className="mt-1 block text-[10px] cc-text-tertiary">
-                                  {Object.prototype.hasOwnProperty.call(seals, item.sku) ? 'Sin sellos informados por la tienda' : 'Sin información de sellos'}
-                                </span>
-                              )
-                            ) : null}
-                            {showingAlternatives && item.sku && alternativesBySku[item.sku] ? (
-                              alternativesBySku[item.sku].unknownCurrent ? (
-                                <span className="mt-1 block text-[10px] cc-text-tertiary">
-                                  Sin sellos conocidos de este producto no hay con qué comparar.
-                                </span>
-                              ) : alternativesBySku[item.sku].options.length === 0 ? (
-                                <span className="mt-1 block text-[10px] cc-text-tertiary">
-                                  Sin equivalentes con menos sellos en este formato.
-                                </span>
-                              ) : (
-                                <span className="mt-1 block space-y-0.5">
-                                  {alternativesBySku[item.sku].options.slice(0, MAX_ALTERNATIVES_SHOWN).map(option => (
-                                    <span key={option.sku} className="block text-[11px] cc-text-secondary">
-                                      {option.name} · {option.seals.length} sello{option.seals.length === 1 ? '' : 's'} ·{' '}
-                                      {option.priceDelta === 0
-                                        ? 'mismo precio'
-                                        : `${option.priceDelta > 0 ? '+' : '−'}${money(Math.abs(option.priceDelta))}`}
-                                    </span>
-                                  ))}
-                                </span>
-                              )
-                            ) : null}
                           </>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                          <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
                             <AlertTriangle className="h-4 w-4" /> No encontrado
                           </span>
                         )}
-                      </td>
-                      <td className="px-5 py-3 text-sm cc-text-secondary">
-                        {item.requestedUnit
-                          ? `${item.requestedQuantity} ${item.requestedUnit} · ${item.quantity} envase${item.quantity === 1 ? '' : 's'}`
-                          : `${item.quantity} unidad${item.quantity === 1 ? '' : 'es'}`}
-                      </td>
-                      <td className="px-5 py-3 text-right text-sm font-bold cc-text-primary">
-                        {item.available ? money(item.lineTotal) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+
+                    {item.available && showingSeals && item.sku ? (
+                      (seals?.[item.sku] ?? []).length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          {(seals?.[item.sku] ?? []).map(seal => (
+                            <span
+                              key={seal}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                              style={{ background: '#1a1a1a', color: '#fff' }}
+                            >
+                              {seal}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[10px] cc-text-tertiary">
+                          {Object.prototype.hasOwnProperty.call(seals, item.sku)
+                            ? 'Sin sellos informados por la tienda'
+                            : 'Sin información de sellos'}
+                        </p>
+                      )
+                    ) : null}
+
+                    {item.available && showingAlternatives && item.sku && alternativesBySku[item.sku] ? (
+                      <div className="mt-3 rounded-xl p-2.5" style={{ background: 'var(--cc-paper-warm)' }}>
+                        {alternativesBySku[item.sku].unknownCurrent ? (
+                          <p className="text-[10px] cc-text-tertiary">
+                            Sin sellos conocidos de este producto no hay con qué comparar.
+                          </p>
+                        ) : alternativesBySku[item.sku].options.length === 0 ? (
+                          <p className="text-[10px] cc-text-tertiary">
+                            Sin equivalentes con menos sellos en este formato.
+                          </p>
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Con menos sellos</p>
+                            {alternativesBySku[item.sku].options.slice(0, MAX_ALTERNATIVES_SHOWN).map(option => (
+                              <p key={option.sku} className="text-[11px] leading-4 cc-text-secondary">
+                                {option.name} · {option.seals.length} sello{option.seals.length === 1 ? '' : 's'} ·{' '}
+                                {option.priceDelta === 0
+                                  ? 'mismo precio'
+                                  : `${option.priceDelta > 0 ? '+' : '−'}${money(Math.abs(option.priceDelta))}`}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-auto grid grid-cols-2 gap-3 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Cantidad</p>
+                        <p className="mt-1 text-xs font-semibold cc-text-primary">
+                          {item.requestedUnit
+                            ? `${item.requestedQuantity} ${item.requestedUnit} · ${item.quantity} envase${item.quantity === 1 ? '' : 's'}`
+                            : `${item.quantity} unidad${item.quantity === 1 ? '' : 'es'}`}
+                        </p>
+                        {item.available ? (
+                          <p className="mt-0.5 text-[10px] cc-text-tertiary">{money(item.price)} por envase</p>
+                        ) : null}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Total</p>
+                        <p className="mt-1 text-lg font-bold cc-text-primary">
+                          {item.available ? money(item.lineTotal) : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
           </section>
 

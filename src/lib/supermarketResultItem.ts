@@ -46,6 +46,7 @@ export function toSupermarketShoppingItem(
   const store = typeof item.store === 'string' ? item.store : undefined;
   const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
   const rawProductUrl = optionalText(item.productUrl);
+  const imageUrl = optionalText(item.imageUrl) || optionalText(item.image_url);
   return {
     id: typeof item.id === 'string' ? item.id : randomUUID(),
     name,
@@ -65,6 +66,7 @@ export function toSupermarketShoppingItem(
     // Todo producto encontrado queda linkeable: ficha exacta si existe, o la
     // búsqueda del nombre exacto dentro del sitio de la tienda como respaldo.
     productUrl: rawProductUrl || storeSearchUrl(store, name),
+    imageUrl,
     originalPrice: typeof item.originalPrice === 'number' ? item.originalPrice : undefined,
     isOffer,
     selectionReason: typeof item.selectionReason === 'string' && item.selectionReason

@@ -3,6 +3,11 @@ import { createServerClient } from "@supabase/ssr";
 import { isSuperAdminEmail } from "@/lib/security/superadmin";
 import { resolveProductCapabilities } from "@/lib/productCapabilities";
 import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE, homePathForRole, isDashboardPathAllowedForRole } from "@/lib/roleAccess";
+import { SUPERMARKET_DIRECT_IMAGE_HOSTS } from "@/lib/supermarketImageSources";
+
+const SUPERMARKET_DIRECT_IMAGE_CSP = SUPERMARKET_DIRECT_IMAGE_HOSTS
+  .map(hostname => `https://${hostname}`)
+  .join(" ");
 
 const PROTECTED_DASHBOARD_PREFIXES = [
   "/admin",
@@ -46,7 +51,7 @@ function contentSecurityPolicy(nonce: string) {
     "form-action 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentEval} blob: https://www.googletagmanager.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com https://*.supabase.co https://www.google-analytics.com",
+    `img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com https://*.supabase.co https://www.google-analytics.com ${SUPERMARKET_DIRECT_IMAGE_CSP}`,
     "font-src 'self' data: https://fonts.gstatic.com",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.resend.com https://api.twilio.com https://www.google-analytics.com https://region1.google-analytics.com",
     "media-src 'self' data: blob: https://*.supabase.co",

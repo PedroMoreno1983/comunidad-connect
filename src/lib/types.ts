@@ -285,6 +285,8 @@ export interface SupermarketSearchCandidate {
   lineTotal: number;
   store?: string;
   productUrl?: string;
+  /** Fotografia publicada por la tienda para este producto exacto. */
+  imageUrl?: string;
   originalPrice?: number;
   isOffer?: boolean;
   /** Por qué CoCo eligió esta marca/presentación (visible para el usuario). */
@@ -378,6 +380,14 @@ export interface SupermarketCartButtonProps {
   store: string;
   items: SupermarketSearchCandidate[];
   complete?: boolean;
+}
+
+export interface SupermarketProductThumbnailProps {
+  imageUrl?: string;
+  alt: string;
+  size?: 'compact' | 'card';
+  tone?: 'light' | 'dark';
+  pending?: boolean;
 }
 
 export interface SupermarketCartHandoffItem {

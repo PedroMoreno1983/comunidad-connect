@@ -38,6 +38,7 @@ export interface CartItem {
     isOffer?: boolean;
     originalPrice?: number;
     requestedTerm?: string;
+    imageUrl?: string;
 }
 
 export interface MarketplaceOffer {

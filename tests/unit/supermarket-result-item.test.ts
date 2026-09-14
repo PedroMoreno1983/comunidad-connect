@@ -22,6 +22,7 @@ describe('toSupermarketShoppingItem', () => {
       price: 1190,
       store: 'Lider',
       productUrl: 'https://www.lider.cl/ip/leche/00780433000693',
+      imageUrl: 'https://i5.walmartimages.cl/asr/leche.webp',
       quantity: 2,
       packUnits: 1,
       suppliedQuantity: 2,
@@ -32,6 +33,7 @@ describe('toSupermarketShoppingItem', () => {
       offerId: '821920',
       salesUnit: 'EACH',
       store: 'Lider',
+      imageUrl: 'https://i5.walmartimages.cl/asr/leche.webp',
       quantity: 2,
       available: true,
       source: 'catalog',
@@ -53,5 +55,17 @@ describe('toSupermarketShoppingItem', () => {
     expect(item.offerId).toBe('offer-row');
     expect(item.salesUnit).toBe('WEIGHT');
     expect(item.sku).toBe('123');
+  });
+
+  it('keeps image_url when converting a raw catalog row', () => {
+    const item = toSupermarketShoppingItem({
+      id: 'jumbo-arroz',
+      name: 'Arroz Grado 2 1 kg',
+      image_url: 'https://jumbocl.vteximg.com.br/arquivos/ids/196704-250-250/arroz.jpg',
+      price: 1490,
+      store: 'Jumbo',
+    }, { term: 'arroz', quantity: 1 }, 'catalog');
+
+    expect(item.imageUrl).toBe('https://jumbocl.vteximg.com.br/arquivos/ids/196704-250-250/arroz.jpg');
   });
 });
