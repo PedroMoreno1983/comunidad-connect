@@ -74,7 +74,7 @@ async function main() {
     });
     await page.goto(`${baseUrl}/resident/supermercado`, { waitUntil: 'domcontentloaded' });
     await page.locator('#shopping-list').fill('producto QA');
-    await page.getByRole('button', { name: 'Comparar lista', exact: true }).click();
+    await page.getByRole('button', { name: /^Comparar \d+ productos?$/ }).click();
     const record = page.getByRole('button', { name: 'Ya compré esta canasta', exact: true });
     await expect(record).toBeVisible({ timeout: 30000 });
     assert.equal((await admin.from('supermarket_purchase_history').select('id').eq('user_id', userId).eq('confirmed', true)).data.length, 0);
@@ -88,7 +88,7 @@ async function main() {
     await page.getByRole('button', { name: 'Ver total real', exact: true }).click();
     await expect(page.getByText(/Subtotal consultado en Jumbo:/)).toBeVisible({ timeout: 20000 });
     quantity = 2;
-    await page.getByRole('button', { name: 'Comparar lista', exact: true }).click();
+    await page.getByRole('button', { name: /^Comparar \d+ productos?$/ }).click();
     await expect(record).toBeVisible();
     await expect(page.getByText(/Subtotal consultado en Jumbo:/)).toHaveCount(0);
     checks.push('A new basket in the same store hides the previous total');

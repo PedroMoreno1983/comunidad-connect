@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   extractSupermarketTerms,
   extractQuantity,
@@ -7,7 +7,14 @@ import {
   parseSantaIsabelProducts,
   parseTottusProducts,
   parseUnimarcProducts,
+  searchLiveSupermarkets,
 } from '@/lib/supermarketLive';
+import { safeSupermarketProductImage } from '@/lib/supermarketProductImage';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('supermarket live catalog parsers', () => {
   it('extracts a bounded shopping list from natural language', () => {
@@ -209,5 +216,38 @@ describe('supermarket live catalog parsers', () => {
       isOffer: true,
       sku: '110607035',
     });
+  });
+
+  it('preserves the selected product image in the legacy live search result', async () => {
+    const imageUrl = 'https://media.tottus.cl/tottusCL/110607035_1/public';
+    const tottusPayload = JSON.stringify({
+      data: {
+        results: [{
+          displayName: 'Arroz Tottus G2 1 Kg',
+          brand: 'TOTTUS',
+          skuId: '110607035',
+          url: 'https://www.tottus.cl/tottus-cl/articulo/110607034/arroz-tottus',
+          mediaUrls: [imageUrl],
+          prices: [{ type: 'internetPrice', crossed: false, price: ['890'] }],
+        }],
+      },
+    });
+
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      return new Response(url.includes('tottus.cl/s/browse') ? tottusPayload : '', {
+        status: 200,
+      });
+    }));
+
+    const result = await searchLiveSupermarkets('arroz');
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      name: 'Arroz Tottus G2 1 Kg',
+      store: 'Tottus',
+      imageUrl,
+    });
+    expect(safeSupermarketProductImage(result.items[0].imageUrl)).toBe(imageUrl);
   });
 });

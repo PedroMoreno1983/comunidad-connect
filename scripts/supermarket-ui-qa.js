@@ -136,10 +136,13 @@ async function main() {
     assert(await page.getByText('Comprar en comunidad', { exact: true }).count() === 0, 'Community purchasing is absent from Supermarket');
     assert(await page.getByText(/Pega hasta 200 productos/i).isVisible(), 'The price comparison hero is visible');
     assert(await page.getByRole('link', { name: /Descargar Extensi[oó]n|Cargador/i }).count() === 0, 'The downloadable cart loader is absent');
-    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'];
+    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'];
     for (const store of expectedStores) {
       const testId = `store-chip-${store.toLowerCase().replaceAll(' ', '-')}`;
-      assert(await page.getByTestId(testId).isVisible(), `Store icon is visible for ${store}`);
+      const storeChip = page.getByTestId(testId);
+      assert(await storeChip.count() === 1, `Store icon exists for ${store}`);
+      await storeChip.scrollIntoViewIfNeeded();
+      assert(await storeChip.isVisible(), `Store icon is visible for ${store}`);
     }
 
     const colors = await page.getByText(/Pega hasta 200 productos/i).evaluate(element => {
@@ -174,7 +177,7 @@ async function main() {
       response.url().endsWith('/api/supermarket')
       && response.request().method() === 'POST'
     ));
-    await page.getByRole('button', { name: 'Comparar lista' }).click();
+    await page.getByRole('button', { name: /^Comparar 15 productos$/ }).click();
     const comparisonResponse = await comparisonResponsePromise;
     const comparisonPayload = await comparisonResponse.json();
     await page.getByRole('heading', { name: /Mejor compra completa|Mayor cobertura disponible/i }).waitFor({ timeout: 90_000 });
@@ -186,8 +189,12 @@ async function main() {
       'The comparison payload contains every supermarket exactly once',
       { optionStores },
     );
-    assert(await page.getByTestId('store-comparison-row').getByRole('button').count() === 7, 'The result row shows seven supermarket cards');
-    assert(await page.locator('tbody tr').count() === 15, 'All fifteen requested rows remain in the contained table');
+    assert(
+      await page.getByTestId('store-comparison-row').getByRole('button').count() === expectedStores.length,
+      'The result row shows every active supermarket card',
+    );
+    const productCards = page.getByTestId('basket-product-card');
+    assert(await productCards.count() === 15, 'All fifteen requested products remain in the card grid');
     assert((await page.locator('#shopping-list').inputValue()).includes('avena'), 'The original list remains editable after comparison');
 
     const selectedStore = await page.getByText('Canasta seleccionada', { exact: true })
@@ -198,18 +205,28 @@ async function main() {
     const expectedNames = (comparisonPayload.requestedItems || []).map(requested => (
       selectedBasket.items.find(item => item.requestedTerm === requested.term)?.name || requested.term
     ));
-    const visibleNames = await page.locator('tbody tr').evaluateAll(rows => rows.map(row => {
-      const cell = row.querySelectorAll('td')[1];
-      return cell?.querySelector('a span')?.textContent?.trim()
-        || cell?.querySelector('p')?.textContent?.trim()
-        || row.querySelectorAll('td')[0]?.textContent?.trim()
-        || '';
-    }));
+    const visibleNames = await productCards.evaluateAll(cards => cards.map(card => (
+      card.getAttribute('data-product-name') || ''
+    )));
     assert(
       JSON.stringify(visibleNames) === JSON.stringify(expectedNames),
       'Visible products and values belong to the selected supermarket',
       { selectedStore, expectedNames, visibleNames },
     );
+    const expectedImageCount = (selectedBasket.items || []).filter(item => item.imageUrl).length;
+    assert(expectedImageCount > 0, 'The selected supermarket returned real product images', { selectedStore });
+    for (const card of await productCards.all()) await card.scrollIntoViewIfNeeded();
+    await page.waitForFunction(expected => {
+      const images = [...document.querySelectorAll('[data-testid="basket-product-card"] img')];
+      return images.length === expected && images.every(image => image.complete && image.naturalWidth > 0);
+    }, expectedImageCount, { timeout: 30_000 });
+    assert(
+      await productCards.locator('img').count() === expectedImageCount,
+      'Every catalog image for the selected basket is rendered in its product card',
+      { selectedStore, expectedImageCount },
+    );
+    await page.getByTestId('basket-product-grid').evaluate(element => { element.scrollTop = 0; });
+    await page.evaluate(() => window.scrollTo(0, 0));
 
     const completeBaskets = (comparisonPayload.basketOptions || []).filter(basket => basket.complete);
     if (completeBaskets.length > 0) {
@@ -220,10 +237,13 @@ async function main() {
       );
     }
     assert(await page.getByText(/Despacho separado del precio de productos/i).isVisible(), 'Delivery is explicitly excluded from the product total');
-    assert(await page.getByRole('button', { name: /Cargar .* en /i }).count() === 1, 'The selected store exposes one remote cart action');
+    assert(
+      await page.getByRole('button', { name: /^(Abrir en la app de Líder|Abrir canasta en .+)$/i }).count() === 1,
+      'The selected store exposes one browser or official-app handoff action',
+    );
     await page.getByRole('button', { name: 'Copiar comparación' }).click();
     const copiedComparison = await page.evaluate(() => navigator.clipboard.readText());
-    assert(expectedStores.every(store => copiedComparison.includes(store)), 'Copied comparison includes all seven stores');
+    assert(expectedStores.every(store => copiedComparison.includes(store)), 'Copied comparison includes all active stores');
     await page.waitForTimeout(5_500);
 
     const desktopPath = 'C:\\tmp\\supermarket-ui-desktop.png';
@@ -241,7 +261,7 @@ async function main() {
       'Mobile supermarket comparison has no page-level horizontal overflow',
       mobileDimensions,
     );
-    assert(await page.getByTestId('store-comparison-row').isVisible(), 'The seven-store comparison remains visible on mobile');
+    assert(await page.getByTestId('store-comparison-row').isVisible(), 'The active-store comparison remains visible on mobile');
     const mobilePath = 'C:\\tmp\\supermarket-ui-mobile.png';
     await page.screenshot({ path: mobilePath, fullPage: true });
     report.screenshots.push(mobilePath);

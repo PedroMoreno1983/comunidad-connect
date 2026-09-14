@@ -958,6 +958,7 @@ async function searchOneRetailer(store: CartItem['store'], query: string): Promi
     isOffer: best.isOffer,
     originalPrice: best.originalPrice,
     requestedTerm: query,
+    imageUrl: best.imageUrl,
   };
 }
 
