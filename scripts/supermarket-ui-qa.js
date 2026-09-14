@@ -246,6 +246,47 @@ async function main() {
     assert(expectedStores.every(store => copiedComparison.includes(store)), 'Copied comparison includes all active stores');
     await page.waitForTimeout(5_500);
 
+    await page.setViewportSize({ width: 1340, height: 700 });
+    await page.waitForTimeout(300);
+    const composer = page.getByTestId('shopping-list-composer');
+    await composer.scrollIntoViewIfNeeded();
+    const composerLayout = await composer.evaluate(element => {
+      const composerBounds = element.getBoundingClientRect();
+      const cards = [...element.querySelectorAll('[data-testid="parsed-shopping-item"]')];
+      return {
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        cards: cards.map(card => {
+          const bounds = card.getBoundingClientRect();
+          return {
+            clientWidth: card.clientWidth,
+            scrollWidth: card.scrollWidth,
+            left: Math.round(bounds.left),
+            right: Math.round(bounds.right),
+            insideComposer: bounds.left >= composerBounds.left - 1
+              && bounds.right <= composerBounds.right + 1,
+          };
+        }),
+      };
+    });
+    assert(
+      composerLayout.scrollWidth <= composerLayout.clientWidth + 1,
+      'The shopping-list composer has no horizontal overflow at the reported viewport',
+      composerLayout,
+    );
+    assert(
+      composerLayout.cards.every(card => (
+        card.insideComposer && card.scrollWidth <= card.clientWidth + 1
+      )),
+      'Parsed product cards stay inside the composer without overlapping controls',
+      composerLayout,
+    );
+    const intermediatePath = 'C:\\tmp\\supermarket-ui-intermediate.png';
+    await page.screenshot({ path: intermediatePath, fullPage: true });
+    report.screenshots.push(intermediatePath);
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.waitForTimeout(300);
     const desktopPath = 'C:\\tmp\\supermarket-ui-desktop.png';
     await page.screenshot({ path: desktopPath, fullPage: true });
     report.screenshots.push(desktopPath);

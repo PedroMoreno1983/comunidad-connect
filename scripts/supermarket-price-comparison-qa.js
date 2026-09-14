@@ -54,7 +54,7 @@ function assertReplacementIntegrity() {
   assert(cartButton.includes('prepareHandoff'), 'El control prepara el carro antes de abrir la tienda.');
   assert(directHandoff.includes('/checkout/cart/add?'), 'Las cadenas compatibles usan su checkout oficial.');
   assert(directHandoff.includes("store === 'Irurzun'"), 'Irurzun usa un enlace oficial de carro.');
-  assert(remoteCart.includes("mode: 'remote_browser'"), 'Las siete cadenas convergen en una sesión web remota.');
+  assert(remoteCart.includes("mode: 'remote_browser'"), 'Las cadenas compatibles convergen en una sesión web remota.');
   assert(worker.includes('/auth/v1/user'), 'El worker valida nuevamente la sesión de Convive.');
   assert(worker.includes('HttpOnly; Secure; SameSite=Lax'), 'El visor usa una cookie temporal protegida.');
   assert((compose.match(/^  browser-[123]:/gm) || []).length === 3, 'El VPS limita la capacidad a tres navegadores aislados.');

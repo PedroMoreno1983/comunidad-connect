@@ -380,7 +380,7 @@ export default function SupermarketPage() {
 
       toast({
         title: nextOptions.some(basket => basket.complete)
-          ? 'Siete cadenas comparadas'
+          ? `${SUPERMARKET_STORES.length} cadenas comparadas`
           : 'Comparación con faltantes',
         description: data.message,
         variant: nextOptions.some(basket => basket.complete) ? 'success' : undefined,
@@ -645,8 +645,8 @@ export default function SupermarketPage() {
         className="relative overflow-hidden rounded-2xl border p-6 text-white md:p-8"
         style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-ink)' }}
       >
-        <div className="grid gap-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
+        <div className="grid gap-7 2xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] 2xl:items-start">
+          <div className="min-w-0">
             <div
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
               style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)' }}
@@ -744,7 +744,7 @@ export default function SupermarketPage() {
 
           <div
             data-testid="shopping-list-composer"
-            className="rounded-2xl border p-5"
+            className="min-w-0 rounded-2xl border p-5"
             style={{ borderColor: 'rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.08)' }}
           >
             <div className="flex items-center justify-between gap-3">
@@ -817,7 +817,7 @@ export default function SupermarketPage() {
                     </p>
                   </div>
                 </div>
-                <div className="mt-2 grid max-h-[22rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                <div className="mt-2 grid max-h-[22rem] gap-2 overflow-x-hidden overflow-y-auto pr-1 xl:grid-cols-2">
                   {parsedList.map(item => {
                     const review = reviews[item.term];
                     const dudoso = review?.status === 'unknown';
@@ -828,7 +828,7 @@ export default function SupermarketPage() {
                       <article
                         key={`${item.term}-${item.unit ?? 'unidad'}`}
                         data-testid="parsed-shopping-item"
-                        className="rounded-xl border p-2.5"
+                        className="min-w-0 rounded-xl border p-2.5"
                         style={{
                           background: needsAttention ? 'rgba(224,168,90,0.16)' : 'rgba(255,255,255,0.08)',
                           borderColor: needsAttention ? 'rgba(224,168,90,0.48)' : 'rgba(255,255,255,0.12)',
@@ -849,7 +849,7 @@ export default function SupermarketPage() {
                                 <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-white/70">
                                   {resolved?.name ?? (missingAfterComparison
                                     ? 'No encontrado en la canasta seleccionada'
-                                    : dudoso ? 'Necesita revisión' : 'Listo para buscar en 7 cadenas')}
+                                    : dudoso ? 'Necesita revisión' : `Listo para buscar en ${SUPERMARKET_STORES.length} cadenas`)}
                                 </p>
                               </div>
                               <button
@@ -861,7 +861,7 @@ export default function SupermarketPage() {
                                 <X className="h-3.5 w-3.5" />
                               </button>
                             </div>
-                            <div className="mt-2 flex items-center justify-between gap-2">
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                               <span
                                 className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em]"
                                 style={{
@@ -871,7 +871,7 @@ export default function SupermarketPage() {
                               >
                                 {resolved ? 'Producto elegido' : missingAfterComparison ? 'No encontrado' : dudoso ? 'Revisar' : 'Por comparar'}
                               </span>
-                              <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5">
+                              <span className="inline-flex shrink-0 items-center rounded-full border border-white/15 bg-white/5">
                                 <button
                                   type="button"
                                   aria-label={`Disminuir cantidad de ${item.term}`}
@@ -940,7 +940,7 @@ export default function SupermarketPage() {
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
               {loading
-                ? 'Comparando las 7 cadenas…'
+                ? `Comparando ${SUPERMARKET_STORES.length} cadenas…`
                 : parsedList.length > 0
                   ? `Comparar ${parsedList.length} producto${parsedList.length === 1 ? '' : 's'}`
                   : 'Comparar lista'}
