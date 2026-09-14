@@ -400,7 +400,7 @@ export function buildBasketComparison(
       || left.subtotal - right.subtotal
     ));
 
-  // La comparacion es un producto de siete cadenas, no una lista de resultados
+  // La comparacion es un producto de las cadenas activas, no una lista de resultados
   // positivos. Conservamos tambien las tiendas sin coincidencias para que la UI
   // pueda distinguir "sin datos vigentes" de "no fue comparada". Solo las
   // canastas con productos participan de la recomendacion y del plan.
