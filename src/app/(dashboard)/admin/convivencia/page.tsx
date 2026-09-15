@@ -13,18 +13,21 @@ import {
     ShoppingBasket,
     Users,
 } from "lucide-react";
-import { CommunityCollaborationService } from "@/lib/api";
+import { CommunityCollaborationService, SupermarketGroupService } from "@/lib/api";
 import type {
     CollectivePurchaseCampaign,
+    CommunityCoordinatorCandidate,
     CommunityProject,
     NeighborMediationCase,
     TimeBankOffer,
+    SupermarketGroupOrder,
 } from "@/lib/types";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
 import { MutualSupportExperience } from "@/components/convivencia/MutualSupportExperience";
+import { useAuth } from "@/lib/authContext";
 
 function formatCurrency(value: number) {
     return `$${value.toLocaleString("es-CL")}`;
@@ -39,11 +42,15 @@ function formatDate(value: string) {
 }
 
 export default function AdminConvivenciaPage() {
+    const { user } = useAuth();
     const { toast } = useToast();
     const [mediations, setMediations] = useState<NeighborMediationCase[]>([]);
     const [timeBankOffers, setTimeBankOffers] = useState<TimeBankOffer[]>([]);
     const [purchases, setPurchases] = useState<CollectivePurchaseCampaign[]>([]);
     const [projects, setProjects] = useState<CommunityProject[]>([]);
+    const [groupOrders, setGroupOrders] = useState<SupermarketGroupOrder[]>([]);
+    const [coordinatorCandidates, setCoordinatorCandidates] = useState<CommunityCoordinatorCandidate[]>([]);
+    const [selectedCoordinators, setSelectedCoordinators] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [updatingCaseId, setUpdatingCaseId] = useState<string | null>(null);
@@ -53,11 +60,13 @@ export default function AdminConvivenciaPage() {
 
         async function load() {
             try {
-                const [mediationData, timeBankData, purchaseData, projectData] = await Promise.all([
+                const [mediationData, timeBankData, purchaseData, projectData, groupOrderData, candidateData] = await Promise.all([
                     CommunityCollaborationService.getAdminMediationCases(),
                     CommunityCollaborationService.getTimeBankOffers(),
                     CommunityCollaborationService.getCollectivePurchases(),
                     CommunityCollaborationService.getCommunityProjects(),
+                    SupermarketGroupService.list(),
+                    CommunityCollaborationService.getCoordinatorCandidates(),
                 ]);
 
                 if (cancelled) return;
@@ -65,6 +74,8 @@ export default function AdminConvivenciaPage() {
                 setTimeBankOffers(timeBankData);
                 setPurchases(purchaseData);
                 setProjects(projectData);
+                setGroupOrders(groupOrderData);
+                setCoordinatorCandidates(candidateData);
             } catch (loadError) {
                 console.error("[AdminConvivencia] load failed:", loadError);
                 if (!cancelled) setError("No fue posible cargar la gestion de convivencia.");
@@ -121,6 +132,43 @@ export default function AdminConvivenciaPage() {
             });
         } finally {
             setUpdatingCaseId(null);
+        }
+    };
+
+    const reviewInitiative = async (
+        table: "time_bank_offers" | "collective_purchase_campaigns" | "community_projects",
+        id: string,
+        coordinatorId: string | undefined,
+        approved: boolean,
+    ) => {
+        if (!user?.id) return;
+        try {
+            await CommunityCollaborationService.reviewInitiative(table, id, {
+                status: approved ? "approved" : "rejected",
+                coordinatorId,
+                reviewerId: user.id,
+            });
+            const [timeBankData, purchaseData, projectData] = await Promise.all([
+                CommunityCollaborationService.getTimeBankOffers(),
+                CommunityCollaborationService.getCollectivePurchases(),
+                CommunityCollaborationService.getCommunityProjects(),
+            ]);
+            setTimeBankOffers(timeBankData); setPurchases(purchaseData); setProjects(projectData);
+            toast({ title: approved ? "Iniciativa validada" : "Iniciativa rechazada", description: approved ? "El coordinador ya puede recibir solicitudes." : "La iniciativa no sera publicada.", variant: "success" });
+        } catch (reviewError) {
+            console.error("[AdminConvivencia] review failed:", reviewError);
+            toast({ title: "No se pudo resolver", description: "Revisa permisos e intenta nuevamente.", variant: "destructive" });
+        }
+    };
+
+    const reviewGroupOrder = async (id: string, approved: boolean, proposedCoordinatorId?: string) => {
+        try {
+            await SupermarketGroupService.review(id, approved, selectedCoordinators[`group:${id}`] || proposedCoordinatorId);
+            setGroupOrders(await SupermarketGroupService.list());
+            toast({ title: approved ? "Compra validada" : "Compra rechazada", description: approved ? "El organizador quedó confirmado como coordinador." : "La compra no será publicada.", variant: "success" });
+        } catch (reviewError) {
+            console.error("[AdminConvivencia] group review failed:", reviewError);
+            toast({ title: "No se pudo resolver", variant: "destructive" });
         }
     };
 
@@ -182,6 +230,31 @@ export default function AdminConvivenciaPage() {
                         </div>
                     );
                 })}
+            </section>
+
+            <section className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                <Eyebrow>Validacion administrativa</Eyebrow>
+                <h2 className="mt-2 text-2xl font-semibold cc-text-primary">Iniciativas pendientes y coordinadores</h2>
+                <p className="mt-1 text-sm cc-text-secondary">Nada se publica ni recibe participantes hasta que Administracion valida al coordinador.</p>
+                <div className="mt-5 grid gap-3">
+                    {[
+                        ...timeBankOffers.filter(item => item.governanceStatus === "pending").map(item => ({ table: "time_bank_offers" as const, id: item.id, title: item.skill, ownerId: item.profileId, owner: item.neighborName, kind: "Banco de tiempo" })),
+                        ...purchases.filter(item => item.governanceStatus === "pending").map(item => ({ table: "collective_purchase_campaigns" as const, id: item.id, title: item.title, ownerId: item.organizerId, owner: item.organizer, kind: "Abasto comunitario" })),
+                        ...projects.filter(item => item.governanceStatus === "pending").map(item => ({ table: "community_projects" as const, id: item.id, title: item.title, ownerId: item.creatorId, owner: "Creador de la iniciativa", kind: "Plaza social" })),
+                    ].map(item => (
+                        <div key={`${item.table}:${item.id}`} className="flex flex-col gap-3 rounded-xl border border-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div><Tag tone="neutral">{item.kind}</Tag><p className="mt-2 font-semibold cc-text-primary">{item.title}</p><p className="text-xs cc-text-tertiary">Propuesto originalmente: {item.owner}</p></div>
+                            <div className="flex flex-col gap-2 sm:flex-row"><select className="input-premium h-10" value={selectedCoordinators[`${item.table}:${item.id}`] || item.ownerId || ""} onChange={event => setSelectedCoordinators(previous => ({ ...previous, [`${item.table}:${item.id}`]: event.target.value }))}><option value="">Designar coordinador</option>{coordinatorCandidates.map(candidate => <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.role}</option>)}</select><Button variant="ghost" onClick={() => void reviewInitiative(item.table, item.id, undefined, false)}>Rechazar</Button><Button variant="copper" disabled={!(selectedCoordinators[`${item.table}:${item.id}`] || item.ownerId)} onClick={() => void reviewInitiative(item.table, item.id, selectedCoordinators[`${item.table}:${item.id}`] || item.ownerId, true)}>Validar coordinador</Button></div>
+                        </div>
+                    ))}
+                    {groupOrders.filter(item => item.governanceStatus === "pending").map(item => (
+                        <div key={`group:${item.id}`} className="flex flex-col gap-3 rounded-xl border border-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div><Tag tone="neutral">Compra comunitaria consolidada</Tag><p className="mt-2 font-semibold cc-text-primary">{item.title}</p><p className="text-xs cc-text-tertiary">Coordinador propuesto: {item.members.find(member => member.userId === item.createdBy)?.name || "Organizador"}</p></div>
+                            <div className="flex flex-col gap-2 sm:flex-row"><select className="input-premium h-10" value={selectedCoordinators[`group:${item.id}`] || item.createdBy} onChange={event => setSelectedCoordinators(previous => ({ ...previous, [`group:${item.id}`]: event.target.value }))}>{coordinatorCandidates.map(candidate => <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.role}</option>)}</select><Button variant="ghost" onClick={() => void reviewGroupOrder(item.id, false)}>Rechazar</Button><Button variant="copper" onClick={() => void reviewGroupOrder(item.id, true, item.createdBy)}>Validar coordinador</Button></div>
+                        </div>
+                    ))}
+                    {!timeBankOffers.some(item => item.governanceStatus === "pending") && !purchases.some(item => item.governanceStatus === "pending") && !projects.some(item => item.governanceStatus === "pending") && !groupOrders.some(item => item.governanceStatus === "pending") && <p className="rounded-xl bg-elevated/40 p-5 text-sm cc-text-secondary">No hay iniciativas pendientes de validacion.</p>}
+                </div>
             </section>
 
             <section className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">

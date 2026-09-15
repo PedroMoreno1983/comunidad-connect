@@ -92,8 +92,8 @@ export function CommunitySupplyPanel() {
       setTitle('');
       setShoppingList('');
       toast({
-        title: 'Compra comunitaria creada',
-        description: 'Compártela con tus vecinos para que agreguen sus cantidades.',
+        title: 'Compra enviada a validación',
+        description: 'Administración confirmará al coordinador antes de que otras personas puedan aportar.',
         variant: 'success',
       });
     } catch (error) {
@@ -315,6 +315,9 @@ export function CommunitySupplyPanel() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full px-3 py-2 text-xs font-bold" style={{ background: 'var(--cc-paper-warm)', color: 'var(--cc-text-secondary)' }}>
+                      {order.governanceStatus === 'approved' ? `Validada · coordina ${order.coordinatorName || 'organizador'}` : 'Pendiente de validación'}
+                    </span>
                     <Button variant="outline" className="h-9 px-3" onClick={() => void share(order)}>
                       <Share2 className="mr-2 h-4 w-4" /> Invitar
                     </Button>
@@ -354,8 +357,8 @@ export function CommunitySupplyPanel() {
                         onChange={event => setContributions(previous => ({ ...previous, [order.id]: event.target.value }))}
                         placeholder="2 arroz, leche x 4, detergente"
                       />
-                      <Button onClick={() => void join(order.id)} disabled={busy === `join:${order.id}`}>Guardar mi parte</Button>
-                      <Button variant="outline" onClick={() => void compare(order.id)} disabled={busy === `compare:${order.id}`}>Ver precios</Button>
+                      <Button onClick={() => void join(order.id)} disabled={order.governanceStatus !== 'approved' || busy === `join:${order.id}`}>Guardar mi parte</Button>
+                      <Button variant="outline" onClick={() => void compare(order.id)} disabled={order.governanceStatus !== 'approved' || busy === `compare:${order.id}`}>Ver precios</Button>
                     </div>
                   </div>
                 )}

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     let query = getSupabaseAdmin()
         .from('training_modules')
-        .select('id,title,description,target_audience,is_active,community_id,created_at,training_lessons(id,title,content,order_index)')
+        .select('id,title,description,target_audience,is_active,community_id,created_at,embed_url,learning_objectives,estimated_minutes,quality_version,training_lessons(id,title,content,order_index)')
         .eq('is_active', true)
         .or(`community_id.is.null,community_id.eq.${profile.community_id}`)
         .order('created_at', { ascending: false })
@@ -56,14 +56,27 @@ export async function POST(req: NextRequest) {
     const title = cleanText(body.title, 180);
     const description = cleanText(body.description, 1_500);
     const content = cleanText(body.content, 100_000);
+    const embedUrl = cleanText(body.embedUrl, 2_000);
+    const estimatedMinutes = Math.max(5, Math.min(480, Number(body.estimatedMinutes) || 20));
+    const learningObjectives = Array.isArray(body.learningObjectives)
+        ? body.learningObjectives.map(item => cleanText(item, 240)).filter(Boolean).slice(0, 8)
+        : [];
     const requestedAudience = cleanText(body.target_audience, 20);
     const targetAudience = ['all', 'concierge', 'admin'].includes(requestedAudience) ? requestedAudience : 'all';
-    if (!title || !content) return NextResponse.json({ error: 'Titulo y contenido son obligatorios.' }, { status: 400 });
+    if (!title || (!content && !embedUrl)) return NextResponse.json({ error: 'Titulo y contenido o enlace embebido son obligatorios.' }, { status: 400 });
+    if (embedUrl) {
+        try {
+            const parsed = new URL(embedUrl);
+            if (parsed.protocol !== 'https:') throw new Error('invalid');
+        } catch {
+            return NextResponse.json({ error: 'El enlace embebido debe ser una URL HTTPS valida.' }, { status: 400 });
+        }
+    }
 
     const supabase = getSupabaseAdmin();
     const { data: module, error: moduleError } = await supabase
         .from('training_modules')
-        .insert({ title, description, target_audience: targetAudience, is_active: true, community_id: profile.community_id, created_by: profile.id })
+        .insert({ title, description, target_audience: targetAudience, is_active: true, community_id: profile.community_id, created_by: profile.id, embed_url: embedUrl || null, learning_objectives: learningObjectives, estimated_minutes: estimatedMinutes, quality_version: 2 })
         .select('id,title,description,target_audience,community_id,created_at')
         .single();
     if (moduleError || !module) {
@@ -71,7 +84,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No se pudo guardar el curso.' }, { status: 500 });
     }
 
-    const { error: lessonError } = await supabase.from('training_lessons').insert({ module_id: module.id, title: 'Leccion principal', content, order_index: 0 });
+    const { error: lessonError } = await supabase.from('training_lessons').insert({ module_id: module.id, title: 'Leccion principal', content: content || 'Curso alojado en el recurso embebido.', order_index: 0 });
     if (lessonError) {
         await supabase.from('training_modules').delete().eq('id', module.id).eq('community_id', profile.community_id);
         console.error('[training/modules] Lesson create failed:', lessonError.message);

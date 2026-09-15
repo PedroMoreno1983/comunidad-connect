@@ -11,6 +11,7 @@ import {
   lockSupermarketGroupOrder,
   settleSupermarketGroupMember,
   parseGroupShoppingList,
+  reviewSupermarketGroupOrder,
 } from '@/lib/supermarketGroupOrders';
 
 export const runtime = 'nodejs';
@@ -77,6 +78,8 @@ export async function POST(request: NextRequest) {
         clean(body.memberUserId, 80),
         body.paid === true,
       );
+    } else if (action === 'review') {
+      order = await reviewSupermarketGroupOrder(profile, orderId, body.approved === true, clean(body.coordinatorId, 80), clean(body.note, 500));
     } else {
       return NextResponse.json({ error: 'Acción no válida.' }, { status: 400 });
     }

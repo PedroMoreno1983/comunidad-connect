@@ -65,7 +65,8 @@ export default function SocialFeedPage() {
     };
 
     const joinProject = async (projectId: string) => {
-        const data = await CommunityCollaborationService.joinCommunityProject(projectId);
+        if (!user?.id || !user.communityId) return;
+        const data = await CommunityCollaborationService.joinCommunityProject(projectId, user.communityId, user.id);
         setProjects(data);
         toast({
             title: "Te sumaste al proyecto",

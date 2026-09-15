@@ -36,6 +36,7 @@ export async function POST(request: Request) {
 
         const bodyReq = await request.json();
         const { text } = bodyReq;
+        const audience = bodyReq.targetAudience === 'admin' ? 'administradores de condominios' : bodyReq.targetAudience === 'concierge' ? 'conserjes' : 'administradores y conserjes';
 
         if (!text) {
             return NextResponse.json({ error: 'Falta el contenido de texto para generar el curso.' }, { status: 400 });
@@ -48,13 +49,15 @@ export async function POST(request: Request) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
         
         const systemPrompt = `Eres un Experto Diseñador Instruccional e IA Educativa ("CoCo").
-Tu tarea es transformar el siguiente documento o texto en una PRESENTACIÓN DE DIAPOSITIVAS altamente efectiva y didáctica.
+Tu tarea es transformar el siguiente documento o texto en un curso operativo de alta calidad para ${audience}.
 Reglas:
-1. Divide lógicamente el material en conceptos digeribles (diapositivas).
-2. Para cada diapositiva, crea un título corto.
-3. Extrae de 2 a 5 'bullets' concretos y muy breves para mostrar visualmente.
-4. Genera un tema visual sugerido (ej. "blue-glass", "purple-gradient", "sunset-orange", "tech-abstract", "nature-green").
-5. Lo más importante: Escribe un 'notes' (Notas de orador) envolvente, explicativo y conversacional que será lo que la profesora IA dirá a los estudiantes. Piensa en estas notas como el contenido profundo de la clase mientras que los 'bullets' son solo la guía visual.
+1. Conserva fielmente reglas, cifras y procedimientos del texto fuente; no inventes obligaciones legales ni protocolos.
+2. Produce entre 6 y 12 diapositivas: propósito y objetivos, conceptos, procedimiento paso a paso, casos reales del turno, errores frecuentes, escalamiento y cierre evaluativo.
+3. Cada diapositiva debe tener un título corto y 2 a 5 bullets observables y accionables.
+4. Las notas deben explicar qué hacer, quién responde, qué registrar y cuándo escalar. Incluye preguntas de comprobación y retroalimentación, no relleno motivacional.
+5. Distingue siempre las responsabilidades de administración y conserjería. No enseñes a un rol a ejecutar acciones para las que no está autorizado.
+6. Incluye al menos un escenario de decisión y una lista final de verificación aplicable dentro de Convive Connect.
+7. Genera un tema visual sobrio (blue-glass, sunset-orange, tech-abstract o nature-green).
 Devuelve los resultados estrictamente siguiendo el JSON schema provisto.
 
 Texto fuente:

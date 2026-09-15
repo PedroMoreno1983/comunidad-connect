@@ -10,6 +10,9 @@ import {
     CocoCase,
     CocoCaseEvent,
     CollectivePurchaseCampaign,
+    CommunityGovernanceStatus,
+    CommunityCoordinatorCandidate,
+    CommunityParticipationRequest,
     CommercialLeadRequest,
     CommercialLeadResponse,
     CommunityFinance,
@@ -270,6 +273,10 @@ function mapTimeBankRow(row: CollaborationRow): TimeBankOffer {
         availability: asString(row.availability),
         credits: asNumber(row.credits, 1),
         requestsCount: asNumber(row.requests_count),
+        governanceStatus: asString(row.governance_status, 'pending') as CommunityGovernanceStatus,
+        coordinatorId: asString(row.coordinator_id) || undefined,
+        coordinatorName: asString(row.coordinator_name) || undefined,
+        governanceNote: asString(row.governance_note) || undefined,
         category: (asString(row.category, 'other') as TimeBankOffer['category']),
         createdAt: asString(row.created_at, new Date().toISOString()),
     };
@@ -289,6 +296,11 @@ function mapCollectivePurchaseRow(row: CollaborationRow): CollectivePurchaseCamp
         deadline: asString(row.deadline),
         status: (asString(row.status, 'open') as CollectivePurchaseCampaign['status']),
         organizer: asString(row.organizer, 'Comite vecinal'),
+        organizerId: asString(row.organizer_id) || undefined,
+        governanceStatus: asString(row.governance_status, 'pending') as CommunityGovernanceStatus,
+        coordinatorId: asString(row.coordinator_id) || undefined,
+        coordinatorName: asString(row.coordinator_name) || undefined,
+        governanceNote: asString(row.governance_note) || undefined,
         createdAt: asString(row.created_at, new Date().toISOString()),
     };
 }
@@ -304,12 +316,24 @@ function mapCommunityProjectRow(row: CollaborationRow): CommunityProject {
         participants: asNumber(row.participants, 1),
         needed: asString(row.needed),
         cocoInsight: asString(row.coco_insight),
+        creatorId: asString(row.creator_id) || undefined,
+        governanceStatus: asString(row.governance_status, 'pending') as CommunityGovernanceStatus,
+        coordinatorId: asString(row.coordinator_id) || undefined,
+        coordinatorName: asString(row.coordinator_name) || undefined,
+        governanceNote: asString(row.governance_note) || undefined,
         status: (asString(row.status, 'forming') as CommunityProject['status']),
         createdAt: asString(row.created_at, new Date().toISOString()),
     };
 }
 
 export const CommunityCollaborationService = {
+    async getCoordinatorCandidates(): Promise<CommunityCoordinatorCandidate[]> {
+        const { data, error } = await supabase.from('profiles').select('id,name,role').order('name');
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(row => ({
+            id: asString(row.id), name: asString(row.name, 'Vecino'), role: asString(row.role, 'resident'),
+        }));
+    },
     async getMediationCases(): Promise<NeighborMediationCase[]> {
         const { data, error } = await supabase
             .from('neighbor_mediations')
@@ -368,7 +392,7 @@ export const CommunityCollaborationService = {
         return ((data || []) as CollaborationRow[]).map(mapTimeBankRow);
     },
 
-    async createTimeBankOffer(input: Omit<TimeBankOffer, 'id' | 'requestsCount' | 'createdAt'>): Promise<TimeBankOffer[]> {
+    async createTimeBankOffer(input: Omit<TimeBankOffer, 'id' | 'requestsCount' | 'createdAt' | 'governanceStatus' | 'coordinatorId' | 'coordinatorName' | 'governanceNote'>): Promise<TimeBankOffer[]> {
         const { error } = await supabase.from('time_bank_offers').insert({
             profile_id: input.profileId,
             community_id: input.communityId,
@@ -379,17 +403,17 @@ export const CommunityCollaborationService = {
             availability: input.availability,
             credits: input.credits,
             category: input.category,
+            governance_status: 'pending',
         });
         if (error) throw error;
         return this.getTimeBankOffers();
     },
 
-    async requestTimeBankOffer(id: string): Promise<TimeBankOffer[]> {
-        const { data, error: readError } = await supabase.from('time_bank_offers').select('requests_count').eq('id', id).maybeSingle();
-        if (readError) throw readError;
-        if (!data) throw new Error('Oferta de tiempo no encontrada.');
-        const requestsCount = Number((data as { requests_count?: number }).requests_count || 0) + 1;
-        const { error } = await supabase.from('time_bank_offers').update({ requests_count: requestsCount }).eq('id', id);
+    async requestTimeBankOffer(id: string, communityId: string, requesterId: string, message?: string): Promise<TimeBankOffer[]> {
+        const { error } = await supabase.from('community_participation_requests').insert({
+            initiative_type: 'time_bank', initiative_id: id, community_id: communityId,
+            requester_id: requesterId, message: message?.trim() || null,
+        });
         if (error) throw error;
         return this.getTimeBankOffers();
     },
@@ -403,7 +427,7 @@ export const CommunityCollaborationService = {
         return ((data || []) as CollaborationRow[]).map(mapCollectivePurchaseRow);
     },
 
-    async createCollectivePurchase(input: Omit<CollectivePurchaseCampaign, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CollectivePurchaseCampaign[]> {
+    async createCollectivePurchase(input: Omit<CollectivePurchaseCampaign, 'id' | 'participants' | 'status' | 'createdAt' | 'governanceStatus' | 'coordinatorId' | 'coordinatorName' | 'governanceNote'>): Promise<CollectivePurchaseCampaign[]> {
         const { error } = await supabase.from('collective_purchase_campaigns').insert({
             community_id: input.communityId,
             title: input.title,
@@ -416,19 +440,17 @@ export const CommunityCollaborationService = {
             deadline: input.deadline,
             status: input.minimumParticipants <= 1 ? 'ready' : 'open',
             organizer: input.organizer,
+            organizer_id: input.organizerId,
+            governance_status: 'pending',
         });
         if (error) throw error;
         return this.getCollectivePurchases();
     },
 
-    async joinCollectivePurchase(id: string): Promise<CollectivePurchaseCampaign[]> {
-        const { data, error: readError } = await supabase.from('collective_purchase_campaigns').select('participants, minimum_participants, status').eq('id', id).maybeSingle();
-        if (readError) throw readError;
-        if (!data) throw new Error('Compra colectiva no encontrada.');
-        const row = data as { participants?: number; minimum_participants?: number; status?: CollectivePurchaseCampaign['status'] };
-        const participants = Number(row.participants || 0) + 1;
-        const status = participants >= Number(row.minimum_participants || 1) ? 'ready' : row.status || 'open';
-        const { error } = await supabase.from('collective_purchase_campaigns').update({ participants, status }).eq('id', id);
+    async joinCollectivePurchase(id: string, communityId: string, requesterId: string): Promise<CollectivePurchaseCampaign[]> {
+        const { error } = await supabase.from('community_participation_requests').insert({
+            initiative_type: 'collective_purchase', initiative_id: id, community_id: communityId, requester_id: requesterId,
+        });
         if (error) throw error;
         return this.getCollectivePurchases();
     },
@@ -442,7 +464,7 @@ export const CommunityCollaborationService = {
         return ((data || []) as CollaborationRow[]).map(mapCommunityProjectRow);
     },
 
-    async createCommunityProject(input: Omit<CommunityProject, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CommunityProject[]> {
+    async createCommunityProject(input: Omit<CommunityProject, 'id' | 'participants' | 'status' | 'createdAt' | 'governanceStatus' | 'coordinatorId' | 'coordinatorName' | 'governanceNote'>): Promise<CommunityProject[]> {
         const { error } = await supabase.from('community_projects').insert({
             community_id: input.communityId,
             title: input.title,
@@ -451,6 +473,8 @@ export const CommunityCollaborationService = {
             impact: input.impact,
             needed: input.needed,
             coco_insight: input.cocoInsight,
+            creator_id: input.creatorId,
+            governance_status: 'pending',
             participants: 1,
             status: 'forming',
         });
@@ -458,14 +482,43 @@ export const CommunityCollaborationService = {
         return this.getCommunityProjects();
     },
 
-    async joinCommunityProject(id: string): Promise<CommunityProject[]> {
-        const { data, error: readError } = await supabase.from('community_projects').select('participants').eq('id', id).maybeSingle();
-        if (readError) throw readError;
-        if (!data) throw new Error('Proyecto comunitario no encontrado.');
-        const participants = Number((data as { participants?: number }).participants || 0) + 1;
-        const { error } = await supabase.from('community_projects').update({ participants, status: 'active' }).eq('id', id);
+    async joinCommunityProject(id: string, communityId: string, requesterId: string): Promise<CommunityProject[]> {
+        const { error } = await supabase.from('community_participation_requests').insert({
+            initiative_type: 'community_project', initiative_id: id, community_id: communityId, requester_id: requesterId,
+        });
         if (error) throw error;
         return this.getCommunityProjects();
+    },
+
+    async getParticipationRequests(): Promise<CommunityParticipationRequest[]> {
+        const { data, error } = await supabase.from('community_participation_requests').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(row => ({
+            id: asString(row.id), communityId: asString(row.community_id),
+            initiativeType: asString(row.initiative_type) as CommunityParticipationRequest['initiativeType'],
+            initiativeId: asString(row.initiative_id), requesterId: asString(row.requester_id),
+            requesterName: asString(row.requester_name) || undefined, coordinatorId: asString(row.coordinator_id) || undefined,
+            message: asString(row.message) || undefined,
+            status: asString(row.status, 'pending') as CommunityParticipationRequest['status'], createdAt: asString(row.created_at),
+        }));
+    },
+
+    async resolveParticipationRequest(id: string, status: 'accepted' | 'rejected') {
+        const { error } = await supabase.from('community_participation_requests').update({
+            status, resolved_at: new Date().toISOString(),
+        }).eq('id', id);
+        if (error) throw error;
+    },
+
+    async reviewInitiative(table: 'time_bank_offers' | 'collective_purchase_campaigns' | 'community_projects', id: string, input: {
+        status: CommunityGovernanceStatus; coordinatorId?: string; note?: string; reviewerId: string;
+    }) {
+        const { error } = await supabase.from(table).update({
+            governance_status: input.status, coordinator_id: input.coordinatorId || null,
+            governance_note: input.note?.trim() || null, validated_by: input.reviewerId,
+            validated_at: new Date().toISOString(),
+        }).eq('id', id);
+        if (error) throw error;
     },
 };
 
@@ -2252,6 +2305,15 @@ export const SupermarketGroupService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'lock', orderId }),
+        });
+        const data = await readJsonResponse<{ order: SupermarketGroupOrder }>(response);
+        return data.order;
+    },
+
+    async review(orderId: string, approved: boolean, coordinatorId?: string, note?: string): Promise<SupermarketGroupOrder> {
+        const response = await fetch('/api/supermarket/group-orders', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'review', orderId, approved, coordinatorId, note }),
         });
         const data = await readJsonResponse<{ order: SupermarketGroupOrder }>(response);
         return data.order;
