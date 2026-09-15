@@ -136,6 +136,9 @@ export interface NeighborMediationCase {
   createdAt: string;
 }
 
+export type CommunityGovernanceStatus = 'pending' | 'approved' | 'changes_requested' | 'rejected' | 'suspended' | 'closed';
+export type CommunityParticipationStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled';
+
 export interface TimeBankOffer {
   id: string;
   profileId?: string;
@@ -147,6 +150,10 @@ export interface TimeBankOffer {
   availability: string;
   credits: number;
   requestsCount: number;
+  governanceStatus: CommunityGovernanceStatus;
+  coordinatorId?: string;
+  coordinatorName?: string;
+  governanceNote?: string;
   category: 'tools' | 'care' | 'digital' | 'home' | 'learning' | 'other';
   createdAt: string;
 }
@@ -164,6 +171,11 @@ export interface CollectivePurchaseCampaign {
   deadline: string;
   status: 'open' | 'ready' | 'ordered';
   organizer: string;
+  organizerId?: string;
+  governanceStatus: CommunityGovernanceStatus;
+  coordinatorId?: string;
+  coordinatorName?: string;
+  governanceNote?: string;
   createdAt: string;
 }
 
@@ -224,6 +236,10 @@ export interface SupermarketGroupOrder {
   items: SupermarketGroupOrderItem[];
   settlements: SupermarketGroupSettlement[];
   canManage: boolean;
+  governanceStatus: CommunityGovernanceStatus;
+  coordinatorId?: string | null;
+  coordinatorName?: string | null;
+  governanceNote?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -442,8 +458,32 @@ export interface CommunityProject {
   participants: number;
   needed: string;
   cocoInsight: string;
+  creatorId?: string;
+  governanceStatus: CommunityGovernanceStatus;
+  coordinatorId?: string;
+  coordinatorName?: string;
+  governanceNote?: string;
   status: 'active' | 'forming' | 'completed';
   createdAt: string;
+}
+
+export interface CommunityParticipationRequest {
+  id: string;
+  communityId: string;
+  initiativeType: 'time_bank' | 'collective_purchase' | 'community_project';
+  initiativeId: string;
+  requesterId: string;
+  requesterName?: string;
+  coordinatorId?: string;
+  message?: string;
+  status: CommunityParticipationStatus;
+  createdAt: string;
+}
+
+export interface CommunityCoordinatorCandidate {
+  id: string;
+  name: string;
+  role: 'admin' | 'resident' | 'concierge' | string;
 }
 
 export type SolidarityActiveTab = 'transparency' | 'apply' | 'tasks';
@@ -2387,7 +2427,21 @@ export interface TrainingModule {
     is_active?: boolean | null;
     community_id?: string | null;
     created_at?: string | null;
+    embed_url?: string | null;
+    learning_objectives?: string[] | null;
+    estimated_minutes?: number | null;
+    quality_version?: number | null;
     training_lessons: TrainingLesson[];
+}
+
+export interface TrainingCourseDraft {
+    title: string;
+    description: string;
+    targetAudience: 'all' | 'admin' | 'concierge';
+    content: string;
+    embedUrl: string;
+    learningObjectives: string[];
+    estimatedMinutes: number;
 }
 
 export interface TrainingProgressRecord {

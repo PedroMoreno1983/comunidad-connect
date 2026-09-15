@@ -109,6 +109,7 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
   const userIds = [...new Set([
     ...(membersResult.data || []).map(row => asString(row.user_id)),
     ...(itemsResult.data || []).map(row => asString(row.user_id)),
+    ...rawOrders.flatMap(row => [asString(row.created_by), asString(row.coordinator_id)]),
   ].filter(Boolean))];
   const { data: profiles, error: profileError } = userIds.length
     ? await admin.from('profiles').select('id,name,email').in('id', userIds)
@@ -191,6 +192,10 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
       members,
       items,
       canManage: createdBy === profile.id || profile.role === 'admin',
+      governanceStatus: (asString(row.governance_status) || 'pending') as SupermarketGroupOrder['governanceStatus'],
+      coordinatorId: asString(row.coordinator_id) || null,
+      coordinatorName: names.get(asString(row.coordinator_id)) || null,
+      governanceNote: asString(row.governance_note) || null,
       settlements,
       createdAt: asString(row.created_at),
       updatedAt: asString(row.updated_at),
@@ -208,7 +213,8 @@ export async function listSupermarketGroupOrders(profile: GroupProfile): Promise
     .order('created_at', { ascending: false })
     .limit(40);
   if (error) throw error;
-  return hydrateOrders(profile, (data || []) as Record<string, unknown>[]);
+  const visible = (data || []).filter(row => profile.role === 'admin' || row.governance_status === 'approved' || row.created_by === profile.id);
+  return hydrateOrders(profile, visible as Record<string, unknown>[]);
 }
 
 async function upsertContribution(orderId: string, communityId: string, userId: string, items: GroupItemInput[]) {
@@ -255,6 +261,7 @@ export async function createSupermarketGroupOrder(
       title,
       closes_at: input.closesAt,
       status: 'open',
+      governance_status: 'pending',
       client_request_id: requestId,
     })
     .select('*')
@@ -290,18 +297,52 @@ export async function joinSupermarketGroupOrder(
   items: GroupItemInput[],
 ): Promise<SupermarketGroupOrder> {
   const order = await assertVisibleOrder(profile, orderId);
+  if (asString(order.governance_status) !== 'approved') throw new Error('La compra espera validación de Administración.');
   if (!['open', 'ready'].includes(asString(order.status))) throw new Error('La compra ya está cerrada.');
   if (asString(order.closes_at) < new Date().toISOString().slice(0, 10)) throw new Error('El plazo de esta compra ya venció.');
   if (items.length === 0) throw new Error('Agrega al menos un producto con su cantidad.');
   await upsertContribution(orderId, requireIdentity(profile), profile.id, items);
+  const coordinatorId = asString(order.coordinator_id) || asString(order.created_by);
+  if (coordinatorId !== profile.id) {
+    await getSupabaseAdmin().from('notifications').insert({
+      user_id: coordinatorId, type: 'info', category: 'community',
+      title: 'Nuevo aporte a tu compra comunitaria',
+      body: `${profile.name || 'Un vecino'} agregó su parte a la compra ${asString(order.title)}.`,
+      link: '/convivencia?lane=abasto', community_id: requireIdentity(profile),
+    });
+  }
   return (await hydrateOrders(profile, [order]))[0];
+}
+
+export async function reviewSupermarketGroupOrder(
+  profile: GroupProfile,
+  orderId: string,
+  approved: boolean,
+  coordinatorId?: string,
+  note = '',
+): Promise<SupermarketGroupOrder> {
+  const communityId = requireIdentity(profile);
+  if (profile.role !== 'admin') throw new Error('Solo Administración puede validar una compra comunitaria.');
+  const { data: current, error: currentError } = await getSupabaseAdmin().from('supermarket_group_orders')
+    .select('created_by').eq('id', orderId).eq('community_id', communityId).single();
+  if (currentError || !current) throw currentError || new Error('Compra comunitaria no encontrada.');
+  const { data, error } = await getSupabaseAdmin().from('supermarket_group_orders').update({
+    governance_status: approved ? 'approved' : 'rejected',
+    coordinator_id: approved ? (coordinatorId || current.created_by) : null,
+    validated_by: profile.id,
+    validated_at: new Date().toISOString(),
+    governance_note: note.trim().slice(0, 500) || null,
+  }).eq('id', orderId).eq('community_id', communityId).select('*').single();
+  if (error || !data) throw error || new Error('No se pudo validar la compra comunitaria.');
+  return (await hydrateOrders(profile, [data as Record<string, unknown>]))[0];
 }
 
 export async function compareSupermarketGroupOrder(
   profile: GroupProfile,
   orderId: string,
 ): Promise<SupermarketGroupComparison[]> {
-  await assertVisibleOrder(profile, orderId);
+  const visibleOrder = await assertVisibleOrder(profile, orderId);
+  if (asString(visibleOrder.governance_status) !== 'approved') throw new Error('La compra espera validación de Administración.');
   const { data, error } = await getSupabaseAdmin()
     .from('supermarket_group_order_items')
     .select('requested_term,quantity')
@@ -341,6 +382,7 @@ export async function compareSupermarketGroupOrder(
 
 export async function lockSupermarketGroupOrder(profile: GroupProfile, orderId: string): Promise<SupermarketGroupOrder> {
   const order = await assertVisibleOrder(profile, orderId);
+  if (asString(order.governance_status) !== 'approved') throw new Error('La compra espera validación de Administración.');
   if (asString(order.created_by) !== profile.id && profile.role !== 'admin') {
     throw new Error('Solo quien organizó la compra o la administración puede cerrarla.');
   }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MultiAgentClassroom } from "@/components/training/MultiAgentClassroom";
+import { TrainingCourseBuilder } from "@/components/training/TrainingCourseBuilder";
 import { AlertCircle, ArrowLeft, BookOpen, GraduationCap, Play, ShieldCheck, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -17,6 +18,7 @@ export default function StaffTrainingPage() {
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
     const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+    const [selectedCourseEmbedUrl, setSelectedCourseEmbedUrl] = useState<string | null>(null);
     const [resumeSlideIndex, setResumeSlideIndex] = useState(0);
     const [progress, setProgress] = useState<Record<string, TrainingProgressRecord>>({});
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export default function StaffTrainingPage() {
         setResumeSlideIndex(progress[course.id]?.last_slide_index || 0);
         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
         setSelectedCourseTitle(course.title);
+        setSelectedCourseEmbedUrl(course.embed_url || null);
         if (!progress[course.id]) void saveProgress(course.id, "in_progress", 0).catch(error => console.warn("Training start save failed:", error));
     };
 
@@ -116,6 +119,7 @@ export default function StaffTrainingPage() {
                             setSelectedCourseContent(null);
                             setSelectedCourseTitle(null);
                             setSelectedCourseId(null);
+                            setSelectedCourseEmbedUrl(null);
                             setResumeSlideIndex(0);
                         }}
                         className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
@@ -139,10 +143,15 @@ export default function StaffTrainingPage() {
                         </div>
                     </div>
 
-                    <MultiAgentClassroom courseContent={selectedCourseContent} initialSlideIndex={resumeSlideIndex} onSlideChange={handleSlideChange} onComplete={handleComplete} />
+                    {selectedCourseEmbedUrl && <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><iframe src={selectedCourseEmbedUrl} title={selectedCourseTitle || "Curso embebido"} className="h-[70vh] w-full" sandbox="allow-forms allow-popups allow-presentation allow-same-origin allow-scripts" referrerPolicy="strict-origin-when-cross-origin" /></div>}
+                    {!selectedCourseEmbedUrl && <MultiAgentClassroom courseContent={selectedCourseContent} initialSlideIndex={resumeSlideIndex} onSlideChange={handleSlideChange} onComplete={handleComplete} />}
                 </div>
             </ErrorBoundary>
         );
+    }
+
+    if (user && !["admin", "concierge"].includes(user.role)) {
+        return <div className="mx-auto max-w-2xl rounded-2xl border p-8 text-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><ShieldCheck className="mx-auto h-10 w-10 cc-text-tertiary" /><h1 className="mt-3 text-2xl font-semibold cc-text-primary">Aula reservada al equipo operativo</h1><p className="mt-2 text-sm cc-text-secondary">Los cursos están disponibles exclusivamente para Administración y Conserjería.</p></div>;
     }
 
     return (
@@ -197,6 +206,8 @@ export default function StaffTrainingPage() {
                     secondaryActionHref={user?.role === "admin" ? "#modo-libre" : "#catalogo-cursos"}
                 />
 
+                {user?.role === "admin" && <TrainingCourseBuilder onPublished={course => setCourses(previous => [course, ...previous])} />}
+
                 {loading ? (
                     <div className="rounded-2xl border p-6 text-center text-sm cc-text-secondary sm:p-10" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         Cargando cursos disponibles...
@@ -239,6 +250,7 @@ export default function StaffTrainingPage() {
                                     <p className="mt-3 line-clamp-3 text-sm leading-6 cc-text-secondary">
                                         {course.description || "Inicia este curso interactivo con la Tutora CoCo."}
                                     </p>
+                                    <p className="mt-3 text-xs font-semibold cc-text-tertiary">{course.target_audience === "admin" ? "Administración" : course.target_audience === "concierge" ? "Conserjería" : "Administración y Conserjería"} · {course.estimated_minutes || 20} min {course.embed_url ? "· Embebido" : "· Clase CoCo"}</p>
                                     <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--cc-copper)" }}>
                                         Iniciar clase
                                         <Play className="h-4 w-4" />

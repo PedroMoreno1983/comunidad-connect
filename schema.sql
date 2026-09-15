@@ -406,6 +406,11 @@ CREATE TABLE IF NOT EXISTS public.time_bank_offers (
   availability TEXT NOT NULL,
   credits INTEGER NOT NULL DEFAULT 1,
   requests_count INTEGER NOT NULL DEFAULT 0,
+  governance_status TEXT NOT NULL DEFAULT 'pending' CHECK (governance_status IN ('pending', 'approved', 'changes_requested', 'rejected', 'suspended', 'closed')),
+  coordinator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  validated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  validated_at TIMESTAMPTZ,
+  governance_note TEXT,
   category TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('tools', 'care', 'digital', 'home', 'learning', 'other')),
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -423,6 +428,12 @@ CREATE TABLE IF NOT EXISTS public.collective_purchase_campaigns (
   deadline DATE NOT NULL,
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'ready', 'ordered')),
   organizer TEXT NOT NULL,
+  organizer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  governance_status TEXT NOT NULL DEFAULT 'pending' CHECK (governance_status IN ('pending', 'approved', 'changes_requested', 'rejected', 'suspended', 'closed')),
+  coordinator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  validated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  validated_at TIMESTAMPTZ,
+  governance_note TEXT,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -436,9 +447,31 @@ CREATE TABLE IF NOT EXISTS public.community_projects (
   participants INTEGER NOT NULL DEFAULT 1,
   needed TEXT NOT NULL,
   coco_insight TEXT NOT NULL,
+  creator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  governance_status TEXT NOT NULL DEFAULT 'pending' CHECK (governance_status IN ('pending', 'approved', 'changes_requested', 'rejected', 'suspended', 'closed')),
+  coordinator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  validated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  validated_at TIMESTAMPTZ,
+  governance_note TEXT,
   status TEXT NOT NULL DEFAULT 'forming' CHECK (status IN ('active', 'forming', 'completed')),
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.community_participation_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  initiative_type TEXT NOT NULL CHECK (initiative_type IN ('time_bank', 'collective_purchase', 'community_project')),
+  initiative_id UUID NOT NULL,
+  requester_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  coordinator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'cancelled')),
+  resolved_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (initiative_type, initiative_id, requester_id)
 );
 
 -- =====================================================================
@@ -470,6 +503,10 @@ CREATE TABLE IF NOT EXISTS public.training_modules (
   is_active BOOLEAN DEFAULT TRUE,
   community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE,
   created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  embed_url TEXT CHECK (embed_url IS NULL OR embed_url ~ '^https://'),
+  learning_objectives JSONB NOT NULL DEFAULT '[]'::jsonb,
+  estimated_minutes INTEGER NOT NULL DEFAULT 20 CHECK (estimated_minutes BETWEEN 5 AND 480),
+  quality_version INTEGER NOT NULL DEFAULT 2 CHECK (quality_version > 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -662,6 +699,7 @@ ALTER TABLE public.social_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.social_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.neighbor_mediations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.time_bank_offers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_participation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collective_purchase_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.community_projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
@@ -815,6 +853,16 @@ CREATE POLICY "tenant_time_bank_update" ON public.time_bank_offers FOR UPDATE US
   profile_id = auth.uid()
   OR community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );
+
+CREATE POLICY "community_participation_read_parties" ON public.community_participation_requests FOR SELECT TO authenticated USING (
+  community_id = public.get_my_community_id() AND (requester_id = auth.uid() OR coordinator_id = auth.uid() OR public.get_my_role() IN ('admin', 'concierge'))
+);
+CREATE POLICY "community_participation_insert_self" ON public.community_participation_requests FOR INSERT TO authenticated WITH CHECK (
+  requester_id = auth.uid() AND community_id = public.get_my_community_id()
+);
+CREATE POLICY "community_participation_update_coordinator_admin" ON public.community_participation_requests FOR UPDATE TO authenticated USING (
+  community_id = public.get_my_community_id() AND (coordinator_id = auth.uid() OR public.get_my_role() = 'admin')
+) WITH CHECK (community_id = public.get_my_community_id());
 
 CREATE POLICY "tenant_collective_purchases_select" ON public.collective_purchase_campaigns FOR SELECT USING (
   community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
@@ -2554,6 +2602,12 @@ CREATE TABLE IF NOT EXISTS "public"."supermarket_group_orders" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "selected_items" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
     "client_request_id" "uuid",
+    "governance_status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "coordinator_id" "uuid",
+    "validated_by" "uuid",
+    "validated_at" timestamp with time zone,
+    "governance_note" "text",
+    CONSTRAINT "supermarket_group_orders_governance_status_check" CHECK (("governance_status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'changes_requested'::"text", 'rejected'::"text", 'suspended'::"text", 'closed'::"text"]))),
     CONSTRAINT "supermarket_group_orders_selected_channel_type_check" CHECK ((("selected_channel_type" IS NULL) OR ("selected_channel_type" = ANY (ARRAY['retail'::"text", 'wholesale'::"text"])))),
     CONSTRAINT "supermarket_group_orders_selected_items_check" CHECK (("jsonb_typeof"("selected_items") = 'array'::"text")),
     CONSTRAINT "supermarket_group_orders_selected_store_check" CHECK ((("selected_store" IS NULL) OR ("selected_store" = ANY (ARRAY['Jumbo'::"text", 'Santa Isabel'::"text", 'Lider'::"text", 'Unimarc'::"text", 'Tottus'::"text", 'aCuenta'::"text", 'Irurzun'::"text"])))),

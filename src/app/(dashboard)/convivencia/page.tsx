@@ -235,7 +235,7 @@ export default function ConvivenciaPage() {
             });
             setTimeBankOffers(updated);
             setTimeBankForm({ skill: "", description: "", availability: "", category: "tools", credits: 1 });
-            toast({ title: "Oferta publicada", description: "Tu apoyo quedo visible en el banco de tiempo.", variant: "success" });
+            toast({ title: "Enviada a validacion", description: "Administracion revisara la iniciativa y confirmara quien la coordina antes de publicarla.", variant: "success" });
         } catch (error) {
             showCollaborationError(error);
         }
@@ -243,7 +243,8 @@ export default function ConvivenciaPage() {
 
     const requestOffer = async (id: string) => {
         try {
-            const updated = await CommunityCollaborationService.requestTimeBankOffer(id);
+            if (!user?.id || !user.communityId) throw new Error("Falta identificar tu comunidad.");
+            const updated = await CommunityCollaborationService.requestTimeBankOffer(id, user.communityId, user.id);
             setTimeBankOffers(updated);
             toast({ title: "Solicitud registrada", description: "CoCo recomienda coordinar por mensaje interno antes de confirmar.", variant: "success" });
         } catch (error) {
@@ -265,10 +266,11 @@ export default function ConvivenciaPage() {
                 minimumParticipants: Number(purchaseForm.minimumParticipants) || 1,
                 deadline: purchaseForm.deadline,
                 organizer: user?.name || "Comite vecinal",
+                organizerId: user?.id,
             });
             setPurchases(updated);
             setPurchaseForm({ title: "", supplier: "", category: "water", unitPrice: 0, retailPrice: 0, minimumParticipants: 10, deadline: todayPlus(10) });
-            toast({ title: "Compra colectiva abierta", description: "La campana ya puede sumar unidades interesadas.", variant: "success" });
+            toast({ title: "Compra enviada a validacion", description: "Administracion debe aprobarla y confirmar su coordinador antes de recibir participantes.", variant: "success" });
         } catch (error) {
             showCollaborationError(error);
         }
@@ -276,7 +278,8 @@ export default function ConvivenciaPage() {
 
     const joinPurchase = async (id: string) => {
         try {
-            const updated = await CommunityCollaborationService.joinCollectivePurchase(id);
+            if (!user?.id || !user.communityId) throw new Error("Falta identificar tu comunidad.");
+            const updated = await CommunityCollaborationService.joinCollectivePurchase(id, user.communityId, user.id);
             setPurchases(updated);
             toast({ title: "Te sumaste al abasto", description: "Tu unidad cuenta para llegar al minimo mayorista.", variant: "success" });
         } catch (error) {
@@ -296,10 +299,11 @@ export default function ConvivenciaPage() {
                 impact: projectForm.impact.trim() || "Impacto por medir con vecinos inscritos.",
                 needed: projectForm.needed.trim() || "Voluntarios y primer acuerdo de coordinacion.",
                 cocoInsight: projectForm.cocoInsight.trim() || "CoCo puede detectar vecinos con intereses similares y sugerir el primer grupo de trabajo.",
+                creatorId: user?.id,
             });
             setProjects(updated);
             setProjectForm({ title: "", area: "huerto", description: "", impact: "", needed: "", cocoInsight: "" });
-            toast({ title: "Proyecto creado", description: "La plaza social ahora muestra esta iniciativa colectiva.", variant: "success" });
+            toast({ title: "Proyecto enviado a validacion", description: "Administracion confirmara su coordinador antes de publicarlo.", variant: "success" });
         } catch (error) {
             showCollaborationError(error);
         }
@@ -307,7 +311,8 @@ export default function ConvivenciaPage() {
 
     const joinProject = async (id: string) => {
         try {
-            const updated = await CommunityCollaborationService.joinCommunityProject(id);
+            if (!user?.id || !user.communityId) throw new Error("Falta identificar tu comunidad.");
+            const updated = await CommunityCollaborationService.joinCommunityProject(id, user.communityId, user.id);
             setProjects(updated);
             toast({ title: "Participacion registrada", description: "CoCo sumo tu interes al proyecto comunitario.", variant: "success" });
         } catch (error) {
@@ -467,11 +472,12 @@ export default function ConvivenciaPage() {
                     </FormShell>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                        {timeBankOffers.map(offer => (
+                        {timeBankOffers.filter(offer => offer.governanceStatus === "approved" || offer.profileId === user?.id).map(offer => (
                             <div key={offer.id} className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
                                 <div className="mb-4 flex items-start justify-between gap-3">
                                     <div>
                                         <Tag tone="sage">{labelFromSlug(offer.category)}</Tag>
+                                        <Tag tone={offer.governanceStatus === "approved" ? "sage" : "neutral"}>{offer.governanceStatus === "approved" ? "Validado por Administracion" : "Pendiente de validacion"}</Tag>
                                         <h3 className="mt-3 text-lg font-semibold cc-text-primary">{offer.skill}</h3>
                                         <p className="mt-1 text-xs font-medium cc-text-tertiary">Depto {offer.unitLabel} - {offer.neighborName}</p>
                                     </div>
@@ -482,7 +488,8 @@ export default function ConvivenciaPage() {
                                 </div>
                                 <p className="text-sm leading-6 cc-text-secondary">{offer.description}</p>
                                 <p className="mt-3 text-xs font-semibold cc-text-primary">Disponible: {offer.availability}</p>
-                                <Button type="button" variant="ghost" size="sm" className="mt-4" onClick={() => requestOffer(offer.id)}>
+                                <p className="mt-3 text-xs cc-text-tertiary">Coordina: {offer.coordinatorName || (offer.governanceStatus === "approved" ? offer.neighborName : "por designar")}</p>
+                                <Button type="button" variant="ghost" size="sm" className="mt-4" disabled={offer.governanceStatus !== "approved" || offer.profileId === user?.id} onClick={() => requestOffer(offer.id)}>
                                     Solicitar apoyo <ArrowRight className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -595,13 +602,14 @@ export default function ConvivenciaPage() {
                     </FormShell>
 
                     <div className="grid gap-4">
-                        {projects.map(project => (
+                        {projects.filter(project => project.governanceStatus === "approved" || project.creatorId === user?.id).map(project => (
                             <div key={project.id} className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
                                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                     <div>
                                         <div className="flex flex-wrap gap-2">
                                             <Tag tone="sage">{labelFromSlug(project.area)}</Tag>
                                             <Tag tone={project.status === "active" ? "copper" : "neutral"}>{project.status}</Tag>
+                                            <Tag tone={project.governanceStatus === "approved" ? "sage" : "neutral"}>{project.governanceStatus === "approved" ? "Validado" : "Pendiente de validacion"}</Tag>
                                         </div>
                                         <h3 className="mt-3 text-xl font-semibold cc-text-primary">{project.title}</h3>
                                         <p className="mt-2 text-sm leading-6 cc-text-secondary">{project.description}</p>
@@ -619,7 +627,8 @@ export default function ConvivenciaPage() {
                                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-700">Facilitacion CoCo</p>
                                     <p className="mt-2 text-sm leading-6 cc-text-secondary">{project.cocoInsight}</p>
                                 </div>
-                                <Button type="button" variant="ghost" size="sm" className="mt-4" onClick={() => joinProject(project.id)}>
+                                    <p className="mt-3 text-xs cc-text-tertiary">Coordina: {project.coordinatorName || "por designar"}</p>
+                                    <Button type="button" variant="ghost" size="sm" className="mt-4" disabled={project.governanceStatus !== "approved" || project.creatorId === user?.id} onClick={() => joinProject(project.id)}>
                                     Quiero participar <CheckCircle2 className="h-4 w-4" />
                                 </Button>
                             </div>
