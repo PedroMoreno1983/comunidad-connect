@@ -1151,6 +1151,19 @@ export const MaintenanceService = {
 };
 
 export const CocoCasesService = {
+    async updateStatus(id: string, status: "open" | "in_progress" | "resolved" | "closed" | "cancelled") {
+        const response = await fetch(`/api/coco/cases/${id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo actualizar el caso.");
+        }
+        return payload;
+    },
+
     async getResidentCases(user: Pick<User, "id" | "unitId">): Promise<ResidentCasesSummary> {
         const select = "id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at, updated_at";
         const queries = [

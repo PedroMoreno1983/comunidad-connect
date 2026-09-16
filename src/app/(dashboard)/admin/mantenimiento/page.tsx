@@ -18,7 +18,7 @@ import {
     X,
     Zap,
 } from "lucide-react";
-import { MaintenanceService } from "@/lib/api";
+import { CocoCasesService, MaintenanceService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
@@ -73,6 +73,7 @@ export default function MantenimientoAdminPage() {
     const [logs, setLogs] = useState<MaintenanceLog[]>([]);
     const [showTask, setShowTask] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [updatingCaseId, setUpdatingCaseId] = useState<string | null>(null);
     const [form, setForm] = useState({
         title: "",
         description: "",
@@ -157,6 +158,30 @@ export default function MantenimientoAdminPage() {
         } catch (error) {
             console.error("[Maintenance] close service failed:", error);
             toast({ title: "No se pudo cerrar", description: "Revisa la conexion e intenta nuevamente.", variant: "destructive" });
+        }
+    }
+
+    async function updateCaseStatus(id: string, status: "in_progress" | "resolved" | "closed") {
+        const previous = cases;
+        setUpdatingCaseId(id);
+        setCases(current => current.map(item => item.id === id ? { ...item, status } : item));
+        try {
+            await CocoCasesService.updateStatus(id, status);
+            toast({
+                title: "Caso actualizado",
+                description: `Quedo ${statusLabel(status).toLowerCase()}.`,
+                variant: "success",
+            });
+            await loadData();
+        } catch (error) {
+            setCases(previous);
+            toast({
+                title: "No se pudo actualizar el caso",
+                description: error instanceof Error ? error.message : "Intentalo nuevamente.",
+                variant: "destructive",
+            });
+        } finally {
+            setUpdatingCaseId(null);
         }
     }
 
@@ -290,16 +315,57 @@ export default function MantenimientoAdminPage() {
 
                     <aside className="space-y-4">
                         <SectionTitle icon={<Bot className="h-5 w-5" />} title="Casos detectados por CoCo" />
-                        {cases.map(item => (
+                        {cases.map(item => {
+                            const busy = updatingCaseId === item.id;
+                            const closed = ["resolved", "closed", "cancelled"].includes(item.status || "");
+                            return (
                             <article key={item.id} className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                 <div className="mb-3 flex items-center justify-between gap-3">
-                                    <Badge tone={item.urgency === "alta" || item.urgency === "emergencia" ? "rose" : "copper"}>{item.urgency || "media"}</Badge>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge tone={item.urgency === "alta" || item.urgency === "emergencia" ? "rose" : "copper"}>{item.urgency || "media"}</Badge>
+                                        <Badge tone={closed ? "sage" : "ink"}>{statusLabel(item.status)}</Badge>
+                                    </div>
                                     <span className="text-[10px] font-bold uppercase tracking-widest cc-text-tertiary">{item.unit_label || "Comunidad"}</span>
                                 </div>
                                 <h3 className="font-semibold cc-text-primary">{item.title || "Caso operativo"}</h3>
                                 <p className="mt-2 line-clamp-2 text-sm font-medium cc-text-secondary">{item.source_message || item.category || "Sin detalle adicional."}</p>
+                                {!closed && (
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {item.status !== "in_progress" && (
+                                            <button
+                                                type="button"
+                                                disabled={busy}
+                                                onClick={() => updateCaseStatus(item.id, "in_progress")}
+                                                className="inline-flex h-9 items-center justify-center rounded-full border px-3 text-[11px] font-semibold disabled:opacity-40"
+                                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)", color: "var(--cc-ink)" }}
+                                            >
+                                                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "En curso"}
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => updateCaseStatus(item.id, "resolved")}
+                                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-semibold text-white disabled:opacity-40"
+                                            style={{ background: "var(--cc-ink)" }}
+                                        >
+                                            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                            Resolver
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => updateCaseStatus(item.id, "closed")}
+                                            className="inline-flex h-9 items-center justify-center rounded-full border px-3 text-[11px] font-semibold disabled:opacity-40"
+                                            style={{ borderColor: "var(--cc-line)", color: "var(--cc-ink-muted)" }}
+                                        >
+                                            Cerrar
+                                        </button>
+                                    </div>
+                                )}
                             </article>
-                        ))}
+                            );
+                        })}
                     </aside>
                 </div>
             ) : activeTab === "activos" ? (

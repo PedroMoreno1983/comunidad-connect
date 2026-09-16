@@ -151,7 +151,7 @@ async function notifyStaffForCase(data: StoredCoCoCase, context: CoCoCaseContext
     const communityId = validUuid(context.communityId) ?? DEFAULT_COMMUNITY_ID;
     const { data: staff, error: staffError } = await supabaseAdmin
         .from('profiles')
-        .select('id')
+        .select('id, role')
         .eq('community_id', communityId)
         .in('role', ['admin', 'concierge']);
 
@@ -174,7 +174,7 @@ async function notifyStaffForCase(data: StoredCoCoCase, context: CoCoCaseContext
         category: 'coco_case',
         title: data.urgency === 'emergencia' ? 'Emergencia detectada por CoCo' : 'Caso urgente detectado por CoCo',
         body: `${data.title}\n${sourceMessage.slice(0, 240)}`,
-        link: '/admin/mantenimiento',
+        link: member.role === 'concierge' ? '/concierge#incidencias' : '/admin/mantenimiento',
         community_id: communityId,
     }));
 
