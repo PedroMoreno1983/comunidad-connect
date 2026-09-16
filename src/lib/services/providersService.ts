@@ -393,15 +393,36 @@ export const serviceRequestsService = {
     },
 
     async updateStatus(requestId: string, status: 'pending' | 'accepted' | 'completed' | 'cancelled') {
-        const supabase = getSupabase();
-        const { data, error } = await supabase
-            .from('service_requests')
-            .update({ status })
-            .eq('id', requestId)
-            .select()
-            .single();
+        const response = await fetch(`/api/service-requests/${requestId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(typeof payload.error === 'string' ? payload.error : 'No se pudo actualizar la solicitud.');
+        }
+        return payload.request ?? payload;
+    },
 
-        if (error) throw error;
-        return data;
+    async cancel(requestId: string) {
+        return this.updateStatus(requestId, 'cancelled');
+    },
+
+    async reschedule(requestId: string, preferredDate: string, preferredTime: string) {
+        const response = await fetch(`/api/service-requests/${requestId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'pending',
+                preferred_date: preferredDate,
+                preferred_time: preferredTime,
+            }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(typeof payload.error === 'string' ? payload.error : 'No se pudo reagendar la solicitud.');
+        }
+        return payload.request ?? payload;
     },
 };

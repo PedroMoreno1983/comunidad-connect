@@ -44,7 +44,10 @@ export async function PATCH(
 
     try {
         const body = await req.json();
-        const status = body.status as ServiceRequestStatus;
+        let status = body.status as ServiceRequestStatus;
+        const preferredDate = typeof body.preferred_date === 'string' ? body.preferred_date.trim() : '';
+        const preferredTime = typeof body.preferred_time === 'string' ? body.preferred_time.trim() : '';
+        const wantsReschedule = Boolean(preferredDate || preferredTime);
 
         if (!VALID_STATUSES.includes(status)) {
             return NextResponse.json({ error: 'Estado no valido' }, { status: 400 });
@@ -93,18 +96,39 @@ export async function PATCH(
 
         const isStaff = ['admin', 'concierge'].includes(actorProfile.role);
         const isProviderOwner = provider?.user_id === actorProfile.id;
+        const isRequester = request.user_id === actorProfile.id;
+        const openForRequester = ['pending', 'accepted'].includes(request.status);
 
         if (!isStaff && !isProviderOwner) {
-            return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
+            if (!isRequester) {
+                return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
+            }
+            if (!openForRequester) {
+                return NextResponse.json({ error: 'Esta solicitud ya no se puede modificar' }, { status: 400 });
+            }
+            if (status === 'cancelled') {
+                // residente puede cancelar pendiente o aceptada
+            } else if (wantsReschedule) {
+                // reagendar deja la solicitud pendiente para que el proveedor confirme
+                status = 'pending';
+            } else {
+                return NextResponse.json({ error: 'Solo puedes cancelar o reagendar tu solicitud' }, { status: 403 });
+            }
         }
 
         if (provider && provider.community_id !== actorProfile.community_id) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
 
+        const patch: Record<string, string> = { status };
+        if (wantsReschedule) {
+            if (preferredDate) patch.preferred_date = preferredDate;
+            if (preferredTime) patch.preferred_time = preferredTime;
+        }
+
         const { data: updatedRequest, error: updateError } = await supabaseAdmin
             .from('service_requests')
-            .update({ status })
+            .update(patch)
             .eq('id', id)
             .select('id, provider_id, user_id, preferred_date, preferred_time, description, status, created_at')
             .single();
@@ -143,7 +167,7 @@ export async function PATCH(
                 category: 'service_request',
                 title: `Solicitud ${statusLabel(status)}`,
                 body: updatedRequest.description.slice(0, 180),
-                link: `/services/provider/${provider.id}`,
+                link: '/services/provider-dashboard',
                 community_id: request.community_id || actorProfile.community_id,
             });
         }
