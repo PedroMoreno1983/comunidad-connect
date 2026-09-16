@@ -113,6 +113,11 @@ export function MyRequestsClient() {
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
     const [query, setQuery] = useState("");
+    const [busyId, setBusyId] = useState<string | null>(null);
+    const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+    const [rescheduleDate, setRescheduleDate] = useState("");
+    const [rescheduleTime, setRescheduleTime] = useState("");
+    const [actionError, setActionError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user) return;
@@ -131,6 +136,46 @@ export function MyRequestsClient() {
 
         fetchRequests();
     }, [user]);
+
+    async function refreshRequests() {
+        if (!user) return;
+        const data = await serviceRequestsService.getByUser(user.id);
+        setRequests(data as ServiceRequestRow[]);
+    }
+
+    async function handleCancel(id: string) {
+        if (!window.confirm("¿Cancelar esta solicitud?")) return;
+        setActionError(null);
+        setBusyId(id);
+        try {
+            await serviceRequestsService.cancel(id);
+            await refreshRequests();
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "No se pudo cancelar.");
+        } finally {
+            setBusyId(null);
+        }
+    }
+
+    async function handleReschedule(id: string) {
+        if (!rescheduleDate || !rescheduleTime) {
+            setActionError("Elige fecha y hora para reagendar.");
+            return;
+        }
+        setActionError(null);
+        setBusyId(id);
+        try {
+            await serviceRequestsService.reschedule(id, rescheduleDate, rescheduleTime);
+            setRescheduleId(null);
+            setRescheduleDate("");
+            setRescheduleTime("");
+            await refreshRequests();
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "No se pudo reagendar.");
+        } finally {
+            setBusyId(null);
+        }
+    }
 
     const stats = useMemo(() => {
         const active = requests.filter(item => item.status === "pending" || item.status === "accepted").length;
@@ -237,6 +282,12 @@ export function MyRequestsClient() {
                 </div>
             </section>
 
+            {actionError && (
+                <p className="rounded-xl px-4 py-3 text-sm font-semibold" style={{ background: "var(--cc-rose-tint)", color: "var(--cc-rose)" }}>
+                    {actionError}
+                </p>
+            )}
+
             {loading ? (
                 <div className="rounded-2xl border p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <SkeletonList count={3} />
@@ -294,7 +345,7 @@ export function MyRequestsClient() {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                                    <div className="flex flex-col gap-2 sm:flex-row lg:w-52 lg:flex-col">
                                         {provider?.contact_phone && (
                                             <a
                                                 href={`tel:${provider.contact_phone}`}
@@ -312,8 +363,74 @@ export function MyRequestsClient() {
                                         >
                                             Ver perfil
                                         </Link>
+                                        {(request.status === "pending" || request.status === "accepted") && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    disabled={busyId === request.id}
+                                                    onClick={() => {
+                                                        setRescheduleId(request.id);
+                                                        setRescheduleDate(request.preferred_date?.slice(0, 10) || "");
+                                                        setRescheduleTime(request.preferred_time || "");
+                                                        setActionError(null);
+                                                    }}
+                                                    className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold disabled:opacity-40"
+                                                    style={{ borderColor: "var(--cc-line)", color: "var(--cc-ink)" }}
+                                                >
+                                                    <Calendar className="h-4 w-4" />
+                                                    Reagendar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={busyId === request.id}
+                                                    onClick={() => handleCancel(request.id)}
+                                                    className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold disabled:opacity-40"
+                                                    style={{ borderColor: "var(--cc-rose)", color: "var(--cc-rose)" }}
+                                                >
+                                                    <XCircle className="h-4 w-4" />
+                                                    Cancelar
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
+                                {rescheduleId === request.id && (
+                                    <div className="mt-4 grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_1fr_auto]" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                        <input
+                                            type="date"
+                                            value={rescheduleDate}
+                                            onChange={event => setRescheduleDate(event.target.value)}
+                                            className="rounded-full border px-4 py-2.5 text-sm font-semibold outline-none"
+                                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                                        />
+                                        <input
+                                            type="time"
+                                            value={rescheduleTime}
+                                            onChange={event => setRescheduleTime(event.target.value)}
+                                            className="rounded-full border px-4 py-2.5 text-sm font-semibold outline-none"
+                                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                disabled={busyId === request.id}
+                                                onClick={() => handleReschedule(request.id)}
+                                                className="inline-flex flex-1 items-center justify-center rounded-full px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                                                style={{ background: "var(--cc-ink)" }}
+                                            >
+                                                Guardar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setRescheduleId(null)}
+                                                className="inline-flex items-center justify-center rounded-full border px-4 py-2.5 text-sm font-bold"
+                                                style={{ borderColor: "var(--cc-line)" }}
+                                            >
+                                                Cerrar
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </motion.article>
                         );
                     })}
