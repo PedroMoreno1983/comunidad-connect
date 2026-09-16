@@ -153,6 +153,16 @@ export default function AmenitiesPage() {
         agendaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, [selectedAmenity]);
 
+
+    useEffect(() => {
+        if (!bookingFocusId || bookingLoading) return;
+        const el = document.getElementById(`booking-${bookingFocusId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-2', 'ring-[var(--cc-copper)]');
+        }
+    }, [bookingFocusId, bookingLoading, bookings]);
+
     const handleSelectAmenity = (amenity: Amenity) => {
         setSelectedAmenity(amenity);
         setSelectedDate(next7Days[0].dateStr);
@@ -640,12 +650,3 @@ export default function AmenitiesPage() {
         </ErrorBoundary>
     );
 }
-
-    useEffect(() => {
-        if (!bookingFocusId || bookingLoading) return;
-        const el = document.getElementById(`booking-${bookingFocusId}`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.classList.add('ring-2', 'ring-[var(--cc-copper)]');
-        }
-    }, [bookingFocusId, bookingLoading, bookings]);
