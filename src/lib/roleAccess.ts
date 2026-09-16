@@ -48,7 +48,9 @@ export function postLoginPath(requestedNext: string | null | undefined, role: st
     if (!requestedNext.startsWith("/") || requestedNext.startsWith("//")) return home;
     const pathname = requestedNext.split("?")[0] || requestedNext;
     if (isDashboardPathAllowedForRole(pathname, role)) return requestedNext;
-    return `${home}?acceso=denegado`;
+    // Si el "next" era de otro rol (cambio de cuenta), ir al home limpio
+    // sin marcar acceso denegado: no es un intento fallido, es un destino inválido.
+    return home;
 }
 
 export const ACCESS_DENIED_QUERY = "acceso";

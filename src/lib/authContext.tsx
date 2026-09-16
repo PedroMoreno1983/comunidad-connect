@@ -240,6 +240,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Supabase sign in
     const signIn = async (email: string, password: string) => {
         try {
+            // loading=true evita que el layout del dashboard, al ver user=null,
+            // te mande a /login?next=/admin (u otra ruta del rol anterior) y
+            // dispare un falso "acceso denegado" al entrar con otra cuenta.
+            setLoading(true);
             // Una sesión de otro rol deja cookies/localStorage vivos. Sin este
             // signOut, signInWithPassword puede “tener éxito” y el shell anterior
             // (p. ej. admin) sigue montado hasta un logout manual.
@@ -253,6 +257,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: null, role };
         } catch (error) {
             return { error: error as Error, role: null };
+        } finally {
+            setLoading(false);
         }
     };
 
