@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
                 category: 'service_request',
                 title: 'Nueva solicitud de servicio',
                 body: `${profile.name || 'Un residente'} solicito a ${provider.name}: ${description.slice(0, 180)}`,
-                link: '/services/provider',
+                link: '/services/provider-dashboard',
                 community_id: profile.community_id,
             });
         }
