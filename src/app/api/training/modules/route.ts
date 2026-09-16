@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
@@ -89,6 +89,31 @@ export async function POST(req: NextRequest) {
         await supabase.from('training_modules').delete().eq('id', module.id).eq('community_id', profile.community_id);
         console.error('[training/modules] Lesson create failed:', lessonError.message);
         return NextResponse.json({ error: 'No se pudo guardar la leccion.' }, { status: 500 });
+    }
+
+    // Avisar a la audiencia del curso (admin/conserje) para que no dependa de entrar al aula.
+    const audienceRoles =
+        targetAudience === 'admin' ? ['admin'] :
+        targetAudience === 'concierge' ? ['concierge'] :
+        ['admin', 'concierge'];
+    const { data: audience } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('community_id', profile.community_id)
+        .in('role', audienceRoles);
+    const recipients = (audience || []).filter(member => member.id !== profile.id);
+    if (recipients.length) {
+        await supabase.from('notifications').insert(
+            recipients.map(member => ({
+                user_id: member.id,
+                type: 'info',
+                category: 'training',
+                title: 'Nuevo curso disponible',
+                body: `${title} ya está publicado en el Aula virtual.`,
+                link: '/staff/training',
+                community_id: profile.community_id,
+            }))
+        );
     }
 
     return NextResponse.json({ success: true, module }, { status: 201 });
