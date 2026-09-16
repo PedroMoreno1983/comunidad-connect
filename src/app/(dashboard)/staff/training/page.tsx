@@ -267,6 +267,7 @@ export default function StaffTrainingPage() {
                         </article>
                         )}
                     </section>
+                )}
 
                 {user?.role === "admin" && (
                 <ModuleFlow
