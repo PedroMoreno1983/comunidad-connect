@@ -187,24 +187,6 @@ export default function StaffTrainingPage() {
                     </div>
                 </section>
 
-                <ModuleFlow
-                    title="De curso a aprendizaje guiado"
-                    description="El equipo de administración o conserjería elige un curso, entra a una clase con Tutora CoCo y sale con criterios prácticos para operar mejor."
-                    steps={[
-                        "Elegir tema",
-                        "Abrir clase guiada",
-                        "Resolver dudas con CoCo",
-                        "Aplicar acuerdos en comunidad",
-                    ]}
-                    outcome="Cierre esperado: el equipo entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
-                    currentStep={courses.length ? 2 : 1}
-                    completedSteps={stats.completed ? 4 : courses.length ? 1 : 0}
-                    statusLabel={courses.length ? "Cursos activos" : "Sin cursos publicados"}
-                    primaryActionLabel="Ver cursos"
-                    primaryActionHref="#catalogo-cursos"
-                    secondaryActionLabel={user?.role === "admin" ? "Abrir modo libre" : "Ver progreso"}
-                    secondaryActionHref={user?.role === "admin" ? "#modo-libre" : "#catalogo-cursos"}
-                />
 
                 {user?.role === "admin" && <TrainingCourseBuilder onPublished={course => setCourses(previous => [course, ...previous])} />}
 
@@ -285,6 +267,26 @@ export default function StaffTrainingPage() {
                         </article>
                         )}
                     </section>
+
+                {user?.role === "admin" && (
+                <ModuleFlow
+                    title="De curso a aprendizaje guiado"
+                    description="El equipo de administración o conserjería elige un curso, entra a una clase con Tutora CoCo y sale con criterios prácticos para operar mejor."
+                    steps={[
+                        "Elegir tema",
+                        "Abrir clase guiada",
+                        "Resolver dudas con CoCo",
+                        "Aplicar acuerdos en comunidad",
+                    ]}
+                    outcome="Cierre esperado: el equipo entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
+                    currentStep={courses.length ? 2 : 1}
+                    completedSteps={stats.completed ? 4 : courses.length ? 1 : 0}
+                    statusLabel={courses.length ? "Cursos activos" : "Sin cursos publicados"}
+                    primaryActionLabel="Ver cursos"
+                    primaryActionHref="#catalogo-cursos"
+                    secondaryActionLabel={user?.role === "admin" ? "Abrir modo libre" : "Ver progreso"}
+                    secondaryActionHref={user?.role === "admin" ? "#modo-libre" : "#catalogo-cursos"}
+                />
                 )}
             </div>
         </ErrorBoundary>

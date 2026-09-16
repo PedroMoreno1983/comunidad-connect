@@ -61,6 +61,30 @@ export async function POST(req: NextRequest) {
             .single();
         if (error) throw error;
 
+        // Aviso a administración: el panel del conserje crea el caso, pero sin
+        // este paso nadie del admin se entera hasta entrar a Mantenimiento.
+        const { data: admins } = await getSupabaseAdmin()
+            .from('profiles')
+            .select('id')
+            .eq('community_id', profile.community_id)
+            .eq('role', 'admin');
+
+        const adminRecipients = (admins || []).filter(admin => admin.id !== profile.id);
+        if (adminRecipients.length) {
+            const urgencyLabel = urgency === 'emergencia' ? 'Emergencia' : urgency === 'alta' ? 'Alta' : 'Incidencia';
+            await getSupabaseAdmin().from('notifications').insert(
+                adminRecipients.map(admin => ({
+                    user_id: admin.id,
+                    type: urgency === 'emergencia' || urgency === 'alta' ? 'alert' : 'warning',
+                    category: 'coco_case',
+                    title: `${urgencyLabel} reportada por conserjería`,
+                    body: `${title}${description && description !== title ? ` — ${description.slice(0, 180)}` : ''}`,
+                    link: '/admin/mantenimiento',
+                    community_id: profile.community_id,
+                }))
+            );
+        }
+
         return NextResponse.json({ incident: data }, { status: 201 });
     } catch (error) {
         return apiErrorResponse(req, '/api/concierge/incidents', error, {

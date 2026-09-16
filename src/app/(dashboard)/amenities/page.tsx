@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from "next/image";
 import { AmenitiesService } from "@/lib/api";
 import {
@@ -67,6 +68,8 @@ function formatTime(value?: string) {
 
 export default function AmenitiesPage() {
     const { user } = useAuth();
+    const searchParams = useSearchParams();
+    const bookingFocusId = searchParams.get('booking');
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [amenities, setAmenities] = useState<Amenity[]>([]);
     const [bookingLoading, setBookingLoading] = useState(false);
@@ -477,7 +480,7 @@ export default function AmenitiesPage() {
                                         const tone = getAmenityTone(name);
                                         const Icon = getIcon(amenity?.iconName || "Calendar");
                                         return (
-                                            <div key={booking.id} className="flex items-center gap-4 rounded-xl border border-subtle bg-elevated p-4">
+                                            <div id={`booking-${booking.id}`} key={booking.id} className="flex items-center gap-4 rounded-xl border border-subtle bg-elevated p-4">
                                                 <div className="rounded-lg bg-surface p-2 cc-text-secondary">
                                                     <Icon className="h-5 w-5" />
                                                 </div>
@@ -637,3 +640,12 @@ export default function AmenitiesPage() {
         </ErrorBoundary>
     );
 }
+
+    useEffect(() => {
+        if (!bookingFocusId || bookingLoading) return;
+        const el = document.getElementById(`booking-${bookingFocusId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-2', 'ring-[var(--cc-copper)]');
+        }
+    }, [bookingFocusId, bookingLoading, bookings]);
