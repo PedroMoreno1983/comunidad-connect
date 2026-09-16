@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isSuperAdminEmail } from "@/lib/security/superadmin";
 import { resolveProductCapabilities } from "@/lib/productCapabilities";
-import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE, homePathForRole, isDashboardPathAllowedForRole } from "@/lib/roleAccess";
+import { homePathForRole, isDashboardPathAllowedForRole } from "@/lib/roleAccess";
 import { SUPERMARKET_DIRECT_IMAGE_HOSTS } from "@/lib/supermarketImageSources";
 
 const SUPERMARKET_DIRECT_IMAGE_CSP = SUPERMARKET_DIRECT_IMAGE_HOSTS
@@ -140,8 +140,9 @@ export async function proxy(req: NextRequest) {
   }
 
   if (!isDashboardPathAllowedForRole(pathname, role)) {
+    // Corregir destino al home del rol sin query de castigo: el caso típico
+    // es cambio de cuenta o un deep-link viejo, no un abuso deliberado.
     const home = new URL(homePathForRole(role), req.url);
-    home.searchParams.set(ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE);
     return secureResponse(NextResponse.redirect(home), nonce);
   }
 
