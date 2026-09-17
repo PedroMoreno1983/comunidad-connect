@@ -2419,6 +2419,35 @@ export interface TrainingLesson {
     order_index: number;
 }
 
+export type TrainingActivityType = 'knowledge_check' | 'scenario' | 'checklist';
+
+export interface TrainingActivity {
+    type: TrainingActivityType;
+    prompt: string;
+    options?: string[];
+    correctIndex?: number;
+    explanation?: string;
+    items?: string[];
+}
+
+export interface TrainingSlide {
+    id: string;
+    title: string;
+    eyebrow?: string;
+    bullets: string[];
+    visual_theme: 'copper' | 'sage' | 'ink' | 'amber';
+    notes: string;
+    activity?: TrainingActivity;
+}
+
+export interface TrainingChatMessage {
+    id: string;
+    role: 'tutor' | 'classmate' | 'user' | 'system';
+    text: string;
+    blackboard?: string;
+    name?: string;
+}
+
 export interface TrainingModule {
     id: string;
     title: string;
@@ -2442,6 +2471,34 @@ export interface TrainingCourseDraft {
     embedUrl: string;
     learningObjectives: string[];
     estimatedMinutes: number;
+}
+
+export interface TrainingCourseBuilderProps {
+    onPublished: (course: TrainingModule) => void;
+    onCancel: () => void;
+}
+
+export type TrainingViewMode = 'catalog' | 'create';
+
+export interface TrainingGenerateResponse {
+    slides?: TrainingSlide[];
+    warning?: string;
+    error?: string;
+}
+
+export interface TrainingModuleMutationResponse {
+    module?: TrainingModule;
+    error?: string;
+}
+
+export interface TrainingClassroomProps {
+    courseContent?: string;
+    courseTitle?: string;
+    learningObjectives?: string[];
+    estimatedMinutes?: number;
+    initialSlideIndex?: number;
+    onSlideChange?: (index: number) => void;
+    onComplete?: (lastSlideIndex: number) => void;
 }
 
 export interface TrainingProgressRecord {

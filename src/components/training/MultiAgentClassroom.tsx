@@ -1,436 +1,380 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- The classroom renders generated training images returned by the AI service. */
 
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, ChevronRight, ChevronLeft, GraduationCap, Monitor, Users, Lightbulb, Image as ImageIcon, PanelRightOpen, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    ArrowLeft,
+    ArrowRight,
+    Check,
+    CheckCircle2,
+    Circle,
+    Clock3,
+    GraduationCap,
+    HelpCircle,
+    ListChecks,
+    Loader2,
+    MessageCircleQuestion,
+    RotateCcw,
+    Send,
+    ShieldCheck,
+    Sparkles,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Button } from "@/components/cc/Button";
 import { useAuth } from "@/lib/authContext";
+import { parseTrainingSlides } from "@/lib/training/courseContent";
+import type { TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
 
-interface ChatMessage {
-    id: string;
-    role: "tutor" | "classmate" | "user" | "system";
-    text: string;
-    blackboard?: string;
-    name?: string;
-}
-
-export interface Slide {
-    id: string;
-    title: string;
-    bullets: string[];
-    visual_theme: string;
-    notes: string;
-}
-
-const visualThemes: Record<string, string> = {
-    "purple-gradient": "bg-slate-950 text-white border-slate-800",
-    "blue-glass": "bg-slate-950 text-white border-blue-900/40",
-    "tech-abstract": "bg-slate-950 text-white border-slate-700",
-    "sunset-orange": "bg-brand-500 text-white border-brand-600",
-    "nature-green": "bg-slate-900 text-white border-emerald-900/40",
-    default: "bg-slate-950 text-white border-slate-800",
+const themeStyles: Record<TrainingSlide["visual_theme"], { accent: string; soft: string; label: string }> = {
+    copper: { accent: "var(--cc-copper)", soft: "var(--cc-copper-tint)", label: "Aplicación" },
+    sage: { accent: "var(--cc-sage)", soft: "var(--cc-sage-tint)", label: "Procedimiento" },
+    ink: { accent: "var(--cc-ink)", soft: "var(--cc-paper-warm)", label: "Fundamento" },
+    amber: { accent: "#9a5b16", soft: "#fff4df", label: "Decisión" },
 };
 
-interface MultiAgentClassroomProps {
-    courseContent?: string;
-    initialSlideIndex?: number;
-    onSlideChange?: (index: number) => void;
-    onComplete?: (lastSlideIndex: number) => void;
-}
-
-function ChatMarkdown({ text }: { text: string }) {
-    return (
-        <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-                p: ({ children }) => <p className="whitespace-pre-wrap text-sm leading-6">{children}</p>,
-                strong: ({ children }) => <strong className="font-semibold text-current">{children}</strong>,
-                em: ({ children }) => <em className="font-semibold italic text-current">{children}</em>,
-                ul: ({ children }) => <ul className="list-disc space-y-1 pl-4 text-sm leading-6">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4 text-sm leading-6">{children}</ol>,
-                a: ({ children, href }) => (
-                    <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline underline-offset-4">
-                        {children}
-                    </a>
-                ),
-            }}
-        >
-            {text}
-        </ReactMarkdown>
-    );
-}
-
-function BlackboardMarkdown({ content }: { content: string }) {
-    return (
-        <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-                h1: ({ children }) => <h1 className="mb-4 text-2xl font-semibold tracking-tight cc-text-primary sm:mb-5 sm:text-3xl">{children}</h1>,
-                h2: ({ children }) => <h2 className="mb-3 mt-6 text-lg font-semibold cc-text-primary sm:mt-8 sm:text-xl">{children}</h2>,
-                h3: ({ children }) => <h3 className="mb-2 mt-5 text-base font-semibold cc-text-primary sm:mt-6">{children}</h3>,
-                p: ({ children }) => <p className="mb-4 text-sm leading-7 cc-text-secondary sm:text-base sm:leading-8">{children}</p>,
-                strong: ({ children }) => <strong className="font-semibold text-brand-600">{children}</strong>,
-                ul: ({ children }) => <ul className="mb-5 space-y-2 pl-0">{children}</ul>,
-                ol: ({ children }) => <ol className="mb-5 list-decimal space-y-2 pl-5 cc-text-secondary">{children}</ol>,
-                li: ({ children }) => (
-                    <li className="flex gap-3 text-sm leading-6 cc-text-secondary">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-sm bg-brand-500" />
-                        <span>{children}</span>
-                    </li>
-                ),
-                img: ({ src, alt }) => (
-                    <figure className="my-5 overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm sm:my-6">
-                        <div className="relative aspect-[16/9] w-full bg-slate-100">
-                            <img src={src || ""} alt={alt || "Imagen generada para la clase"} className="h-full w-full object-cover" />
-                            <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-semibold text-slate-900 shadow-sm sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
-                                <ImageIcon className="h-3.5 w-3.5 text-brand-500" />
-                                Imagen generada
-                            </div>
-                        </div>
-                    </figure>
-                ),
-                table: ({ children }) => (
-                    <div className="my-5 overflow-hidden rounded-lg border border-subtle">
-                        <table className="w-full border-collapse text-sm">{children}</table>
-                    </div>
-                ),
-                th: ({ children }) => <th className="bg-elevated px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">{children}</th>,
-                td: ({ children }) => <td className="border-t border-subtle px-4 py-3 cc-text-secondary">{children}</td>,
-                a: ({ children, href }) => (
-                    <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline underline-offset-4">
-                        {children}
-                    </a>
-                ),
-            }}
-        >
-            {content}
-        </ReactMarkdown>
-    );
-}
-
-export function MultiAgentClassroom({ courseContent, initialSlideIndex = 0, onSlideChange, onComplete }: MultiAgentClassroomProps) {
+export function MultiAgentClassroom({
+    courseContent,
+    courseTitle = "Curso operativo",
+    learningObjectives = [],
+    estimatedMinutes = 20,
+    initialSlideIndex = 0,
+    onSlideChange,
+    onComplete,
+}: TrainingClassroomProps) {
     const { user } = useAuth();
-    const [parsedSlides, setParsedSlides] = useState<Slide[] | null>(null);
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [input, setInput] = useState("");
+    const slides = useMemo(() => parseTrainingSlides(courseContent), [courseContent]);
+    const safeInitialIndex = slides.length ? Math.min(Math.max(initialSlideIndex, 0), slides.length - 1) : 0;
+    const [currentIndex, setCurrentIndex] = useState(safeInitialIndex);
+    const [maxVisited, setMaxVisited] = useState(safeInitialIndex);
+    const [answers, setAnswers] = useState<Record<string, number>>({});
+    const [checklists, setChecklists] = useState<Record<string, string[]>>({});
+    const [completedActivities, setCompletedActivities] = useState<Record<string, boolean>>({});
+    const [feedback, setFeedback] = useState<Record<string, string>>({});
+    const [messages, setMessages] = useState<TrainingChatMessage[]>([]);
+    const [question, setQuestion] = useState("");
     const [isTyping, setIsTyping] = useState(false);
-    const [blackboardContent, setBlackboardContent] = useState<string>(
-        "# Preparando la pizarra\n\nCoCo está armando una vista visual para esta clase."
-    );
-
-    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const [completed, setCompleted] = useState(false);
+    const messagesRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        let isPresentation = false;
-        let pSlides: Slide[] | null = null;
-        try {
-            if (courseContent) {
-                const json = JSON.parse(courseContent);
-                if (Array.isArray(json) && json[0]?.visual_theme) {
-                    pSlides = json;
-                    setParsedSlides(json);
-                    setCurrentSlideIndex(Math.min(Math.max(initialSlideIndex, 0), json.length - 1));
-                    isPresentation = true;
-                }
-            }
-        } catch {
-            // Legacy content.
-        }
-
-        if (isPresentation && pSlides) {
-            setMessages([{
-                id: "system-1",
-                role: "system",
-                text: "Clase iniciada. CoCo irá guiando cada lámina con ejemplos prácticos.",
-            }]);
-        } else {
-            setMessages([{
-                id: "system-1",
-                role: "system",
-                text: "Aula CoCo lista. Haz una pregunta o comenta el caso para actualizar la pizarra.",
-            }]);
-            setBlackboardContent(courseContent || "# Bienvenido a la capacitación\n\nAquí aparecerán conceptos clave, imágenes generadas y decisiones prácticas para la comunidad.");
-        }
-    }, [courseContent, initialSlideIndex]);
+        const resumedActivities = Object.fromEntries(
+            slides
+                .slice(0, safeInitialIndex)
+                .filter(slide => slide.activity)
+                .map(slide => [slide.id, true]),
+        );
+        setCurrentIndex(safeInitialIndex);
+        setMaxVisited(safeInitialIndex);
+        setAnswers({});
+        setChecklists({});
+        setCompletedActivities(resumedActivities);
+        setFeedback({});
+        setCompleted(false);
+        setMessages([{
+            id: "welcome",
+            role: "system",
+            text: `CoCo acompaña este curso. Puedes preguntar por un concepto o por cómo aplicarlo en tu rol.`,
+        }]);
+    }, [courseContent, safeInitialIndex, slides]);
 
     useEffect(() => {
-        if (parsedSlides && parsedSlides.length > 0) {
-            const slide = parsedSlides[currentSlideIndex];
-            setMessages(prev => [
-                ...prev,
-                {
-                    id: `slide-notes-${currentSlideIndex}-${Date.now()}`,
-                    role: "tutor",
-                    text: slide.notes,
-                },
-            ]);
-            onSlideChange?.(currentSlideIndex);
-        }
-    }, [currentSlideIndex, parsedSlides, onSlideChange]);
+        if (slides.length) onSlideChange?.(currentIndex);
+    }, [currentIndex, onSlideChange, slides.length]);
 
     useEffect(() => {
-        const container = messagesContainerRef.current;
-        if (container) {
-            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-        }
+        messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: "smooth" });
     }, [messages, isTyping]);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    const current = slides[currentIndex];
+    const activityIds = slides.filter(slide => slide.activity).map(slide => slide.id);
+    const allActivitiesComplete = activityIds.every(id => completedActivities[id]);
+    const currentActivityComplete = !current?.activity || completedActivities[current.id];
+    const coursePercent = completed
+        ? 100
+        : slides.length > 1
+            ? Math.round((currentIndex / (slides.length - 1)) * 100)
+            : 0;
 
-        const newUserMsg: ChatMessage = {
-            id: `user-${Date.now()}`,
-            role: "user",
-            text: input.trim(),
-        };
+    const goTo = (nextIndex: number) => {
+        if (!slides.length || nextIndex < 0 || nextIndex >= slides.length) return;
+        if (nextIndex > currentIndex && !currentActivityComplete) {
+            setFeedback(previous => ({ ...previous, [current.id]: "Completa la actividad para avanzar." }));
+            return;
+        }
+        if (nextIndex > maxVisited + 1) return;
+        setCurrentIndex(nextIndex);
+        setMaxVisited(previous => Math.max(previous, nextIndex));
+    };
 
-        const updatedMessages = [...messages, newUserMsg];
-        setMessages(updatedMessages);
-        setInput("");
+    const checkAnswer = () => {
+        if (!current?.activity || current.activity.type === "checklist") return;
+        const selected = answers[current.id];
+        if (selected === undefined) {
+            setFeedback(previous => ({ ...previous, [current.id]: "Selecciona una respuesta antes de comprobar." }));
+            return;
+        }
+        const correct = selected === current.activity.correctIndex;
+        setCompletedActivities(previous => ({ ...previous, [current.id]: correct }));
+        setFeedback(previous => ({
+            ...previous,
+            [current.id]: correct
+                ? current.activity?.explanation || "Respuesta correcta. Puedes continuar."
+                : "Aún no. Revisa los criterios de la sección y vuelve a intentarlo.",
+        }));
+    };
+
+    const toggleChecklistItem = (item: string) => {
+        if (!current?.activity || current.activity.type !== "checklist") return;
+        const selected = checklists[current.id] || [];
+        const next = selected.includes(item) ? selected.filter(value => value !== item) : [...selected, item];
+        const isComplete = current.activity.items?.every(value => next.includes(value)) ?? false;
+        setChecklists(previous => ({ ...previous, [current.id]: next }));
+        setCompletedActivities(previous => ({ ...previous, [current.id]: isComplete }));
+        setFeedback(previous => ({
+            ...previous,
+            [current.id]: isComplete ? current.activity?.explanation || "Lista completada." : "Marca cada acción que ya puedes aplicar.",
+        }));
+    };
+
+    const completeCourse = () => {
+        if (!allActivitiesComplete || currentIndex !== slides.length - 1) return;
+        setCompleted(true);
+        onComplete?.(currentIndex);
+    };
+
+    const sendQuestion = async () => {
+        const text = question.trim();
+        if (!text || isTyping) return;
+        const userMessage: TrainingChatMessage = { id: `user-${Date.now()}`, role: "user", text };
+        const history = [...messages, userMessage];
+        setMessages(history);
+        setQuestion("");
         setIsTyping(true);
-
         try {
-            const res = await fetch("/api/training/multi-agent", {
+            const response = await fetch("/api/training/multi-agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    message: newUserMsg.text,
-                    history: updatedMessages,
+                    message: text,
+                    history,
                     courseContent,
                     userId: user?.id,
                     communityId: user?.communityId,
                     userName: user?.name,
                 }),
             });
-
-            if (!res.ok) throw new Error("Error de red");
-
-            const data = await res.json();
-            const newResponses: ChatMessage[] = data.responses || [];
-
-            if (!parsedSlides) {
-                const tutorMsg = newResponses.find(m => m.role === "tutor" && m.blackboard);
-                if (tutorMsg?.blackboard) {
-                    setBlackboardContent(tutorMsg.blackboard);
-                }
-            }
-
-            for (let i = 0; i < newResponses.length; i++) {
-                await new Promise(resolve => setTimeout(resolve, 450));
-                setMessages(prev => [...prev, newResponses[i]]);
-            }
+            const data = await response.json() as { responses?: TrainingChatMessage[]; error?: string };
+            if (!response.ok) throw new Error(data.error || "No se pudo consultar a CoCo.");
+            const responses = Array.isArray(data.responses) ? data.responses : [];
+            setMessages(previous => [...previous, ...responses]);
         } catch (error) {
-            console.warn("Training classroom turn failed:", error);
-            setMessages(prev => [...prev, {
-                id: `sys-err-${Date.now()}`,
+            setMessages(previous => [...previous, {
+                id: `error-${Date.now()}`,
                 role: "system",
-                text: "Hubo una intermitencia con la sala. La clase sigue disponible; intenta de nuevo en unos segundos.",
+                text: error instanceof Error ? error.message : "CoCo no pudo responder en este momento.",
             }]);
         } finally {
             setIsTyping(false);
         }
     };
 
-    const currentSlide = parsedSlides?.[currentSlideIndex];
+    if (!current) {
+        return (
+            <div className="rounded-2xl border p-8 text-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <HelpCircle className="mx-auto h-9 w-9 cc-text-tertiary" />
+                <h2 className="mt-3 text-xl font-semibold cc-text-primary">Este curso necesita una actualización</h2>
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 cc-text-secondary">El contenido no tiene todavía el formato interactivo de CoCo. Administración debe volver a diseñarlo antes de impartirlo.</p>
+            </div>
+        );
+    }
+
+    const theme = themeStyles[current.visual_theme];
 
     return (
-        <div className="flex w-full flex-col gap-4 lg:h-[82vh] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-subtle lg:bg-surface lg:shadow-sm">
-            <div className="relative flex w-full flex-col overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm lg:h-full lg:w-[64%] lg:rounded-none lg:border-0 lg:border-r lg:shadow-none">
-                {parsedSlides && currentSlide ? (
-                    <div className="flex min-h-[340px] flex-col bg-canvas p-3 sm:min-h-[420px] sm:p-4 lg:h-full lg:min-h-0 lg:p-8">
-                        <div className="z-20 mb-4 flex items-center justify-between">
-                            <span className="inline-flex items-center gap-2 rounded-md border border-subtle bg-surface px-3 py-1.5 text-xs font-semibold cc-text-secondary">
-                                <PanelRightOpen className="h-3.5 w-3.5 text-brand-500" />
-                                Presentación interactiva
-                            </span>
-                            <span className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">
-                                {currentSlideIndex + 1} / {parsedSlides.length}
-                            </span>
+        <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <header className="border-b px-4 py-4 sm:px-6" style={{ borderColor: "var(--cc-line)" }}>
+                <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold cc-text-secondary">
+                            <span className="inline-flex items-center gap-1.5"><GraduationCap className="h-4 w-4" /> Aula virtual CoCo</span>
+                            <span>·</span>
+                            <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {estimatedMinutes} min</span>
                         </div>
-
-                        <div className="flex flex-1 items-center justify-center overflow-hidden">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={currentSlideIndex}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.25 }}
-                                    className={`flex aspect-[4/5] w-full max-w-4xl flex-col justify-center rounded-lg border p-5 shadow-sm sm:aspect-[16/9] sm:p-8 lg:p-12 ${visualThemes[currentSlide.visual_theme] || visualThemes.default}`}
-                                >
-                                    <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Aula CoCo</p>
-                                    <h1 className="mb-5 text-2xl font-semibold leading-tight tracking-tight text-white sm:mb-7 md:text-5xl">
-                                        {currentSlide.title}
-                                    </h1>
-                                    <ul className="space-y-3 text-sm font-medium leading-6 text-white/88 sm:space-y-4 sm:text-base sm:leading-7 md:text-lg">
-                                        {currentSlide.bullets.map((bullet, index) => (
-                                            <li key={index} className="flex items-start gap-3">
-                                                <span className="mt-2.5 h-2 w-2 shrink-0 rounded-sm bg-brand-400" />
-                                                <span>{bullet}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </motion.div>
-                            </AnimatePresence>
+                        <h1 className="mt-1 truncate text-xl font-semibold cc-text-primary sm:text-2xl">{courseTitle}</h1>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold cc-text-secondary">{coursePercent}%</span>
+                        <div className="h-2 w-36 overflow-hidden rounded-full" style={{ background: "var(--cc-line)" }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${coursePercent}%`, background: completed ? "var(--cc-sage)" : "var(--cc-copper)" }} />
                         </div>
+                    </div>
+                </div>
+            </header>
 
-                        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-between px-3">
-                            <button
-                                type="button"
-                                onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
-                                disabled={currentSlideIndex === 0}
-                                className="pointer-events-auto rounded-lg border border-subtle bg-surface p-3 shadow-sm transition-colors hover:bg-elevated disabled:opacity-0"
-                                aria-label="Diapositiva anterior"
-                            >
-                                <ChevronLeft className="h-5 w-5 cc-text-secondary" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setCurrentSlideIndex(Math.min(parsedSlides.length - 1, currentSlideIndex + 1))}
-                                disabled={currentSlideIndex === parsedSlides.length - 1}
-                                className="pointer-events-auto rounded-lg border border-subtle bg-surface p-3 shadow-sm transition-colors hover:bg-elevated disabled:opacity-0"
-                                aria-label="Siguiente diapositiva"
-                            >
-                                <ChevronRight className="h-5 w-5 cc-text-secondary" />
-                            </button>
+            <div className="grid min-h-[680px] lg:grid-cols-[230px_minmax(0,1fr)_330px]">
+                <nav className="border-b p-4 lg:border-b-0 lg:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Contenido</p>
+                    <ol className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                        {slides.map((slide, index) => {
+                            const isCurrent = index === currentIndex;
+                            const isAvailable = index <= maxVisited + 1;
+                            const isDone = index < currentIndex || completedActivities[slide.id];
+                            return (
+                                <li key={slide.id}>
+                                    <button
+                                        type="button"
+                                        disabled={!isAvailable}
+                                        onClick={() => goTo(index)}
+                                        className="flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+                                        style={{ borderColor: isCurrent ? "var(--cc-copper)" : "transparent", background: isCurrent ? "var(--cc-copper-tint)" : "transparent" }}
+                                    >
+                                        {isDone ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />}
+                                        <span className="min-w-0">
+                                            <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] cc-text-tertiary">{index + 1} de {slides.length}</span>
+                                            <span className="mt-0.5 block text-xs font-semibold leading-4 cc-text-primary">{slide.title}</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ol>
+                    {learningObjectives.length > 0 && (
+                        <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--cc-line)" }}>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Al finalizar</p>
+                            <ul className="mt-2 space-y-2">
+                                {learningObjectives.slice(0, 3).map(objective => <li key={objective} className="flex gap-2 text-xs leading-4 cc-text-secondary"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "var(--cc-copper)" }} />{objective}</li>)}
+                            </ul>
                         </div>
+                    )}
+                </nav>
 
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-elevated">
-                            <motion.div
-                                className="h-full bg-brand-500"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${((currentSlideIndex + 1) / parsedSlides.length) * 100}%` }}
-                                transition={{ duration: 0.25 }}
-                            />
+                <main className="flex min-w-0 flex-col p-5 sm:p-7 lg:p-8">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ background: theme.soft, color: theme.accent }}>{current.eyebrow || theme.label}</span>
+                        <span className="text-xs font-semibold cc-text-tertiary">Sección {currentIndex + 1} de {slides.length}</span>
+                    </div>
+
+                    <div className="mt-8 max-w-3xl">
+                        <h2 className="text-3xl font-semibold leading-tight cc-text-primary sm:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>{current.title}</h2>
+                        <ul className="mt-7 space-y-4">
+                            {current.bullets.map((bullet, index) => (
+                                <li key={`${current.id}-${index}`} className="flex gap-4 text-base leading-7 cc-text-secondary">
+                                    <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full" style={{ background: theme.accent }} />
+                                    <span>{bullet}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="mt-7 rounded-xl border-l-4 p-4" style={{ borderColor: theme.accent, background: theme.soft }}>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: theme.accent }}>Clave para el trabajo</p>
+                            <p className="mt-2 text-sm leading-6 cc-text-primary">{current.notes}</p>
                         </div>
+                    </div>
 
-                        {currentSlideIndex === parsedSlides.length - 1 && (
-                            <button type="button" onClick={() => onComplete?.(currentSlideIndex)} className="absolute bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Completar curso
-                            </button>
+                    {current.activity && (
+                        <ActivityCard
+                            slide={current}
+                            selectedAnswer={answers[current.id]}
+                            checkedItems={checklists[current.id] || []}
+                            isComplete={Boolean(completedActivities[current.id])}
+                            feedback={feedback[current.id]}
+                            onSelectAnswer={index => {
+                                setAnswers(previous => ({ ...previous, [current.id]: index }));
+                                setCompletedActivities(previous => ({ ...previous, [current.id]: false }));
+                                setFeedback(previous => ({ ...previous, [current.id]: "" }));
+                            }}
+                            onCheckAnswer={checkAnswer}
+                            onToggleChecklist={toggleChecklistItem}
+                        />
+                    )}
+
+                    <div className="mt-auto flex flex-col-reverse justify-between gap-3 border-t pt-6 sm:flex-row sm:items-center" style={{ borderColor: "var(--cc-line)" }}>
+                        <Button type="button" variant="ghost" disabled={currentIndex === 0} onClick={() => goTo(currentIndex - 1)}><ArrowLeft className="h-4 w-4" />Anterior</Button>
+                        {currentIndex < slides.length - 1 ? (
+                            <Button type="button" variant="copper" disabled={!currentActivityComplete} onClick={() => goTo(currentIndex + 1)}>Continuar<ArrowRight className="h-4 w-4" /></Button>
+                        ) : (
+                            <Button type="button" variant="copper" disabled={!allActivitiesComplete || completed} onClick={completeCourse}>
+                                {completed ? <CheckCircle2 className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                                {completed ? "Curso completado" : "Completar curso"}
+                            </Button>
                         )}
                     </div>
-                ) : (
-                    <div className="flex max-h-none min-h-[330px] flex-col bg-surface p-4 sm:min-h-[420px] sm:p-5 lg:h-full lg:min-h-0 lg:p-8">
-                        <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                                    <Monitor className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-semibold cc-text-primary sm:text-xl">Pizarra interactiva</h2>
-                                    <p className="text-sm cc-text-secondary">Síntesis visual guiada por CoCo</p>
-                                </div>
+                </main>
+
+                <aside className="flex min-h-[520px] flex-col border-t lg:border-l lg:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                    <div className="border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
+                            <div><p className="text-sm font-semibold cc-text-primary">Tutora CoCo</p><p className="text-xs cc-text-secondary">Resuelve dudas del curso</p></div>
+                        </div>
+                    </div>
+                    <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+                        {messages.map(message => (
+                            <div key={message.id} className={`rounded-xl px-3 py-2.5 text-sm leading-6 ${message.role === "user" ? "ml-6 text-white" : "mr-3"}`} style={{ background: message.role === "user" ? "var(--cc-ink)" : "var(--cc-paper)", border: message.role === "user" ? undefined : "1px solid var(--cc-line)" }}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <p>{children}</p>, ul: ({ children }) => <ul className="list-disc pl-4">{children}</ul>, ol: ({ children }) => <ol className="list-decimal pl-4">{children}</ol> }}>{message.text}</ReactMarkdown>
                             </div>
-                            <span className="hidden rounded-md border border-subtle bg-canvas px-3 py-1.5 text-xs font-semibold cc-text-secondary sm:inline-flex">
-                                Markdown + imagen IA
-                            </span>
-                        </div>
-
-                        <div className="relative z-10 flex-1 overflow-y-auto pr-1 sm:pr-2">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={blackboardContent.substring(0, 50)}
-                                    initial={{ opacity: 0, y: 12 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -12 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <BlackboardMarkdown content={blackboardContent} />
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex max-h-[70vh] min-h-[380px] w-full flex-col overflow-hidden rounded-lg border border-subtle bg-canvas shadow-sm sm:min-h-[440px] lg:h-full lg:max-h-none lg:min-h-0 lg:w-[36%] lg:rounded-none lg:border-0 lg:shadow-none">
-                <div className="z-10 flex items-center justify-between border-b border-subtle bg-surface p-4 sm:p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-white">
-                            <GraduationCap className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-semibold cc-text-primary">Aula guiada CoCo</h3>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-600">Tutora activa</p>
-                        </div>
-                    </div>
-                    <div className="hidden items-center gap-1.5 text-xs font-semibold cc-text-tertiary sm:flex">
-                        <Users className="h-4 w-4" />
-                        Multiagente
-                    </div>
-                </div>
-
-                <div ref={messagesContainerRef} className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
-                    <AnimatePresence initial={false}>
-                        {messages.map(msg => (
-                            <motion.div
-                                key={msg.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`flex flex-col ${msg.role === "user" ? "items-end" : msg.role === "system" ? "items-center" : "items-start"}`}
-                            >
-                                {msg.role !== "system" && (
-                                    <span className={`mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${msg.role === "user" ? "text-brand-600" : "cc-text-tertiary"}`}>
-                                        {msg.role === "tutor" ? "Profesora CoCo" : msg.role === "classmate" ? (msg.name || "Compañero IA") : "Tú"}
-                                    </span>
-                                )}
-                                <div
-                                    className={`
-                                        max-w-[92%] rounded-lg p-3 shadow-sm sm:max-w-[88%] sm:p-4
-                                        ${msg.role === "user" ? "bg-brand-500 text-white" : ""}
-                                        ${msg.role === "tutor" ? "border border-subtle bg-surface cc-text-primary" : ""}
-                                        ${msg.role === "classmate" ? "ml-5 border border-subtle bg-warning-bg cc-text-primary" : ""}
-                                        ${msg.role === "system" ? "border border-subtle bg-surface px-3 py-2 text-center text-xs cc-text-secondary" : ""}
-                                    `}
-                                >
-                                    <ChatMarkdown text={msg.text} />
-                                </div>
-                            </motion.div>
                         ))}
-                    </AnimatePresence>
-
-                    {isTyping && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start">
-                            <div className="flex items-center gap-2 rounded-lg border border-subtle bg-surface p-4 text-sm cc-text-secondary shadow-sm">
-                                <Lightbulb className="h-4 w-4 animate-pulse text-brand-500" />
-                                CoCo está preparando una respuesta
-                            </div>
-                        </motion.div>
-                    )}
-                </div>
-
-                <div className="border-t border-subtle bg-surface p-3 sm:p-4">
-                    <form
-                        onSubmit={event => {
-                            event.preventDefault();
-                            handleSend();
-                        }}
-                        className="flex items-center gap-2 rounded-lg border border-subtle bg-canvas p-1.5 transition-shadow focus-within:ring-2 focus-within:ring-brand-500/30"
-                    >
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={event => setInput(event.target.value)}
-                            placeholder="Pregunta o comenta sobre la clase"
-                            className="min-w-0 flex-1 bg-transparent px-3 text-sm cc-text-primary placeholder:text-slate-400 focus:outline-none"
-                            disabled={isTyping}
-                        />
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || isTyping}
-                            className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
-                            aria-label="Enviar mensaje"
-                        >
-                            <Send className="h-4 w-4" />
-                        </button>
-                    </form>
-                </div>
+                        {isTyping && <div className="mr-3 flex items-center gap-2 rounded-xl border px-3 py-3 text-xs cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><Loader2 className="h-3.5 w-3.5 animate-spin" />CoCo está revisando el curso…</div>}
+                    </div>
+                    <div className="border-t p-4" style={{ borderColor: "var(--cc-line)" }}>
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary" htmlFor="training-question">Pregunta a CoCo</label>
+                        <div className="mt-2 flex gap-2">
+                            <textarea id="training-question" rows={2} value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendQuestion(); } }} className="input-premium min-h-20 flex-1 resize-none p-2.5 text-sm" placeholder="¿Cómo aplico esto en mi turno?" />
+                            <button type="button" onClick={() => void sendQuestion()} disabled={!question.trim() || isTyping} className="flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg text-white disabled:opacity-50" style={{ background: "var(--cc-copper)" }} aria-label="Enviar pregunta"><Send className="h-4 w-4" /></button>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </div>
+    );
+}
+
+function ActivityCard({
+    slide,
+    selectedAnswer,
+    checkedItems,
+    isComplete,
+    feedback,
+    onSelectAnswer,
+    onCheckAnswer,
+    onToggleChecklist,
+}: {
+    slide: TrainingSlide;
+    selectedAnswer?: number;
+    checkedItems: string[];
+    isComplete: boolean;
+    feedback?: string;
+    onSelectAnswer: (index: number) => void;
+    onCheckAnswer: () => void;
+    onToggleChecklist: (item: string) => void;
+}) {
+    const activity = slide.activity;
+    if (!activity) return null;
+    const isChecklist = activity.type === "checklist";
+    return (
+        <section className="mt-8 max-w-3xl rounded-xl border p-4 sm:p-5" style={{ borderColor: isComplete ? "var(--cc-sage)" : "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }}>
+            <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: isComplete ? "var(--cc-sage-tint)" : "var(--cc-copper-tint)", color: isComplete ? "var(--cc-sage)" : "var(--cc-copper)" }}>{isChecklist ? <ListChecks className="h-4 w-4" /> : <MessageCircleQuestion className="h-4 w-4" />}</span>
+                <div><p className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{isChecklist ? "Aplicación al trabajo" : activity.type === "scenario" ? "Escenario de decisión" : "Comprueba lo aprendido"}</p><h3 className="mt-1 text-base font-semibold cc-text-primary">{activity.prompt}</h3></div>
+            </div>
+
+            {isChecklist ? (
+                <div className="mt-4 space-y-2">
+                    {(activity.items || []).map(item => {
+                        const checked = checkedItems.includes(item);
+                        return <button type="button" key={item} onClick={() => onToggleChecklist(item)} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm leading-5" style={{ borderColor: checked ? "var(--cc-sage)" : "var(--cc-line)", background: checked ? "var(--cc-sage-tint)" : "var(--cc-paper)" }}>{checked ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />}<span className="cc-text-primary">{item}</span></button>;
+                    })}
+                </div>
+            ) : (
+                <div className="mt-4 space-y-2">
+                    {(activity.options || []).map((option, index) => {
+                        const selected = selectedAnswer === index;
+                        return <button type="button" key={option} onClick={() => onSelectAnswer(index)} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm leading-5" style={{ borderColor: selected ? "var(--cc-copper)" : "var(--cc-line)", background: selected ? "var(--cc-copper-tint)" : "var(--cc-paper)" }}><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold" style={{ borderColor: selected ? "var(--cc-copper)" : "var(--cc-line-strong)", color: selected ? "var(--cc-copper)" : "var(--cc-ink-muted)" }}>{String.fromCharCode(65 + index)}</span><span className="cc-text-primary">{option}</span></button>;
+                    })}
+                    <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={onCheckAnswer}>{isComplete ? <CheckCircle2 className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}{isComplete ? "Respuesta comprobada" : "Comprobar respuesta"}</Button>
+                </div>
+            )}
+
+            {feedback && <p role="status" className="mt-3 rounded-lg px-3 py-2 text-sm leading-5" style={{ background: isComplete ? "var(--cc-sage-tint)" : "var(--cc-copper-tint)", color: isComplete ? "var(--cc-sage)" : "var(--cc-copper)" }}>{feedback}</p>}
+        </section>
     );
 }
