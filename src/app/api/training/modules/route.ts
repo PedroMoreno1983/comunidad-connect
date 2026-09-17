@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
+import { isPublishableTrainingCourse, parseTrainingSlides } from '@/lib/training/courseContent';
 import type { TrainingModule } from '@/lib/types';
 
 function cleanText(value: unknown, max: number) {
@@ -61,9 +62,15 @@ export async function POST(req: NextRequest) {
     const learningObjectives = Array.isArray(body.learningObjectives)
         ? body.learningObjectives.map(item => cleanText(item, 240)).filter(Boolean).slice(0, 8)
         : [];
-    const requestedAudience = cleanText(body.target_audience, 20);
+    const requestedAudience = cleanText(body.targetAudience ?? body.target_audience, 20);
     const targetAudience = ['all', 'concierge', 'admin'].includes(requestedAudience) ? requestedAudience : 'all';
-    if (!title || (!content && !embedUrl)) return NextResponse.json({ error: 'Titulo y contenido o enlace embebido son obligatorios.' }, { status: 400 });
+    const slides = parseTrainingSlides(content);
+    if (!title || !description || learningObjectives.length === 0 || (!content && !embedUrl)) {
+        return NextResponse.json({ error: 'Completa titulo, descripcion, objetivos y contenido del curso.' }, { status: 400 });
+    }
+    if (content && !isPublishableTrainingCourse(slides)) {
+        return NextResponse.json({ error: 'El curso debe tener al menos 5 secciones y 2 actividades interactivas antes de publicarse.' }, { status: 400 });
+    }
     if (embedUrl) {
         try {
             const parsed = new URL(embedUrl);
@@ -76,18 +83,22 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseAdmin();
     const { data: module, error: moduleError } = await supabase
         .from('training_modules')
-        .insert({ title, description, target_audience: targetAudience, is_active: true, community_id: profile.community_id, created_by: profile.id, embed_url: embedUrl || null, learning_objectives: learningObjectives, estimated_minutes: estimatedMinutes, quality_version: 2 })
-        .select('id,title,description,target_audience,community_id,created_at')
+        .insert({ title, description, target_audience: targetAudience, is_active: true, community_id: profile.community_id, created_by: profile.id, embed_url: embedUrl || null, learning_objectives: learningObjectives, estimated_minutes: estimatedMinutes, quality_version: 3 })
+        .select('id,title,description,target_audience,is_active,community_id,created_at,embed_url,learning_objectives,estimated_minutes,quality_version')
         .single();
     if (moduleError || !module) {
         console.error('[training/modules] Create failed:', moduleError?.message);
         return NextResponse.json({ error: 'No se pudo guardar el curso.' }, { status: 500 });
     }
 
-    const { error: lessonError } = await supabase.from('training_lessons').insert({ module_id: module.id, title: 'Leccion principal', content: content || 'Curso alojado en el recurso embebido.', order_index: 0 });
-    if (lessonError) {
+    const { data: lesson, error: lessonError } = await supabase
+        .from('training_lessons')
+        .insert({ module_id: module.id, title: 'Curso interactivo', content: slides.length ? JSON.stringify(slides) : 'Curso alojado en el recurso embebido.', order_index: 0 })
+        .select('id,title,content,order_index')
+        .single();
+    if (lessonError || !lesson) {
         await supabase.from('training_modules').delete().eq('id', module.id).eq('community_id', profile.community_id);
-        console.error('[training/modules] Lesson create failed:', lessonError.message);
+        console.error('[training/modules] Lesson create failed:', lessonError?.message || 'lesson row missing');
         return NextResponse.json({ error: 'No se pudo guardar la leccion.' }, { status: 500 });
     }
 
@@ -116,7 +127,7 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    return NextResponse.json({ success: true, module }, { status: 201 });
+    return NextResponse.json({ success: true, module: { ...module, training_lessons: [lesson] } satisfies TrainingModule }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

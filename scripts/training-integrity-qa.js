@@ -12,11 +12,16 @@ const multiAgentRoute = read('src/app/api/training/multi-agent/route.ts');
 const orchestrator = read('src/lib/ai/orchestrator.ts');
 const staffPage = read('src/app/(dashboard)/staff/training/page.tsx');
 const classroom = read('src/components/training/MultiAgentClassroom.tsx');
+const builder = read('src/components/training/TrainingCourseBuilder.tsx');
+const courseContent = read('src/lib/training/courseContent.ts');
 const migration = read('supabase/migrations/043_training_multitenant_progress.sql');
+const professionalMigration = read('supabase/migrations/20260916210840_training_professional_learning.sql');
 
 expect('Course API resolves authenticated profile', modulesRoute.includes('getAuthenticatedAgentProfile'));
 expect('Course reads are scoped to profile community', modulesRoute.includes('community_id.is.null,community_id.eq.${profile.community_id}'));
 expect('Course writes require admin role', modulesRoute.includes("profile.role !== 'admin'"));
+expect('Course creation accepts the client audience contract', modulesRoute.includes('body.targetAudience ?? body.target_audience'));
+expect('Course publication rejects non-interactive content', modulesRoute.includes('isPublishableTrainingCourse'));
 expect('Official global courses cannot be deleted', modulesRoute.includes('Los cursos oficiales no se pueden eliminar'));
 expect('Progress API derives user and community server-side', progressRoute.includes('profile.id') && progressRoute.includes('profile.community_id'));
 expect('Progress target course is checked against community', progressRoute.includes('Curso no disponible para tu comunidad'));
@@ -25,6 +30,11 @@ expect('Classroom route requires admin or concierge', multiAgentRoute.includes("
 expect('Classroom passes the authenticated role to the orchestrator', multiAgentRoute.includes('profile.role'));
 expect('AI budget uses the authenticated staff role', orchestrator.includes('role: userRole') && !orchestrator.includes("role: 'resident'"));
 expect('Classroom exposes explicit completion action', classroom.includes('onComplete') && classroom.includes('Completar curso'));
+expect('Classroom blocks forward progress until activities are complete', classroom.includes('currentActivityComplete') && classroom.includes('checkAnswer'));
+expect('Course builder publishes normalized slides instead of raw source text', builder.includes('JSON.stringify(slides)') && builder.includes('Diseñar curso con CoCo'));
+expect('Training content requires at least five sections and two activities', courseContent.includes('slides.length >= 5') && courseContent.includes('trainingActivityCount(slides) >= 2'));
+expect('Catalog no longer pushes courses below the decorative module flow', !staffPage.includes('ModuleFlow'));
+expect('Official curriculum preserves IDs and upgrades all three courses', (professionalMigration.match(/quality_version = 3/g) || []).length === 3 && (professionalMigration.match(/"activity":/g) || []).length >= 6);
 expect('Training modules have tenant RLS', migration.includes('training_modules_admin_delete') && migration.includes('current_profile_community_id'));
 expect('Training progress has own-user RLS', migration.includes('user_training_progress_read_own') && migration.includes('user_id = auth.uid()'));
 
