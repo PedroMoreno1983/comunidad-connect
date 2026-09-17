@@ -541,8 +541,9 @@ export default function ExpensesPage() {
                                         Tienes ${paymentSummary.pending_amount.toLocaleString("es-CL")} por pagar
                                     </div>
                                     <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                        El pago en línea todavía no está habilitado en tu comunidad.
-                                        Coordina el pago con la administración.
+                                        El pago en línea aún no está activo. La administración debe configurar
+                                        HAULMER_ACCOUNT_ID y HAULMER_SECRET_KEY en Vercel. Mientras tanto,
+                                        coordina el pago con administración.
                                     </div>
                                 </div>
                             </div>

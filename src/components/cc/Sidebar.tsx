@@ -223,7 +223,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["resident"] },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
-        { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
+        { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"], capability: "supermarketOrdering" as ProductCapabilityKey },
         // Convivencia vive aca y no en COMUNIDAD porque su carril principal es
         // el abasto comunitario, que es un servicio: queda junto al Supermercado
         // individual, que es la version de una sola familia de lo mismo.

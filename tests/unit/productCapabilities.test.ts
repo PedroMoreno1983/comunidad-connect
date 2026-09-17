@@ -37,7 +37,15 @@ describe('resolveProductCapabilities', () => {
     expect(complete.marketingReels).toBe(true);
   });
 
-  it('never exposes the simulated supermarket ordering flow', () => {
-    expect(resolveProductCapabilities({ SUPERMARKET_COMMERCE_ENABLED: 'true' }).supermarketOrdering).toBe(false);
+  it('keeps supermarket ordering off without an explicit enablement signal', () => {
+    expect(resolveProductCapabilities({}).supermarketOrdering).toBe(false);
+    expect(resolveProductCapabilities({ SUPERMARKET_COMMERCE_ENABLED: 'false' }).supermarketOrdering).toBe(false);
+  });
+
+  it('enables supermarket ordering with SUPERMARKET_COMMERCE_ENABLED or a cart worker URL', () => {
+    expect(resolveProductCapabilities({ SUPERMARKET_COMMERCE_ENABLED: 'true' }).supermarketOrdering).toBe(true);
+    expect(resolveProductCapabilities({
+      SUPERMARKET_CART_WORKER_URL: 'https://cart-worker.example.com',
+    }).supermarketOrdering).toBe(true);
   });
 });

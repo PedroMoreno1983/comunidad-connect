@@ -6,6 +6,7 @@ import type { UserRole } from '@/lib/types';
 import { logApiError, logger, resolveRequestId } from '@/lib/observability/logger';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '@/lib/privacy';
+import { findOrCreateCommunityUnit } from '@/lib/units/resolveCommunityUnit';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -97,6 +98,11 @@ export async function POST(req: NextRequest) {
         const userId = created.user?.id;
         if (!userId) throw new Error('No se pudo crear el usuario.');
 
+        let unitId: string | null = null;
+        if (resolvedRole === 'resident' && departmentNumber) {
+            unitId = await findOrCreateCommunityUnit(admin, community.id, departmentNumber);
+        }
+
         const { error: profileError } = await admin.from('profiles').upsert({
             id: userId,
             email,
@@ -105,6 +111,7 @@ export async function POST(req: NextRequest) {
             role: resolvedRole,
             community_id: community.id,
             department_number: resolvedRole === 'resident' ? departmentNumber : null,
+            unit_id: unitId,
             whatsapp_enabled: whatsappOptIn,
         }, { onConflict: 'id' });
         if (profileError) {

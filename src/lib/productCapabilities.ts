@@ -8,6 +8,11 @@ function hasValue(environment: Environment, name: string): boolean {
   return !/^(TU_|your_|placeholder|changeme|xxx)/i.test(value);
 }
 
+function isTruthyFlag(environment: Environment, name: string): boolean {
+  const value = environment[name]?.trim().toLowerCase();
+  return value === 'true' || value === '1' || value === 'yes' || value === 'on';
+}
+
 function hasHiggsfieldCredentials(environment: Environment): boolean {
   if (hasValue(environment, 'HF_CREDENTIALS') || hasValue(environment, 'HIGGSFIELD_CREDENTIALS')) {
     return true;
@@ -64,8 +69,10 @@ export function resolveProductCapabilities(environment: Environment): ProductCap
       && hasValue(environment, 'CRON_SECRET'),
     iotAutomation: true,
     externalMonitoring: hasValue(environment, 'AI_HEALTH_TOKEN'),
-    // The current supermarket module has no real retailer or fulfilment integration.
-    supermarketOrdering: false,
+    // Lider/Jumbo: handoff a la app/sitio. Worker remoto de carro es opcional.
+    // Activa con SUPERMARKET_COMMERCE_ENABLED=true o SUPERMARKET_CART_WORKER_URL.
+    supermarketOrdering: isTruthyFlag(environment, 'SUPERMARKET_COMMERCE_ENABLED')
+      || hasValue(environment, 'SUPERMARKET_CART_WORKER_URL'),
   };
 }
 
