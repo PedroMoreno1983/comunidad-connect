@@ -60,6 +60,11 @@ export default function UsersPage() {
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
     const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
     const [query, setQuery] = useState("");
+    const [assigningId, setAssigningId] = useState<string | null>(null);
+    const [assignUnitNumber, setAssignUnitNumber] = useState("");
+    const [assignError, setAssignError] = useState<string | null>(null);
+    const [assignBusy, setAssignBusy] = useState(false);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -112,6 +117,40 @@ export default function UsersPage() {
             setTimeout(() => setCopiedCode(null), 2000);
         });
     };
+
+
+    async function assignUnitToResident(profileId: string) {
+        const unitNumber = assignUnitNumber.trim();
+        if (!unitNumber) {
+            setAssignError("Ingresa el departamento o unidad.");
+            return;
+        }
+        setAssignBusy(true);
+        setAssignError(null);
+        try {
+            const response = await fetch("/api/admin/users/assign-unit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ profileId, unitNumber }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || "No se pudo asignar la unidad.");
+            }
+            setAssigningId(null);
+            setAssignUnitNumber("");
+            // reload directory
+            const directory = await AdminUsersService.getDirectory(user?.id);
+            setCommunityName(directory.communityName);
+            setResidentCode(directory.residentCode);
+            setConciergeCode(directory.conciergeCode);
+            setUsers(directory.users);
+        } catch (error) {
+            setAssignError(error instanceof Error ? error.message : "No se pudo asignar la unidad.");
+        } finally {
+            setAssignBusy(false);
+        }
+    }
 
     return (
         <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
@@ -273,13 +312,58 @@ export default function UsersPage() {
                                                 <Badge variant={status.variant}>{status.label}</Badge>
                                             </td>
                                             <td className="px-5 py-4 text-right">
-                                                <Link
-                                                    href={status.variant === "warning" ? "/admin/units" : "/admin/onboarding"}
-                                                    className="inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
-                                                    style={{ borderColor: "var(--cc-line-strong)" }}
-                                                >
-                                                    {status.variant === "warning" ? "Asignar unidad" : "Ver onboarding"}
-                                                </Link>
+                                                {status.variant === "warning" ? (
+                                                    assigningId === profile.id ? (
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    value={assignUnitNumber}
+                                                                    onChange={event => setAssignUnitNumber(event.target.value)}
+                                                                    placeholder="Depto / unidad"
+                                                                    className="w-28 rounded-lg border px-2 py-1.5 text-[13px]"
+                                                                    style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={assignBusy}
+                                                                    onClick={() => assignUnitToResident(profile.id)}
+                                                                    className="inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)] disabled:opacity-60"
+                                                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                                                >
+                                                                    {assignBusy ? "Guardando…" : "Guardar"}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={assignBusy}
+                                                                    onClick={() => { setAssigningId(null); setAssignError(null); setAssignUnitNumber(""); }}
+                                                                    className="text-[12px] cc-text-secondary"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                            </div>
+                                                            {assignError && assigningId === profile.id ? (
+                                                                <p className="text-[11px] text-red-600">{assignError}</p>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setAssigningId(profile.id); setAssignUnitNumber(""); setAssignError(null); }}
+                                                            className="inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                                            style={{ borderColor: "var(--cc-line-strong)" }}
+                                                        >
+                                                            Asignar unidad
+                                                        </button>
+                                                    )
+                                                ) : (
+                                                    <Link
+                                                        href="/admin/onboarding"
+                                                        className="inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                                        style={{ borderColor: "var(--cc-line-strong)" }}
+                                                    >
+                                                        Ver onboarding
+                                                    </Link>
+                                                )}
                                             </td>
                                         </tr>
                                     );
