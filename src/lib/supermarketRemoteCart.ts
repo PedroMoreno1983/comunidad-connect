@@ -39,8 +39,6 @@ export async function prepareRemoteCartHandoff(
   userAccessToken: string,
 ): Promise<SupermarketCartHandoff> {
   const direct = await prepareDirectCartHandoff(store, items);
-  // Lider solo usa su app oficial; nunca cae al navegador remoto.
-  if (store === 'Lider') return direct;
   // Keep checkout in the buyer's own browser where the retailer supports it.
   if (direct.supported && direct.cartUrl) return direct;
   const controller = new AbortController();

@@ -9,8 +9,8 @@ afterEach(() => {
 });
 
 describe('direct supermarket cart handoff', () => {
-  it('recognizes Lider as an official app handoff', async () => {
-    expect(supportsDirectCartHandoff('Lider')).toBe(true);
+  it('does not claim an unverifiable direct Lider handoff', async () => {
+    expect(supportsDirectCartHandoff('Lider')).toBe(false);
     const result = await prepareDirectCartHandoff('Lider', [{
       id: 'leche',
       name: 'Leche 1 L',
@@ -21,46 +21,12 @@ describe('direct supermarket cart handoff', () => {
     }]);
 
     expect(result).toMatchObject({
-      supported: true,
-      mode: 'official_app_link',
-      plannedCount: 1,
+      supported: false,
+      mode: 'unavailable',
+      plannedCount: 0,
       missingItems: [],
     });
-  });
-
-  it('recovers missing Lider identifiers from the exact product page', async () => {
-    const nextData = {
-      props: {
-        pageProps: {
-          product: {
-            usItemId: '00780292000009',
-            offerId: '5105',
-            salesUnit: 'EACH',
-            name: 'Leche Semidescremada Natural Caja 1 l',
-          },
-        },
-      },
-    };
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(
-      `<script id=__NEXT_DATA__ type=application/json>${JSON.stringify(nextData)}</script>`,
-      { status: 200, headers: { 'Content-Type': 'text/html' } },
-    )));
-
-    const result = await prepareDirectCartHandoff('Lider', [{
-      id: 'leche',
-      name: 'Leche Semidescremada Natural Caja 1 l',
-      requestedTerm: 'leche',
-      quantity: 1,
-      productUrl: 'https://super.lider.cl/ip/leche/00780292000009',
-    }]);
-
-    expect(result).toMatchObject({
-      supported: true,
-      mode: 'official_app_link',
-      plannedCount: 1,
-      missingItems: [],
-    });
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.cartUrl).toBeUndefined();
   });
 
   it('builds an official VTEX checkout link with live SKU and seller', async () => {

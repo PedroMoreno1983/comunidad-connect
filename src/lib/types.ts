@@ -425,28 +425,14 @@ export interface SupermarketCartHandoffItem {
 export interface SupermarketCartHandoff {
   supported: boolean;
   store: string;
-  mode: 'remote_browser' | 'direct_url' | 'official_app_link' | 'unavailable';
+  mode: 'remote_browser' | 'direct_url' | 'unavailable';
   cartUrl?: string;
-  /** Enlaces consecutivos que, juntos, cubren toda la canasta en la app oficial. */
-  cartUrls?: string[];
   sessionUrl?: string;
   sessionId?: string;
   expiresAt?: string;
   plannedCount: number;
   missingItems: string[];
   reason?: string;
-}
-
-export interface LiderShoppableCartProduct {
-  upc: string;
-  oid: string;
-  q: string;
-  qu: string | null;
-}
-
-export interface LiderShoppableCartPayload {
-  rid: string;
-  cd: LiderShoppableCartProduct[];
 }
 export interface CommunityProject {
   id: string;
