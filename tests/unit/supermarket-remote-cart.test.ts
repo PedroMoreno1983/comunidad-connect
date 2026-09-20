@@ -72,8 +72,23 @@ describe('remote supermarket cart handoff', () => {
     expect(result.cartUrl).toBe('https://irurzun.cl/cart/1234:2');
   });
 
-  it('uses the official Lider app link without creating a remote browser session', async () => {
-    const fetchMock = vi.fn();
+  it('uses the verified remote browser for Lider instead of an unverified app link', async () => {
+    vi.stubEnv('SUPERMARKET_CART_WORKER_URL', 'https://worker.example/cart');
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(String(input)).toBe('https://worker.example/cart/v1/sessions');
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer user-jwt');
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        store: 'Lider',
+        items: [{ productUrl: 'https://super.lider.cl/ip/leche/123' }],
+      });
+      return new Response(JSON.stringify({
+        sessionId: 'lider-session',
+        viewerUrl: 'https://worker.example/cart/session/lider-session',
+        expiresAt: '2026-09-20T23:59:00.000Z',
+        plannedCount: 1,
+        missingItems: [],
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    });
     vi.stubGlobal('fetch', fetchMock);
     const result = await prepareRemoteCartHandoff('Lider', [{
       id: 'leche',
@@ -88,16 +103,21 @@ describe('remote supermarket cart handoff', () => {
 
     expect(result).toMatchObject({
       supported: true,
-      mode: 'official_app_link',
+      mode: 'remote_browser',
       plannedCount: 1,
       missingItems: [],
+      sessionId: 'lider-session',
+      sessionUrl: 'https://worker.example/cart/session/lider-session',
     });
-    expect(result.cartUrl).toContain('https://super.lider.cl/cart?shoppableAdsCartValue=');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.cartUrl).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does not fall back to a loader when a Lider identifier is missing', async () => {
-    const fetchMock = vi.fn();
+  it('reports the worker failure instead of restoring the broken Lider QR', async () => {
+    vi.stubEnv('SUPERMARKET_CART_WORKER_URL', 'https://worker.example/cart');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      error: 'El navegador seguro no está disponible en este momento.',
+    }), { status: 503, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
     const result = await prepareRemoteCartHandoff('Lider', [{
       id: 'leche',
@@ -105,15 +125,17 @@ describe('remote supermarket cart handoff', () => {
       requestedTerm: 'leche',
       quantity: 1,
       sku: '00780292000009',
+      productUrl: 'https://super.lider.cl/ip/leche/123',
     }], 'user-jwt');
 
     expect(result).toMatchObject({
       supported: false,
       mode: 'unavailable',
       plannedCount: 0,
-      missingItems: ['Leche 1 L'],
+      reason: 'El navegador seguro no está disponible en este momento.',
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.cartUrl).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('reports a remote worker failure for a store without a direct cart', async () => {
