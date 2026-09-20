@@ -10,7 +10,7 @@ import {
     recordAiUsage,
 } from '@/lib/ai/budget';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
-import { buildStructuredTrainingFallback, ensureInteractiveTrainingCourse } from '@/lib/training/courseContent';
+import { buildStructuredTrainingFallback, ensureInteractiveTrainingCourse, trainingQualityReport } from '@/lib/training/courseContent';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -56,25 +56,32 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Agrega al menos 80 caracteres de contenido fuente para diseñar el curso.' }, { status: 400 });
     }
 
-    const fallback = () => NextResponse.json({
-        slides: buildStructuredTrainingFallback(text, audience),
-        warning: 'CoCo preparo una version estructurada localmente. Revisala antes de publicar.',
-    });
+    const fallback = () => {
+        const slides = buildStructuredTrainingFallback(text, audience);
+        return NextResponse.json({
+            slides,
+            quality: trainingQualityReport(slides),
+            warning: 'CoCo preparó una versión estructurada localmente. Revísala antes de publicar.',
+        });
+    };
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return fallback();
 
     const systemPrompt = `Eres CoCo, diseñador instruccional para condominios chilenos.
 Transforma el texto fuente en un curso operativo profesional para ${audienceLabel(audience)}.
 
-Reglas obligatorias:
+Reglas editoriales obligatorias:
 1. Conserva reglas, cifras y procedimientos del texto. No inventes obligaciones legales.
-2. Crea entre 6 y 10 secciones con 2 a 5 bullets observables y accionables.
+2. Crea entre 6 y 10 secciones con 2 a 5 bullets observables y accionables; cada sección tiene un lead breve que sintetiza su mensaje.
 3. Distingue las atribuciones de administracion y conserjeria.
-4. Incluye al menos dos actividades: una pregunta knowledge_check o scenario, y una checklist final.
-5. Para knowledge_check y scenario entrega 3 o 4 options, correctIndex numerico y explanation util.
+4. Incluye exactamente el recorrido de práctica completo: knowledge_check, scenario y checklist final.
+5. Para knowledge_check y scenario entrega 3 o 4 options, correctIndex numérico y una explanation que enseñe el criterio.
 6. Para checklist entrega entre 3 y 6 items verificables.
-7. Usa solo estos temas: copper, sage, ink o amber.
-8. Las notas explican que hacer, quien responde, que registrar y cuando escalar.
+7. Usa layouts variados de esta lista: opening, framework, process, comparison, scenario, checklist, summary. La primera sección usa opening y la última checklist.
+8. Incluye role_cards en al menos una sección: dos tarjetas con role, responsibility y action para Administración y Conserjería.
+9. Usa solo estos temas visuales: copper, sage, ink o amber.
+10. Las notes forman el guion de la tutora: explican qué hacer, quién responde, qué registrar y cuándo escalar.
+11. Evita diapositivas genéricas: cada una debe contener una decisión, un procedimiento o un criterio transferible al trabajo.
 
 Texto fuente:
 ${text}`;
@@ -112,7 +119,22 @@ ${text}`;
                                 id: { type: 'STRING' },
                                 eyebrow: { type: 'STRING' },
                                 title: { type: 'STRING' },
+                                lead: { type: 'STRING' },
+                                layout: { type: 'STRING' },
                                 bullets: { type: 'ARRAY', items: { type: 'STRING' } },
+                                role_cards: {
+                                    type: 'ARRAY',
+                                    items: {
+                                        type: 'OBJECT',
+                                        properties: {
+                                            role: { type: 'STRING' },
+                                            responsibility: { type: 'STRING' },
+                                            action: { type: 'STRING' },
+                                        },
+                                        required: ['role', 'responsibility', 'action'],
+                                    },
+                                },
+                                source_note: { type: 'STRING' },
                                 visual_theme: { type: 'STRING' },
                                 notes: { type: 'STRING' },
                                 activity: {
@@ -127,7 +149,7 @@ ${text}`;
                                     },
                                 },
                             },
-                            required: ['id', 'title', 'bullets', 'visual_theme', 'notes'],
+                            required: ['id', 'title', 'lead', 'layout', 'bullets', 'visual_theme', 'notes'],
                         },
                     },
                 },
@@ -162,7 +184,7 @@ ${text}`;
             metadata: { latencyMs: Date.now() - startedAt, slides: slides.length },
         });
 
-        return NextResponse.json({ slides });
+        return NextResponse.json({ slides, quality: trainingQualityReport(slides) });
     } catch (error: unknown) {
         if (isAiBudgetExceededError(error)) {
             return NextResponse.json({ error: error.reason }, { status: 429 });

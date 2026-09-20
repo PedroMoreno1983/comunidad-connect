@@ -17,7 +17,9 @@ import { useToast } from "@/components/ui/Toast";
 import {
     isPublishableTrainingCourse,
     normalizeTrainingSlides,
+    parseTrainingSlides,
     trainingActivityCount,
+    trainingQualityReport,
 } from "@/lib/training/courseContent";
 import type {
     TrainingCourseBuilderProps,
@@ -34,8 +36,10 @@ const initialDraft: TrainingCourseDraft = {
     targetAudience: "concierge",
     content: "",
     embedUrl: "",
+    completionMode: "interactive",
     learningObjectives: [],
     estimatedMinutes: 25,
+    changeSummary: "",
 };
 
 const audienceLabel = {
@@ -44,18 +48,37 @@ const audienceLabel = {
     all: "Ambos roles",
 };
 
-export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseBuilderProps) {
+function sourceFromCourse(course: NonNullable<TrainingCourseBuilderProps["initialCourse"]>) {
+    const slides = parseTrainingSlides(course.training_lessons?.[0]?.content);
+    return slides.map(slide => [slide.title, ...slide.bullets].join("\n")).join("\n\n");
+}
+
+export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: TrainingCourseBuilderProps) {
     const { toast } = useToast();
     const fileRef = useRef<HTMLInputElement>(null);
-    const [draft, setDraft] = useState<TrainingCourseDraft>(initialDraft);
-    const [objectivesText, setObjectivesText] = useState("");
-    const [slides, setSlides] = useState<TrainingSlide[]>([]);
+    const editingOwnCourse = Boolean(initialCourse?.community_id);
+    const personalizingOfficial = Boolean(initialCourse && !initialCourse.community_id);
+    const initialSlides = useMemo(() => parseTrainingSlides(initialCourse?.training_lessons?.[0]?.content), [initialCourse]);
+    const [draft, setDraft] = useState<TrainingCourseDraft>(() => initialCourse ? {
+        title: personalizingOfficial ? `${initialCourse.title} · Adaptación local` : initialCourse.title,
+        description: initialCourse.description || "",
+        targetAudience: initialCourse.target_audience === "admin" || initialCourse.target_audience === "concierge" ? initialCourse.target_audience : "all",
+        content: sourceFromCourse(initialCourse),
+        embedUrl: initialCourse.embed_url || "",
+        completionMode: initialCourse.completion_mode || (initialCourse.embed_url ? "embed_post_message" : "interactive"),
+        learningObjectives: initialCourse.learning_objectives || [],
+        estimatedMinutes: initialCourse.estimated_minutes || 25,
+        changeSummary: editingOwnCourse ? "Actualización de contenidos, actividades y criterios operativos" : "",
+    } : initialDraft);
+    const [objectivesText, setObjectivesText] = useState(() => (initialCourse?.learning_objectives || []).join("\n"));
+    const [slides, setSlides] = useState<TrainingSlide[]>(initialSlides);
     const [fileName, setFileName] = useState<string | null>(null);
     const [busy, setBusy] = useState<"file" | "generate" | "publish" | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const activities = useMemo(() => trainingActivityCount(slides), [slides]);
-    const isStructured = useMemo(() => isPublishableTrainingCourse(slides), [slides]);
+    const quality = useMemo(() => trainingQualityReport(slides), [slides]);
+    const isStructured = quality.publishable;
     const objectives = useMemo(
         () => objectivesText.split("\n").map(item => item.trim()).filter(Boolean).slice(0, 8),
         [objectivesText],
@@ -111,7 +134,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
             const response = await fetch("/api/training/generate-slides", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: draft.content, targetAudience: draft.targetAudience }),
+                    body: JSON.stringify({ text: draft.content, targetAudience: draft.targetAudience }),
             });
             const data = await response.json() as TrainingGenerateResponse;
             const normalized = normalizeTrainingSlides(data.slides);
@@ -150,16 +173,19 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
         setErrorMessage(null);
         try {
             const response = await fetch("/api/training/modules", {
-                method: "POST",
+                method: editingOwnCourse ? "PATCH" : "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    id: editingOwnCourse ? initialCourse?.id : undefined,
                     title: draft.title,
                     description: draft.description,
                     targetAudience: draft.targetAudience,
                     content: slides.length ? JSON.stringify(slides) : "",
                     embedUrl: draft.embedUrl,
+                    completionMode: draft.embedUrl ? draft.completionMode : "interactive",
                     learningObjectives: objectives,
                     estimatedMinutes: draft.estimatedMinutes,
+                    changeSummary: draft.changeSummary,
                 }),
             });
             const data = await response.json() as TrainingModuleMutationResponse;
@@ -169,7 +195,11 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
             setObjectivesText("");
             setSlides([]);
             setFileName(null);
-            toast({ title: "Curso publicado", description: `Ya está disponible para ${audienceLabel[draft.targetAudience].toLowerCase()}.`, variant: "success" });
+            toast({
+                title: editingOwnCourse ? "Nueva versión publicada" : personalizingOfficial ? "Adaptación publicada" : "Curso publicado",
+                description: `Ya está disponible para ${audienceLabel[draft.targetAudience].toLowerCase()}.`,
+                variant: "success",
+            });
         } catch (error) {
             const message = error instanceof Error ? error.message : "No se pudo publicar el curso.";
             setErrorMessage(message);
@@ -186,9 +216,9 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
                     <ArrowLeft className="h-4 w-4" /> Volver al catálogo
                 </button>
                 <Eyebrow>Administración · autoría</Eyebrow>
-                <h2 className="mt-2 text-2xl font-semibold cc-text-primary">Crear una capacitación profesional</h2>
+                <h2 className="mt-2 text-2xl font-semibold cc-text-primary">{editingOwnCourse ? `Editar y publicar versión ${Number(initialCourse?.version_number || 1) + 1}` : personalizingOfficial ? "Personalizar curso oficial" : "Crear una capacitación profesional"}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 cc-text-secondary">
-                    Parte de un protocolo, reglamento o manual. CoCo lo transforma en secciones breves, decisiones prácticas y comprobaciones antes de publicarlo.
+                    {editingOwnCourse ? "Revisa el contenido vigente, mejora la fuente o los metadatos y publica una versión trazable sin borrar la anterior." : "Parte de un protocolo, reglamento o manual. CoCo lo transforma en secciones breves, decisiones prácticas y comprobaciones antes de publicarlo."}
                 </p>
                 <div className="mt-5 grid gap-2 sm:grid-cols-3">
                     <Stage number="1" label="Fuente y audiencia" active />
@@ -245,10 +275,34 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
                                 <input type="number" min="5" max="480" className="input-premium h-11 w-full" value={draft.estimatedMinutes} onChange={event => setField("estimatedMinutes", Number(event.target.value))} />
                             </Field>
                             <Field label="Curso externo HTTPS, opcional">
-                                <input type="url" className="input-premium h-11 w-full" value={draft.embedUrl} onChange={event => setField("embedUrl", event.target.value)} placeholder="https://..." />
+                                <input
+                                    type="url"
+                                    className="input-premium h-11 w-full"
+                                    value={draft.embedUrl}
+                                    onChange={event => {
+                                        const embedUrl = event.target.value;
+                                        setDraft(previous => ({
+                                            ...previous,
+                                            embedUrl,
+                                            completionMode: embedUrl && previous.completionMode === "interactive" ? "embed_post_message" : previous.completionMode,
+                                        }));
+                                        setErrorMessage(null);
+                                    }}
+                                    placeholder="https://..."
+                                />
                             </Field>
+                            {draft.embedUrl && <Field label="Validación de finalización">
+                                <select className="input-premium h-11 w-full" value={draft.completionMode} onChange={event => setField("completionMode", event.target.value as TrainingCourseDraft["completionMode"])}>
+                                    <option value="embed_post_message">Automática mediante puente CoCo</option>
+                                    <option value="embed_manual">Manual para proveedor legado</option>
+                                </select>
+                            </Field>}
                         </div>
                     </div>
+                    {draft.embedUrl && draft.completionMode === "embed_post_message" && <div className="rounded-xl border p-4 text-xs leading-5 cc-text-secondary" style={{ borderColor: "var(--cc-sage)", background: "var(--cc-sage-tint)" }}><strong className="cc-text-primary">Puente automático:</strong> el curso embebido debe enviar <code>convive-training-complete</code> con el nonce recibido en la URL. CoCo valida origen, sesión y puntaje antes de emitir la constancia.</div>}
+                    {editingOwnCourse && <Field label="Resumen de cambios de esta versión">
+                        <textarea required className="input-premium min-h-24 w-full p-3" value={draft.changeSummary} onChange={event => setField("changeSummary", event.target.value)} placeholder="Qué cambió y por qué se vuelve a publicar." />
+                    </Field>}
                 </div>
 
                 <aside className="border-t p-5 sm:p-7 xl:border-l xl:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
@@ -257,7 +311,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
                             <Eyebrow>Vista previa</Eyebrow>
                             <h3 className="mt-2 text-lg font-semibold cc-text-primary">Estructura del curso</h3>
                         </div>
-                        {isStructured && <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><ShieldCheck className="h-3.5 w-3.5" />Listo</span>}
+                        {isStructured && <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><ShieldCheck className="h-3.5 w-3.5" />Calidad {quality.score}/100</span>}
                     </div>
 
                     {slides.length === 0 ? (
@@ -271,6 +325,10 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
                             <div className="mt-5 grid grid-cols-2 gap-2">
                                 <PreviewMetric value={slides.length} label="secciones" />
                                 <PreviewMetric value={activities} label="actividades" />
+                            </div>
+                            <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                                <div className="flex items-center justify-between text-xs font-semibold"><span className="cc-text-primary">Control editorial</span><span style={{ color: quality.publishable ? "var(--cc-sage)" : "var(--cc-copper)" }}>{quality.score}/100</span></div>
+                                <div className="mt-2 grid gap-1.5">{quality.checks.map(check => <div key={check.id} className="flex items-center gap-2 text-[11px] cc-text-secondary">{check.passed ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "var(--cc-sage)" }} /> : <span className="h-3.5 w-3.5 rounded-full border" style={{ borderColor: "var(--cc-line-strong)" }} />}{check.label}</div>)}</div>
                             </div>
                             <ol className="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-1">
                                 {slides.map((slide, index) => (
@@ -291,7 +349,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel }: TrainingCourseB
                     <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--cc-line)" }}>
                         <Button type="submit" variant="copper" block disabled={busy !== null || !canPublish}>
                             {busy === "publish" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Revisado: publicar curso
+                            {editingOwnCourse ? "Publicar nueva versión" : personalizingOfficial ? "Publicar adaptación local" : "Revisado: publicar curso"}
                         </Button>
                         <p className="mt-2 text-center text-[11px] leading-4 cc-text-tertiary">Se avisará únicamente al rol seleccionado.</p>
                     </div>

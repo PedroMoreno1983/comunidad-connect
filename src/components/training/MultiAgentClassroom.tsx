@@ -4,10 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ArrowLeft,
     ArrowRight,
+    Award,
+    Building2,
     Check,
     CheckCircle2,
     Circle,
     Clock3,
+    Download,
     GraduationCap,
     HelpCircle,
     ListChecks,
@@ -17,13 +20,14 @@ import {
     Send,
     ShieldCheck,
     Sparkles,
+    Target,
+    Workflow,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/cc/Button";
-import { useAuth } from "@/lib/authContext";
 import { parseTrainingSlides } from "@/lib/training/courseContent";
-import type { TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
+import type { TrainingAttemptRecord, TrainingAttemptResponse, TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
 
 const themeStyles: Record<TrainingSlide["visual_theme"], { accent: string; soft: string; label: string }> = {
     copper: { accent: "var(--cc-copper)", soft: "var(--cc-copper-tint)", label: "Aplicación" },
@@ -33,6 +37,8 @@ const themeStyles: Record<TrainingSlide["visual_theme"], { accent: string; soft:
 };
 
 export function MultiAgentClassroom({
+    moduleId,
+    moduleVersion,
     courseContent,
     courseTitle = "Curso operativo",
     learningObjectives = [],
@@ -41,7 +47,6 @@ export function MultiAgentClassroom({
     onSlideChange,
     onComplete,
 }: TrainingClassroomProps) {
-    const { user } = useAuth();
     const slides = useMemo(() => parseTrainingSlides(courseContent), [courseContent]);
     const safeInitialIndex = slides.length ? Math.min(Math.max(initialSlideIndex, 0), slides.length - 1) : 0;
     const [currentIndex, setCurrentIndex] = useState(safeInitialIndex);
@@ -54,6 +59,10 @@ export function MultiAgentClassroom({
     const [question, setQuestion] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const [attempt, setAttempt] = useState<TrainingAttemptRecord | null>(null);
+    const [attemptError, setAttemptError] = useState<string | null>(null);
+    const [savingActivity, setSavingActivity] = useState(false);
+    const [finishing, setFinishing] = useState(false);
     const messagesRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -76,6 +85,46 @@ export function MultiAgentClassroom({
             text: `CoCo acompaña este curso. Puedes preguntar por un concepto o por cómo aplicarlo en tu rol.`,
         }]);
     }, [courseContent, safeInitialIndex, slides]);
+
+    useEffect(() => {
+        let active = true;
+        setAttempt(null);
+        setAttemptError(null);
+        fetch("/api/training/attempts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "start", moduleId }),
+        }).then(async response => {
+            const data = await response.json() as TrainingAttemptResponse;
+            if (!response.ok || !data.attempt) throw new Error(data.error || "No se pudo iniciar el intento.");
+            if (!active) return;
+            const loaded = data.attempt;
+            const latestBySlide = new Map<string, NonNullable<TrainingAttemptRecord["responses"]>[number]>();
+            for (const item of loaded.responses || []) {
+                const previous = latestBySlide.get(item.slide_id);
+                if (!previous || item.response_number > previous.response_number) latestBySlide.set(item.slide_id, item);
+            }
+            const loadedAnswers: Record<string, number> = {};
+            const loadedChecklists: Record<string, string[]> = {};
+            const loadedCompleted: Record<string, boolean> = {};
+            for (const slide of slides) {
+                const saved = latestBySlide.get(slide.id);
+                if (typeof saved?.answer === "number") loadedAnswers[slide.id] = saved.answer;
+                if (Array.isArray(saved?.answer)) loadedChecklists[slide.id] = saved.answer.filter(value => typeof value === "string");
+                loadedCompleted[slide.id] = loaded.status === "completed" || Boolean(saved?.is_correct);
+            }
+            setAttempt(loaded);
+            setAnswers(loadedAnswers);
+            setChecklists(loadedChecklists);
+            setCompletedActivities(loadedCompleted);
+            setCompleted(loaded.status === "completed");
+            if (loaded.status === "completed") {
+                setCurrentIndex(slides.length - 1);
+                setMaxVisited(slides.length - 1);
+            }
+        }).catch(error => active && setAttemptError(error instanceof Error ? error.message : "No se pudo iniciar el intento."));
+        return () => { active = false; };
+    }, [moduleId, moduleVersion, slides]);
 
     useEffect(() => {
         if (slides.length) onSlideChange?.(currentIndex);
@@ -106,6 +155,28 @@ export function MultiAgentClassroom({
         setMaxVisited(previous => Math.max(previous, nextIndex));
     };
 
+    const saveActivityAnswer = async (answer: number | string[]) => {
+        if (!attempt || !current?.activity || savingActivity) return;
+        setSavingActivity(true);
+        setAttemptError(null);
+        try {
+            const response = await fetch("/api/training/attempts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "answer", attemptId: attempt.id, slideId: current.id, answer }),
+            });
+            const data = await response.json() as TrainingAttemptResponse;
+            if (!response.ok || !data.response) throw new Error(data.error || "No se pudo guardar la respuesta.");
+            setCompletedActivities(previous => ({ ...previous, [current.id]: data.response?.is_correct || false }));
+            setFeedback(previous => ({ ...previous, [current.id]: data.feedback || "Respuesta registrada." }));
+            setAttempt(previous => previous ? { ...previous, responses: [...(previous.responses || []), data.response!] } : previous);
+        } catch (error) {
+            setAttemptError(error instanceof Error ? error.message : "No se pudo guardar la respuesta.");
+        } finally {
+            setSavingActivity(false);
+        }
+    };
+
     const checkAnswer = () => {
         if (!current?.activity || current.activity.type === "checklist") return;
         const selected = answers[current.id];
@@ -113,33 +184,38 @@ export function MultiAgentClassroom({
             setFeedback(previous => ({ ...previous, [current.id]: "Selecciona una respuesta antes de comprobar." }));
             return;
         }
-        const correct = selected === current.activity.correctIndex;
-        setCompletedActivities(previous => ({ ...previous, [current.id]: correct }));
-        setFeedback(previous => ({
-            ...previous,
-            [current.id]: correct
-                ? current.activity?.explanation || "Respuesta correcta. Puedes continuar."
-                : "Aún no. Revisa los criterios de la sección y vuelve a intentarlo.",
-        }));
+        void saveActivityAnswer(selected);
     };
 
     const toggleChecklistItem = (item: string) => {
         if (!current?.activity || current.activity.type !== "checklist") return;
         const selected = checklists[current.id] || [];
         const next = selected.includes(item) ? selected.filter(value => value !== item) : [...selected, item];
-        const isComplete = current.activity.items?.every(value => next.includes(value)) ?? false;
         setChecklists(previous => ({ ...previous, [current.id]: next }));
-        setCompletedActivities(previous => ({ ...previous, [current.id]: isComplete }));
-        setFeedback(previous => ({
-            ...previous,
-            [current.id]: isComplete ? current.activity?.explanation || "Lista completada." : "Marca cada acción que ya puedes aplicar.",
-        }));
+        setCompletedActivities(previous => ({ ...previous, [current.id]: false }));
+        setFeedback(previous => ({ ...previous, [current.id]: "Marca todas las acciones y valida la lista para continuar." }));
     };
 
-    const completeCourse = () => {
-        if (!allActivitiesComplete || currentIndex !== slides.length - 1) return;
-        setCompleted(true);
-        onComplete?.(currentIndex);
+    const completeCourse = async () => {
+        if (!attempt || !allActivitiesComplete || currentIndex !== slides.length - 1 || finishing) return;
+        setFinishing(true);
+        setAttemptError(null);
+        try {
+            const response = await fetch("/api/training/attempts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "complete", attemptId: attempt.id }),
+            });
+            const data = await response.json() as TrainingAttemptResponse;
+            if (!response.ok || !data.attempt || !data.certificate) throw new Error(data.error || "No se pudo certificar el curso.");
+            setAttempt({ ...data.attempt, certificate: data.certificate });
+            setCompleted(true);
+            onComplete?.({ attempt: data.attempt, certificate: data.certificate });
+        } catch (error) {
+            setAttemptError(error instanceof Error ? error.message : "No se pudo certificar el curso.");
+        } finally {
+            setFinishing(false);
+        }
     };
 
     const sendQuestion = async () => {
@@ -157,10 +233,8 @@ export function MultiAgentClassroom({
                 body: JSON.stringify({
                     message: text,
                     history,
-                    courseContent,
-                    userId: user?.id,
-                    communityId: user?.communityId,
-                    userName: user?.name,
+                    moduleId,
+                    currentSlideId: current?.id,
                 }),
             });
             const data = await response.json() as { responses?: TrainingChatMessage[]; error?: string };
@@ -199,6 +273,7 @@ export function MultiAgentClassroom({
                             <span className="inline-flex items-center gap-1.5"><GraduationCap className="h-4 w-4" /> Aula virtual CoCo</span>
                             <span>·</span>
                             <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {estimatedMinutes} min</span>
+                            <span>·</span><span>Versión {moduleVersion}</span>
                         </div>
                         <h1 className="mt-1 truncate text-xl font-semibold cc-text-primary sm:text-2xl">{courseTitle}</h1>
                     </div>
@@ -210,6 +285,8 @@ export function MultiAgentClassroom({
                     </div>
                 </div>
             </header>
+
+            {attemptError && <div role="alert" className="border-b px-5 py-3 text-sm" style={{ borderColor: "var(--cc-rose)", background: "var(--cc-rose-tint)", color: "var(--cc-rose)" }}>{attemptError}</div>}
 
             <div className="grid min-h-[680px] lg:grid-cols-[230px_minmax(0,1fr)_330px]">
                 <nav className="border-b p-4 lg:border-b-0 lg:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
@@ -254,21 +331,7 @@ export function MultiAgentClassroom({
                         <span className="text-xs font-semibold cc-text-tertiary">Sección {currentIndex + 1} de {slides.length}</span>
                     </div>
 
-                    <div className="mt-8 max-w-3xl">
-                        <h2 className="text-3xl font-semibold leading-tight cc-text-primary sm:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>{current.title}</h2>
-                        <ul className="mt-7 space-y-4">
-                            {current.bullets.map((bullet, index) => (
-                                <li key={`${current.id}-${index}`} className="flex gap-4 text-base leading-7 cc-text-secondary">
-                                    <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full" style={{ background: theme.accent }} />
-                                    <span>{bullet}</span>
-                                </li>
-                            ))}
-                        </ul>
-                        <div className="mt-7 rounded-xl border-l-4 p-4" style={{ borderColor: theme.accent, background: theme.soft }}>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: theme.accent }}>Clave para el trabajo</p>
-                            <p className="mt-2 text-sm leading-6 cc-text-primary">{current.notes}</p>
-                        </div>
-                    </div>
+                    <SlideCanvas slide={current} accent={theme.accent} soft={theme.soft} />
 
                     {current.activity && (
                         <ActivityCard
@@ -277,6 +340,7 @@ export function MultiAgentClassroom({
                             checkedItems={checklists[current.id] || []}
                             isComplete={Boolean(completedActivities[current.id])}
                             feedback={feedback[current.id]}
+                            busy={savingActivity || !attempt}
                             onSelectAnswer={index => {
                                 setAnswers(previous => ({ ...previous, [current.id]: index }));
                                 setCompletedActivities(previous => ({ ...previous, [current.id]: false }));
@@ -284,6 +348,7 @@ export function MultiAgentClassroom({
                             }}
                             onCheckAnswer={checkAnswer}
                             onToggleChecklist={toggleChecklistItem}
+                            onValidateChecklist={() => void saveActivityAnswer(checklists[current.id] || [])}
                         />
                     )}
 
@@ -292,9 +357,10 @@ export function MultiAgentClassroom({
                         {currentIndex < slides.length - 1 ? (
                             <Button type="button" variant="copper" disabled={!currentActivityComplete} onClick={() => goTo(currentIndex + 1)}>Continuar<ArrowRight className="h-4 w-4" /></Button>
                         ) : (
-                            <Button type="button" variant="copper" disabled={!allActivitiesComplete || completed} onClick={completeCourse}>
-                                {completed ? <CheckCircle2 className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-                                {completed ? "Curso completado" : "Completar curso"}
+                            completed && attempt?.certificate ? <a href={`/api/training/certificates/${attempt.certificate.id}`} className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white" style={{ background: "var(--cc-copper)" }}><Download className="h-4 w-4" />Descargar constancia</a> :
+                            <Button type="button" variant="copper" disabled={!allActivitiesComplete || !attempt || finishing} onClick={() => void completeCourse()}>
+                                {finishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                {finishing ? "Certificando" : "Completar y certificar"}
                             </Button>
                         )}
                     </div>
@@ -304,13 +370,15 @@ export function MultiAgentClassroom({
                     <div className="border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
-                            <div><p className="text-sm font-semibold cc-text-primary">Tutora CoCo</p><p className="text-xs cc-text-secondary">Resuelve dudas del curso</p></div>
+                            <div><p className="text-sm font-semibold cc-text-primary">Equipo multiagente CoCo</p><p className="text-xs cc-text-secondary">Tutora + pares de práctica, con contexto de esta sección</p></div>
                         </div>
                     </div>
                     <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
                         {messages.map(message => (
                             <div key={message.id} className={`rounded-xl px-3 py-2.5 text-sm leading-6 ${message.role === "user" ? "ml-6 text-white" : "mr-3"}`} style={{ background: message.role === "user" ? "var(--cc-ink)" : "var(--cc-paper)", border: message.role === "user" ? undefined : "1px solid var(--cc-line)" }}>
+                                {message.role !== "user" && <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{message.role === "tutor" ? "Tutora CoCo" : message.name || "Compañero de práctica"}</p>}
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <p>{children}</p>, ul: ({ children }) => <ul className="list-disc pl-4">{children}</ul>, ol: ({ children }) => <ol className="list-decimal pl-4">{children}</ol> }}>{message.text}</ReactMarkdown>
+                                {message.blackboard && <div className="mt-3 rounded-lg border p-3 text-xs leading-5 cc-text-primary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.blackboard}</ReactMarkdown></div>}
                             </div>
                         ))}
                         {isTyping && <div className="mr-3 flex items-center gap-2 rounded-xl border px-3 py-3 text-xs cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><Loader2 className="h-3.5 w-3.5 animate-spin" />CoCo está revisando el curso…</div>}
@@ -328,24 +396,67 @@ export function MultiAgentClassroom({
     );
 }
 
+function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: string; soft: string }) {
+    const opening = slide.layout === "opening";
+    const process = slide.layout === "process";
+    const comparison = slide.layout === "comparison" || Boolean(slide.role_cards?.length);
+    const scenario = slide.layout === "scenario";
+    return (
+        <section className="mt-7 max-w-4xl">
+            <div className={`overflow-hidden rounded-2xl border ${opening ? "p-7 sm:p-10" : "p-5 sm:p-7"}`} style={{ borderColor: "var(--cc-line)", background: opening ? "var(--cc-ink)" : "var(--cc-paper-warm)" }}>
+                <div className="flex items-start justify-between gap-5">
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: opening ? "#d8a486" : accent }}>{slide.layout === "process" ? "Flujo operativo" : slide.layout === "scenario" ? "Decisión guiada" : slide.layout === "comparison" ? "Responsabilidades" : "Idea central"}</p>
+                        <h2 className={`mt-3 font-semibold leading-tight ${opening ? "text-4xl text-white sm:text-5xl" : "text-3xl cc-text-primary sm:text-4xl"}`} style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
+                        {slide.lead && <p className={`mt-4 max-w-3xl text-lg leading-7 ${opening ? "text-white/75" : "cc-text-secondary"}`}>{slide.lead}</p>}
+                    </div>
+                    <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl sm:flex" style={{ color: opening ? "white" : accent, background: opening ? "rgba(255,255,255,.10)" : soft }}>{process ? <Workflow className="h-6 w-6" /> : comparison ? <Building2 className="h-6 w-6" /> : scenario ? <Target className="h-6 w-6" /> : <Award className="h-6 w-6" />}</span>
+                </div>
+
+                {process ? (
+                    <ol className="mt-7 grid gap-3 sm:grid-cols-2">
+                        {slide.bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: accent }}>{index + 1}</span><span className="text-sm leading-6 cc-text-primary">{bullet}</span></li>)}
+                    </ol>
+                ) : scenario ? (
+                    <div className="mt-7 rounded-xl border-l-4 p-5" style={{ borderColor: accent, background: soft }}><p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Hechos del caso</p><ul className="mt-3 space-y-3">{slide.bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 text-sm leading-6 cc-text-primary"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />{bullet}</li>)}</ul></div>
+                ) : (
+                    <div className={`mt-7 grid gap-3 ${opening ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                        {slide.bullets.map((bullet, index) => <div key={`${slide.id}-${index}`} className="rounded-xl border p-4" style={{ borderColor: opening ? "rgba(255,255,255,.14)" : "var(--cc-line)", background: opening ? "rgba(255,255,255,.06)" : "var(--cc-paper)" }}><span className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: opening ? "#d8a486" : accent }}>{String(index + 1).padStart(2, "0")}</span><p className={`mt-2 text-sm leading-6 ${opening ? "text-white/85" : "cc-text-primary"}`}>{bullet}</p></div>)}
+                    </div>
+                )}
+
+                {comparison && slide.role_cards && <div className="mt-5 grid gap-3 sm:grid-cols-2">{slide.role_cards.map(card => <article key={`${slide.id}-${card.role}`} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}><p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>{card.role}</p><p className="mt-2 text-sm font-semibold cc-text-primary">{card.responsibility}</p><p className="mt-1 text-xs leading-5 cc-text-secondary">{card.action}</p></article>)}</div>}
+            </div>
+            <div className="mt-4 rounded-xl border-l-4 p-4" style={{ borderColor: accent, background: soft }}>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Guion de la tutora</p>
+                <p className="mt-2 text-sm leading-6 cc-text-primary">{slide.notes}</p>
+            </div>
+        </section>
+    );
+}
+
 function ActivityCard({
     slide,
     selectedAnswer,
     checkedItems,
     isComplete,
     feedback,
+    busy,
     onSelectAnswer,
     onCheckAnswer,
     onToggleChecklist,
+    onValidateChecklist,
 }: {
     slide: TrainingSlide;
     selectedAnswer?: number;
     checkedItems: string[];
     isComplete: boolean;
     feedback?: string;
+    busy: boolean;
     onSelectAnswer: (index: number) => void;
     onCheckAnswer: () => void;
     onToggleChecklist: (item: string) => void;
+    onValidateChecklist: () => void;
 }) {
     const activity = slide.activity;
     if (!activity) return null;
@@ -361,16 +472,17 @@ function ActivityCard({
                 <div className="mt-4 space-y-2">
                     {(activity.items || []).map(item => {
                         const checked = checkedItems.includes(item);
-                        return <button type="button" key={item} onClick={() => onToggleChecklist(item)} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm leading-5" style={{ borderColor: checked ? "var(--cc-sage)" : "var(--cc-line)", background: checked ? "var(--cc-sage-tint)" : "var(--cc-paper)" }}>{checked ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />}<span className="cc-text-primary">{item}</span></button>;
+                        return <button type="button" key={item} disabled={busy || isComplete} onClick={() => onToggleChecklist(item)} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm leading-5 disabled:opacity-70" style={{ borderColor: checked ? "var(--cc-sage)" : "var(--cc-line)", background: checked ? "var(--cc-sage-tint)" : "var(--cc-paper)" }}>{checked ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />}<span className="cc-text-primary">{item}</span></button>;
                     })}
+                    <Button type="button" variant="ghost" size="sm" className="mt-2" disabled={busy || isComplete || checkedItems.length !== (activity.items || []).length} onClick={onValidateChecklist}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isComplete ? <CheckCircle2 className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}{isComplete ? "Lista validada" : "Validar lista"}</Button>
                 </div>
             ) : (
                 <div className="mt-4 space-y-2">
                     {(activity.options || []).map((option, index) => {
                         const selected = selectedAnswer === index;
-                        return <button type="button" key={option} onClick={() => onSelectAnswer(index)} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm leading-5" style={{ borderColor: selected ? "var(--cc-copper)" : "var(--cc-line)", background: selected ? "var(--cc-copper-tint)" : "var(--cc-paper)" }}><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold" style={{ borderColor: selected ? "var(--cc-copper)" : "var(--cc-line-strong)", color: selected ? "var(--cc-copper)" : "var(--cc-ink-muted)" }}>{String.fromCharCode(65 + index)}</span><span className="cc-text-primary">{option}</span></button>;
+                        return <button type="button" key={option} disabled={busy || isComplete} onClick={() => onSelectAnswer(index)} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm leading-5 disabled:opacity-70" style={{ borderColor: selected ? "var(--cc-copper)" : "var(--cc-line)", background: selected ? "var(--cc-copper-tint)" : "var(--cc-paper)" }}><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold" style={{ borderColor: selected ? "var(--cc-copper)" : "var(--cc-line-strong)", color: selected ? "var(--cc-copper)" : "var(--cc-ink-muted)" }}>{String.fromCharCode(65 + index)}</span><span className="cc-text-primary">{option}</span></button>;
                     })}
-                    <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={onCheckAnswer}>{isComplete ? <CheckCircle2 className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}{isComplete ? "Respuesta comprobada" : "Comprobar respuesta"}</Button>
+                    <Button type="button" variant="ghost" size="sm" className="mt-2" disabled={busy || isComplete} onClick={onCheckAnswer}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isComplete ? <CheckCircle2 className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}{isComplete ? "Respuesta comprobada" : "Comprobar respuesta"}</Button>
                 </div>
             )}
 

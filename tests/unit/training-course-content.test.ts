@@ -5,6 +5,7 @@ import {
     isPublishableTrainingCourse,
     parseTrainingSlides,
     trainingActivityCount,
+    trainingQualityReport,
 } from '@/lib/training/courseContent';
 
 describe('training course content', () => {
@@ -18,6 +19,8 @@ describe('training course content', () => {
         }]));
         expect(slides).toHaveLength(1);
         expect(slides[0].visual_theme).toBe('ink');
+        expect(slides[0].layout).toBe('opening');
+        expect(slides[0].lead).toBe('Registrar el hecho');
     });
 
     it('rejects malformed activities instead of showing a broken interaction', () => {
@@ -37,8 +40,11 @@ describe('training course content', () => {
             'Registrar cada novedad importante. Confirmar los antecedentes antes de actuar. Escalar al responsable y comunicar el avance.',
             'concierge',
         );
-        expect(slides.length).toBeGreaterThanOrEqual(5);
-        expect(trainingActivityCount(slides)).toBeGreaterThanOrEqual(2);
+        expect(slides.length).toBeGreaterThanOrEqual(6);
+        expect(trainingActivityCount(slides)).toBeGreaterThanOrEqual(3);
+        expect(new Set(slides.map(slide => slide.layout)).size).toBeGreaterThanOrEqual(4);
+        expect(slides.some(slide => (slide.role_cards?.length || 0) >= 2)).toBe(true);
+        expect(trainingQualityReport(slides).score).toBeGreaterThanOrEqual(80);
         expect(isPublishableTrainingCourse(slides)).toBe(true);
     });
 
@@ -55,7 +61,7 @@ describe('training course content', () => {
             'admin',
         );
         expect(slides).toHaveLength(6);
-        expect(trainingActivityCount(slides)).toBeGreaterThanOrEqual(2);
+        expect(trainingActivityCount(slides)).toBeGreaterThanOrEqual(3);
         expect(isPublishableTrainingCourse(slides)).toBe(true);
     });
 });
