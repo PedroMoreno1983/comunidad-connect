@@ -13,6 +13,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const writeArtifacts = process.env.QA_WRITE_ARTIFACTS !== '0';
+const loginTimeoutMs = Number(process.env.QA_LOGIN_TIMEOUT_MS || 20_000);
 const report = { generatedAt: new Date().toISOString(), baseUrl, passed: false, checks: [], failures: [] };
 
 function assert(condition, message, details = {}) {
@@ -33,11 +34,21 @@ async function browserJson(page, url, options = {}) {
 }
 
 async function login(page, email, password) {
-    await page.goto(`${baseUrl}/login?next=/staff/training`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${baseUrl}/login?next=/staff/training`, { waitUntil: 'networkidle' });
     await page.locator('#login-identity').fill(email);
     await page.locator('#login-password').fill(password);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 20_000 });
+    try {
+        await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: loginTimeoutMs, waitUntil: 'domcontentloaded' });
+    } catch (error) {
+        const state = await page.evaluate(() => ({
+            href: window.location.href,
+            alerts: Array.from(document.querySelectorAll('[role="alert"]')).map(node => node.textContent?.trim()).filter(Boolean),
+            cookieNames: document.cookie.split(';').map(item => item.split('=')[0]?.trim()).filter(Boolean),
+            authStorageKeys: Object.keys(window.localStorage).filter(key => key.startsWith('sb-')),
+        }));
+        throw Object.assign(error, { message: `${error.message}\nLogin state: ${JSON.stringify(state)}` });
+    }
     await page.goto(`${baseUrl}/staff/training`, { waitUntil: 'networkidle' });
     await page.getByText('Cursos para administrar y operar mejor').waitFor({ timeout: 20_000 });
 }
