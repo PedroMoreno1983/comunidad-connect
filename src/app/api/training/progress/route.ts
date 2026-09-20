@@ -34,22 +34,25 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json() as Record<string, unknown>;
     const moduleId = typeof body.moduleId === 'string' ? body.moduleId : '';
-    const status = body.status === 'completed' ? 'completed' : 'in_progress';
+    if (body.status === 'completed') {
+        return NextResponse.json({ error: 'La finalización se registra únicamente al validar actividades o evidencia del curso externo.' }, { status: 400 });
+    }
+    const status = 'in_progress' as const;
     const lastSlideIndex = typeof body.lastSlideIndex === 'number' && Number.isInteger(body.lastSlideIndex)
         ? Math.max(0, Math.min(body.lastSlideIndex, 10_000))
         : 0;
     if (!moduleId) return NextResponse.json({ error: 'Falta el curso.' }, { status: 400 });
 
     const supabase = getSupabaseAdmin();
-    const { data: module } = await supabase
+    const { data: courseModule } = await supabase
         .from('training_modules')
         .select('id,target_audience,community_id,is_active')
         .eq('id', moduleId)
         .eq('is_active', true)
         .or(`community_id.is.null,community_id.eq.${profile.community_id}`)
         .maybeSingle();
-    if (!module) return NextResponse.json({ error: 'Curso no disponible para tu comunidad.' }, { status: 404 });
-    if (profile.role !== 'admin' && !['all', profile.role].includes(module.target_audience)) {
+    if (!courseModule) return NextResponse.json({ error: 'Curso no disponible para tu comunidad.' }, { status: 404 });
+    if (profile.role !== 'admin' && !['all', profile.role].includes(courseModule.target_audience)) {
         return NextResponse.json({ error: 'Curso no disponible para tu rol.' }, { status: 403 });
     }
 
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
         community_id: profile.community_id,
         status,
         last_slide_index: lastSlideIndex,
-        completed_at: status === 'completed' ? now : null,
+        completed_at: null,
         updated_at: now,
     };
     const { data, error } = await supabase
