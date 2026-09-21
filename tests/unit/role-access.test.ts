@@ -14,9 +14,11 @@ describe("roleAccess", () => {
         expect(isDashboardPathAllowedForRole("/concierge", "concierge")).toBe(true);
     });
 
-    it("replaces a forbidden next= with the role home and a denied flag", () => {
-        expect(postLoginPath("/admin/finanzas", "resident")).toBe("/home?acceso=denegado");
-        expect(postLoginPath("/expenses", "concierge")).toBe("/concierge?acceso=denegado");
+    // Un next= de otro rol es un destino inválido (típico al cambiar de cuenta),
+    // no un intento fallido: se va al home del rol sin marcar acceso denegado.
+    it("replaces a forbidden next= with the clean role home", () => {
+        expect(postLoginPath("/admin/finanzas", "resident")).toBe("/home");
+        expect(postLoginPath("/expenses", "concierge")).toBe("/concierge");
         expect(postLoginPath("/expenses", "resident")).toBe("/expenses");
         expect(postLoginPath("/home", "admin")).toBe("/admin");
     });
