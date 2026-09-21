@@ -1,8 +1,10 @@
 import 'server-only';
 
-type AdminClient = {
-  from: (table: string) => any;
-};
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// Solo se usa `.from()`: aceptar el cliente completo obliga a tipar cada query
+// contra el esquema, y el cliente admin de estas rutas no lleva generics.
+type AdminClient = Pick<SupabaseClient, 'from'>;
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
