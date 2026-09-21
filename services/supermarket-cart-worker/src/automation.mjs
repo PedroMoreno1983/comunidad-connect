@@ -2,6 +2,13 @@ import { Browser, Builder, By } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import { normalize, parseCartTotal } from './cartTotal.mjs';
 import { verifyLiderCart, verifyDirectCart } from './cartVerification.mjs';
+import {
+  LIDER_CART_API_SCRIPT,
+  apiEligibleItems,
+  apiRequestItems,
+  confirmLiderItems,
+  parseLiderCartResponse,
+} from './liderCartApi.mjs';
 
 const BLOCKED_TEXT = [
   'robot or human',
@@ -101,6 +108,11 @@ export async function createDriver(webDriverUrl) {
   // backend anti-bot de la tienda rechaza silenciosamente la respuesta del usuario
   // aunque este mantenga presionado el boton en pantalla. Ademas elimina la barra
   // de 56 px de aviso, completando el modo kiosco al 100%.
+  //
+  // Sin user-agent fijo a proposito: uno inventado ("Windows / Chrome 130") en
+  // un Chromium de Linux mas nuevo contradice a navigator.userAgentData, los
+  // client hints y el renderer. PerimeterX cruza esas senales y la incoherencia
+  // es por si sola motivo de bloqueo; el UA real es coherente consigo mismo.
   options.excludeSwitches('enable-automation');
   const proxyServer = process.env.SUPERMARKET_HTTP_PROXY?.trim();
   if (proxyServer) {
@@ -117,23 +129,13 @@ export async function createDriver(webDriverUrl) {
     .setChromeOptions(options)
     .usingServer(webDriverUrl)
     .build();
-  await driver.manage().setTimeouts({ implicit: 0, pageLoad: 60_000, script: 20_000 });
+  // `script` cubre executeAsyncScript: la carga por API de Lider baja el bundle
+  // del sitio y llama a GraphQL a traves del proxy residencial, que suma latencia.
+  await driver.manage().setTimeouts({ implicit: 0, pageLoad: 60_000, script: 45_000 });
 
-  // Garantizar que navigator.webdriver no quede expuesto como true para scripts de la tienda
-  try {
-    await driver.sendDevToolsCommand('Page.addScriptToEvaluateOnNewDocument', {
-      source: `
-        try {
-          Object.defineProperty(navigator, 'webdriver', {
-            get: () => undefined,
-            configurable: true,
-          });
-        } catch {}
-      `,
-    });
-  } catch {
-    // CDP es opcional segun soporte del contenedor remoto
-  }
+  // Nada de sendDevToolsCommand para ocultar navigator.webdriver: abrir el
+  // protocolo CDP es en si mismo una senal que PerimeterX detecta, y con
+  // AutomationControlled apagado la propiedad ya queda en false nativamente.
 
   await warnIfBrowserChromeVisible(driver);
   return driver;
@@ -386,6 +388,78 @@ async function openCart(driver, config) {
   await navigate(driver, config.cartUrl).catch(() => undefined);
 }
 
+async function currentHost(driver) {
+  try {
+    return new URL(await driver.getCurrentUrl()).hostname;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Camino rapido de Lider: una navegacion a super.lider.cl y una llamada a la
+ * API de la tienda con toda la canasta. Devuelve los items que siguen
+ * pendientes para el recorrido por fichas: los que no traen sku/offerId y los
+ * que la tienda no confirmo. Si la API no esta disponible (contrato cambiado,
+ * sin release-metadata, etc.) no se asume nada y todo cae al recorrido.
+ */
+async function processLiderApi(driver, session, hooks) {
+  const config = session.config;
+  const eligible = apiEligibleItems(session.items);
+  if (!config.cartApi || eligible.length === 0) return session.items;
+
+  hooks.update({
+    status: 'loading',
+    current: 0,
+    detail: `Abriendo ${session.store} para cargar ${eligible.length} productos de una vez…`,
+  });
+  await navigate(driver, config.cartApiUrl);
+
+  let landed = null;
+  for (let attempt = 0; attempt < 3 && !landed; attempt += 1) {
+    hooks.assertOpen();
+    const text = await bodyText(driver);
+    const onApiHost = config.cartApiHosts.includes(await currentHost(driver));
+    if (!onApiHost || containsAny(text, BLOCKED_TEXT) || containsAny(text, INTERVENTION_TEXT)) {
+      const detail = containsAny(text, BLOCKED_TEXT)
+        ? 'La tienda pide una verificación humana. Complétala en el navegador y continúa.'
+        : 'La tienda necesita ubicación, despacho o inicio de sesión. Completa el paso y continúa.';
+      if (!await hooks.waitForUser(detail)) hooks.assertOpen();
+      if (!config.cartApiHosts.includes(await currentHost(driver))) await navigate(driver, config.cartApiUrl);
+      continue;
+    }
+
+    const outcome = await driver
+      .executeAsyncScript(LIDER_CART_API_SCRIPT, apiRequestItems(eligible))
+      .catch(error => ({ ok: false, reason: error?.message || String(error) }));
+    if (!outcome?.ok) {
+      console.warn(`[cart] Lider API no disponible: ${outcome?.reason || 'sin respuesta'}`);
+      break;
+    }
+    landed = parseLiderCartResponse(outcome.payload);
+    if (!landed) {
+      console.warn(`[cart] Lider API respondio ${outcome.status} sin lineItems; se sigue por fichas.`);
+      break;
+    }
+  }
+  if (!landed) {
+    hooks.update({ detail: 'La carga rápida no estuvo disponible; se cargará producto por producto.' });
+    return session.items;
+  }
+
+  const { confirmed, unconfirmed } = confirmLiderItems(eligible, landed);
+  for (const entry of unconfirmed) console.warn(`[cart] Lider API: ${entry.item.name}: ${entry.detail}`);
+  const confirmedIds = new Set(confirmed.map(entry => entry.item.id));
+  const pending = session.items.filter(item => !confirmedIds.has(item.id));
+  hooks.update({
+    current: confirmed.length,
+    detail: pending.length === 0
+      ? `${confirmed.length} productos confirmados por ${session.store}.`
+      : `${confirmed.length} de ${session.items.length} confirmados por ${session.store}; el resto se carga producto por producto.`,
+  });
+  return pending;
+}
+
 export async function runCartAutomation(driver, session, hooks) {
   if (session.directCartUrl) {
     hooks.update({
@@ -406,14 +480,18 @@ export async function runCartAutomation(driver, session, hooks) {
     return;
   }
 
-  for (let index = 0; index < session.items.length; index += 1) {
+  // Lo que la API confirmo ya esta en el carro; por fichas va solo el resto.
+  // Para tiendas sin API `pending` es la lista completa y nada cambia.
+  const pending = await processLiderApi(driver, session, hooks);
+  const offset = session.items.length - pending.length;
+  for (let index = 0; index < pending.length; index += 1) {
     hooks.assertOpen();
-    const item = session.items[index];
+    const item = pending[index];
     hooks.update({
       status: 'loading',
-      current: index + 1,
+      current: offset + index + 1,
       itemName: item.name,
-      detail: `Cargando producto ${index + 1} de ${session.items.length}…`,
+      detail: `Cargando producto ${offset + index + 1} de ${session.items.length}…`,
     });
     if (index > 0) await sleep(ITEM_PACING_MS);
     const result = await processManagedItem(driver, session, hooks, item);

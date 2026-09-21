@@ -26,6 +26,12 @@ export const STORE_CONFIGS = Object.freeze({
     directHosts: [],
     cartUrl: 'https://super.lider.cl/cart',
     cartMode: 'dom',
+    // Carga completa en una llamada a la API de la tienda (ver liderCartApi.mjs).
+    // Solo vive en super.lider.cl, donde esta el carro; las fichas quedan como
+    // respaldo para lo que la API no confirme.
+    cartApi: 'lider-orchestra',
+    cartApiUrl: 'https://super.lider.cl/',
+    cartApiHosts: ['super.lider.cl'],
     addSelectors: ['button[data-automation-id="atc"]', '[data-testid="add-to-cart-section"] button', 'button[data-automation-id="add-to-cart"]', 'button[aria-label*="Agregar al carro" i]', '[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])'],
     plusSelectors: ['button[aria-label*="Aumentar" i]', 'button[aria-label="Agregar otro"]', 'button[data-testid*="increment"]'],
     quantitySelectors: ['input[aria-label*="Cantidad" i]', '[data-testid*="quantity"] input'],
@@ -129,6 +135,8 @@ export function sanitizeSessionRequest(body) {
       productUrl,
       sku: text(entry.sku, 80) || undefined,
       offerId: text(entry.offerId, 160) || undefined,
+      // Unidad de venta que Lider espera en `updateItems` (EACH, etc).
+      salesUnit: text(entry.salesUnit, 32) || undefined,
     }];
   });
 
