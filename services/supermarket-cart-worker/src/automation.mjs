@@ -1,12 +1,14 @@
 import { Browser, Builder, By } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import { normalize, parseCartTotal } from './cartTotal.mjs';
-import { verifyLiderCart, verifyDirectCart } from './cartVerification.mjs';
+import { LIDER_CART_LINKS_SCRIPT, liderLandedFromLinks, verifyLiderCart, verifyDirectCart } from './cartVerification.mjs';
 import {
   LIDER_CART_API_SCRIPT,
   apiEligibleItems,
   apiRequestItems,
-  confirmLiderItems,
+  itemsStillToLoad,
+  liderCartReadRequired,
+  liderHomepageGate,
   parseLiderCartResponse,
 } from './liderCartApi.mjs';
 
@@ -396,12 +398,19 @@ async function currentHost(driver) {
   }
 }
 
+async function readLiderCartLinks(driver) {
+  const links = await driver.executeScript(LIDER_CART_LINKS_SCRIPT).catch(() => null);
+  return Array.isArray(links) ? links : null;
+}
+
 /**
  * Camino rapido de Lider: una navegacion a super.lider.cl y una llamada a la
  * API de la tienda con toda la canasta. Devuelve los items que siguen
- * pendientes para el recorrido por fichas: los que no traen sku/offerId y los
- * que la tienda no confirmo. Si la API no esta disponible (contrato cambiado,
- * sin release-metadata, etc.) no se asume nada y todo cae al recorrido.
+ * pendientes para el recorrido por fichas: los que no traen sku/offerId, los
+ * que la tienda no confirmo, y el faltante de una cantidad corta. El encabezado
+ * "Inicia sesión" de la home anonima no pausa este camino. Si la llamada pudo
+ * haber escrito el carro y no podemos leer la respuesta, se relee la pagina
+ * del carro antes de volver a agregar.
  */
 async function processLiderApi(driver, session, hooks) {
   const config = session.config;
@@ -416,14 +425,16 @@ async function processLiderApi(driver, session, hooks) {
   await navigate(driver, config.cartApiUrl);
 
   let landed = null;
-  for (let attempt = 0; attempt < 3 && !landed; attempt += 1) {
+  let reread = false;
+  for (let attempt = 0; attempt < 3 && !landed && !reread; attempt += 1) {
     hooks.assertOpen();
     const text = await bodyText(driver);
     const onApiHost = config.cartApiHosts.includes(await currentHost(driver));
-    if (!onApiHost || containsAny(text, BLOCKED_TEXT) || containsAny(text, INTERVENTION_TEXT)) {
-      const detail = containsAny(text, BLOCKED_TEXT)
+    const gate = liderHomepageGate(text, BLOCKED_TEXT, INTERVENTION_TEXT);
+    if (!onApiHost || gate) {
+      const detail = gate === 'blocked'
         ? 'La tienda pide una verificación humana. Complétala en el navegador y continúa.'
-        : 'La tienda necesita ubicación, despacho o inicio de sesión. Completa el paso y continúa.';
+        : 'La tienda necesita ubicación o despacho. Completa el paso y continúa.';
       if (!await hooks.waitForUser(detail)) hooks.assertOpen();
       if (!config.cartApiHosts.includes(await currentHost(driver))) await navigate(driver, config.cartApiUrl);
       continue;
@@ -432,25 +443,39 @@ async function processLiderApi(driver, session, hooks) {
     const outcome = await driver
       .executeAsyncScript(LIDER_CART_API_SCRIPT, apiRequestItems(eligible))
       .catch(error => ({ ok: false, reason: error?.message || String(error) }));
+    if (liderCartReadRequired(outcome)) {
+      console.warn(`[cart] Lider API sin lectura confiable: ${outcome?.reason || outcome?.status || 'sin respuesta'}`);
+      reread = true;
+      break;
+    }
     if (!outcome?.ok) {
       console.warn(`[cart] Lider API no disponible: ${outcome?.reason || 'sin respuesta'}`);
       break;
     }
     landed = parseLiderCartResponse(outcome.payload);
-    if (!landed) {
-      console.warn(`[cart] Lider API respondio ${outcome.status} sin lineItems; se sigue por fichas.`);
-      break;
-    }
   }
+
+  if (reread) {
+    hooks.update({ detail: 'La respuesta de Lider no se pudo leer. Revisando el carro antes de seguir…' });
+    await navigate(driver, config.cartUrl);
+    const links = await readLiderCartLinks(driver);
+    if (!links) {
+      hooks.update({
+        detail: 'No se pudo leer el carro de Lider. No se vuelve a agregar la canasta para no duplicarla.',
+      });
+      const eligibleIds = new Set(eligible.map(item => item.id));
+      return session.items.filter(item => !eligibleIds.has(item.id));
+    }
+    landed = liderLandedFromLinks(eligible, links);
+  }
+
   if (!landed) {
     hooks.update({ detail: 'La carga rápida no estuvo disponible; se cargará producto por producto.' });
     return session.items;
   }
 
-  const { confirmed, unconfirmed } = confirmLiderItems(eligible, landed);
+  const { confirmed, unconfirmed, pending } = itemsStillToLoad(session.items, landed);
   for (const entry of unconfirmed) console.warn(`[cart] Lider API: ${entry.item.name}: ${entry.detail}`);
-  const confirmedIds = new Set(confirmed.map(entry => entry.item.id));
-  const pending = session.items.filter(item => !confirmedIds.has(item.id));
   hooks.update({
     current: confirmed.length,
     detail: pending.length === 0
@@ -509,11 +534,7 @@ export async function runCartAutomation(driver, session, hooks) {
   session.cartTotal = await readCartTotal(driver).catch(() => 0);
   let verified = false;
   if (session.store === 'Lider') {
-    const links = await driver.executeScript(`
-      return [...document.querySelectorAll('a[href]')]
-        .filter(a => /en el carro/i.test(a.getAttribute('aria-label') || ''))
-        .map(a => ({ href: a.href, label: a.getAttribute('aria-label') }));
-    `).catch(() => []);
+    const links = await readLiderCartLinks(driver) || [];
     const result = verifyLiderCart(session.items, links);
     session.added = result.verified;
     session.failed = session.items.length - result.verified;

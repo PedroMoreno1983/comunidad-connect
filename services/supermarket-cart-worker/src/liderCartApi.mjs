@@ -1,3 +1,5 @@
+import { normalize } from './cartTotal.mjs';
+
 /**
  * Carga del carro de Lider por su propia API, desde el navegador remoto.
  *
@@ -47,14 +49,29 @@ export function apiEligibleItems(items) {
  * Lo que la pagina necesita para llamar a la mutacion. Se serializa antes de
  * cruzar al navegador, asi que solo viajan strings y numeros.
  */
+/**
+ * `updateItems` fija la cantidad por SKU: dos líneas del mismo producto se
+ * pisan si se mandan por separado. Se suman antes de la mutación.
+ */
 export function apiRequestItems(items) {
-  return apiEligibleItems(items).map(item => ({
-    offerId: String(item.offerId),
-    quantity: Number(item.quantity) || 1,
-    usItemId: String(item.sku),
-    salesUnit: String(item.salesUnit || DEFAULT_SALES_UNIT),
-    name: String(item.name || ''),
-  }));
+  const grouped = new Map();
+  for (const item of apiEligibleItems(items)) {
+    const key = normalizeItemKey(item.sku);
+    const quantity = Number(item.quantity) || 1;
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, {
+        offerId: String(item.offerId),
+        quantity,
+        usItemId: String(item.sku),
+        salesUnit: String(item.salesUnit || DEFAULT_SALES_UNIT),
+        name: String(item.name || ''),
+      });
+      continue;
+    }
+    existing.quantity += quantity;
+  }
+  return [...grouped.values()];
 }
 
 /**
@@ -80,23 +97,89 @@ export function parseLiderCartResponse(payload) {
  * menos que eso es stock limitado y se informa, no se da por bueno.
  */
 export function confirmLiderItems(items, landed) {
+  const remaining = new Map(landed || []);
   const confirmed = [];
   const unconfirmed = [];
   for (const item of apiEligibleItems(items)) {
-    const quantity = landed?.get(normalizeItemKey(item.sku)) || 0;
-    if (quantity >= item.quantity) {
-      confirmed.push({ item, quantity });
+    const key = normalizeItemKey(item.sku);
+    const available = remaining.get(key) || 0;
+    const wanted = Number(item.quantity) || 1;
+    if (available >= wanted) {
+      remaining.set(key, available - wanted);
+      confirmed.push({ item, quantity: wanted });
       continue;
     }
+    remaining.set(key, 0);
     unconfirmed.push({
       item,
-      quantity,
-      detail: quantity > 0
-        ? `Lider dejo ${quantity} de ${item.quantity} unidades; revisa este producto en el carro.`
+      quantity: available,
+      detail: available > 0
+        ? `Lider dejo ${available} de ${wanted} unidades; revisa este producto en el carro.`
         : 'Lider no confirmo este producto en el carro.',
     });
   }
   return { confirmed, unconfirmed };
+}
+
+/**
+ * Lo que todavía hay que cargar a mano. Si la API ya dejó una parte, el
+ * recorrido por fichas suma solo el faltante: repetir la cantidad completa
+ * encima de lo que ya está en el carro la duplica.
+ */
+export function itemsStillToLoad(items, landed) {
+  const list = Array.isArray(items) ? items : [];
+  const { confirmed, unconfirmed } = confirmLiderItems(list, landed);
+  const shortById = new Map(unconfirmed.map(entry => [entry.item.id, entry]));
+  const eligibleIds = new Set(apiEligibleItems(list).map(item => item.id));
+  const pending = [];
+  for (const item of list) {
+    if (!eligibleIds.has(item.id)) {
+      pending.push(item);
+      continue;
+    }
+    const short = shortById.get(item.id);
+    if (!short) continue;
+    const landedQty = Number(short.quantity) || 0;
+    const deficit = (Number(item.quantity) || 1) - landedQty;
+    if (deficit <= 0) continue;
+    pending.push(landedQty > 0 ? { ...item, quantity: deficit } : item);
+  }
+  return { confirmed, unconfirmed, pending };
+}
+
+/** El encabezado "Inicia sesión" está siempre en la home anónima. No es un modal. */
+const LIDER_LOGIN_CTA = ['inicia sesion', 'inicia sesión', 'ingresa a tu cuenta'];
+
+export function liderHomepageGate(text, blockedText, interventionText) {
+  const page = normalize(text);
+  const has = values => (Array.isArray(values) ? values : []).some(value => page.includes(normalize(value)));
+  if (has(blockedText)) return 'blocked';
+  const login = new Set(LIDER_LOGIN_CTA.map(value => normalize(value)));
+  const delivery = (Array.isArray(interventionText) ? interventionText : [])
+    .filter(value => !login.has(normalize(value)));
+  if (has(delivery)) return 'delivery';
+  return null;
+}
+
+/**
+ * Razones que el script devuelve ANTES de hacer el POST. Cualquier otra falla
+ * (timeout de Selenium, red, JSON ilegible) puede haber dejado el carro escrito.
+ */
+const PREFLIGHT_REASONS = new Set([
+  'sin release-metadata',
+  'sin appVersion',
+  'sin bundle _app-',
+  'sin mutation updateItems en el bundle',
+  'documento updateItems truncado',
+]);
+
+export function liderCartReadRequired(outcome) {
+  if (!outcome || typeof outcome !== 'object') return true;
+  if (outcome.ok) return parseLiderCartResponse(outcome.payload) == null;
+  const reason = String(outcome.reason || '');
+  if (PREFLIGHT_REASONS.has(reason)) return false;
+  if (reason.startsWith('bundle ')) return false;
+  return true;
 }
 
 /**

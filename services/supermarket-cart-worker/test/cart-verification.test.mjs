@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyDirectCart, verifyLiderCart } from '../src/cartVerification.mjs';
+import { liderLandedFromLinks, verifyDirectCart, verifyLiderCart } from '../src/cartVerification.mjs';
 
 const item = { name: 'Leche', productUrl: 'https://super.lider.cl/ip/leche/00123', quantity: 2 };
 test('verifies the actual product and quantity, deduplicating image/title links', () => {
@@ -15,6 +15,17 @@ test('refuses wrong products, wrong quantities and login pages', () => {
     assert.deepEqual(result.missingItems, ['Leche']);
   }
 });
+test('reads a cart page back into normalized SKU quantities', () => {
+  const landed = liderLandedFromLinks(
+    [{ sku: '00000000000123', productUrl: 'https://super.lider.cl/ip/leche/00000000000123' }],
+    [
+      { href: 'https://super.lider.cl/ip/leche/00000000000123', label: 'Leche, 2 en el carro' },
+      { href: 'https://super.lider.cl/ip/leche/00000000000123', label: 'Leche' },
+    ],
+  );
+  assert.deepEqual([...landed], [['123', 2]]);
+});
+
 test('adds requested quantities for repeated products', () => {
   assert.equal(verifyLiderCart([item, item], [{ href: item.productUrl, label: 'Leche, 4 en el carro' }]).complete, true);
 });
