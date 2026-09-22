@@ -18,7 +18,7 @@
 
 - Proxy credentials: removed tracked defaults and added a regression test. Rotate the exposed provider credential and install it securely before considering the incident closed. Removing the value does not remove it from Git history. Do not deploy the compose configuration without both required variables.
 - Lider: no real successful end-to-end cart confirmed in this stabilization pass. Do not describe the installed adapter as proof of success or bypass human verification.
-- Full Tottus retry: https://github.com/PedroMoreno1983/comunidad-connect/actions/runs/35679661785 — verify its final result separately.
+- Full Tottus retry completed successfully: https://github.com/PedroMoreno1983/comunidad-connect/actions/runs/35679661785. Production reconciliation recorded 14,701 observed products and 799 marked out of stock on 2026-09-22 at 02:35:48 UTC.
 - Professional visual/pedagogical review of both role-specific courses and multiagent answers remains separate from functional QA.
 
 ## Workspace preservation
