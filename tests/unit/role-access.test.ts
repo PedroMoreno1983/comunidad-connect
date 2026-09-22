@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { homePathForRole, isDashboardPathAllowedForRole, postLoginPath } from "@/lib/roleAccess";
 
 describe("roleAccess", () => {
+    it.each([
+        ["/agent-center", [true, false, false]],
+        ["/staff/training", [true, false, true]],
+        ["/convivencia", [false, true, false]],
+        ["/resident/supermercado", [false, true, false]],
+    ] as const)("enforces the profile matrix for %s", (pathname, expected) => {
+        ["admin", "resident", "concierge"].forEach((role, index) => {
+            expect(isDashboardPathAllowedForRole(pathname, role)).toBe(expected[index]);
+        });
+    });
     it("sends each role to its own home without bouncing through /home", () => {
         expect(homePathForRole("admin")).toBe("/admin");
         expect(homePathForRole("concierge")).toBe("/concierge");
