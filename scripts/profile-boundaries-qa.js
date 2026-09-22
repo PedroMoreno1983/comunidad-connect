@@ -48,6 +48,7 @@ function assertStaticRoleBoundaries() {
     .find(file => fs.existsSync(file));
   if (!middlewarePath) throw new Error('No role-protection middleware was found');
   const proxy = fs.readFileSync(middlewarePath, 'utf8');
+  const roleAccess = fs.readFileSync(path.join(process.cwd(), 'src/lib/roleAccess.ts'), 'utf8');
   const sidebar = fs.readFileSync(path.join(process.cwd(), 'src/components/cc/Sidebar.tsx'), 'utf8');
   const agentApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/agent-center/route.ts'), 'utf8');
   const trainingApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/training/modules/route.ts'), 'utf8');
@@ -63,7 +64,7 @@ function assertStaticRoleBoundaries() {
   const convivenciaMigration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260726234956_admin_convivencia_privacy.sql'), 'utf8');
 
   assert(
-    /if\s*\(pathname\.startsWith\("\/agent-center"\)\)\s*\{\s*allowed\s*=\s*role\s*===\s*"admin";\s*\}/.test(proxy),
+    proxy.includes('isDashboardPathAllowedForRole(pathname, role)') && roleAccess.includes('if (pathname.startsWith("/agent-center")) return normalized === "admin"'),
     'Agent Center route is admin-only',
   );
   assert(sidebar.includes('{ href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin"]'), 'Agent Center navigation is admin-only');
@@ -71,10 +72,10 @@ function assertStaticRoleBoundaries() {
   assert(proxy.includes('"/agent-center"'), 'Agent Center page is covered by the protected route matcher');
   // The Aula lives at /staff/training. The old assertion guarded
   // /resident/training, a route that does not exist, so it proved nothing.
-  const staffRule = proxy.match(/pathname\.startsWith\("\/staff"\)\s*\)\s*\{\s*allowed\s*=\s*([^;]+);/);
+  const staffRule = roleAccess.match(/pathname\.startsWith\("\/staff"\)\) return ([^;]+);/);
   assert(proxy.includes('"/staff"'), 'Aula route is covered by the protected route matcher');
   assert(
-    Boolean(staffRule) && /role === "admin" \|\| role === "concierge"/.test(staffRule[1]),
+    Boolean(staffRule) && /normalized === "admin" \|\| normalized === "concierge"/.test(staffRule[1]),
     'Aula route is limited to admin and concierge',
   );
   assert(trainingApi.includes("!['admin', 'concierge'].includes(profile.role)"), 'Aula API rejects resident profiles');
@@ -91,8 +92,8 @@ function assertStaticRoleBoundaries() {
   );
   assert(sidebar.includes('{ href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"]'), 'Resident convivencia navigation is resident-only');
   assert(sidebar.includes('{ href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"]'), 'Admin receives a distinct convivencia management route');
-  assert(proxy.includes('pathname.startsWith("/convivencia")') && proxy.includes('allowed = role === "resident"'), 'Resident convivencia route rejects staff profiles');
-  assert(proxy.includes('pathname.startsWith("/resident/supermercado")') && proxy.includes('allowed = role === "resident"'), 'Personal supermarket route is resident-only');
+  assert(roleAccess.includes('if (pathname.startsWith("/convivencia")) return normalized === "resident"'), 'Resident convivencia route rejects staff profiles');
+  assert(roleAccess.includes('if (pathname.startsWith("/resident/supermercado")) return normalized === "resident"'), 'Personal supermarket route is resident-only');
   assert(sidebar.includes('{ href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"]'), 'Personal supermarket navigation is resident-only');
   assert(convivenciaMigration.includes("get_my_role() = 'admin' AND status IN ('escalated', 'agreement')") && !convivenciaMigration.includes("'concierge'"), 'Mediation RLS exposes only escalated cases to administrators');
   assert(!sidebar.includes('href: "/expenses/solidaridad"'), 'Mutual Support no longer appears as a separate sidebar module');
@@ -111,7 +112,7 @@ function assertStaticRoleBoundaries() {
   assert(sidebar.includes('requiresMarketplaceListing: true') && sidebar.includes('requiresServiceProvider: true'), 'Resident provider tools are conditional on real activity');
   assert(amenitiesPage.includes('const isConcierge = user?.role === "concierge"') && amenitiesPage.includes('disabled={isBooked || isConcierge}'), 'Concierge amenities access is read-only');
   assert(operationsApi.includes("!['admin', 'concierge'].includes(profile.role)") && operationsApi.includes("action: 'concierge.shift_handover'"), 'Shift handover API is limited to operational staff and audited');
-  assert(proxy.includes('pathname.startsWith("/marketplace")') && proxy.includes('pathname.startsWith("/services")'), 'Resident and admin service routes have explicit role boundaries');
+  assert(roleAccess.includes('pathname.startsWith("/marketplace")') && roleAccess.includes('pathname.startsWith("/services")'), 'Resident and admin service routes have explicit role boundaries');
 }
 
 async function main() {
