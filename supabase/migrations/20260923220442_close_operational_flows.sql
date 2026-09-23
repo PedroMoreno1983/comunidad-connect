@@ -133,7 +133,7 @@ CREATE POLICY payment_agreements_resident_read ON public.payment_agreements
     AND unit_id IN (
       SELECT id FROM public.units
       WHERE owner_id = (SELECT auth.uid())
-         OR id = (SELECT unit_id FROM public.profiles WHERE id = (SELECT auth.uid()))
+         OR id::text = (SELECT unit_id FROM public.profiles WHERE id = (SELECT auth.uid()))
     )
   );
 
@@ -153,7 +153,7 @@ CREATE POLICY payment_agreement_installments_resident_read ON public.payment_agr
         AND unit_id IN (
           SELECT id FROM public.units
           WHERE owner_id = (SELECT auth.uid())
-             OR id = (SELECT unit_id FROM public.profiles WHERE id = (SELECT auth.uid()))
+             OR id::text = (SELECT unit_id FROM public.profiles WHERE id = (SELECT auth.uid()))
         )
     )
   );
