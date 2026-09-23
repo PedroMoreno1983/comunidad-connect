@@ -64,16 +64,24 @@ export function MultiAgentClassroom({
     const [savingActivity, setSavingActivity] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const messagesRef = useRef<HTMLDivElement>(null);
+    const openedCourse = useRef<string | null>(null);
 
     useEffect(() => {
+        // Guardar el avance actualiza last_slide_index y el padre vuelve a pasar
+        // initialSlideIndex. Eso no es un curso nuevo: reiniciar aquí borraba la
+        // conversación y las respuestas que todavía no habían vuelto del servidor.
+        const courseKey = `${moduleId}:${moduleVersion}:${String(courseContent ?? "")}`;
+        if (openedCourse.current === courseKey) return;
+        openedCourse.current = courseKey;
+        const start = slides.length ? Math.min(Math.max(initialSlideIndex, 0), slides.length - 1) : 0;
         const resumedActivities = Object.fromEntries(
             slides
-                .slice(0, safeInitialIndex)
+                .slice(0, start)
                 .filter(slide => slide.activity)
                 .map(slide => [slide.id, true]),
         );
-        setCurrentIndex(safeInitialIndex);
-        setMaxVisited(safeInitialIndex);
+        setCurrentIndex(start);
+        setMaxVisited(start);
         setAnswers({});
         setChecklists({});
         setCompletedActivities(resumedActivities);
@@ -84,7 +92,7 @@ export function MultiAgentClassroom({
             role: "system",
             text: `CoCo acompaña este curso. Puedes preguntar por un concepto o por cómo aplicarlo en tu rol.`,
         }]);
-    }, [courseContent, safeInitialIndex, slides]);
+    }, [courseContent, initialSlideIndex, moduleId, moduleVersion, slides]);
 
     useEffect(() => {
         let active = true;
@@ -288,10 +296,10 @@ export function MultiAgentClassroom({
 
             {attemptError && <div role="alert" className="border-b px-5 py-3 text-sm" style={{ borderColor: "var(--cc-rose)", background: "var(--cc-rose-tint)", color: "var(--cc-rose)" }}>{attemptError}</div>}
 
-            <div className="grid min-h-[680px] lg:grid-cols-[230px_minmax(0,1fr)_330px]">
-                <nav className="border-b p-4 lg:border-b-0 lg:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
+            <div className="grid min-h-[680px] xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+                <nav className="border-b p-4 xl:border-b-0 xl:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Contenido</p>
-                    <ol className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                    <ol className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
                         {slides.map((slide, index) => {
                             const isCurrent = index === currentIndex;
                             const isAvailable = index <= maxVisited + 1;
@@ -366,7 +374,7 @@ export function MultiAgentClassroom({
                     </div>
                 </main>
 
-                <aside className="flex min-h-[520px] flex-col border-t lg:border-l lg:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                <aside className="flex min-h-[520px] flex-col border-t xl:border-l xl:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                     <div className="border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
