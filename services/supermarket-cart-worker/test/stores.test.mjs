@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { InputError, STORE_CONFIGS, sanitizeSessionRequest } from '../src/stores.mjs';
+import { InputError, STORE_CONFIGS, sanitizeSessionRequest, sessionFingerprint } from '../src/stores.mjs';
 
 const stores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'];
 
@@ -42,6 +42,35 @@ test('allows only the official direct-cart host for the selected retailer', () =
     directCartUrl: 'https://example.com/checkout/cart/add?sku=1',
     items: [],
   }), InputError);
+});
+
+test('a corrected sku, offerId or salesUnit is a different retry', () => {
+  const base = {
+    store: 'Lider',
+    directCartUrl: null,
+    items: [{
+      id: 'a',
+      quantity: 1,
+      productUrl: 'https://super.lider.cl/ip/leche/123',
+      sku: '111',
+      offerId: 'old',
+      salesUnit: 'EACH',
+    }],
+  };
+  const original = sessionFingerprint('user-1', base);
+  assert.equal(sessionFingerprint('user-1', base), original);
+  assert.notEqual(sessionFingerprint('user-1', {
+    ...base,
+    items: [{ ...base.items[0], offerId: 'new' }],
+  }), original);
+  assert.notEqual(sessionFingerprint('user-1', {
+    ...base,
+    items: [{ ...base.items[0], sku: '222' }],
+  }), original);
+  assert.notEqual(sessionFingerprint('user-1', {
+    ...base,
+    items: [{ ...base.items[0], salesUnit: 'WEIGHT' }],
+  }), original);
 });
 
 test('rejects unsupported stores and empty managed carts', () => {
