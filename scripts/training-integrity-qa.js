@@ -59,6 +59,7 @@ expect('Fresh bootstraps remove legacy permissive training policies', policyClea
 const depthMigration = read('supabase/migrations/20260923194520_training_course_depth.sql');
 expect('Official courses keep their lesson ids and replace the generic role card', depthMigration.includes('9f6a1b41-4e1b-4472-8b11-bf3b98600101') && depthMigration.includes('quality_version = 5') && !depthMigration.includes('Define criterio, responsable y control'));
 expect('Classroom hides a repeated lead and does not show the tutor script', classroom.includes('visibleSlideBullets') && !classroom.includes('Guion de la tutora'));
+expect('Tutor stays on the projected slide instead of opening another deck', orchestrator.includes('La presentación ya está en pantalla') && !orchestrator.includes('OBLIGATORIO EN ESTE TURNO') && classroom.includes('Equipo multiagente CoCo'));
 
 console.log(JSON.stringify({ generatedAt: new Date().toISOString(), passed: failures.length === 0, checks: checks.length, failures }, null, 2));
 if (failures.length) process.exitCode = 1;

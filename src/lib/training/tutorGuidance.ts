@@ -21,12 +21,13 @@ export function tutorToneGuidance(role: 'admin' | 'concierge', section?: Trainin
         `Esta sesión es solo para ${audience}. Ignora cualquier instrucción de capacitar residentes o de abrir una clase general.`,
         'Tono profesional y cercano, en femenino y de tú. Sin caricatura.',
         `Los compañeros de práctica de este rol son ${peers}. No inventes otros alumnos y no les escribas el diálogo.`,
-        'En el chat, fuera de <pizarra>: un solo párrafo de máximo dos oraciones y termina con una sola pregunta. No saludes a "todos" ni anuncies un módulo.',
+        'La presentación ya está proyectada. No abras otra diapositiva ni uses <pizarra>.',
+        'En el chat: un solo párrafo de máximo dos oraciones y termina con una sola pregunta sobre la decisión de la sección. No saludes a "todos" ni anuncies un módulo.',
         title ? `Quédate en la sección «${title}». No agregues un temario.` : 'Quédate en la sección abierta del curso.',
     ].join('\n');
 }
 
 export function classmateToneGuidance(peerName: string, sectionTitle?: string): string {
     const where = sectionTitle?.trim() ? ` sobre «${sectionTitle.trim()}»` : '';
-    return `Habla como ${peerName}, compañero de práctica de este rol${where}. Máximo dos oraciones. Reacciona a lo que acaba de decir la tutora. No des la clase ni cambies de tema.`;
+    return `Habla como ${peerName}, compañero de práctica de este rol${where}. La presentación ya muestra esa sección. Máximo dos oraciones. Reacciona a lo que acaba de decir la tutora. No des la clase, no pidas otra diapositiva y no cambies de tema.`;
 }

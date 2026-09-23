@@ -2,7 +2,6 @@ import type { TrainingSectionContext } from '@/lib/types';
 import { answerFromTrainingSection, trainingSectionFromCourseContent } from '@/lib/training/sectionFallback';
 import { classmateToneGuidance, practicePeersForRole, tutorToneGuidance } from '@/lib/training/tutorGuidance';
 import { TUTOR_PROMPT } from './agents/tutor';
-import { ImageService } from './imageService';
 import { recordAiEvent } from './telemetry';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage, type AiBudgetContext } from './budget';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -81,7 +80,7 @@ function extractGeminiError(text: string) {
 }
 
 export async function buildTrainingFallbackTurn(
-    history: ChatMessage[],
+    _history: ChatMessage[],
     userMessage: string,
     section?: TrainingSectionContext | null,
 ): Promise<ChatMessage[]> {
@@ -95,73 +94,15 @@ export async function buildTrainingFallbackTurn(
         }];
     }
 
-    const needsBlackboard = history.length <= 2;
     const shortAnswer = userMessage.trim().length <= 4
-        ? "Si. Una charla no arregla la convivencia por si sola, pero sirve para dejar **criterios claros**, practicar casos reales y ordenar que hacer cuando alguien no respeta las reglas. La disciplina mejora cuando la comunidad entiende el protocolo y lo aplica de forma pareja."
-        : "Estoy con una intermitencia del motor principal, pero sigo contigo: tomemos tu punto como caso de clase. La clave es separar **hecho**, **reglamento** y **accion concreta**: que paso, que norma aplica, quien debe actuar y en que plazo.";
-
-    let blackboard: string | undefined;
-
-    if (needsBlackboard) {
-        const imageUrl = await ImageService.generateTutorImage(
-            buildBlackboardImagePrompt(userMessage || "condominium community rules and coexistence")
-        );
-        blackboard = [
-            imageUrl ? `![Escena de aprendizaje CoCo](${imageUrl})` : "",
-            "# Criterio CoCo",
-            "",
-            "- **Escuchar el caso** sin convertirlo en pelea.",
-            "- **Identificar la regla aplicable** antes de decidir.",
-            "- **Definir responsable y plazo** para que no quede en el aire.",
-            "- **Dejar registro** para seguimiento y transparencia."
-        ].filter(Boolean).join("\n");
-    }
+        ? "La presentación ya marca el criterio. Separar el hecho, la regla y la acción de tu rol. ¿Qué parte de la sección abierta quieres aplicar?"
+        : "Sigo en la sección que tienes en pantalla. Separa el hecho, la regla y la acción de tu rol. ¿Qué decisión tomarías ahí?";
 
     return [{
         id: `tutor-fallback-${Date.now()}`,
         role: 'tutor',
         text: shortAnswer,
-        blackboard
     }];
-}
-
-function hasMarkdownImage(markdown: string) {
-    return /!\[[^\]]*\]\([^)]+\)/.test(markdown) || /<img\b/i.test(markdown);
-}
-
-function buildBlackboardImagePrompt(blackboard: string) {
-    const brief = blackboard
-        .replace(/<[^>]+>/g, " ")
-        .replace(/[#*_`>\-\[\]\(\)]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 500);
-
-    return [
-        "Editorial training illustration for a Chilean residential condominium community classroom.",
-        "Show realistic condominium residents, concierge staff, maintenance or shared spaces depending on this lesson topic.",
-        "Warm, modern, practical, vivid lighting, no text, no logos, professional educational style.",
-        `Lesson topic: ${brief || "condominium community management and good coexistence"}`,
-    ].join(" ");
-}
-
-function buildAutoBlackboard(userMessage: string, tutorText: string) {
-    const topic = userMessage.trim().slice(0, 160) || "convivencia en condominios";
-    const summary = tutorText
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 260);
-
-    return [
-        "# Aula CoCo en accion",
-        "",
-        `<generar_imagen>A realistic warm educational scene inside a Chilean condominium community, residents and concierge learning about ${topic}, modern shared space, vivid light, practical atmosphere, no text, no logos</generar_imagen>`,
-        "",
-        "## Punto clave",
-        `- **Tema:** ${topic}`,
-        `- **Criterio CoCo:** ${summary || "ordenar el problema, aplicar la regla y definir una accion concreta."}`,
-        "- **Siguiente paso:** convertir la conversacion en una decision clara para la comunidad."
-    ].join("\n");
 }
 
 /**
@@ -343,8 +284,8 @@ export async function runMultiAgentTurn(
     const cleanUserName = trimmedUserName && !trimmedUserName.includes("@") ? trimmedUserName : undefined;
     const userContext = [
         cleanUserName
-            ? `El vecino real con el que hablas se llama "${cleanUserName}". Dirígete a él/ella por su nombre de forma natural cuando saludes o le respondas directamente.`
-            : "No conoces el nombre real del vecino todavía; trátalo con calidez sin inventar un nombre.",
+            ? `La persona en esta capacitación se llama "${cleanUserName}". Dirígete a ella por su nombre cuando le hables directamente.`
+            : "No conoces el nombre de quien está en la capacitación; háblale de tú sin inventar un nombre.",
         `REGLA DE FORMATO ABSOLUTA: Nunca escribas placeholders entre corchetes como [USER], [CLASSMATE] o [NOMBRE]. Si te refieres a un compañero de práctica, usa solo estos nombres: ${peerNames}.`
     ].join("\n");
 
@@ -354,7 +295,7 @@ export async function runMultiAgentTurn(
         try {
             const memories = await MemoryService.getRelevantMemories(communityId, userId, userMessage, 3);
             if (memories && memories.length > 0) {
-                memoryContext = "\n\nRECUERDOS DE ESTE VECINO DE CLASES ANTERIORES:\n" + 
+                memoryContext = "\n\nRECUERDOS DE CAPACITACIONES ANTERIORES:\n" + 
                     memories.map((m: { content: string }) => `- ${m.content}`).join("\n") +
                     "\nUsa esta información para personalizar tu respuesta si es relevante.";
             }
@@ -366,41 +307,15 @@ export async function runMultiAgentTurn(
     // Gemini exige que si el ultimo no es user (casi imposible aca), o el primero no es user...
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
-        // 1. TURNO DEL TUTOR
-        let tutorContextParam = "MODO PIZARRA REGLAS: Si usas la etiqueta <pizarra> ... </pizarra> DEBES incluir ayudas visuales. 1) Para imágenes: Usa ESTRICTAMENTE la etiqueta XML <generar_imagen>Descripción detallada de lo que quieres mostrar, en inglés</generar_imagen>. NO uses Markdown para las imágenes. 2) NUEVA CAPACIDAD: Para mostrar videos explicaivos reales de YouTube usa enlaces estándar: [Ver Video](https://www.youtube.com/watch?v=ID_EJEMPLO). La pizarra detectará mágicamente los enlaces de YouTube y los transformará en reproductores de video incrustados. Usa videos libremente si crees que aportan a la clase.";
-        
-        // Forzar la pizarra visual al inicio de la conversación
-        if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título\n\n<generar_imagen>A modern residential condominium building lobby, welcoming, warm lights</generar_imagen>\n\n[Ver Video](https://www.youtube.com/watch?v=kR2C2B6u-M4)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1\n</pizarra>\n\n¡Fuera de esas etiquetas, saluda amigablemente en el chat.";
-        }
-
-        tutorContextParam = history.length <= 2
-            ? [
-                "OBLIGATORIO EN ESTE TURNO: Debes generar una pizarra visual y entretenida.",
-                "FORMATO ESTRICTO:",
-                "<pizarra>",
-                "# Titulo corto de la leccion",
-                "",
-                "<generar_imagen>A realistic warm educational scene inside a Chilean condominium community, residents and concierge learning together, modern building common area, vivid light, no text, no logos</generar_imagen>",
-                "",
-                "## Idea central",
-                "- **Concepto clave:** explicacion corta.",
-                "- **Caso practico:** ejemplo concreto del edificio.",
-                "- **Decision CoCo:** que accion conviene tomar.",
-                "</pizarra>",
-                "",
-                "Fuera de esas etiquetas: un párrafo de máximo dos oraciones, en femenino y de tú, y una sola pregunta. No saludes a todos."
-            ].join("\n")
-            : [
-                "MODO PIZARRA REGLAS:",
-                "Si actualizas la pizarra, usa <pizarra>...</pizarra>.",
-                "Dentro de la pizarra debes usar Markdown expresivo: titulos cortos, bullets, tablas simples si ayudan, y **negritas** para conceptos clave.",
-                "Toda pizarra nueva debe incluir una imagen visual con esta etiqueta exacta:",
-                "<generar_imagen>Detailed English prompt for a vivid realistic educational image, no text, no logos</generar_imagen>",
-                "No uses imagenes Markdown directamente; el sistema convertira <generar_imagen> en una imagen real.",
-                "En el chat tambien puedes usar **negritas** para ideas importantes, pero responde en un parrafo breve.",
-                "Evita listas largas sin jerarquia visual."
-            ].join("\n");
+        // La presentación del curso ya está en pantalla. El chat no abre otra.
+        const tutorContextParam = [
+            "La presentación ya está en pantalla. No abras otra diapositiva.",
+            "No uses <pizarra>, no pidas imágenes y no enlaces videos.",
+            section?.title?.trim()
+                ? `La sección abierta se llama «${section.title.trim()}». Habla solo de esa sección y de la decisión que muestra.`
+                : "Habla solo de la sección abierta.",
+            "Un párrafo de máximo dos oraciones, en femenino y de tú, y una sola pregunta. No saludes a todos.",
+        ].join("\n");
 
         const tutorCourseContext = courseContent 
             ? `\n\nCONTENIDO DEL CURSO: A continuación tienes el contenido estricto sobre el cual debes basar tu clase hoy. Úsalo como tu fuente principal de verdad:\n${courseContent}\n\n`
@@ -422,64 +337,16 @@ export async function runMultiAgentTurn(
             getTutorModels(),
         );
 
-        let tutorChatText = sanitizeAgentResponse(rawTutorResponse, cleanUserName);
-        let tutorBlackboard = "";
-
-        // Extractor primario: Soporta <pizarra>, [PIZARRA], o 【BLACKBOARD】
-        const bbRegex = /(?:<pizarra>|\[PIZARRA\]|【BLACKBOARD】)([\s\S]*?)(?:<\/pizarra>|\[\/PIZARRA\]|【\/BLACKBOARD】|$)/i;
-        const bbMatch = tutorChatText.match(bbRegex);
-        
-        if (bbMatch) {
-            tutorBlackboard = bbMatch[1].trim();
-            tutorChatText = tutorChatText.replace(bbRegex, "").trim();
-        } else {
-            // Extractor secundario (Fallback): Si la IA omitió etiqueta de apertura pero escupió el cierre
-            const fallbackRegex = /^([\s\S]*?)(?:<\/pizarra>|\[\/PIZARRA\]|【\/BLACKBOARD】)/i;
-            const fallbackMatch = tutorChatText.match(fallbackRegex);
-            if (fallbackMatch && fallbackMatch[1].length > 20) {
-               tutorBlackboard = fallbackMatch[1].trim();
-               tutorChatText = tutorChatText.replace(fallbackRegex, "").trim();
-            }
-        }
-
-        // --- INTERCEPTAR GENERACIÓN DE IMÁGENES (DALL-E 3) ---
-        if (!tutorBlackboard) {
-            tutorBlackboard = buildAutoBlackboard(userMessage, tutorChatText);
-        }
-
-        if (tutorBlackboard) {
-            const imgRegex = /<generar_imagen>([\s\S]*?)<\/generar_imagen>/gi;
-            const imageRequests = [...tutorBlackboard.matchAll(imgRegex)];
-            // Procesamos todas las imágenes que haya pedido
-            for (const imgMatch of imageRequests) {
-                const prompt = imgMatch[1].trim();
-                const imgUrl = await ImageService.generateTutorImage(prompt, budgetContext);
-                if (imgUrl) {
-                    tutorBlackboard = tutorBlackboard.replace(imgMatch[0], `![Imagen Generada](${imgUrl})`);
-                } else {
-                    tutorBlackboard = tutorBlackboard.replace(imgMatch[0], ""); // Fallback si todo falla
-                }
-            }
-
-            if (!hasMarkdownImage(tutorBlackboard)) {
-                const autoPrompt = buildBlackboardImagePrompt(tutorBlackboard);
-                const imgUrl = await ImageService.generateTutorImage(autoPrompt, budgetContext);
-                if (imgUrl) {
-                    tutorBlackboard = `![Imagen de apoyo](${imgUrl})\n\n${tutorBlackboard}`;
-                }
-            }
-        }
-
-        if (tutorBlackboard && (!tutorChatText || tutorChatText.length < 5)) {
-            tutorChatText = "¡Toda la información importante de esta lección está ahora compartida en la pizarra! ¿Comenzamos?";
-        }
+        const tutorChatText = sanitizeAgentResponse(rawTutorResponse, cleanUserName)
+            .replace(/(?:<pizarra>|\[PIZARRA\]|【BLACKBOARD】)[\s\S]*?(?:<\/pizarra>|\[\/PIZARRA\]|【\/BLACKBOARD】|$)/gi, "")
+            .replace(/<generar_imagen>[\s\S]*?<\/generar_imagen>/gi, "")
+            .trim();
 
         const tutorMsgId = `tutor-${Date.now()}`;
         newResponses.push({
             id: tutorMsgId,
             role: 'tutor',
-            text: tutorChatText || "¡Entendido! Avancemos.",
-            blackboard: tutorBlackboard || undefined
+            text: tutorChatText || "Seguimos en la sección que tienes en pantalla. ¿Qué decisión tomarías?",
         });
 
         // 2. INTERVENCIÓN DE CLASSMATE 1 (100% asegurado en cada turno de usuario)
@@ -495,9 +362,9 @@ export async function runMultiAgentTurn(
         
         // Forzamos un turno falso de "user" para romper la continuidad de la IA y que no asuma el rol anterior
         const classmate1History = [...geminiHistory];
-        classmate1History.push({ role: 'user', text: `Instrucción del Sistema: La Tutora CoCo acaba de terminar de hablar. Ahora debes actuar estrictamente como el alumno ${persona1.name} y dar tu opinión corta.` });
+        classmate1History.push({ role: 'user', text: `Instrucción del Sistema: La Tutora CoCo acaba de terminar de hablar sobre la sección proyectada. Ahora debes actuar estrictamente como ${persona1.name} y dar tu opinión corta.` });
 
-        const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de decir textualmente: "${tutorChatText}". Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges al vecino real, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.\n3. Tu comentario debe reaccionar específicamente a lo que la Tutora ACABA de decir arriba. NO cambies de tema ni traigas tu problema personal recurrente si no tiene relación directa con eso.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
+        const classmateContextParam = `Eres ${persona1.name}, compañero de práctica de esta capacitación. La presentación ya muestra la sección. La tutora acaba de decir textualmente: "${tutorChatText}". Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN COMPAÑERO DE PRÁCTICA. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges a quien está en la capacitación, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.\n3. Tu comentario debe reaccionar específicamente a lo que la Tutora ACABA de decir arriba, sobre la sección en pantalla. NO cambies de tema.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones. NO hables con otros compañeros.`;
         let classmateResponse = "";
         try {
             classmateResponse = await callGemini(apiKey, [persona1.prompt, classmateContextParam, classmateToneGuidance(persona1.name, section?.title)].join('\n\n'), classmate1History, budgetContext, getClassmateModels());
@@ -525,9 +392,9 @@ export async function runMultiAgentTurn(
             if (Math.random() < 0.5 && persona2) {
                 
                 const classmate2History = [...geminiHistory];
-                classmate2History.push({ role: 'user', text: `Instrucción del Sistema: El vecino ${persona1.name} acaba de opinar. Ahora debes actuar estrictamente como el alumno ${persona2.name} y responderle o acotar algo a la clase.` });
+                classmate2History.push({ role: 'user', text: `Instrucción del Sistema: ${persona1.name} acaba de opinar sobre la sección proyectada. Ahora debes actuar estrictamente como ${persona2.name} y acotar algo breve.` });
 
-                const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente, reaccionando específicamente a lo que él/ella acaba de decir. NO cambies de tema ni traigas tu problema personal recurrente si no tiene relación directa con eso.\n3. NO uses etiquetas de nombre ni asteriscos de acciones. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges al vecino real, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.`;
+                const classmate2ContextParam = `Eres ${persona2.name}, compañero de práctica. ${persona1.name} acaba de decir: "${classmate1FinalText}". La presentación sigue en la misma sección. REGLAS:\n1. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Responde breve, sobre lo que acaba de decir y sobre la sección en pantalla. NO cambies de tema.\n3. NO uses etiquetas de nombre ni asteriscos de acciones. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges a quien está en la capacitación, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.`;
                 let classmate2Response = "";
                 try {
                     classmate2Response = await callGemini(apiKey, [persona2.prompt, classmate2ContextParam, classmateToneGuidance(persona2.name, section?.title)].join('\n\n'), classmate2History, budgetContext, getClassmateModels());

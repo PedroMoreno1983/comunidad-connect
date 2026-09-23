@@ -9,21 +9,13 @@ export function answerFromTrainingSection(section: TrainingSectionContext | null
     if (!title && !lead && !notes && bullets.length === 0) return null;
 
     const text = [
-        title ? `Seguimos en **${title}**.` : 'Sigo con la sección que tienes abierta.',
+        title ? `Seguimos en «${title}», que ya está en la presentación.` : 'Sigo con la sección que tienes abierta.',
         lead,
-        bullets.length > 0 ? `De esta sección: ${bullets.map(item => `**${item}**`).join('; ')}.` : '',
-        notes ? `La tutora lo aplica así: ${notes}` : '',
-        'Llévalo a tu caso: qué pasó, qué regla de esta sección aplica y qué acción te toca en tu rol.',
+        bullets[0] ? `El primer criterio de esta sección es: ${bullets[0]}` : '',
+        '¿Qué harías tú, con el rol que tienes ahora?',
     ].filter(Boolean).join(' ');
 
-    const blackboard = [
-        `# ${title || 'Sección del curso'}`,
-        lead,
-        ...bullets.map(item => `- ${item}`),
-        notes,
-    ].filter(Boolean).join('\n');
-
-    return { text, blackboard };
+    return { text, blackboard: '' };
 }
 
 export function trainingSectionFromCourseContent(courseContent: string | undefined): TrainingSectionContext | null {

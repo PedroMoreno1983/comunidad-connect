@@ -10,8 +10,9 @@ describe('training section fallback', () => {
             notes: 'No dejes el paquete sin destinatario.',
         });
         expect(answer?.text).toContain('Recibir una encomienda');
-        expect(answer?.text).toContain('Anotar la unidad');
-        expect(answer?.blackboard).toContain('Avisar una sola vez');
+        expect(answer?.text).toContain('Registrar el paquete antes de avisar.');
+        expect(answer?.blackboard).toBe('');
+        expect(answer?.text).not.toContain('No dejes el paquete sin destinatario.');
         expect(answer?.text).not.toMatch(/charla no arregla la convivencia/i);
     });
 

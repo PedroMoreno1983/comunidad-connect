@@ -8,6 +8,7 @@ describe('tutor tone for the staff classroom', () => {
         const guidance = tutorToneGuidance('admin', { title: 'Recibir una encomienda', lead: '', bullets: [], notes: '' });
         expect(guidance).toContain('administración');
         expect(guidance).toContain('Recibir una encomienda');
+        expect(guidance).toContain('ya está proyectada');
         expect(guidance).not.toMatch(/Camilo|María/);
     });
 
