@@ -1619,6 +1619,10 @@ CREATE INDEX IF NOT EXISTS supermarket_products_stock_freshness_idx
   ON public.supermarket_products (store, last_seen_at)
   WHERE in_stock = TRUE;
 
+CREATE INDEX IF NOT EXISTS supermarket_products_reconciliation_counts_idx
+  ON public.supermarket_products (store, last_seen_at)
+  INCLUDE (in_stock);
+
 CREATE OR REPLACE FUNCTION public.finalize_supermarket_catalog_refresh(
   p_store TEXT,
   p_started_at TIMESTAMPTZ,
@@ -1628,6 +1632,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
+SET statement_timeout = '60s'
 AS $$
 DECLARE
   v_current_in_stock INTEGER;
@@ -3570,6 +3575,8 @@ CREATE UNIQUE INDEX "solidarity_round_up_expense_unique" ON "public"."solidarity
 CREATE INDEX "supermarket_group_order_members_pending_idx" ON "public"."supermarket_group_order_members" USING "btree" ("order_id") WHERE ("paid_at" IS NULL);
 
 CREATE INDEX "supermarket_products_missing_offer_id_idx" ON "public"."supermarket_products" USING "btree" ("store", "sku") WHERE ("offer_id" IS NULL);
+
+CREATE INDEX "supermarket_products_reconciliation_counts_idx" ON "public"."supermarket_products" USING "btree" ("store", "last_seen_at") INCLUDE ("in_stock");
 
 CREATE INDEX "supermarket_products_stock_freshness_idx" ON "public"."supermarket_products" USING "btree" ("store", "last_seen_at") WHERE ("in_stock" = true);
 
