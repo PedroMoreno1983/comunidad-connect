@@ -378,7 +378,7 @@ export function MultiAgentClassroom({
                     <div className="border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
-                            <div><p className="text-sm font-semibold cc-text-primary">Equipo multiagente CoCo</p><p className="text-xs cc-text-secondary">Tutora + pares de práctica, con contexto de esta sección</p></div>
+                            <div><p className="text-sm font-semibold cc-text-primary">Equipo multiagente CoCo</p><p className="text-xs cc-text-secondary">Tutora y compañeros de tu rol, en la sección abierta</p></div>
                         </div>
                     </div>
                     <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
