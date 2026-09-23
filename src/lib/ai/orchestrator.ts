@@ -1,3 +1,5 @@
+import type { TrainingSectionContext } from '@/lib/types';
+import { answerFromTrainingSection, trainingSectionFromCourseContent } from '@/lib/training/sectionFallback';
 import { TUTOR_PROMPT } from './agents/tutor';
 import { CLASSMATE_PERSONAS } from './agents/classmate';
 import { ImageService } from './imageService';
@@ -78,7 +80,21 @@ function extractGeminiError(text: string) {
     }
 }
 
-export async function buildTrainingFallbackTurn(history: ChatMessage[], userMessage: string): Promise<ChatMessage[]> {
+export async function buildTrainingFallbackTurn(
+    history: ChatMessage[],
+    userMessage: string,
+    section?: TrainingSectionContext | null,
+): Promise<ChatMessage[]> {
+    const fromSection = answerFromTrainingSection(section);
+    if (fromSection) {
+        return [{
+            id: `tutor-fallback-${Date.now()}`,
+            role: 'tutor',
+            text: fromSection.text,
+            blackboard: fromSection.blackboard,
+        }];
+    }
+
     const needsBlackboard = history.length <= 2;
     const shortAnswer = userMessage.trim().length <= 4
         ? "Si. Una charla no arregla la convivencia por si sola, pero sirve para dejar **criterios claros**, practicar casos reales y ordenar que hacer cuando alguien no respeta las reglas. La disciplina mejora cuando la comunidad entiende el protocolo y lo aplica de forma pareja."
@@ -534,6 +550,6 @@ export async function runMultiAgentTurn(
             fallbackUsed: 'auto_tutor_turn',
             error: err,
         });
-        return buildTrainingFallbackTurn(history, userMessage);
+        return buildTrainingFallbackTurn(history, userMessage, trainingSectionFromCourseContent(courseContent));
     }
 }

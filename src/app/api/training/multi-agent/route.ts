@@ -6,6 +6,7 @@ import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 import { logApiError } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { parseTrainingSlides } from "@/lib/training/courseContent";
+import type { TrainingSlide } from "@/lib/types";
 
 const MAX_MESSAGE_LENGTH = 4_000;
 const MAX_COURSE_CONTENT_LENGTH = 40_000;
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
     if (limited) return limited;
 
     const geminiApiKey = (process.env.GEMINI_API_KEY || "").trim();
+    let message = "";
+    let currentSlide: TrainingSlide | null = null;
 
     try {
         const profile = await getAuthenticatedAgentProfile();
@@ -25,7 +28,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json() as Record<string, unknown>;
-        const message = typeof body.message === "string" ? body.message.trim().slice(0, MAX_MESSAGE_LENGTH) : "";
+        message = typeof body.message === "string" ? body.message.trim().slice(0, MAX_MESSAGE_LENGTH) : "";
         const moduleId = typeof body.moduleId === "string" ? body.moduleId.trim().slice(0, 80) : "";
         const currentSlideId = typeof body.currentSlideId === "string" ? body.currentSlideId.trim().slice(0, 120) : "";
         const history = Array.isArray(body.history) ? body.history.slice(-MAX_HISTORY_ITEMS) : [];
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
         const { data: courseModule } = await moduleQuery.maybeSingle();
         if (!courseModule) return NextResponse.json({ error: "Curso no disponible para tu rol o comunidad." }, { status: 404 });
         const lessonContent = courseModule.training_lessons?.[0]?.content || '';
-        const currentSlide = parseTrainingSlides(lessonContent).find(slide => slide.id === currentSlideId);
+        currentSlide = parseTrainingSlides(lessonContent).find(slide => slide.id === currentSlideId) || null;
         const courseContent = JSON.stringify({
             course: { title: courseModule.title, description: courseModule.description, objectives: courseModule.learning_objectives },
             participantRole: profile.role,
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
         }).slice(0, MAX_COURSE_CONTENT_LENGTH);
 
         if (!geminiApiKey || !geminiApiKey.startsWith("AIza")) {
-            const responses = await buildTrainingFallbackTurn(history || [], message);
+            const responses = await buildTrainingFallbackTurn(history || [], message, currentSlide);
             return NextResponse.json({ responses }, { status: 200 });
         }
 
@@ -84,12 +87,7 @@ export async function POST(req: NextRequest) {
         }
 
         logApiError(req, "/api/training/multi-agent", error);
-        return NextResponse.json({
-            responses: [{
-                id: `sys-err-${Date.now()}`,
-                role: 'system',
-                text: 'La sala de IA tuvo una intermitencia. Intenta de nuevo en unos segundos; la clase sigue disponible.'
-            }]
-        }, { status: 200 });
+        const responses = await buildTrainingFallbackTurn([], message, currentSlide);
+        return NextResponse.json({ responses }, { status: 200 });
     }
 }
