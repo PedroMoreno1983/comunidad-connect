@@ -72,7 +72,7 @@ Transforma el texto fuente en un curso operativo profesional para ${audienceLabe
 
 Reglas editoriales obligatorias:
 1. Conserva reglas, cifras y procedimientos del texto. No inventes obligaciones legales.
-2. Crea entre 6 y 10 secciones con 2 a 5 bullets observables y accionables. El lead resume la sección y no repite ningún bullet. Las notes son solo el guion de la tutora: no las copies en el lead ni en los bullets.
+2. Crea entre 8 y 10 secciones con 2 a 5 bullets observables y accionables. El lead resume la sección y no repite ningún bullet. Las notes son solo el guion de la tutora: no las copies en el lead ni en los bullets.
 3. Distingue las atribuciones de administracion y conserjeria.
 4. Incluye exactamente el recorrido de práctica completo: knowledge_check, scenario y checklist final.
 5. Para knowledge_check y scenario entrega 4 options. Las incorrectas son errores frecuentes del turno, como omitir el registro, resolver fuera de rol, prometer un resultado o difundir un dato. No uses opciones absurdas. correctIndex numérico y una explanation que enseñe el criterio.
