@@ -43,11 +43,11 @@ La forma correcta es abrir un Chromium real por WebDriver y mirar el título y e
 
 **Ojo con los slots al probar.** `SE_DRAIN_AFTER_SESSION_COUNT: 1` recicla cada navegador después de una sola sesión, y `SE_NODE_MAX_SESSIONS: 1` deja un solo espacio por contenedor. Una sesión que se abre y no se cierra deja ese contenedor inutilizable hasta que expire `SESSION_HARD_SECONDS` (90 minutos). Cierra siempre con `DELETE /session/:id`, o reinicia con `docker compose restart browser-N`.
 
-## Tottus e Irurzun estan ocultas
+## Tottus queda oculta; Irurzun vuelve al comparador
 
-Desde el 2026-09-04 no se muestran ni se comparan. **Se siguen scrapeando**: el pipeline de ingesta es Python y no lee `SUPERMARKET_STORES`, asi que sus precios siguen al dia y volver a mostrarlas es moverlas de `HIDDEN_SUPERMARKET_STORES` a `SUPERMARKET_STORES`, en `src/lib/supermarketBasket.ts`.
+Tottus no se muestra ni se compara: Cloudflare interpone un desafio humano al cargar el carro. Se sigue scrapeando. Volver a mostrarla es moverla de `HIDDEN_SUPERMARKET_STORES` a `SUPERMARKET_STORES`, en `src/lib/supermarketBasket.ts`.
 
-Tottus sale por el desafio de Cloudflare descrito mas abajo. Irurzun sale por decision de producto. El canal mayorista no queda vacio: aCuenta tambien es mayorista y esta verificada.
+Irurzun vuelve a la comparacion. El carro se abre en el navegador de quien compra, con el enlace oficial de Shopify. aCuenta sigue como mayorista en el navegador remoto.
 
 Lo que sigue describe como se comportaron las siete cuando estaban todas activas, y es lo que hay que releer antes de reactivar cualquiera.
 

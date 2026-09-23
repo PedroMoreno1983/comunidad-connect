@@ -69,7 +69,24 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, ExpenseDatabaseRow, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, JournalView, PaymentAgreement, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+
+async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(url, { cache: 'no-store', ...init });
+    const data = await response.json().catch(() => ({})) as T & { error?: string };
+    if (!response.ok) {
+        throw new Error(typeof data.error === 'string' && data.error ? data.error : fallback);
+    }
+    return data;
+}
+
+function financeWrite(body: object) {
+    return {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    } satisfies RequestInit;
+}
 
 async function sendBookingConfirmation(payload: {
     bookingId: string;
@@ -2105,6 +2122,87 @@ export const AdminFinanceService = {
             recentActivity,
         };
     },
+
+    getPaymentAgreements() {
+        return readApi<{ agreements: PaymentAgreement[]; units: FinanceUnitOption[] }>(
+            '/api/admin/agreements',
+            'No se pudieron cargar los convenios.',
+        );
+    },
+
+    createPaymentAgreement(input: {
+        unitId: string;
+        title: string;
+        totalAmount: number;
+        installmentCount: number;
+        startDate: string;
+        notes: string;
+    }) {
+        return readApi<{ agreement: PaymentAgreement }>(
+            '/api/admin/agreements',
+            'No se pudo abrir el convenio.',
+            financeWrite(input),
+        );
+    },
+
+    payAgreementInstallment(input: { installmentId: string; paidAt: string; method: string; reference: string }) {
+        return readApi<{ paymentId: string }>(
+            '/api/admin/agreements',
+            'No se pudo registrar la cuota.',
+            financeWrite({ action: 'pay', ...input }),
+        );
+    },
+
+    cancelPaymentAgreement(agreementId: string) {
+        return readApi<{ id: string }>(
+            '/api/admin/agreements',
+            'No se pudo cerrar el convenio.',
+            financeWrite({ action: 'cancel', agreementId }),
+        );
+    },
+
+    getPayroll() {
+        return readApi<{ employees: CommunityEmployeeRecord[]; runs: PayrollRunRecord[] }>(
+            '/api/admin/payroll',
+            'No se pudo cargar la remuneración.',
+        );
+    },
+
+    saveEmployee(input: { id?: string; fullName: string; roleTitle: string; monthlyAmount: number; active?: boolean }) {
+        return readApi<{ employee: CommunityEmployeeRecord }>(
+            '/api/admin/payroll',
+            'No se pudo guardar a la persona.',
+            financeWrite(input),
+        );
+    },
+
+    createPayrollRun(month: string) {
+        return readApi<{ run: { id: string; month: string; total: number } }>(
+            '/api/admin/payroll',
+            'No se pudo armar la liquidación.',
+            financeWrite({ action: 'run', month }),
+        );
+    },
+
+    payPayrollRun(input: { runId: string; paidAt: string; reference: string }) {
+        return readApi<{ id: string; expenseNote: string }>(
+            '/api/admin/payroll',
+            'No se pudo registrar el pago de remuneraciones.',
+            financeWrite({ action: 'pay', ...input }),
+        );
+    },
+
+    getJournal() {
+        return readApi<JournalView>('/api/admin/journal', 'No se pudo cargar el libro diario.');
+    },
+
+    postJournalEntry(input: { entryDate: string; memo: string; lines: Array<{ code: string; debit: number; credit: number }> }) {
+        return readApi<{ entry: { id: string; total: number } }>(
+            '/api/admin/journal',
+            'No se pudo guardar el asiento.',
+            financeWrite(input),
+        );
+    },
 };
 
 export const ResidentFinanceService = {
@@ -2143,6 +2241,14 @@ export const ResidentFinanceService = {
             paid_at: typeof row.paid_at === "string" ? row.paid_at : undefined,
             units: { number: fallbackUnitNumber },
         }));
+    },
+
+    async getAgreements(): Promise<PaymentAgreement[]> {
+        const data = await readApi<{ agreements: PaymentAgreement[] }>(
+            '/api/resident/agreements',
+            'No se pudieron cargar los convenios.',
+        );
+        return data.agreements || [];
     },
 };
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
+import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { prepareRemoteCartHandoff } from '@/lib/supermarketRemoteCart';
 import type { SupermarketCartHandoffItem } from '@/lib/types';
 
@@ -9,7 +10,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const MAX_ITEMS = 200;
-const STORES = new Set(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun']);
+const STORES = new Set<string>(SUPERMARKET_STORES);
 
 function cleanText(value: unknown, max: number): string {
   return typeof value === 'string' || typeof value === 'number'
