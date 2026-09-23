@@ -1,7 +1,7 @@
 import type { TrainingSectionContext } from '@/lib/types';
 import { answerFromTrainingSection, trainingSectionFromCourseContent } from '@/lib/training/sectionFallback';
+import { classmateToneGuidance, practicePeersForRole, tutorToneGuidance } from '@/lib/training/tutorGuidance';
 import { TUTOR_PROMPT } from './agents/tutor';
-import { CLASSMATE_PERSONAS } from './agents/classmate';
 import { ImageService } from './imageService';
 import { recordAiEvent } from './telemetry';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage, type AiBudgetContext } from './budget';
@@ -336,13 +336,16 @@ export async function runMultiAgentTurn(
 
     // --- NOMBRE REAL DEL VECINO Y REGLA ANTI-PLACEHOLDER ---
     // Si el perfil no tiene nombre, authContext cae al email; evitamos saludar con un email crudo.
+    const section = trainingSectionFromCourseContent(courseContent);
+    const peers = practicePeersForRole(userRole);
+    const peerNames = peers.map(peer => peer.name).join(' o ');
     const trimmedUserName = userName?.trim();
     const cleanUserName = trimmedUserName && !trimmedUserName.includes("@") ? trimmedUserName : undefined;
     const userContext = [
         cleanUserName
             ? `El vecino real con el que hablas se llama "${cleanUserName}". Dirígete a él/ella por su nombre de forma natural cuando saludes o le respondas directamente.`
             : "No conoces el nombre real del vecino todavía; trátalo con calidez sin inventar un nombre.",
-        "REGLA DE FORMATO ABSOLUTA: Nunca escribas placeholders entre corchetes como [USER], [CLASSMATE], [NOMBRE], etc. Si necesitas referirte a un alumno IA, usa siempre su nombre real (Don Carlos, María, Jorge, Doña Marta o Camilo)."
+        `REGLA DE FORMATO ABSOLUTA: Nunca escribas placeholders entre corchetes como [USER], [CLASSMATE] o [NOMBRE]. Si te refieres a un compañero de práctica, usa solo estos nombres: ${peerNames}.`
     ].join("\n");
 
     // --- INTEGRACIÓN DE MEMORIA A LARGO PLAZO ---
@@ -411,7 +414,13 @@ export async function runMultiAgentTurn(
             actionType: 'chat' as const,
         };
 
-        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + "\n\n" + userContext + tutorCourseContext + memoryContext + "\n\n" + tutorContextParam, geminiHistory, budgetContext, getTutorModels());
+        const rawTutorResponse = await callGemini(
+            apiKey,
+            [TUTOR_PROMPT, userContext, tutorToneGuidance(userRole, section), tutorCourseContext, memoryContext, tutorContextParam].filter(Boolean).join('\n\n'),
+            geminiHistory,
+            budgetContext,
+            getTutorModels(),
+        );
 
         let tutorChatText = sanitizeAgentResponse(rawTutorResponse, cleanUserName);
         let tutorBlackboard = "";
@@ -474,7 +483,8 @@ export async function runMultiAgentTurn(
         });
 
         // 2. INTERVENCIÓN DE CLASSMATE 1 (100% asegurado en cada turno de usuario)
-        const persona1 = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
+        const persona1 = peers[0];
+        if (!persona1) return newResponses;
         
         // Le damos contexto sobre lo que acaba de responder el tutor
         if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === 'model') {
@@ -490,7 +500,7 @@ export async function runMultiAgentTurn(
         const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de decir textualmente: "${tutorChatText}". Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges al vecino real, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.\n3. Tu comentario debe reaccionar específicamente a lo que la Tutora ACABA de decir arriba. NO cambies de tema ni traigas tu problema personal recurrente si no tiene relación directa con eso.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
         let classmateResponse = "";
         try {
-            classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History, budgetContext, getClassmateModels());
+            classmateResponse = await callGemini(apiKey, [persona1.prompt, classmateContextParam, classmateToneGuidance(persona1.name, section?.title)].join('\n\n'), classmate1History, budgetContext, getClassmateModels());
         } catch (err) {
             console.warn("Classmate 1 unavailable:", err);
         }
@@ -511,9 +521,8 @@ export async function runMultiAgentTurn(
             }
             
             // 3. INTERVENCIÓN DE CLASSMATE 2 (50% de probabilidad de que otro vecino le responda o acote algo)
-            if (Math.random() < 0.5) {
-                const remainingPersonas = CLASSMATE_PERSONAS.filter(p => p.name !== persona1.name);
-                const persona2 = remainingPersonas[Math.floor(Math.random() * remainingPersonas.length)];
+            const persona2 = peers[1];
+            if (Math.random() < 0.5 && persona2) {
                 
                 const classmate2History = [...geminiHistory];
                 classmate2History.push({ role: 'user', text: `Instrucción del Sistema: El vecino ${persona1.name} acaba de opinar. Ahora debes actuar estrictamente como el alumno ${persona2.name} y responderle o acotar algo a la clase.` });
@@ -521,7 +530,7 @@ export async function runMultiAgentTurn(
                 const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente, reaccionando específicamente a lo que él/ella acaba de decir. NO cambies de tema ni traigas tu problema personal recurrente si no tiene relación directa con eso.\n3. NO uses etiquetas de nombre ni asteriscos de acciones. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges al vecino real, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.`;
                 let classmate2Response = "";
                 try {
-                    classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History, budgetContext, getClassmateModels());
+                    classmate2Response = await callGemini(apiKey, [persona2.prompt, classmate2ContextParam, classmateToneGuidance(persona2.name, section?.title)].join('\n\n'), classmate2History, budgetContext, getClassmateModels());
                 } catch (err) {
                     console.warn("Classmate 2 unavailable:", err);
                 }
