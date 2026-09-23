@@ -7,7 +7,7 @@ import { CondoFeesTable } from "@/components/admin/CondoFeesTable";
 import { motion } from "framer-motion";
 import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { AlertCircle, ArrowRight, ArrowLeftRight, BellRing, Calculator, FileText, Landmark, Loader2, Send, ShieldCheck, Target, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowLeftRight, BellRing, BookOpen, Calculator, FileText, Handshake, Landmark, Loader2, Send, ShieldCheck, Target, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
@@ -212,6 +212,63 @@ export default function AdminFinanzasPage() {
                         </h2>
                         <p className="mt-1 text-sm leading-6 cc-text-secondary">
                             Cruza la cartola del banco con los pagos registrados y detecta depósitos sin imputar.
+                        </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
+                </Link>
+
+                <Link
+                    href="/admin/finanzas/convenios"
+                    className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
+                        <Handshake className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Convenios de pago
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                            Reparte la deuda de una unidad en cuotas y registra cada pago cuando ya lo recibiste.
+                        </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
+                </Link>
+
+                <Link
+                    href="/admin/finanzas/remuneraciones"
+                    className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
+                        <Users className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Remuneraciones
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                            Personal, liquidación del mes y pago con asiento en el libro y egreso del gasto común.
+                        </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
+                </Link>
+
+                <Link
+                    href="/admin/finanzas/contabilidad"
+                    className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
+                        <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Libro diario
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                            Asientos de doble entrada y el saldo de Banco, ingresos, remuneraciones y gastos de operación.
                         </p>
                     </div>
                     <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
