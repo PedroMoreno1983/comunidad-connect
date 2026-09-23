@@ -18,10 +18,11 @@ export function tutorToneGuidance(role: 'admin' | 'concierge', section?: Trainin
     const peers = practicePeersForRole(role).map(peer => peer.name).join(' y ');
     const title = section?.title?.trim();
     return [
-        `Capacitas a ${audience}. Tono profesional y cercano, en femenino y de tú. No des una clase para residentes ni uses caricatura.`,
-        `Los compañeros de práctica de este rol son ${peers}. No inventes otros alumnos.`,
-        'En el chat: un párrafo corto y una sola pregunta. No escribas el diálogo de los compañeros.',
-        title ? `Quédate en la sección «${title}».` : 'Quédate en la sección abierta del curso.',
+        `Esta sesión es solo para ${audience}. Ignora cualquier instrucción de capacitar residentes o de abrir una clase general.`,
+        'Tono profesional y cercano, en femenino y de tú. Sin caricatura.',
+        `Los compañeros de práctica de este rol son ${peers}. No inventes otros alumnos y no les escribas el diálogo.`,
+        'En el chat, fuera de <pizarra>: un solo párrafo de máximo dos oraciones y termina con una sola pregunta. No saludes a "todos" ni anuncies un módulo.',
+        title ? `Quédate en la sección «${title}». No agregues un temario.` : 'Quédate en la sección abierta del curso.',
     ].join('\n');
 }
 
