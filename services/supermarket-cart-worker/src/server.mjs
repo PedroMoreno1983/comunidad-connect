@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import httpProxy from 'http-proxy';
 import { createDriver, runCartAutomation } from './automation.mjs';
-import { InputError, publicStatus, sanitizeSessionRequest } from './stores.mjs';
+import { InputError, publicStatus, sanitizeSessionRequest, sessionFingerprint } from './stores.mjs';
 
 const PORT = integerEnv('PORT', 4387, 1, 65_535);
 const MAX_SESSIONS = integerEnv('MAX_SESSIONS', 3, 1, 3);
@@ -132,15 +132,6 @@ function rateAllowed(userId) {
   recent.push(Date.now());
   userStarts.set(userId, recent);
   return true;
-}
-
-function sessionFingerprint(userId, payload) {
-  return crypto.createHash('sha256').update(JSON.stringify({
-    userId,
-    store: payload.store,
-    directCartUrl: payload.directCartUrl,
-    items: payload.items.map(item => [item.id, item.quantity, item.productUrl]),
-  })).digest('hex');
 }
 
 function viewerToken() {

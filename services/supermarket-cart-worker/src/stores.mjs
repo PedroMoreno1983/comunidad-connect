@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 const MAX_ITEMS = 200;
 
 export const STORE_CONFIGS = Object.freeze({
@@ -156,6 +158,23 @@ export function sanitizeSessionRequest(body) {
     plannedCount,
     missingItems: uniqueText([...missingItems, ...rejected]),
   };
+}
+
+/** Incluye sku, offerId y salesUnit: un reintento con el catálogo corregido no puede reusar la sesión vieja. */
+export function sessionFingerprint(userId, payload) {
+  return crypto.createHash('sha256').update(JSON.stringify({
+    userId,
+    store: payload.store,
+    directCartUrl: payload.directCartUrl,
+    items: payload.items.map(item => [
+      item.id,
+      item.quantity,
+      item.productUrl,
+      item.sku || '',
+      item.offerId || '',
+      item.salesUnit || '',
+    ]),
+  })).digest('hex');
 }
 
 export function publicStatus(session) {

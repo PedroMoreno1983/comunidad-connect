@@ -7,6 +7,9 @@ import {
   apiEligibleItems,
   apiRequestItems,
   confirmLiderItems,
+  itemsStillToLoad,
+  liderCartReadRequired,
+  liderHomepageGate,
   normalizeItemKey,
   parseLiderCartResponse,
 } from '../src/liderCartApi.mjs';
@@ -107,6 +110,65 @@ test('Lider declares the API adapter only on the host that owns the cart', () =>
   for (const [store, other] of Object.entries(STORE_CONFIGS)) {
     if (store !== 'Lider') assert.equal(other.cartApi, undefined, `${store} no tiene adaptador verificado`);
   }
+});
+
+test('sums duplicate SKUs into one mutation line', () => {
+  const duplicated = [
+    { id: 'a1', name: 'Leche', quantity: 1, sku: '00000000000123', offerId: '9', salesUnit: 'EACH' },
+    { id: 'a2', name: 'Leche', quantity: 1, sku: '123', offerId: '9' },
+  ];
+  assert.deepEqual(apiRequestItems(duplicated), [
+    { offerId: '9', quantity: 2, usItemId: '00000000000123', salesUnit: 'EACH', name: 'Leche' },
+  ]);
+});
+
+test('does not confirm two lines when the cart only holds one shared unit', () => {
+  const duplicated = [
+    { id: 'a1', name: 'Leche', quantity: 1, sku: '123', offerId: '9' },
+    { id: 'a2', name: 'Leche', quantity: 1, sku: '000123', offerId: '9' },
+  ];
+  const { confirmed, unconfirmed } = confirmLiderItems(duplicated, new Map([['123', 1]]));
+  assert.deepEqual(confirmed.map(entry => entry.item.id), ['a1']);
+  assert.deepEqual(unconfirmed.map(entry => entry.item.id), ['a2']);
+});
+
+test('a short API quantity falls back by the deficit only', () => {
+  const basket = [
+    items[0],
+    items[2],
+  ];
+  const { pending } = itemsStillToLoad(basket, new Map([['3448847', 1]]));
+  assert.deepEqual(pending.map(item => [item.id, item.quantity]), [
+    ['a', 1],
+    ['c', 1],
+  ]);
+});
+
+test('the anonymous Lider header is not a human gate', () => {
+  const blocked = ['robot or human'];
+  const intervention = ['selecciona tu comuna', 'inicia sesión', 'ingresa a tu cuenta'];
+  assert.equal(liderHomepageGate('Inicia sesión\nAgregar al carro', blocked, intervention), null);
+  assert.equal(liderHomepageGate('Selecciona tu comuna para continuar', blocked, intervention), 'delivery');
+  assert.equal(liderHomepageGate('Robot or human. Inicia sesión', blocked, intervention), 'blocked');
+});
+
+test('a timeout can have written the cart; a missing bundle cannot', () => {
+  for (const reason of [
+    'sin release-metadata',
+    'sin appVersion',
+    'sin bundle _app-',
+    'bundle 500',
+    'sin mutation updateItems en el bundle',
+    'documento updateItems truncado',
+  ]) {
+    assert.equal(liderCartReadRequired({ ok: false, reason }), false, reason);
+  }
+  assert.equal(liderCartReadRequired({ ok: false, reason: 'script timeout' }), true);
+  assert.equal(liderCartReadRequired({ ok: true, payload: { data: {} } }), true);
+  assert.equal(liderCartReadRequired({
+    ok: true,
+    payload: { data: { updateItems: { lineItems: [] } } },
+  }), false);
 });
 
 test('session sanitizing keeps sku, offerId and salesUnit for the API path', () => {

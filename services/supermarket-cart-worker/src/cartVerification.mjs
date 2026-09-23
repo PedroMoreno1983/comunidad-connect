@@ -1,3 +1,11 @@
+import { normalizeItemKey } from './liderCartApi.mjs';
+
+export const LIDER_CART_LINKS_SCRIPT = `
+  return [...document.querySelectorAll('a[href]')]
+    .filter(a => /en el carro/i.test(a.getAttribute('aria-label') || ''))
+    .map(a => ({ href: a.href, label: a.getAttribute('aria-label') }));
+`;
+
 function productKey(value) {
   try {
     const url = new URL(value);
@@ -60,4 +68,23 @@ export function verifyLiderCart(expected, links) {
     missingItems: [...new Set(missingItems)],
     unexpectedProducts,
   };
+}
+
+/** Cantidades leídas en la página del carro, por SKU normalizado. */
+export function liderLandedFromLinks(items, links) {
+  const actual = new Map();
+  for (const link of Array.isArray(links) ? links : []) {
+    const match = String(link.label || '').match(/,\s*(\d+)\s+en el carro\s*$/i);
+    const key = productKey(link.href);
+    if (match && key) actual.set(key, Number(match[1]));
+  }
+  const landed = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    const skuKey = normalizeItemKey(item?.sku);
+    const urlKey = productKey(item?.productUrl);
+    const quantity = (skuKey && actual.get(skuKey)) || (urlKey && actual.get(urlKey)) || 0;
+    const key = skuKey || urlKey;
+    if (key && quantity > 0) landed.set(key, quantity);
+  }
+  return landed;
 }
