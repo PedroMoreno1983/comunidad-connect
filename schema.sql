@@ -4562,3 +4562,92 @@ USING (user_id = (SELECT auth.uid()) AND community_id = public.current_profile_c
 WITH CHECK (user_id = (SELECT auth.uid()) AND community_id = public.current_profile_community_id());
 
 COMMIT;
+
+-- Convenios, remuneraciones y libro diario. El cobro en linea sigue fuera.
+
+CREATE TABLE IF NOT EXISTS public.payment_agreements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  unit_id uuid NOT NULL REFERENCES public.units(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  total_amount integer NOT NULL,
+  installment_count integer NOT NULL,
+  status text NOT NULL DEFAULT 'active',
+  notes text NOT NULL DEFAULT '',
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.payment_agreement_installments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agreement_id uuid NOT NULL REFERENCES public.payment_agreements(id) ON DELETE CASCADE,
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  sequence_number integer NOT NULL,
+  due_date date NOT NULL,
+  amount integer NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  paid_at date,
+  payment_id uuid REFERENCES public.unit_payments(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.community_employees (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  full_name text NOT NULL,
+  role_title text NOT NULL,
+  monthly_amount integer NOT NULL,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.ledger_accounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  code text NOT NULL,
+  name text NOT NULL,
+  kind text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.journal_entries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  entry_date date NOT NULL,
+  memo text NOT NULL,
+  source text NOT NULL DEFAULT 'manual',
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.journal_lines (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id uuid NOT NULL REFERENCES public.journal_entries(id) ON DELETE CASCADE,
+  account_id uuid NOT NULL REFERENCES public.ledger_accounts(id),
+  debit integer NOT NULL DEFAULT 0,
+  credit integer NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS public.payroll_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  month text NOT NULL,
+  status text NOT NULL DEFAULT 'draft',
+  total_amount integer NOT NULL DEFAULT 0,
+  paid_at date,
+  payment_reference text,
+  journal_entry_id uuid REFERENCES public.journal_entries(id) ON DELETE SET NULL,
+  expense_id uuid REFERENCES public.community_expenses(id) ON DELETE SET NULL,
+  expense_note text,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.payroll_lines (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id uuid NOT NULL REFERENCES public.payroll_runs(id) ON DELETE CASCADE,
+  employee_id uuid REFERENCES public.community_employees(id) ON DELETE SET NULL,
+  full_name text NOT NULL,
+  role_title text NOT NULL,
+  amount integer NOT NULL
+);
+

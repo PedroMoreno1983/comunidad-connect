@@ -16,6 +16,7 @@ import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
 import type { ExpenseDatabaseRow, UnitExpenseView } from "@/lib/types";
+import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
 
 function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
     return {
@@ -299,6 +300,8 @@ export default function ExpensesPage() {
                         <MoreHorizontal size={16} />
                     </button>
                 </div>
+
+                <PaymentAgreementCard />
 
                 {step === "review" && (
                     <>
