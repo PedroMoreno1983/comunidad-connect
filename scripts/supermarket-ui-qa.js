@@ -136,7 +136,7 @@ async function main() {
     assert(await page.getByText('Comprar en comunidad', { exact: true }).count() === 0, 'Community purchasing is absent from Supermarket');
     assert(await page.getByText(/Pega hasta 200 productos/i).isVisible(), 'The price comparison hero is visible');
     assert(await page.getByRole('link', { name: /Descargar Extensi[oó]n|Cargador/i }).count() === 0, 'The downloadable cart loader is absent');
-    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'];
+    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'];
     for (const store of expectedStores) {
       const testId = `store-chip-${store.toLowerCase().replaceAll(' ', '-')}`;
       const storeChip = page.getByTestId(testId);

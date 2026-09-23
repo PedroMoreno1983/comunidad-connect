@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { isProductSuitableForRequest } from '@/lib/supermarketBasket';
+import { SUPERMARKET_STORES, isProductSuitableForRequest } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
 import {
@@ -20,7 +20,7 @@ import type {
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
+const STORES = SUPERMARKET_STORES;
 
 type RequestedItem = {
   term: string;

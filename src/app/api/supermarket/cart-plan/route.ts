@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
@@ -9,9 +10,7 @@ export const runtime = 'nodejs';
 
 const MAX_ITEMS = 200;
 const PLAN_TTL_MINUTES = 30;
-const SUPPORTED_STORES = new Set([
-  'Lider', 'Jumbo', 'Santa Isabel', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun',
-]);
+const SUPPORTED_STORES = new Set<string>(SUPERMARKET_STORES);
 
 // Sin I/O/0/1: el código se dicta y se teclea a mano, y esos caracteres se
 // confunden entre sí. 30 símbolos ^ 10 posiciones sigue siendo inadivinable

@@ -1962,6 +1962,94 @@ export interface CommunityExpense {
     prorate_method: "share" | "equal";
 }
 
+export interface FinanceUnitOption {
+    id: string;
+    number: string;
+    tower: string | null;
+}
+
+export interface PaymentAgreementInstallment {
+    id: string;
+    sequence: number;
+    dueDate: string;
+    amount: number;
+    status: "pending" | "paid";
+    paidAt: string | null;
+}
+
+export interface PaymentAgreement {
+    id: string;
+    unitId: string;
+    unitLabel: string;
+    title: string;
+    totalAmount: number;
+    installmentCount: number;
+    status: "active" | "completed" | "cancelled";
+    notes: string;
+    createdAt: string;
+    paidAmount: number;
+    installments: PaymentAgreementInstallment[];
+}
+
+export interface CommunityEmployeeRecord {
+    id: string;
+    full_name: string;
+    role_title: string;
+    monthly_amount: number;
+    active: boolean;
+    created_at: string;
+}
+
+export interface PayrollLineRecord {
+    id: string;
+    full_name: string;
+    role_title: string;
+    amount: number;
+}
+
+export interface PayrollRunRecord {
+    id: string;
+    month: string;
+    status: "draft" | "paid";
+    total_amount: number;
+    paid_at: string | null;
+    payment_reference: string | null;
+    expense_note: string | null;
+    created_at: string;
+    payroll_lines: PayrollLineRecord[];
+}
+
+export interface LedgerAccountBalance {
+    id: string;
+    code: string;
+    name: string;
+    kind: string;
+    debit: number;
+    credit: number;
+    balance: number;
+}
+
+export interface JournalLineView {
+    id: string;
+    account_id: string;
+    debit: number;
+    credit: number;
+}
+
+export interface JournalEntryView {
+    id: string;
+    entry_date: string;
+    memo: string;
+    source: string;
+    created_at: string;
+    journal_lines: JournalLineView[];
+}
+
+export interface JournalView {
+    accounts: LedgerAccountBalance[];
+    entries: JournalEntryView[];
+}
+
 /** Una emision de gastos comunes ya realizada. Antes `IssuedRun`. */
 export interface IssuedBillingRun {
     id: string;
