@@ -131,6 +131,13 @@ export function trainingActivityCount(slides: TrainingSlide[]) {
     return slides.filter(slide => Boolean(slide.activity)).length;
 }
 
+/** El lead a veces se copia del primer bullet. En la diapositiva se muestra una sola vez. */
+export function visibleSlideBullets(slide: Pick<TrainingSlide, 'lead' | 'bullets'>): string[] {
+    const lead = slide.lead?.trim();
+    const unique = slide.bullets.filter(bullet => bullet.trim() !== lead);
+    return unique.length > 0 ? unique : slide.bullets;
+}
+
 export function trainingQualityReport(slides: TrainingSlide[]): TrainingQualityReport {
     const activityTypes = new Set(slides.flatMap(slide => slide.activity ? [slide.activity.type] : []));
     const layouts = new Set(slides.map(slide => slide.layout));
@@ -161,42 +168,60 @@ function sourceSentences(source: string) {
         .slice(0, 18);
 }
 
+function clipTopic(value: string) {
+    const clause = value.split(/[:.;!?]/)[0]?.trim() ?? '';
+    if (clause.length < 18) return '';
+    const clipped = clause.length > 72 ? clause.slice(0, 69).replace(/\s+\S*$/, '') : clause;
+    return clipped.charAt(0).toLowerCase() + clipped.slice(1);
+}
+
 export function buildStructuredTrainingFallback(source: string, audience: 'admin' | 'concierge' | 'all'): TrainingSlide[] {
     const sentences = sourceSentences(source);
     const audienceLabel = audience === 'admin' ? 'administración' : audience === 'concierge' ? 'conserjería' : 'administración y conserjería';
-    const take = (start: number, fallback: string[]) => {
-        const selected = sentences.slice(start, start + Math.min(fallback.length, 4));
-        return selected.length >= 2 ? selected : fallback;
+    const topic = clipTopic(sentences[0] || '');
+    const take = (start: number, fallback: string[], lead: string) => {
+        const selected = sentences.slice(start, start + fallback.length).filter(item => item.trim() !== lead.trim());
+        const base = selected.length >= 2 ? selected : fallback;
+        const unique = base.filter(item => item.trim() !== lead.trim());
+        return (unique.length >= 2 ? unique : fallback).slice(0, 4);
     };
     const roleCards: TrainingRoleCard[] = [
-        { role: 'Administración', responsibility: 'Define criterio, responsable y control', action: 'Autoriza, asigna y verifica el cierre' },
-        { role: 'Conserjería', responsibility: 'Observa y activa el protocolo', action: 'Registra hechos y escala sin exceder atribuciones' },
+        { role: 'Administración', responsibility: 'Decide el criterio y quién cierra el caso', action: 'Asigna responsable, plazo y qué se puede comunicar' },
+        { role: 'Conserjería', responsibility: 'Describe el turno sin resolver fuera de protocolo', action: 'Registra hora, lugar y hecho, y escala lo demás' },
     ];
+    const openingLead = topic
+        ? `Al cerrar esta sección, ${audienceLabel} puede aplicar este criterio sin improvisar: ${topic}.`
+        : `Un criterio común permite que ${audienceLabel} actúe con registro, atribución y cierre.`;
 
     return [
         {
             id: 'proposito', title: 'Propósito y resultado esperado', eyebrow: 'Inicio', layout: 'opening',
-            lead: `Un criterio común permite que ${audienceLabel} actúe con seguridad, consistencia y evidencia.`,
-            bullets: take(0, [`Este curso traduce el contenido fuente en decisiones para ${audienceLabel}.`, 'Cada actuación debe respetar el rol, dejar registro y permitir seguimiento.', 'Al finalizar podrás reconocer qué hacer, qué registrar y cuándo escalar.']),
+            lead: openingLead,
+            bullets: take(0, [`Este curso traduce el contenido fuente en decisiones para ${audienceLabel}.`, 'Cada actuación debe respetar el rol, dejar registro y permitir seguimiento.', 'Al finalizar podrás reconocer qué hacer, qué registrar y cuándo escalar.'], openingLead),
             visual_theme: 'ink',
             notes: `Presenta el alcance del curso para ${audienceLabel}, conecta el tema con una situación real y valida el resultado esperado.`,
         },
         {
             id: 'criterios', title: 'Criterios esenciales', eyebrow: 'Fundamentos', layout: 'framework',
             lead: 'Antes de actuar, confirma el hecho, la atribución del rol y el registro que debe quedar.',
-            bullets: take(3, ['Confirma los antecedentes antes de actuar.', 'Aplica únicamente las atribuciones de tu rol.', 'Protege los datos personales y evita canales informales.']),
+            bullets: take(3, ['Confirma los antecedentes antes de actuar.', 'Aplica únicamente las atribuciones de tu rol.', 'Protege los datos personales y evita canales informales.'], 'Antes de actuar, confirma el hecho, la atribución del rol y el registro que debe quedar.'),
             visual_theme: 'copper',
             notes: 'Conecta cada criterio con una situación habitual del edificio y pide al participante justificar qué evidencia conservaría.',
             activity: {
-                type: 'knowledge_check', prompt: '¿Qué práctica permite una gestión responsable y auditable?',
-                options: ['Registrar antecedentes, acción tomada y responsable', 'Resolver verbalmente y borrar los mensajes', 'Compartir todos los datos con el grupo de turno'], correctIndex: 0,
-                explanation: 'La trazabilidad exige antecedentes, acción, responsable y estado; además deben compartirse solo los datos necesarios.',
+                type: 'knowledge_check', prompt: 'El caso se resolvió de palabra y no quedó escrito. ¿Qué se pierde?',
+                options: [
+                    'Quien sigue el caso no tiene hecho, responsable ni próximo paso',
+                    'Nada, si las personas involucradas quedaron conformes en el momento',
+                    'Solo tiempo: el turno siguiente puede reconstruir lo ocurrido',
+                    'El detalle, pero conviene omitirlo cuando el caso es delicado',
+                ], correctIndex: 0,
+                explanation: 'Sin registro, el turno siguiente no distingue lo ocurrido de lo que cada uno recuerda. Un caso delicado también se anota, con los datos mínimos y en el canal autorizado.',
             },
         },
         {
             id: 'procedimiento', title: 'Procedimiento paso a paso', eyebrow: 'Aplicación', layout: 'process',
             lead: 'La respuesta profesional avanza en cuatro movimientos visibles: clasificar, registrar, asignar y cerrar.',
-            bullets: take(6, ['Recibe y clasifica la situación según impacto y urgencia.', 'Registra los hechos comprobados, sin suposiciones.', 'Asigna o escala al responsable correspondiente.', 'Informa el avance y cierra con evidencia.']),
+            bullets: take(6, ['Recibe y clasifica la situación según impacto y urgencia.', 'Registra los hechos comprobados, sin suposiciones.', 'Asigna o escala al responsable correspondiente.', 'Informa el avance y cierra con evidencia.'], 'La respuesta profesional avanza en cuatro movimientos visibles: clasificar, registrar, asignar y cerrar.'),
             role_cards: roleCards,
             visual_theme: 'sage',
             notes: 'Recorre el procedimiento con un caso del turno y señala en qué pantalla de Convive Connect queda cada registro y cada responsable.',
@@ -204,19 +229,24 @@ export function buildStructuredTrainingFallback(source: string, audience: 'admin
         {
             id: 'escenario', title: 'Escenario de decisión', eyebrow: 'Práctica', layout: 'scenario',
             lead: 'Cuando falta una respuesta exacta, el rol no improvisa: contiene, registra y escala.',
-            bullets: take(9, ['Una situación urgente requiere contener el riesgo antes de continuar.', 'La persona que recibe no siempre es quien resuelve.', 'La administración debe conocer los hechos, el responsable y el estado.']),
+            bullets: take(9, ['Una situación urgente requiere contener el riesgo antes de continuar.', 'La persona que recibe no siempre es quien resuelve.', 'La administración debe conocer los hechos, el responsable y el estado.'], 'Cuando falta una respuesta exacta, el rol no improvisa: contiene, registra y escala.'),
             visual_theme: 'amber',
             notes: 'Pide al participante justificar su elección con hechos, atribuciones y trazabilidad antes de mostrar la retroalimentación.',
             activity: {
-                type: 'scenario', prompt: 'Recibes una situación no prevista y no tienes atribuciones para resolverla. ¿Qué haces primero?',
-                options: ['Registro los hechos, contengo el riesgo inmediato y escalo al responsable', 'Prometo una solución y actúo fuera de mi rol', 'Espero al siguiente turno sin dejar constancia'], correctIndex: 0,
-                explanation: 'La actuación segura combina contención proporcional, registro inmediato y escalamiento al rol autorizado.',
+                type: 'scenario', prompt: 'La situación no está en tu atribución, pero hay un riesgo que el protocolo te permite contener. ¿Qué haces primero?',
+                options: [
+                    'Contengo lo inmediato, registro hora y hechos, y aviso al rol que decide',
+                    'Resuelvo el fondo para no dejar el problema esperando',
+                    'Dejo constancia solo si la persona lo pide por escrito',
+                    'Aviso por teléfono y escribo el registro cuando tenga la respuesta',
+                ], correctIndex: 0,
+                explanation: 'La contención permitida y el registro no esperan la decisión de fondo. Resolver fuera de rol, o avisar sin dejar constancia, corta la trazabilidad.',
             },
         },
         {
             id: 'roles', title: 'Quién decide, quién ejecuta y quién verifica', eyebrow: 'Coordinación', layout: 'comparison',
             lead: 'Una tarea se pierde cuando todos participan, pero nadie tiene la responsabilidad explícita.',
-            bullets: take(12, ['La administración fija el criterio y asigna al responsable autorizado.', 'Conserjería ejecuta las acciones previstas para el turno y registra lo observado.', 'El cierre identifica resultado, evidencia y próxima verificación.']),
+            bullets: take(12, ['La administración fija el criterio y asigna al responsable autorizado.', 'Conserjería ejecuta las acciones previstas para el turno y registra lo observado.', 'El cierre identifica resultado, evidencia y próxima verificación.'], 'Una tarea se pierde cuando todos participan, pero nadie tiene la responsabilidad explícita.'),
             role_cards: roleCards,
             visual_theme: 'copper',
             notes: 'Contrasta las responsabilidades de ambos roles, marca los límites de atribución y acuerda el canal de escalamiento aplicable.',
@@ -224,7 +254,7 @@ export function buildStructuredTrainingFallback(source: string, audience: 'admin
         {
             id: 'cierre', title: 'Lista de verificación de cierre', eyebrow: 'Transferencia al trabajo', layout: 'checklist',
             lead: 'El aprendizaje termina cuando la persona puede aplicar el protocolo y demostrar cómo cerró la gestión.',
-            bullets: take(15, ['Los hechos y la decisión quedaron registrados.', 'Existe una persona responsable y un plazo visible.', 'Las personas involucradas recibieron una actualización.', 'El cierre incluye resultado o evidencia verificable.']),
+            bullets: take(15, ['Los hechos y la decisión quedaron registrados.', 'Existe una persona responsable y un plazo visible.', 'Las personas involucradas recibieron una actualización.', 'El cierre incluye resultado o evidencia verificable.'], 'El aprendizaje termina cuando la persona puede aplicar el protocolo y demostrar cómo cerró la gestión.'),
             visual_theme: 'ink',
             notes: 'Usa esta lista antes de completar el curso y acuerda una acción concreta para el próximo turno o ciclo de administración.',
             activity: {

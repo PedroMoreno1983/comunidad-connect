@@ -26,7 +26,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/cc/Button";
-import { parseTrainingSlides } from "@/lib/training/courseContent";
+import { parseTrainingSlides, visibleSlideBullets } from "@/lib/training/courseContent";
 import type { TrainingAttemptRecord, TrainingAttemptResponse, TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
 
 const themeStyles: Record<TrainingSlide["visual_theme"], { accent: string; soft: string; label: string }> = {
@@ -409,6 +409,7 @@ function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: st
     const process = slide.layout === "process";
     const comparison = slide.layout === "comparison" || Boolean(slide.role_cards?.length);
     const scenario = slide.layout === "scenario";
+    const bullets = visibleSlideBullets(slide);
     return (
         <section className="mt-7 max-w-4xl">
             <div className={`overflow-hidden rounded-2xl border ${opening ? "p-7 sm:p-10" : "p-5 sm:p-7"}`} style={{ borderColor: "var(--cc-line)", background: opening ? "var(--cc-ink)" : "var(--cc-paper-warm)" }}>
@@ -423,21 +424,17 @@ function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: st
 
                 {process ? (
                     <ol className="mt-7 grid gap-3 sm:grid-cols-2">
-                        {slide.bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: accent }}>{index + 1}</span><span className="text-sm leading-6 cc-text-primary">{bullet}</span></li>)}
+                        {bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: accent }}>{index + 1}</span><span className="text-sm leading-6 cc-text-primary">{bullet}</span></li>)}
                     </ol>
                 ) : scenario ? (
-                    <div className="mt-7 rounded-xl border-l-4 p-5" style={{ borderColor: accent, background: soft }}><p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Hechos del caso</p><ul className="mt-3 space-y-3">{slide.bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 text-sm leading-6 cc-text-primary"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />{bullet}</li>)}</ul></div>
+                    <div className="mt-7 rounded-xl border-l-4 p-5" style={{ borderColor: accent, background: soft }}><p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Hechos del caso</p><ul className="mt-3 space-y-3">{bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 text-sm leading-6 cc-text-primary"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />{bullet}</li>)}</ul></div>
                 ) : (
                     <div className={`mt-7 grid gap-3 ${opening ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                        {slide.bullets.map((bullet, index) => <div key={`${slide.id}-${index}`} className="rounded-xl border p-4" style={{ borderColor: opening ? "rgba(255,255,255,.14)" : "var(--cc-line)", background: opening ? "rgba(255,255,255,.06)" : "var(--cc-paper)" }}><span className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: opening ? "#d8a486" : accent }}>{String(index + 1).padStart(2, "0")}</span><p className={`mt-2 text-sm leading-6 ${opening ? "text-white/85" : "cc-text-primary"}`}>{bullet}</p></div>)}
+                        {bullets.map((bullet, index) => <div key={`${slide.id}-${index}`} className="rounded-xl border p-4" style={{ borderColor: opening ? "rgba(255,255,255,.14)" : "var(--cc-line)", background: opening ? "rgba(255,255,255,.06)" : "var(--cc-paper)" }}><span className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: opening ? "#d8a486" : accent }}>{String(index + 1).padStart(2, "0")}</span><p className={`mt-2 text-sm leading-6 ${opening ? "text-white/85" : "cc-text-primary"}`}>{bullet}</p></div>)}
                     </div>
                 )}
 
                 {comparison && slide.role_cards && <div className="mt-5 grid gap-3 sm:grid-cols-2">{slide.role_cards.map(card => <article key={`${slide.id}-${card.role}`} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}><p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>{card.role}</p><p className="mt-2 text-sm font-semibold cc-text-primary">{card.responsibility}</p><p className="mt-1 text-xs leading-5 cc-text-secondary">{card.action}</p></article>)}</div>}
-            </div>
-            <div className="mt-4 rounded-xl border-l-4 p-4" style={{ borderColor: accent, background: soft }}>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Guion de la tutora</p>
-                <p className="mt-2 text-sm leading-6 cc-text-primary">{slide.notes}</p>
             </div>
         </section>
     );

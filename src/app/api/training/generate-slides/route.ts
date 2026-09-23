@@ -72,10 +72,10 @@ Transforma el texto fuente en un curso operativo profesional para ${audienceLabe
 
 Reglas editoriales obligatorias:
 1. Conserva reglas, cifras y procedimientos del texto. No inventes obligaciones legales.
-2. Crea entre 6 y 10 secciones con 2 a 5 bullets observables y accionables; cada sección tiene un lead breve que sintetiza su mensaje.
+2. Crea entre 6 y 10 secciones con 2 a 5 bullets observables y accionables. El lead resume la sección y no repite ningún bullet. Las notes son solo el guion de la tutora: no las copies en el lead ni en los bullets.
 3. Distingue las atribuciones de administracion y conserjeria.
 4. Incluye exactamente el recorrido de práctica completo: knowledge_check, scenario y checklist final.
-5. Para knowledge_check y scenario entrega 3 o 4 options, correctIndex numérico y una explanation que enseñe el criterio.
+5. Para knowledge_check y scenario entrega 4 options. Las incorrectas son errores frecuentes del turno, como omitir el registro, resolver fuera de rol, prometer un resultado o difundir un dato. No uses opciones absurdas. correctIndex numérico y una explanation que enseñe el criterio.
 6. Para checklist entrega entre 3 y 6 items verificables.
 7. Usa layouts variados de esta lista: opening, framework, process, comparison, scenario, checklist, summary. La primera sección usa opening y la última checklist.
 8. Incluye role_cards en al menos una sección: dos tarjetas con role, responsibility y action para Administración y Conserjería.
@@ -98,18 +98,20 @@ ${text}`;
             model,
             actionType: 'course',
             estimatedPromptTokens: promptTokens,
-            estimatedCompletionTokens: 3_000,
+            estimatedCompletionTokens: 6_000,
         });
 
         const startedAt = Date.now();
         const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            signal: AbortSignal.timeout(20_000),
+            signal: AbortSignal.timeout(45_000),
             body: JSON.stringify({
                 contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
                 generationConfig: {
                     temperature: 0.25,
+                    maxOutputTokens: 8192,
+                    thinkingConfig: { thinkingBudget: 0 },
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: 'ARRAY',
