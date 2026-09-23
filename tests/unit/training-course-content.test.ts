@@ -42,7 +42,7 @@ describe('training course content', () => {
             'Registrar cada novedad importante. Confirmar los antecedentes antes de actuar. Escalar al responsable y comunicar el avance.',
             'concierge',
         );
-        expect(slides.length).toBeGreaterThanOrEqual(6);
+        expect(slides).toHaveLength(8);
         expect(trainingActivityCount(slides)).toBeGreaterThanOrEqual(3);
         expect(new Set(slides.map(slide => slide.layout)).size).toBeGreaterThanOrEqual(4);
         expect(slides.some(slide => (slide.role_cards?.length || 0) >= 2)).toBe(true);
@@ -97,6 +97,31 @@ describe('training course content', () => {
             expect(questions.join(' ')).not.toMatch(/Publicar el número de la unidad en el grupo comunitario|grabe la pantalla con su teléfono/);
             expect(slides.some(slide => slide.role_cards?.some(card => card.responsibility === 'Define criterio, responsable y control'))).toBe(false);
         });
+    });
+
+    it('adds two sections to each official course and keeps the slides already in progress', () => {
+        const sql = readFileSync('supabase/migrations/20260923213055_training_course_length.sql', 'utf8');
+        const added = [...sql.matchAll(/\$slide\$([\s\S]*?)\$slide\$/g)].map(match => parseTrainingSlides(`[${match[1]}]`)[0]);
+        expect(added.map(slide => slide.id)).toEqual([
+            'convivencia-respuesta',
+            'convivencia-reiteracion',
+            'datos-puesto',
+            'datos-copia',
+            'turno-primeros',
+            'turno-residentes',
+        ]);
+        for (const slide of added) {
+            expect(slide.bullets.length).toBeGreaterThanOrEqual(3);
+            expect(slide.bullets.some(bullet => bullet.trim() === slide.lead?.trim())).toBe(false);
+            expect(slide.lead && slide.lead.length).toBeGreaterThan(40);
+            expect(slide.notes.trim().length).toBeGreaterThanOrEqual(35);
+        }
+        expect(sql).toContain('estimated_minutes = 45');
+        expect(sql).toContain('quality_version = 6');
+        expect(sql).toContain("-> 2 ->> 'id' = 'convivencia-canal'");
+        expect(sql).toContain("-> 2 ->> 'id' = 'datos-camaras'");
+        expect(sql).toContain("-> 2 ->> 'id' = 'turno-procedimiento'");
+        expect(sql).not.toContain('Ley 21.442');
     });
 
     it('adds practice to a valid AI outline that omitted interactions', () => {

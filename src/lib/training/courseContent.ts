@@ -219,6 +219,13 @@ export function buildStructuredTrainingFallback(source: string, audience: 'admin
             },
         },
         {
+            id: 'respuesta', title: 'Qué se comunica en el momento', eyebrow: 'Conversación', layout: 'framework',
+            lead: 'La persona que avisa recibe confirmación de que el hecho quedó registrado. No recibe una promesa ni un dato de más.',
+            bullets: ['Confirma la hora y que el registro quedó en el canal del edificio.', 'Explica solo el paso que corresponde a tu rol.', 'No adelantes la decisión de otro ni difundas unidades, deudas o imágenes.', 'Si el riesgo sigue, indica el contacto del edificio y no un teléfono personal.'],
+            visual_theme: 'amber',
+            notes: 'Pide la respuesta en dos frases. Corta cualquier promesa de resultado o cualquier dato que no sirve para recibir el caso.',
+        },
+        {
             id: 'procedimiento', title: 'Procedimiento paso a paso', eyebrow: 'Aplicación', layout: 'process',
             lead: 'La respuesta profesional avanza en cuatro movimientos visibles: clasificar, registrar, asignar y cerrar.',
             bullets: take(6, ['Recibe y clasifica la situación según impacto y urgencia.', 'Registra los hechos comprobados, sin suposiciones.', 'Asigna o escala al responsable correspondiente.', 'Informa el avance y cierra con evidencia.'], 'La respuesta profesional avanza en cuatro movimientos visibles: clasificar, registrar, asignar y cerrar.'),
@@ -242,6 +249,13 @@ export function buildStructuredTrainingFallback(source: string, audience: 'admin
                 ], correctIndex: 0,
                 explanation: 'La contención permitida y el registro no esperan la decisión de fondo. Resolver fuera de rol, o avisar sin dejar constancia, corta la trazabilidad.',
             },
+        },
+        {
+            id: 'reiteracion', title: 'Si el mismo hecho vuelve', eyebrow: 'Continuidad', layout: 'process',
+            lead: 'Un hecho que se repite se agrega al caso que ya está abierto. No se parte de cero ni se resuelve fuera de rol.',
+            bullets: ['Busca el registro anterior antes de abrir otro.', 'Agrega hora, lugar y si esta vez hubo observación directa.', 'Avisa a quien ya figura como responsable si el riesgo cambió.', 'No publiques la unidad ni prometas una medida que todavía no existe.'],
+            visual_theme: 'sage',
+            notes: 'Pide qué se agrega al caso de ayer y qué se deja fuera del aviso. El criterio es continuidad, no un expediente nuevo.',
         },
         {
             id: 'roles', title: 'Quién decide, quién ejecuta y quién verifica', eyebrow: 'Coordinación', layout: 'comparison',
