@@ -389,7 +389,7 @@ export async function runMultiAgentTurn(
                 "- **Decision CoCo:** que accion conviene tomar.",
                 "</pizarra>",
                 "",
-                "Fuera de esas etiquetas, saluda brevemente y haz una pregunta."
+                "Fuera de esas etiquetas: un párrafo de máximo dos oraciones, en femenino y de tú, y una sola pregunta. No saludes a todos."
             ].join("\n")
             : [
                 "MODO PIZARRA REGLAS:",
