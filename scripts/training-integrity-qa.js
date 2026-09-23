@@ -56,6 +56,9 @@ expect('Training progress has own-user RLS', migration.includes('user_training_p
 expect('Learning evidence tables all enable RLS', ['training_module_versions', 'training_assignments', 'training_attempts', 'training_activity_responses', 'training_certificates'].every(table => operationsMigration.includes(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`)));
 expect('Root schema mirrors the training operations migrations', rootSchema.includes('FORMACIÓN TRAZABLE, VERSIONADA Y CERTIFICADA') && rootSchema.includes('training_publish_module_version'));
 expect('Fresh bootstraps remove legacy permissive training policies', policyCleanupMigration.includes('DROP POLICY IF EXISTS training_modules_select') && rootSchema.includes('training_policy_bootstrap_cleanup'));
+const depthMigration = read('supabase/migrations/20260923194520_training_course_depth.sql');
+expect('Official courses keep their lesson ids and replace the generic role card', depthMigration.includes('9f6a1b41-4e1b-4472-8b11-bf3b98600101') && depthMigration.includes('quality_version = 5') && !depthMigration.includes('Define criterio, responsable y control'));
+expect('Classroom hides a repeated lead and does not show the tutor script', classroom.includes('visibleSlideBullets') && !classroom.includes('Guion de la tutora'));
 
 console.log(JSON.stringify({ generatedAt: new Date().toISOString(), passed: failures.length === 0, checks: checks.length, failures }, null, 2));
 if (failures.length) process.exitCode = 1;
