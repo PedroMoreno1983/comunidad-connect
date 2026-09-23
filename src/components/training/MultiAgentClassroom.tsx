@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ArrowLeft,
     ArrowRight,
-    Award,
-    Building2,
     Check,
     CheckCircle2,
     Circle,
@@ -20,13 +18,13 @@ import {
     Send,
     ShieldCheck,
     Sparkles,
-    Target,
-    Workflow,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/cc/Button";
-import { parseTrainingSlides } from "@/lib/training/courseContent";
+import { useAuth } from "@/lib/authContext";
+import { practicePeersForRole } from "@/lib/training/tutorGuidance";
+import { parseTrainingSlides, visibleSlideBullets } from "@/lib/training/courseContent";
 import type { TrainingAttemptRecord, TrainingAttemptResponse, TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
 
 const themeStyles: Record<TrainingSlide["visual_theme"], { accent: string; soft: string; label: string }> = {
@@ -47,6 +45,9 @@ export function MultiAgentClassroom({
     onSlideChange,
     onComplete,
 }: TrainingClassroomProps) {
+    const { user } = useAuth();
+    const sessionRole = user?.role === "admin" || user?.role === "concierge" ? user.role : null;
+    const peers = sessionRole ? practicePeersForRole(sessionRole) : [];
     const slides = useMemo(() => parseTrainingSlides(courseContent), [courseContent]);
     const safeInitialIndex = slides.length ? Math.min(Math.max(initialSlideIndex, 0), slides.length - 1) : 0;
     const [currentIndex, setCurrentIndex] = useState(safeInitialIndex);
@@ -55,7 +56,16 @@ export function MultiAgentClassroom({
     const [checklists, setChecklists] = useState<Record<string, string[]>>({});
     const [completedActivities, setCompletedActivities] = useState<Record<string, boolean>>({});
     const [feedback, setFeedback] = useState<Record<string, string>>({});
-    const [messages, setMessages] = useState<TrainingChatMessage[]>([]);
+    const [messages, setMessages] = useState<TrainingChatMessage[]>(() => {
+        const opening = slides[safeInitialIndex];
+        return [{
+            id: "welcome",
+            role: "system",
+            text: opening
+                ? `La tutora abre «${opening.title}». La presentación ya está en pantalla: pregúntale cómo aplicarías esta sección. Tus compañeros de práctica pueden intervenir.`
+                : "La tutora acompaña la sección que está en pantalla.",
+        }];
+    });
     const [question, setQuestion] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [completed, setCompleted] = useState(false);
@@ -64,27 +74,40 @@ export function MultiAgentClassroom({
     const [savingActivity, setSavingActivity] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const messagesRef = useRef<HTMLDivElement>(null);
+    const openedCourse = useRef<string | null>(null);
+    const seenSlideId = useRef<string | null>(slides[safeInitialIndex]?.id ?? null);
 
     useEffect(() => {
+        // Guardar el avance actualiza last_slide_index y el padre vuelve a pasar
+        // initialSlideIndex. Eso no es un curso nuevo: reiniciar aquí borraba la
+        // conversación y las respuestas que todavía no habían vuelto del servidor.
+        const courseKey = `${moduleId}:${moduleVersion}:${String(courseContent ?? "")}`;
+        if (openedCourse.current === courseKey) return;
+        openedCourse.current = courseKey;
+        const start = slides.length ? Math.min(Math.max(initialSlideIndex, 0), slides.length - 1) : 0;
         const resumedActivities = Object.fromEntries(
             slides
-                .slice(0, safeInitialIndex)
+                .slice(0, start)
                 .filter(slide => slide.activity)
                 .map(slide => [slide.id, true]),
         );
-        setCurrentIndex(safeInitialIndex);
-        setMaxVisited(safeInitialIndex);
+        setCurrentIndex(start);
+        setMaxVisited(start);
         setAnswers({});
         setChecklists({});
         setCompletedActivities(resumedActivities);
         setFeedback({});
         setCompleted(false);
+        const opening = slides[start];
+        seenSlideId.current = opening?.id ?? null;
         setMessages([{
             id: "welcome",
             role: "system",
-            text: `CoCo acompaña este curso. Puedes preguntar por un concepto o por cómo aplicarlo en tu rol.`,
+            text: opening
+                ? `La tutora abre «${opening.title}». La presentación ya está en pantalla: pregúntale cómo aplicarías esta sección. Tus compañeros de práctica pueden intervenir.`
+                : "La tutora acompaña la sección que está en pantalla.",
         }]);
-    }, [courseContent, safeInitialIndex, slides]);
+    }, [courseContent, initialSlideIndex, moduleId, moduleVersion, slides]);
 
     useEffect(() => {
         let active = true;
@@ -135,6 +158,20 @@ export function MultiAgentClassroom({
     }, [messages, isTyping]);
 
     const current = slides[currentIndex];
+
+    useEffect(() => {
+        if (!current) return;
+        if (seenSlideId.current === current.id) return;
+        seenSlideId.current = current.id;
+        setMessages(previous => previous.some(message => message.id === `section-${current.id}`)
+            ? previous
+            : [...previous, {
+                id: `section-${current.id}`,
+                role: "system",
+                text: `Ahora la presentación muestra «${current.title}». Pregúntale a la tutora sobre esta sección.`,
+            }]);
+    }, [current]);
+
     const activityIds = slides.filter(slide => slide.activity).map(slide => slide.id);
     const allActivitiesComplete = activityIds.every(id => completedActivities[id]);
     const currentActivityComplete = !current?.activity || completedActivities[current.id];
@@ -288,10 +325,10 @@ export function MultiAgentClassroom({
 
             {attemptError && <div role="alert" className="border-b px-5 py-3 text-sm" style={{ borderColor: "var(--cc-rose)", background: "var(--cc-rose-tint)", color: "var(--cc-rose)" }}>{attemptError}</div>}
 
-            <div className="grid min-h-[680px] lg:grid-cols-[230px_minmax(0,1fr)_330px]">
-                <nav className="border-b p-4 lg:border-b-0 lg:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
+            <div className="grid min-h-[680px] xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+                <nav className="border-b p-4 xl:border-b-0 xl:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Contenido</p>
-                    <ol className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                    <ol className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
                         {slides.map((slide, index) => {
                             const isCurrent = index === currentIndex;
                             const isAvailable = index <= maxVisited + 1;
@@ -331,7 +368,7 @@ export function MultiAgentClassroom({
                         <span className="text-xs font-semibold cc-text-tertiary">Sección {currentIndex + 1} de {slides.length}</span>
                     </div>
 
-                    <SlideCanvas slide={current} accent={theme.accent} soft={theme.soft} />
+                    <SlideCanvas slide={current} accent={theme.accent} />
 
                     {current.activity && (
                         <ActivityCard
@@ -366,27 +403,34 @@ export function MultiAgentClassroom({
                     </div>
                 </main>
 
-                <aside className="flex min-h-[520px] flex-col border-t lg:border-l lg:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                <aside className="flex min-h-[520px] flex-col border-t xl:border-l xl:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                     <div className="border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
-                            <div><p className="text-sm font-semibold cc-text-primary">Equipo multiagente CoCo</p><p className="text-xs cc-text-secondary">Tutora + pares de práctica, con contexto de esta sección</p></div>
+                            <div><p className="text-sm font-semibold cc-text-primary">Equipo multiagente CoCo</p><p className="text-xs cc-text-secondary">En «{current.title}»</p></div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                            <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ background: "var(--cc-ink)", color: "white" }}>Tutora</span>
+                            {peers.map(peer => <span key={peer.id} className="rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>{peer.name}</span>)}
                         </div>
                     </div>
                     <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
                         {messages.map(message => (
+                            message.role === "system" ? (
+                                <p key={message.id} className="px-1 text-center text-xs leading-5 cc-text-secondary">{message.text}</p>
+                            ) : (
                             <div key={message.id} className={`rounded-xl px-3 py-2.5 text-sm leading-6 ${message.role === "user" ? "ml-6 text-white" : "mr-3"}`} style={{ background: message.role === "user" ? "var(--cc-ink)" : "var(--cc-paper)", border: message.role === "user" ? undefined : "1px solid var(--cc-line)" }}>
                                 {message.role !== "user" && <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{message.role === "tutor" ? "Tutora CoCo" : message.name || "Compañero de práctica"}</p>}
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <p>{children}</p>, ul: ({ children }) => <ul className="list-disc pl-4">{children}</ul>, ol: ({ children }) => <ol className="list-decimal pl-4">{children}</ol> }}>{message.text}</ReactMarkdown>
-                                {message.blackboard && <div className="mt-3 rounded-lg border p-3 text-xs leading-5 cc-text-primary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.blackboard}</ReactMarkdown></div>}
                             </div>
+                            )
                         ))}
                         {isTyping && <div className="mr-3 flex items-center gap-2 rounded-xl border px-3 py-3 text-xs cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><Loader2 className="h-3.5 w-3.5 animate-spin" />CoCo está revisando el curso…</div>}
                     </div>
                     <div className="border-t p-4" style={{ borderColor: "var(--cc-line)" }}>
-                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary" htmlFor="training-question">Pregunta a CoCo</label>
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary" htmlFor="training-question">Pregunta sobre esta sección</label>
                         <div className="mt-2 flex gap-2">
-                            <textarea id="training-question" rows={2} value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendQuestion(); } }} className="input-premium min-h-20 flex-1 resize-none p-2.5 text-sm" placeholder="¿Cómo aplico esto en mi turno?" />
+                            <textarea id="training-question" rows={2} value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendQuestion(); } }} className="input-premium min-h-20 flex-1 resize-none p-2.5 text-sm" placeholder={`¿Cómo aplico «${current.title}»?`} />
                             <button type="button" onClick={() => void sendQuestion()} disabled={!question.trim() || isTyping} className="flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg text-white disabled:opacity-50" style={{ background: "var(--cc-copper)" }} aria-label="Enviar pregunta"><Send className="h-4 w-4" /></button>
                         </div>
                     </div>
@@ -396,40 +440,85 @@ export function MultiAgentClassroom({
     );
 }
 
-function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: string; soft: string }) {
+function SlideCanvas({ slide, accent }: { slide: TrainingSlide; accent: string }) {
+    const bullets = visibleSlideBullets(slide);
     const opening = slide.layout === "opening";
     const process = slide.layout === "process";
-    const comparison = slide.layout === "comparison" || Boolean(slide.role_cards?.length);
     const scenario = slide.layout === "scenario";
-    return (
-        <section className="mt-7 max-w-4xl">
-            <div className={`overflow-hidden rounded-2xl border ${opening ? "p-7 sm:p-10" : "p-5 sm:p-7"}`} style={{ borderColor: "var(--cc-line)", background: opening ? "var(--cc-ink)" : "var(--cc-paper-warm)" }}>
-                <div className="flex items-start justify-between gap-5">
-                    <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: opening ? "#d8a486" : accent }}>{slide.layout === "process" ? "Flujo operativo" : slide.layout === "scenario" ? "Decisión guiada" : slide.layout === "comparison" ? "Responsabilidades" : "Idea central"}</p>
-                        <h2 className={`mt-3 font-semibold leading-tight ${opening ? "text-4xl text-white sm:text-5xl" : "text-3xl cc-text-primary sm:text-4xl"}`} style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
-                        {slide.lead && <p className={`mt-4 max-w-3xl text-lg leading-7 ${opening ? "text-white/75" : "cc-text-secondary"}`}>{slide.lead}</p>}
-                    </div>
-                    <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl sm:flex" style={{ color: opening ? "white" : accent, background: opening ? "rgba(255,255,255,.10)" : soft }}>{process ? <Workflow className="h-6 w-6" /> : comparison ? <Building2 className="h-6 w-6" /> : scenario ? <Target className="h-6 w-6" /> : <Award className="h-6 w-6" />}</span>
+    const roles = Boolean(slide.role_cards?.length);
+    const kicker = slide.eyebrow || (process ? "Procedimiento" : scenario ? "Caso" : roles ? "Responsabilidades" : "Criterio");
+
+    if (opening) {
+        return (
+            <section className="mt-6 overflow-hidden rounded-3xl" style={{ background: "var(--cc-ink)" }}>
+                <div className="px-7 py-10 sm:px-12 sm:py-14">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: "#e7b89a" }}>{kicker}</p>
+                    <h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.05] text-white sm:text-6xl" style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
+                    {slide.lead && <p className="mt-6 max-w-2xl text-lg leading-8 text-white/70">{slide.lead}</p>}
                 </div>
+                <div className="grid border-t sm:grid-cols-3" style={{ borderColor: "rgba(255,255,255,.12)" }}>
+                    {bullets.map((bullet, index) => (
+                        <div key={`${slide.id}-${index}`} className="border-t px-7 py-6 sm:border-l sm:border-t-0 sm:px-8" style={{ borderColor: "rgba(255,255,255,.12)" }}>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "#e7b89a" }}>{String(index + 1).padStart(2, "0")}</p>
+                            <p className="mt-3 text-sm leading-6 text-white/90">{bullet}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        );
+    }
+
+    return (
+        <section className="mt-6 overflow-hidden rounded-3xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <div className="h-1.5" style={{ background: accent }} />
+            <div className="px-7 py-8 sm:px-10 sm:py-10">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: accent }}>{kicker}</p>
+                <h2 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight cc-text-primary sm:text-5xl" style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
+                {slide.lead && <p className="mt-5 max-w-2xl border-l-2 pl-4 text-lg leading-8 cc-text-secondary" style={{ borderColor: accent }}>{slide.lead}</p>}
 
                 {process ? (
-                    <ol className="mt-7 grid gap-3 sm:grid-cols-2">
-                        {slide.bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: accent }}>{index + 1}</span><span className="text-sm leading-6 cc-text-primary">{bullet}</span></li>)}
+                    <ol className="mt-9">
+                        {bullets.map((bullet, index) => (
+                            <li key={`${slide.id}-${index}`} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4">
+                                <div className="flex flex-col items-center">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ background: accent }}>{index + 1}</span>
+                                    {index < bullets.length - 1 && <span className="my-1 w-px flex-1" style={{ background: "var(--cc-line)" }} />}
+                                </div>
+                                <p className="pb-7 pt-1.5 text-base leading-7 cc-text-primary">{bullet}</p>
+                            </li>
+                        ))}
                     </ol>
                 ) : scenario ? (
-                    <div className="mt-7 rounded-xl border-l-4 p-5" style={{ borderColor: accent, background: soft }}><p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Hechos del caso</p><ul className="mt-3 space-y-3">{slide.bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 text-sm leading-6 cc-text-primary"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />{bullet}</li>)}</ul></div>
+                    <ol className="mt-8 divide-y" style={{ borderColor: "var(--cc-line)" }}>
+                        {bullets.map((bullet, index) => (
+                            <li key={`${slide.id}-${index}`} className="grid gap-3 py-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-6">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: accent }}>Hecho {String(index + 1).padStart(2, "0")}</p>
+                                <p className="text-base leading-7 cc-text-primary">{bullet}</p>
+                            </li>
+                        ))}
+                    </ol>
                 ) : (
-                    <div className={`mt-7 grid gap-3 ${opening ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                        {slide.bullets.map((bullet, index) => <div key={`${slide.id}-${index}`} className="rounded-xl border p-4" style={{ borderColor: opening ? "rgba(255,255,255,.14)" : "var(--cc-line)", background: opening ? "rgba(255,255,255,.06)" : "var(--cc-paper)" }}><span className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: opening ? "#d8a486" : accent }}>{String(index + 1).padStart(2, "0")}</span><p className={`mt-2 text-sm leading-6 ${opening ? "text-white/85" : "cc-text-primary"}`}>{bullet}</p></div>)}
-                    </div>
+                    <ul className="mt-8 space-y-4">
+                        {bullets.map((bullet, index) => (
+                            <li key={`${slide.id}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 text-base leading-7 cc-text-primary">
+                                <span className="mt-2 h-2 w-2 rounded-full" style={{ background: accent }} />
+                                <span>{bullet}</span>
+                            </li>
+                        ))}
+                    </ul>
                 )}
 
-                {comparison && slide.role_cards && <div className="mt-5 grid gap-3 sm:grid-cols-2">{slide.role_cards.map(card => <article key={`${slide.id}-${card.role}`} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}><p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>{card.role}</p><p className="mt-2 text-sm font-semibold cc-text-primary">{card.responsibility}</p><p className="mt-1 text-xs leading-5 cc-text-secondary">{card.action}</p></article>)}</div>}
-            </div>
-            <div className="mt-4 rounded-xl border-l-4 p-4" style={{ borderColor: accent, background: soft }}>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>Guion de la tutora</p>
-                <p className="mt-2 text-sm leading-6 cc-text-primary">{slide.notes}</p>
+                {roles && slide.role_cards && (
+                    <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-line)" }}>
+                        {slide.role_cards.map(card => (
+                            <article key={`${slide.id}-${card.role}`} className="p-5 sm:p-6" style={{ background: "var(--cc-paper-warm)" }}>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: accent }}>{card.role}</p>
+                                <p className="mt-3 text-lg font-semibold leading-7 cc-text-primary">{card.responsibility}</p>
+                                <p className="mt-2 text-sm leading-6 cc-text-secondary">{card.action}</p>
+                            </article>
+                        ))}
+                    </div>
+                )}
             </div>
         </section>
     );
@@ -462,7 +551,7 @@ function ActivityCard({
     if (!activity) return null;
     const isChecklist = activity.type === "checklist";
     return (
-        <section className="mt-8 max-w-3xl rounded-xl border p-4 sm:p-5" style={{ borderColor: isComplete ? "var(--cc-sage)" : "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }}>
+        <section className="mt-4 rounded-3xl border p-5 sm:p-7" style={{ borderColor: isComplete ? "var(--cc-sage)" : "var(--cc-line)", background: "var(--cc-paper)" }}>
             <div className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: isComplete ? "var(--cc-sage-tint)" : "var(--cc-copper-tint)", color: isComplete ? "var(--cc-sage)" : "var(--cc-copper)" }}>{isChecklist ? <ListChecks className="h-4 w-4" /> : <MessageCircleQuestion className="h-4 w-4" />}</span>
                 <div><p className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{isChecklist ? "Aplicación al trabajo" : activity.type === "scenario" ? "Escenario de decisión" : "Comprueba lo aprendido"}</p><h3 className="mt-1 text-base font-semibold cc-text-primary">{activity.prompt}</h3></div>

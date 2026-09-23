@@ -57,7 +57,9 @@ services:
     restart: unless-stopped
     command:
       - "-L=http://:8888"
-      - "-F=http://${RESIDENTIAL_PROXY_USER:-yUSXUuRYOB3Nj98s}:${RESIDENTIAL_PROXY_PASS:-g5kqNwULLAW8aXTl_country-cl_session-conviveCart_lifetime-24h}@${RESIDENTIAL_PROXY_HOST:-geo.iproyal.com}:${RESIDENTIAL_PROXY_PORT:-12321}"
+      # Sin valores por defecto: las credenciales del proxy no van en el repositorio.
+      # Se interpolan desde el .env del servidor (ver .env.example).
+      - "-F=http://${RESIDENTIAL_PROXY_USER}:${RESIDENTIAL_PROXY_PASS}@${RESIDENTIAL_PROXY_HOST}:${RESIDENTIAL_PROXY_PORT}"
     networks:
       - cart-internal
     logging:

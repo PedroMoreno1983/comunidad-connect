@@ -2438,6 +2438,9 @@ export interface TrainingSlide {
     activity?: TrainingActivity;
 }
 
+/** Sección que el respaldo del aula usa cuando el motor de IA no responde. */
+export type TrainingSectionContext = Pick<TrainingSlide, 'title' | 'lead' | 'bullets' | 'notes'>;
+
 export interface TrainingQualityCheck {
     id: string;
     label: string;
