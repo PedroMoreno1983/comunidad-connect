@@ -468,7 +468,7 @@ function buildLocalCoCoFallback(
         }
 
         return {
-            reply: 'Para el supermercado: entra a Supermercado en tu menú, pega tu lista (una línea por producto) y CoCo compara precios reales entre Jumbo, Lider, Santa Isabel y Unimarc. Cada producto muestra su tienda, el criterio con que elegimos la marca y un enlace directo para comprarlo. Si alguno falta, prueba otra descripción (tipo, tamaño o marca).',
+            reply: 'Para el supermercado: entra a Supermercado en tu menú, elige la tienda (Jumbo, Santa Isabel, Líder, Unimarc o aCuenta), busca productos con foto y precio y arma el carro. Si quieres, compara solo con las cadenas que elijas y después abre el carro en el sitio de esa tienda. Tottus e Irurzun no están disponibles. Si un producto falta en la comparación, el subtotal de esa tienda queda incompleto.',
             navigate: context.role === 'resident' ? '/resident/supermercado' : undefined,
             action: 'OPEN_SUPERMARKET',
         };

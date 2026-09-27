@@ -22,6 +22,10 @@ export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 
  */
 export const HIDDEN_SUPERMARKET_STORES = ['Tottus', 'Irurzun'] as const;
 
+/**
+ * aCuenta se ofrece como mayorista. Irurzun sigue clasificada igual en filas
+ * que el scraper guarda, pero no entra a la compra ni a la comparación.
+ */
 export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
 
 const MAX_REQUESTED_COUNT = 500;

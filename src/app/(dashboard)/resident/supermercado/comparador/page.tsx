@@ -15,7 +15,6 @@ import {
   Info,
   Loader2,
   ScanBarcode,
-  ShoppingBag,
   ShoppingBasket,
   Store,
   Tags,
@@ -72,7 +71,6 @@ const STORE_HOME: Record<string, string> = {
   'Santa Isabel': 'https://www.santaisabel.cl',
   Lider: 'https://super.lider.cl',
   Unimarc: 'https://www.unimarc.cl',
-  Tottus: 'https://www.tottus.cl/tottus-cl',
   aCuenta: 'https://www.acuenta.cl',
 };
 
@@ -81,7 +79,6 @@ const STORE_ACCENT: Record<string, string> = {
   'Santa Isabel': '#C62828',
   Lider: '#1476D4',
   Unimarc: '#D71920',
-  Tottus: '#7CB342',
   aCuenta: '#F28C00',
 };
 
@@ -90,7 +87,6 @@ const STORE_ICONS = {
   'Santa Isabel': Store,
   Lider: BadgeDollarSign,
   Unimarc: ScanBarcode,
-  Tottus: ShoppingBag,
   aCuenta: Tags,
 };
 

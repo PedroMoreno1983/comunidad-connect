@@ -1,6 +1,6 @@
 # Carros de supermercado en VPS
 
-Convive abre una sesión web temporal en el VPS para el supermercado elegido. La misma ruta funciona para Jumbo, Santa Isabel, Lider, Unimarc, Tottus, aCuenta e Irurzun; el cliente no instala una extensión ni una app.
+Convive abre una sesión web temporal en el VPS para el supermercado elegido. La compra ofrece Jumbo, Santa Isabel, Lider, Unimarc y aCuenta. Tottus e Irurzun siguen en el worker y en el scraper, pero no se muestran ni se pueden elegir. El cliente no instala una extensión ni una app.
 
 ## Flujo
 
@@ -43,11 +43,13 @@ La forma correcta es abrir un Chromium real por WebDriver y mirar el título y e
 
 **Ojo con los slots al probar.** `SE_DRAIN_AFTER_SESSION_COUNT: 1` recicla cada navegador después de una sola sesión, y `SE_NODE_MAX_SESSIONS: 1` deja un solo espacio por contenedor. Una sesión que se abre y no se cierra deja ese contenedor inutilizable hasta que expire `SESSION_HARD_SECONDS` (90 minutos). Cierra siempre con `DELETE /session/:id`, o reinicia con `docker compose restart browser-N`.
 
-## Tottus queda oculta; Irurzun vuelve al comparador
+## Tottus e Irurzun quedan fuera de la compra
 
-Tottus no se muestra ni se compara: Cloudflare interpone un desafio humano al cargar el carro. Se sigue scrapeando. Volver a mostrarla es moverla de `HIDDEN_SUPERMARKET_STORES` a `SUPERMARKET_STORES`, en `src/lib/supermarketBasket.ts`.
+Tottus no se muestra ni se compara: Cloudflare interpone un desafio humano al cargar el carro. Se sigue scrapeando.
 
-Irurzun vuelve a la comparacion. El carro se abre en el navegador de quien compra, con el enlace oficial de Shopify. aCuenta sigue como mayorista en el navegador remoto.
+Irurzun tampoco se ofrece, por decision de producto. El tipo, el scraper y el enlace de Shopify siguen en el codigo para no perder precios ya recolectados, pero `SUPERMARKET_STORES` no la incluye, CoCo no la ofrece y `/api/supermarket/cart-handoff` rechaza cualquier tienda fuera de esa lista.
+
+Volver a mostrar cualquiera es moverla de `HIDDEN_SUPERMARKET_STORES` a `SUPERMARKET_STORES`, en `src/lib/supermarketBasket.ts`. aCuenta sigue como mayorista en el navegador remoto.
 
 Lo que sigue describe como se comportaron las siete cuando estaban todas activas, y es lo que hay que releer antes de reactivar cualquiera.
 

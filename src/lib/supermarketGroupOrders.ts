@@ -27,6 +27,7 @@ type GroupProfile = {
   community_id?: string | null;
 };
 
+/** Incluye tiendas ocultas para cubrir el tipo; la compra solo usa SUPERMARKET_STORES. */
 const STORE_URLS: Record<SupermarketStore, string> = {
   Jumbo: 'https://www.jumbo.cl',
   Lider: 'https://super.lider.cl',

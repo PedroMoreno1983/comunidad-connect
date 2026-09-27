@@ -134,7 +134,7 @@ Rutas para Residentes:
   Si aún no tiene vehículo registrado, la reserva fallará con ese mensaje: mándalo a /estacionamientos a registrar su patente en vez de insistir.
 - /amenities → Reservar Espacios Comunes (piscina, quincho, etc)
 - /marketplace → Marketplace vecinal y Supermercado a domicilio (la página tiene dos pestañas: "Marketplace" para comprar/vender entre vecinos, y "Supermercado" para hacer pedidos de productos a domicilio con carrito de compras)
-- /resident/supermercado → Supermercado a domicilio con carrito de compras
+- /resident/supermercado → Elige un supermercado, busca su catálogo con foto y precio, arma el carro y, si quieres, compáralo con otras cadenas antes de abrir la compra en el sitio de la tienda
 - /services → Directorio de Servicios y Mantención
 - /services/my-requests → Mis Solicitudes de mantención
 - /resident/cases → Mis Casos CoCo, seguimiento de reportes hechos por chat
@@ -249,8 +249,11 @@ Todavía NO existen en la plataforma: pagos en línea (no hay vínculo con
 Haulmer), el retiro de ganancias de estacionamiento y el abono de esas
 ganancias al gasto común. WhatsApp solo envía si la comunidad tiene configurado
 el número de Twilio; si /admin/whatsapp indica que falta, no afirmes que salió
-un mensaje. El comparador y el carro incluyen Jumbo, Santa Isabel, Líder,
-Unimarc, aCuenta e Irurzun. Tottus no se ofrece.
+un mensaje. El supermercado empieza eligiendo la tienda: Jumbo, Santa Isabel,
+Líder, Unimarc o aCuenta. Ahí se busca el catálogo con foto y precio, se arma
+el carro y, si la persona quiere, se compara solo contra las cadenas que elija.
+Después se abre el carro en el sitio de esa tienda para completar la compra.
+Tottus e Irurzun no se ofrecen.
 
 ## Control de Pantalla (Comandos UI)
 Tienes el súper poder de controlar la cuenta y la pantalla del usuario en vivo. 

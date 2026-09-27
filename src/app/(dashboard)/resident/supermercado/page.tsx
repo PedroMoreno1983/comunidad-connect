@@ -23,6 +23,14 @@ const STORE_COLORS: Record<string, string> = {
   aCuenta: '#f28c00',
 };
 
+const STORE_SITES: Record<string, string> = {
+  Jumbo: 'https://www.jumbo.cl',
+  'Santa Isabel': 'https://www.santaisabel.cl',
+  Lider: 'https://super.lider.cl',
+  Unimarc: 'https://www.unimarc.cl',
+  aCuenta: 'https://www.acuenta.cl',
+};
+
 function money(value: number) {
   return `$${Math.round(value).toLocaleString('es-CL')}`;
 }
@@ -348,7 +356,7 @@ export default function SupermarketPage() {
           {!checkoutReady ? <p className="mt-2 flex items-start gap-2 text-sm text-amber-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Esta tienda tiene productos faltantes o sin identificador de carro. Revisa las alternativas o vuelve a {primaryStore}.</p> : null}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {checkoutReady && activeStore ? <RemoteCartButton store={activeStore} items={checkoutItems} complete /> : null}
-            {activeStore ? <a href={{ Jumbo: 'https://www.jumbo.cl', 'Santa Isabel': 'https://www.santaisabel.cl', Lider: 'https://super.lider.cl', Unimarc: 'https://www.unimarc.cl', aCuenta: 'https://www.acuenta.cl' }[activeStore]}
+            {activeStore && STORE_SITES[activeStore] ? <a href={STORE_SITES[activeStore]}
               target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs underline cc-text-secondary"><ExternalLink className="h-3.5 w-3.5" /> Abrir sitio de {activeStore}</a> : null}
           </div>
           <p className="mt-3 text-xs cc-text-tertiary">Confirma productos, cantidades, disponibilidad, despacho y precio final en el supermercado antes de pagar.</p>

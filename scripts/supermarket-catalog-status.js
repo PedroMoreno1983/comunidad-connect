@@ -20,7 +20,9 @@ const { createClient } = require('@supabase/supabase-js');
 
 /** Igual que el TTL de lectura del catalogo. */
 const TTL_HOURS = 96;
-const STORES = ['Lider', 'Jumbo', 'Santa Isabel', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'];
+/** Cadenas que la compra muestra. Tottus e Irurzun se reportan aparte: el scraper puede seguir guardándolas, pero no se ofrecen. */
+const OFFERED_STORES = ['Lider', 'Jumbo', 'Santa Isabel', 'Unimarc', 'aCuenta'];
+const HIDDEN_STORES = ['Tottus', 'Irurzun'];
 
 function readEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -52,14 +54,15 @@ async function main() {
   };
 
   console.log(`Cobertura utilizable (fresco < ${TTL_HOURS}h y en stock)\n`);
+  console.log('Cadenas que se ofrecen\n');
   console.log('tienda           total   utilizable      %   ultimo refresco');
   let totalAll = 0;
   let usableAll = 0;
 
-  for (const store of STORES) {
+  const reportStore = async store => {
     const base = () => admin.from('supermarket_products').select('*', { count: 'exact', head: true }).eq('store', store);
     const total = await count(base);
-    if (total === 0) continue;
+    if (total === 0) return;
     const usable = await count(() => base().eq('in_stock', true).gte('last_seen_at', cutoff));
     const { data } = await admin.from('supermarket_products')
       .select('last_seen_at').eq('store', store)
@@ -72,10 +75,14 @@ async function main() {
     );
     totalAll += total;
     usableAll += usable;
-  }
+  };
 
-  console.log(`\nTOTAL           ${String(totalAll).padStart(6)} ${String(usableAll).padStart(11)}  ${String(Math.round(usableAll / Math.max(1, totalAll) * 100)).padStart(5)}%`);
-  console.log('\nUna tienda muy por debajo del resto es la que aparecera con faltantes.');
+  for (const store of OFFERED_STORES) await reportStore(store);
+
+  console.log(`\nTOTAL ofrecidas ${String(totalAll).padStart(6)} ${String(usableAll).padStart(11)}  ${String(Math.round(usableAll / Math.max(1, totalAll) * 100)).padStart(5)}%`);
+  console.log('\nNo se ofrecen (el scraper puede seguir guardando precios; no aparecen en la compra)\n');
+  for (const store of HIDDEN_STORES) await reportStore(store);
+  console.log('\nUna tienda ofrecida muy por debajo del resto es la que aparecera con faltantes.');
 }
 
 main().catch(error => {
