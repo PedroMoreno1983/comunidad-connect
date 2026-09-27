@@ -7,7 +7,7 @@ import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/l
  * Cadenas que se comparan y se muestran al vecino. Reducirla oculta una cadena
  * de toda la pantalla: comparacion, tarjetas y carga de carro.
  */
-export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'] as const;
+export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'] as const;
 
 /**
  * Cadenas que el scraper nocturno sigue recorriendo y guardando, pero que hoy
@@ -18,10 +18,9 @@ export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 
  * al cargar el carro desde el VPS, reproducible tres de tres veces. Pausar la
  * navegacion no lo evito. El carro directo tampoco esta soportado.
  *
- * Irurzun volvio al comparador: el carro se abre en el navegador de quien compra
- * con el enlace oficial de Shopify.
+ * Irurzun queda fuera del flujo de compra por decision de producto.
  */
-export const HIDDEN_SUPERMARKET_STORES = ['Tottus'] as const;
+export const HIDDEN_SUPERMARKET_STORES = ['Tottus', 'Irurzun'] as const;
 
 export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
 

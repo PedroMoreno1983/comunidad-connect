@@ -117,7 +117,7 @@ async function main() {
     page.on('console', message => {
       if (message.type() === 'error') renderErrors.push(message.text());
     });
-    await page.goto(`${baseUrl}/resident/supermercado`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await page.goto(`${baseUrl}/resident/supermercado/comparador`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     if (new URL(page.url()).pathname.includes('/login')) {
       throw new Error('La sesión temporal QA no fue aceptada por el middleware local.');
     }

@@ -61,6 +61,8 @@ import {
     ServiceRequestQueueItem,
     SupermarketCartHandoff,
     SupermarketCartHandoffItem,
+    SupermarketCatalogResponse,
+    SupermarketSearchResponse,
     SupermarketGroupComparison,
     SupermarketGroupCreateInput,
     SupermarketGroupOrder,
@@ -2365,6 +2367,23 @@ export const SupermarketCartService = {
             body: JSON.stringify({ store, items }),
         });
         return readJsonResponse<SupermarketCartHandoff>(response);
+    },
+};
+
+export const SupermarketCatalogService = {
+    async search(store: string, query: string, page: number, signal?: AbortSignal): Promise<SupermarketCatalogResponse> {
+        const params = new URLSearchParams({ store, q: query, page: String(page) });
+        const response = await fetch(`/api/supermarket/catalog?${params}`, { signal });
+        return readJsonResponse<SupermarketCatalogResponse>(response);
+    },
+    async compare(message: string, signal?: AbortSignal): Promise<SupermarketSearchResponse> {
+        const response = await fetch('/api/supermarket', {
+            method: 'POST',
+            signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+        });
+        return readJsonResponse<SupermarketSearchResponse>(response);
     },
 };
 
