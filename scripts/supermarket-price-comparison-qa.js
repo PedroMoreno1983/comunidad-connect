@@ -6,7 +6,8 @@ const { loadEnvFile } = require('./load-env');
 loadEnvFile();
 
 const root = path.resolve(__dirname, '..');
-const stores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'];
+const visibleStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'];
+const hiddenStores = ['Tottus', 'Irurzun'];
 const sampleTerms = ['arroz', 'leche', 'aceite', 'huevos', 'papel', 'fideos'];
 const report = {
   generatedAt: new Date().toISOString(),
@@ -34,7 +35,10 @@ function pathContainsFiles(relativePath) {
 
 function assertReplacementIntegrity() {
   const page = read('src/app/(dashboard)/resident/supermercado/page.tsx');
+  const comparador = read('src/app/(dashboard)/resident/supermercado/comparador/page.tsx');
   const basket = read('src/lib/supermarketBasket.ts');
+  const prompt = read('src/lib/coco/system-prompt.ts');
+  const handoffRoute = read('src/app/api/supermarket/cart-handoff/route.ts');
   const cartButton = read('src/components/resident/supermarket/RemoteCartButton.tsx');
   const directHandoff = read('src/lib/supermarketDirectHandoff.ts');
   const remoteCart = read('src/lib/supermarketRemoteCart.ts');
@@ -42,18 +46,27 @@ function assertReplacementIntegrity() {
   const compose = read('services/supermarket-cart-worker/compose.yaml');
   const packageJson = read('package.json');
 
-  for (const store of stores) {
-    assert(page.includes(store), `La interfaz declara ${store}.`);
+  for (const store of visibleStores) {
+    assert(page.includes(store), `La compra por tienda ofrece ${store}.`);
   }
-  assert(page.includes('data-testid="store-comparison-row"'), 'La comparación usa una hilera única de supermercados.');
-  assert(page.includes('<Drone'), 'La interfaz distingue despacho con iconografía vectorial.');
-  assert(page.includes('Una canasta incompleta nunca gana'), 'La interfaz explica el criterio de recomendación.');
+  for (const store of hiddenStores) {
+    assert(!page.includes(store), `La compra por tienda no menciona ${store}.`);
+    assert(!comparador.includes(store), `El comparador no menciona ${store}.`);
+  }
+  assert(basket.includes("export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta']"), 'Las cadenas visibles no incluyen Irurzun ni Tottus.');
+  assert(basket.includes("export const HIDDEN_SUPERMARKET_STORES = ['Tottus', 'Irurzun']"), 'Irurzun y Tottus quedan fuera de la compra.');
+  assert(prompt.includes('Tottus e Irurzun no se ofrecen'), 'CoCo tiene prohibido ofrecer Irurzun y Tottus.');
+  assert(!prompt.includes('aCuenta e Irurzun'), 'CoCo ya no lista Irurzun entre las cadenas de compra.');
+  assert(handoffRoute.includes('SUPERMARKET_STORES'), 'El traspaso del carro solo acepta cadenas visibles.');
+  assert(comparador.includes('data-testid="store-comparison-row"'), 'La comparación usa una hilera única de supermercados.');
+  assert(comparador.includes('<Drone'), 'La interfaz distingue despacho con iconografía vectorial.');
+  assert(comparador.includes('Una canasta incompleta nunca gana'), 'La interfaz explica el criterio de recomendación.');
   assert(basket.includes('const availableComparisons = comparisons.filter'), 'Solo canastas con productos participan de la recomendación.');
   assert(basket.includes('bestAvailable: availableComparisons[0] ?? null'), 'Una tienda vacía no puede ser la mejor disponible.');
   assert(page.includes('<RemoteCartButton'), 'La canasta elegida ofrece traspaso al carro remoto.');
+  assert(comparador.includes('<RemoteCartButton'), 'El comparador también ofrece traspaso al carro remoto.');
   assert(cartButton.includes('prepareHandoff'), 'El control prepara el carro antes de abrir la tienda.');
   assert(directHandoff.includes('/checkout/cart/add?'), 'Las cadenas compatibles usan su checkout oficial.');
-  assert(directHandoff.includes("store === 'Irurzun'"), 'Irurzun usa un enlace oficial de carro.');
   assert(remoteCart.includes("mode: 'remote_browser'"), 'Las cadenas compatibles convergen en una sesión web remota.');
   assert(worker.includes('/auth/v1/user'), 'El worker valida nuevamente la sesión de Convive.');
   assert(worker.includes('HttpOnly; Secure; SameSite=Lax'), 'El visor usa una cookie temporal protegida.');
@@ -95,7 +108,7 @@ async function verifyLiveCatalogs() {
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const cutoff = new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString();
 
-  for (const store of stores) {
+  for (const store of visibleStores) {
     const usable = await countRows(admin
       .from('supermarket_products')
       .select('id', { count: 'exact', head: true })

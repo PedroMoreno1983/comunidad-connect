@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { SUPERMARKET_STORES, isProductSuitableForRequest } from '@/lib/supermarketBasket';
+import { isProductSuitableForRequest, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
 import {
@@ -295,7 +295,7 @@ export async function POST(req: NextRequest) {
       if (!basket) {
         return {
           store,
-          channelType: store === 'aCuenta' || store === 'Irurzun' ? 'wholesale' : 'retail',
+          channelType: store === 'aCuenta' ? 'wholesale' : 'retail',
           items: [],
           subtotal: 0,
           coveredCount: 0,
@@ -329,7 +329,7 @@ export async function POST(req: NextRequest) {
 
       return {
         store,
-        channelType: store === 'aCuenta' || store === 'Irurzun' ? 'wholesale' : 'retail',
+        channelType: store === 'aCuenta' ? 'wholesale' : 'retail',
         items: basketItems,
         subtotal: basket.subtotal,
         coveredCount: basket.coveredCount,

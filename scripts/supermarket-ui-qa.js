@@ -117,7 +117,7 @@ async function main() {
     page.on('console', message => {
       if (message.type() === 'error') renderErrors.push(message.text());
     });
-    await page.goto(`${baseUrl}/resident/supermercado`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await page.goto(`${baseUrl}/resident/supermercado/comparador`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     if (new URL(page.url()).pathname.includes('/login')) {
       throw new Error('La sesión temporal QA no fue aceptada por el middleware local.');
     }
@@ -136,7 +136,9 @@ async function main() {
     assert(await page.getByText('Comprar en comunidad', { exact: true }).count() === 0, 'Community purchasing is absent from Supermarket');
     assert(await page.getByText(/Pega hasta 200 productos/i).isVisible(), 'The price comparison hero is visible');
     assert(await page.getByRole('link', { name: /Descargar Extensi[oó]n|Cargador/i }).count() === 0, 'The downloadable cart loader is absent');
-    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'];
+    const expectedStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'];
+    assert(await page.getByText('Irurzun').count() === 0, 'Irurzun is not offered in the comparator');
+    assert(await page.getByText('Tottus').count() === 0, 'Tottus is not offered in the comparator');
     for (const store of expectedStores) {
       const testId = `store-chip-${store.toLowerCase().replaceAll(' ', '-')}`;
       const storeChip = page.getByTestId(testId);
@@ -189,6 +191,7 @@ async function main() {
       'The comparison payload contains every supermarket exactly once',
       { optionStores },
     );
+    assert(!optionStores.includes('Irurzun') && !optionStores.includes('Tottus'), 'Hidden stores stay out of the comparison payload', { optionStores });
     assert(
       await page.getByTestId('store-comparison-row').getByRole('button').count() === expectedStores.length,
       'The result row shows every active supermarket card',

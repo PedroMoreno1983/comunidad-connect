@@ -45,9 +45,10 @@ describe('assertBalancedJournal', () => {
 });
 
 describe('flujos visibles', () => {
-  it('muestra Irurzun y deja Tottus fuera del comparador', () => {
-    expect(SUPERMARKET_STORES).toContain('Irurzun');
-    expect(HIDDEN_SUPERMARKET_STORES).toEqual(['Tottus']);
+  it('ofrece cinco cadenas y deja Tottus e Irurzun fuera de la compra', () => {
+    expect(SUPERMARKET_STORES).toEqual(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta']);
+    expect(HIDDEN_SUPERMARKET_STORES).toEqual(['Tottus', 'Irurzun']);
+    expect(SUPERMARKET_STORES).not.toContain('Irurzun');
     expect(SUPERMARKET_STORES).not.toContain('Tottus');
   });
 
@@ -58,5 +59,7 @@ describe('flujos visibles', () => {
     expect(prompt).toContain('/admin/finanzas/contabilidad');
     expect(prompt).toContain('Haulmer');
     expect(prompt).not.toContain('remuneraciones del personal, contabilidad');
+    expect(prompt).toContain('Tottus e Irurzun no se ofrecen');
+    expect(prompt).not.toContain('aCuenta e Irurzun');
   });
 });

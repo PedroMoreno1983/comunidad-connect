@@ -1,0 +1,1490 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  BadgeDollarSign,
+  BarChart3,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Copy,
+  Drone,
+  ExternalLink,
+  FileUp,
+  Info,
+  Loader2,
+  ScanBarcode,
+  ShoppingBasket,
+  Store,
+  Tags,
+  Trophy,
+  X,
+} from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import { DisplayHeading } from '@/components/cc/Eyebrow';
+import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartButton';
+import { SupermarketProductThumbnail } from '@/components/resident/supermarket/SupermarketProductThumbnail';
+import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { storeSearchUrl } from '@/lib/supermarketText';
+import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList, type GroupItemInput } from '@/lib/supermarketGroupDomain';
+import {
+  lineAtCaret,
+  lineBoundsAtCaret,
+  replaceTermInLine,
+  shoppingListText,
+  termBeingTyped,
+} from '@/lib/supermarketListEditor';
+import { supermarketBasketIdentity } from '@/lib/supermarketBasketIdentity';
+import type {
+  ShoppingReviewResponse,
+  ShoppingSuggestionsResponse,
+  ShoppingTermReview,
+  ShoppingTermSuggestion,
+  SupermarketAlternativesResponse,
+  SupermarketBasketCandidate,
+  SupermarketComparisonSource,
+  SupermarketHistoryResponse,
+  SupermarketRequestedItem,
+  SupermarketSealAlternative,
+  SupermarketSealsResponse,
+  SupermarketSearchResponse,
+  SupermarketSearchCandidate,
+  SupermarketShoppingItem,
+  SupermarketSimulationResult,
+} from '@/lib/types';
+
+/** Dos alternativas alcanzan para decidir; mas convierte la tabla en ruido. */
+const MAX_ALTERNATIVES_SHOWN = 2;
+
+/** Espera antes de preguntarle al catalogo, para no consultar por cada tecla. */
+const TYPING_PAUSE_MS = 280;
+
+const LIST_SUGGESTIONS = [
+  { title: 'Compra semanal', items: ['Pechuga de pollo', 'Arroz', 'Paltas', 'Huevos', 'Leche', 'Pan molde'] },
+  { title: 'Asado', items: ['Carne', 'Longanizas', 'Cebollas', 'Papas', 'Tomates', 'Bebidas'] },
+  { title: 'Desayunos', items: ['Avena', 'Leche', 'Yogur', 'Plátanos', 'Huevos', 'Pan'] },
+];
+
+const STORE_HOME: Record<string, string> = {
+  Jumbo: 'https://www.jumbo.cl',
+  'Santa Isabel': 'https://www.santaisabel.cl',
+  Lider: 'https://super.lider.cl',
+  Unimarc: 'https://www.unimarc.cl',
+  aCuenta: 'https://www.acuenta.cl',
+};
+
+const STORE_ACCENT: Record<string, string> = {
+  Jumbo: '#2E7D32',
+  'Santa Isabel': '#C62828',
+  Lider: '#1476D4',
+  Unimarc: '#D71920',
+  aCuenta: '#F28C00',
+};
+
+const STORE_ICONS = {
+  Jumbo: ShoppingBasket,
+  'Santa Isabel': Store,
+  Lider: BadgeDollarSign,
+  Unimarc: ScanBarcode,
+  aCuenta: Tags,
+};
+
+function money(value: number) {
+  return `$${Math.round(value).toLocaleString('es-CL')}`;
+}
+
+function freshness(value?: string) {
+  if (!value) return 'Sin actualización verificable';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sin actualización verificable';
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingItem {
+  return {
+    id: crypto.randomUUID(),
+    name: requested.term,
+    brand: '',
+    price: 0,
+    requestedTerm: requested.term,
+    requestedQuantity: requested.quantity,
+    requestedUnit: requested.unit,
+    quantity: requested.quantity,
+    packUnits: 1,
+    suppliedQuantity: requested.quantity,
+    lineTotal: 0,
+    checked: false,
+    available: false,
+    source: 'missing',
+  };
+}
+
+export default function SupermarketPage() {
+  const { toast } = useToast();
+  const [shoppingInput, setShoppingInput] = useState('');
+  // Lo que la persona esta escribiendo, para proponer sin adivinar la linea.
+  const [caret, setCaret] = useState(0);
+  const [suggestions, setSuggestions] = useState<ShoppingTermSuggestion[]>([]);
+  const [reviews, setReviews] = useState<Record<string, ShoppingTermReview>>({});
+  const listRef = useRef<HTMLTextAreaElement | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [list, setList] = useState<SupermarketShoppingItem[]>([]);
+  const [requestedItems, setRequestedItems] = useState<SupermarketRequestedItem[]>([]);
+  const [basketOptions, setBasketOptions] = useState<SupermarketBasketCandidate[]>([]);
+  const [productOptions, setProductOptions] = useState<Record<string, SupermarketSearchCandidate[]>>({});
+  const [editingTerm, setEditingTerm] = useState<string | null>(null);
+  const [editedTerm, setEditedTerm] = useState('');
+  const [sources, setSources] = useState<SupermarketComparisonSource[]>([]);
+  const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const [compared, setCompared] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // Los sellos son opcionales a proposito: se piden solo si el vecino los pide.
+  const [seals, setSeals] = useState<Record<string, string[]> | null>(null);
+  const [sealsStore, setSealsStore] = useState<string | null>(null);
+  const [sealsLoading, setSealsLoading] = useState(false);
+  const [sealsUnsupported, setSealsUnsupported] = useState(false);
+  // Las alternativas cuelgan de los sellos: sin sellos a la vista no hay contra
+  // que comparar, y es una segunda consulta voluntaria dentro de una voluntaria.
+  const [alternatives, setAlternatives] = useState<SupermarketSealAlternative[] | null>(null);
+  const [alternativesStore, setAlternativesStore] = useState<string | null>(null);
+  const [alternativesLoading, setAlternativesLoading] = useState(false);
+  const [realTotal, setRealTotal] = useState<SupermarketSimulationResult | null>(null);
+  const [realTotalStore, setRealTotalStore] = useState<string | null>(null);
+  const [realTotalLoading, setRealTotalLoading] = useState(false);
+  const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
+  const [repurchases, setRepurchases] = useState<NonNullable<SupermarketHistoryResponse['suggestions']>>([]);
+  const [basketRevision, setBasketRevision] = useState(0);
+  const [recordingPurchase, setRecordingPurchase] = useState(false);
+  const [recordedBasket, setRecordedBasket] = useState<string | null>(null);
+
+  const invalidateComparison = () => {
+    setBasketOptions([]);
+    setProductOptions({});
+    setList([]);
+    setCompared(false);
+    setSelectedStore(null);
+  };
+
+  /**
+   * Lo que la lista dice, leido con el mismo parser que usa la comparacion.
+   * No es una version aparte: si aca se ve "papel higienico x2", eso es
+   * exactamente lo que se va a comparar.
+   */
+  const parsedList = useMemo(() => parseGroupShoppingList(shoppingInput), [shoppingInput]);
+  const typedTerm = useMemo(
+    () => termBeingTyped(lineAtCaret(shoppingInput, caret)),
+    [shoppingInput, caret],
+  );
+
+  /** Reescribe la lista completa desde lo entendido, cambiando un producto. */
+  const rewriteList = (term: string, change: Partial<GroupItemInput> | null) => {
+    const next = parsedList.flatMap(item => {
+      if (item.term !== term) return [item];
+      if (change === null) return [];
+      return [{ ...item, ...change }];
+    });
+    setShoppingInput(shoppingListText(next));
+    invalidateComparison();
+  };
+
+  useEffect(() => {
+    if (typedTerm.length < 2) { setSuggestions([]); return; }
+    let alive = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/supermarket/sugerencias?q=${encodeURIComponent(typedTerm)}`);
+        const data = await response.json() as ShoppingSuggestionsResponse;
+        if (alive && response.ok) setSuggestions(data.suggestions ?? []);
+      } catch {
+        // Sin sugerencias se escribe igual; no vale la pena interrumpir por esto.
+      }
+    }, TYPING_PAUSE_MS);
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, [typedTerm]);
+
+  useEffect(() => {
+    const terms = parsedList.map(item => item.term);
+    if (terms.length === 0) { setReviews({}); return; }
+    let alive = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/supermarket/revision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ terms }),
+        });
+        const data = await response.json() as ShoppingReviewResponse;
+        if (!alive || !response.ok) return;
+        setReviews(Object.fromEntries((data.items ?? []).map(item => [item.term, item])));
+      } catch {
+        // Que no se pueda revisar no invalida la lista: se compara igual.
+      }
+    }, TYPING_PAUSE_MS);
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, [parsedList]);
+
+  /** Cambia el producto de la linea que se esta escribiendo, sin tocar su cantidad. */
+  const applySuggestion = (term: string) => {
+    const text = shoppingInput;
+    const { start, end } = lineBoundsAtCaret(text, caret);
+    const replacement = replaceTermInLine(text.slice(start, end), term);
+    const next = text.slice(0, start) + replacement + text.slice(end);
+    setShoppingInput(next);
+    invalidateComparison();
+    setSuggestions([]);
+    window.requestAnimationFrame(() => {
+      const node = listRef.current;
+      if (!node) return;
+      const position = start + replacement.length;
+      node.focus();
+      node.setSelectionRange(position, position);
+      setCaret(position);
+    });
+  };
+
+  const importShoppingList = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 1_000_000) {
+      toast({
+        title: 'El archivo es demasiado grande',
+        description: 'Usa un TXT o CSV de hasta 1 MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const raw = await file.text();
+      const imported = file.name.toLowerCase().endsWith('.csv')
+        ? raw.split(/\r?\n/).map(row => (
+          row.split(/[;,\t]/).map(cell => cell.trim()).find(Boolean) ?? ''
+        )).filter(Boolean).join('\n')
+        : raw;
+      const normalized = imported.trim().slice(0, MAX_SHOPPING_LIST_CHARS);
+      if (!normalized) throw new Error('El archivo no contiene productos legibles.');
+      setShoppingInput(normalized);
+      invalidateComparison();
+      toast({ title: 'Lista importada', description: 'Revísala y pulsa comparar.', variant: 'success' });
+    } catch (error) {
+      toast({
+        title: 'No se pudo leer la lista',
+        description: error instanceof Error ? error.message : 'Usa un archivo TXT o CSV.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') !== 'group') return;
+    const order = params.get('order');
+    window.location.replace(order
+      ? `/convivencia?lane=abasto&order=${encodeURIComponent(order)}`
+      : '/convivencia?lane=abasto');
+  }, []);
+
+  const selectedBasket = useMemo(
+    () => basketOptions.find(basket => basket.store === selectedStore)
+      ?? basketOptions.find(basket => basket.coveredCount > 0)
+      ?? null,
+    [basketOptions, selectedStore],
+  );
+  const comparisonMatchesInput = compared
+    && parsedList.length === requestedItems.length
+    && parsedList.every((item, index) => {
+      const requested = requestedItems[index];
+      return requested?.term === item.term
+        && requested.quantity === item.quantity
+        && requested.unit === item.unit;
+    });
+  const resolvedByTerm = useMemo(
+    () => new Map(
+      comparisonMatchesInput
+        ? list.filter(item => item.available).map(item => [item.requestedTerm, item])
+        : [],
+    ),
+    [comparisonMatchesInput, list],
+  );
+  const basketKey = `${basketRevision}:${supermarketBasketIdentity(selectedBasket?.store, list)}`;
+  const showingSeals = seals !== null && sealsStore === basketKey;
+  const showingRealTotal = realTotal !== null && realTotalStore === basketKey;
+  const showingAlternatives = alternatives !== null && alternativesStore === basketKey;
+  const alternativesBySku = useMemo(
+    () => Object.fromEntries((showingAlternatives ? alternatives ?? [] : []).map(entry => [entry.current.sku, entry])),
+    [showingAlternatives, alternatives],
+  );
+  /**
+   * El ranking se calcula con estimados. Cuando se conoce el total real de una
+   * cadena y no coincide, el orden deja de ser comparable: el resto sigue
+   * estimado. Se marca la duda en vez de reordenar con datos de dos naturalezas.
+   */
+  const realTotalStoreName = selectedBasket?.store ?? '';
+  const rankingEnDuda = Boolean(
+    showingRealTotal
+    && realTotal?.complete
+    && typeof realTotal.total === 'number'
+    && selectedBasket
+    && Math.abs(realTotal.total - selectedBasket.subtotal) >= 1,
+  );
+  const completeBaskets = basketOptions.filter(basket => basket.complete);
+  const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
+  const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
+  const runnerUp = winner?.complete ? completeBaskets[1] : undefined;
+  const winnerSavings = winner && runnerUp ? Math.max(0, runnerUp.subtotal - winner.subtotal) : 0;
+  const sourceByStore = useMemo(
+    () => new Map(sources.map(source => [source.store, source.status])),
+    [sources],
+  );
+
+  const selectBasket = (
+    basket: SupermarketBasketCandidate,
+    requested = requestedItems,
+  ) => {
+    const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
+    setSelectedStore(basket.store);
+    setList(requested.map(requestedItem => {
+      const candidate = byTerm.get(requestedItem.term);
+      return candidate ? {
+        ...candidate,
+        checked: false,
+        available: true,
+        source: 'catalog' as const,
+      } : missingItem(requestedItem);
+    }));
+  };
+
+  const chooseProduct = (candidate: SupermarketSearchCandidate) => {
+    if (!selectedBasket || candidate.store !== selectedBasket.store) return;
+    setBasketOptions(current => current.map(basket => {
+      if (basket.store !== selectedBasket.store) return basket;
+      const items = [...basket.items.filter(item => item.requestedTerm !== candidate.requestedTerm), candidate];
+      const covered = new Set(items.map(item => item.requestedTerm));
+      const missingTerms = requestedItems.map(item => item.term).filter(term => !covered.has(term));
+      return {
+        ...basket, items, missingTerms,
+        coveredCount: covered.size,
+        requestedCount: requestedItems.length,
+        coveragePercent: requestedItems.length ? Math.round(covered.size * 100 / requestedItems.length) : 0,
+        complete: missingTerms.length === 0 && requestedItems.length > 0,
+        subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
+      };
+    }));
+    setList(current => current.map(item => item.requestedTerm === candidate.requestedTerm
+      ? { ...candidate, checked: false, available: true, source: 'catalog' as const }
+      : item));
+    setBasketRevision(value => value + 1);
+  };
+
+  const processShoppingList = async () => {
+    if (!shoppingInput.trim()) return;
+    setLoading(true);
+    setBasketRevision(value => value + 1);
+    try {
+      const response = await fetch('/api/supermarket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: shoppingInput }),
+      });
+      const data = await response.json() as SupermarketSearchResponse;
+      if (!response.ok) throw new Error(data.error || 'No fue posible comparar la lista.');
+
+      const nextRequested = data.requestedItems ?? data.items.map(item => ({
+        term: item.requestedTerm,
+        quantity: item.requestedQuantity,
+        unit: item.requestedUnit,
+      }));
+      const nextOptions = data.basketOptions ?? [];
+      setRequestedItems(nextRequested);
+      setBasketOptions(nextOptions);
+      setProductOptions(data.alternativesByTerm ?? {});
+      setSources(data.sources ?? []);
+      setCompared(true);
+      setSelectedStore(nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null);
+      setList(data.items);
+
+      toast({
+        title: nextOptions.some(basket => basket.complete)
+          ? `${SUPERMARKET_STORES.length} cadenas comparadas`
+          : 'Comparación con faltantes',
+        description: data.message,
+        variant: nextOptions.some(basket => basket.complete) ? 'success' : undefined,
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo comparar',
+        description: error instanceof Error ? error.message : 'Hubo un fallo consultando los precios.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshHistory = async () => {
+    try {
+      const response = await fetch('/api/supermarket/history');
+      if (!response.ok) return;
+      const data = await response.json() as SupermarketHistoryResponse;
+      setHistoryEnabled(data.enabled === true);
+      setRepurchases(data.suggestions ?? []);
+    } catch {
+      // La memoria es accesoria: si no carga, la pantalla sigue sirviendo.
+    }
+  };
+
+  useEffect(() => { void refreshHistory(); }, []);
+
+  const recordPurchase = async () => {
+    if (!selectedBasket || !historyEnabled || recordingPurchase) return;
+    setRecordingPurchase(true);
+    try {
+      const response = await fetch('/api/supermarket/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirmed: true,
+          store: selectedBasket.store,
+          terms: list.filter(item => item.available).map(item => ({
+            term: item.requestedTerm,
+            quantity: item.requestedQuantity,
+            unit: item.requestedUnit,
+          })),
+        }),
+      });
+      const data = await response.json() as SupermarketHistoryResponse;
+      if (!response.ok || !data.recorded) throw new Error(data.error || 'No se guardó la compra. Revisa que la memoria siga activa.');
+      setRecordedBasket(basketKey);
+      toast({ title: 'Compra registrada', description: 'Se guardaron los productos disponibles de esta canasta que confirmaste haber comprado.', variant: 'success' });
+      void refreshHistory();
+    } catch (error) {
+      toast({ title: 'No se pudo registrar la compra', description: error instanceof Error ? error.message : 'Intenta nuevamente.', variant: 'destructive' });
+    } finally {
+      setRecordingPurchase(false);
+    }
+  };
+
+  const toggleHistory = async (enabled: boolean) => {
+    try {
+      const response = await fetch('/api/supermarket/history', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) throw new Error('No se pudo cambiar la preferencia.');
+      setHistoryEnabled(enabled);
+      if (!enabled) setRepurchases([]);
+      else void refreshHistory();
+      toast({
+        title: enabled ? 'Convive recordará tus compras' : 'Historial borrado',
+        description: enabled
+          ? 'Necesita dos compras del mismo producto para proponerte la recompra.'
+          : 'Se eliminó lo que habíamos guardado.',
+        variant: 'success',
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo cambiar',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const loadRealTotal = async () => {
+    const store = selectedBasket?.store;
+    if (!store) return;
+    if (list.some(item => !item.available || !item.sku)) {
+      toast({ title: 'Canasta incompleta', description: 'No se puede consultar el total de toda la canasta mientras haya productos faltantes o sin código.', variant: 'destructive' });
+      return;
+    }
+    setRealTotal(null);
+    setRealTotalLoading(true);
+    try {
+      const response = await fetch('/api/supermarket/real-total', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store,
+          items: list.map(item => ({ sku: item.sku, quantity: item.quantity })),
+        }),
+      });
+      const data = await response.json() as SupermarketSimulationResult;
+      if (!response.ok) throw new Error(data.error || 'No se pudo consultar el total real.');
+      setRealTotal(data);
+      setRealTotalStore(basketKey);
+    } catch (error) {
+      toast({
+        title: 'No se pudo ver el total real',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente en un momento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRealTotalLoading(false);
+    }
+  };
+
+  const loadSeals = async () => {
+    const store = selectedBasket?.store;
+    if (!store) return;
+    if (showingSeals) { setSeals(null); setSealsStore(null); return; }
+    setSealsLoading(true);
+    setSealsUnsupported(false);
+    try {
+      const response = await fetch('/api/supermarket/seals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store,
+          skus: list.map(item => item.sku).filter(Boolean),
+        }),
+      });
+      const data = await response.json() as SupermarketSealsResponse;
+      if (!response.ok) throw new Error(data.error || 'No se pudieron consultar los sellos.');
+      setSealsUnsupported(data.supported === false);
+      setSeals(data.seals ?? {});
+      setSealsStore(basketKey);
+    } catch (error) {
+      toast({
+        title: 'No se pudieron ver los sellos',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente en un momento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSealsLoading(false);
+    }
+  };
+
+  /**
+   * No reordena ni recomienda: consulta si la misma tienda tiene un producto
+   * equivalente con menos sellos y cuanto cuesta el cambio. El presupuesto y el
+   * criterio quedan de quien compra.
+   */
+  const loadAlternatives = async () => {
+    const store = selectedBasket?.store;
+    if (!store) return;
+    if (showingAlternatives) { setAlternatives(null); setAlternativesStore(null); return; }
+    setAlternativesLoading(true);
+    try {
+      const response = await fetch('/api/supermarket/alternatives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store,
+          items: list.filter(item => item.available && item.sku).map(item => ({
+            sku: item.sku,
+            requestedTerm: item.requestedTerm,
+            requestedUnit: item.requestedUnit,
+            name: item.name,
+            price: item.price,
+          })),
+        }),
+      });
+      const data = await response.json() as SupermarketAlternativesResponse;
+      if (!response.ok) throw new Error(data.error || 'No se pudieron buscar alternativas.');
+      setAlternatives(data.alternatives ?? []);
+      setAlternativesStore(basketKey);
+    } catch (error) {
+      toast({
+        title: 'No se pudieron buscar alternativas',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente en un momento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAlternativesLoading(false);
+    }
+  };
+
+  const copyComparison = async () => {
+    const rows = basketOptions.map(basket => (
+      basket.coveredCount > 0
+        ? `${basket.store}: ${money(basket.subtotal)} · ${basket.coveredCount}/${basket.requestedCount}`
+        : `${basket.store}: sin resultados vigentes`
+    ));
+    try {
+      await navigator.clipboard.writeText([
+        'Comparación de supermercados · Convive Connect',
+        ...rows,
+        '',
+        'Estimado sumando el precio de cada producto. No incluye promociones por volumen,',
+        'montos mínimos de despacho, membresías ni medios de pago.',
+      ].join('\n'));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2_000);
+    } catch {
+      toast({
+        title: 'No se pudo copiar',
+        description: 'Tu navegador bloqueó el portapapeles.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 px-4 pb-20 sm:px-0">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--cc-copper)' }}>
+          Comparador de supermercados
+        </p>
+        <h1 className="mt-2 text-3xl font-bold cc-text-primary">Compara tu compra. Elige con evidencia.</h1>
+        <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
+          Revisamos la misma lista y las mismas cantidades en {SUPERMARKET_STORES.length} cadenas. Una canasta incompleta nunca gana
+          solo porque su subtotal sea menor. En las cadenas compatibles abrimos el carro oficial en tu navegador, sin instalar nada.
+          Si una tienda no permite transferir una canasta verificable, te lo indicamos antes de abrirla.
+        </p>
+      </header>
+
+      <section
+        aria-label="Supermercados comparados"
+        className="flex gap-2 overflow-x-auto rounded-2xl border p-3"
+        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}
+      >
+        {SUPERMARKET_STORES.map(store => {
+          const Icon = STORE_ICONS[store];
+          const status = sourceByStore.get(store);
+          return (
+            <div
+              key={store}
+              data-testid={`store-chip-${store.toLowerCase().replaceAll(' ', '-')}`}
+              className="flex min-w-max flex-1 items-center gap-2 rounded-xl border px-3 py-2"
+              style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
+            >
+              <span
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white"
+                style={{ background: STORE_ACCENT[store] }}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-xs font-bold cc-text-primary">{store}</span>
+                <span className="block text-[10px] cc-text-tertiary">
+                  {!compared ? 'Por comparar' : status === 'degraded' ? 'Fuente degradada' : status === 'ok' ? 'Comparado' : 'Sin resultados'}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </section>
+
+      <section
+        className="relative overflow-hidden rounded-2xl border p-6 text-white md:p-8"
+        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-ink)' }}
+      >
+        <div className="grid gap-7 2xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] 2xl:items-start">
+          <div className="min-w-0">
+            <div
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+              style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)' }}
+            >
+              <BarChart3 className="h-3 w-3" style={{ color: '#F5BFA3' }} />
+              Comparación por compra total
+            </div>
+            <DisplayHeading size={36} className="mt-4" style={{ color: '#fff' }}>
+              Pega hasta {MAX_SHOPPING_LIST_ITEMS} productos.
+            </DisplayHeading>
+            <p className="mt-3 max-w-lg text-sm leading-6 text-white/70">
+              Una línea por producto. Respetamos cantidades, unidades y formatos comparables antes de sumar.
+            </p>
+            <ol className="mt-4 grid gap-2 text-xs text-white/75 sm:grid-cols-3">
+              <li><strong className="text-white">1.</strong> Escribe o sube tu lista</li>
+              <li><strong className="text-white">2.</strong> Compara y resuelve faltantes</li>
+              <li><strong className="text-white">3.</strong> Carga el carro elegido</li>
+            </ol>
+            {/*
+              Las dos filas de chips hacen lo mismo -rellenar la lista- asi que
+              van juntas y rotuladas. Lo personal primero y en solido; las
+              plantillas despues y en contorno, para que no compitan.
+            */}
+            <div className="mt-6 space-y-4">
+              {repurchases.length > 0 ? (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                    Toca reponer
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {repurchases.slice(0, 6).map(item => (
+                      <button
+                        key={item.term}
+                        type="button"
+                        onClick={() => setShoppingInput(current => (
+                          current.trim() ? `${current.trim()}\n${item.term}` : item.term
+                        ))}
+                        className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/20"
+                        style={{ background: 'rgba(255,255,255,0.12)' }}
+                      >
+                        {item.term}
+                        <span className="ml-1.5 font-normal text-white/45">{item.daysSinceLast} d</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                  Listas de ejemplo
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {LIST_SUGGESTIONS.map(suggestion => (
+                    <button
+                      key={suggestion.title}
+                      type="button"
+                      onClick={() => setShoppingInput(suggestion.items.join('\n'))}
+                      className="rounded-full border px-3 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10"
+                      style={{ borderColor: 'rgba(255,255,255,0.16)' }}
+                    >
+                      {suggestion.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Ofrecimiento secundario: una linea al pie, no una tarjeta que compita. */}
+            {historyEnabled === false ? (
+              <p className="mt-6 text-[11px] leading-5 text-white/40">
+                ¿Que Convive recuerde lo que compras y te proponga la recompra? Se guarda solo lo
+                que confirmas haber comprado y puedes borrarlo cuando quieras.{' '}
+                <button
+                  type="button"
+                  onClick={() => void toggleHistory(true)}
+                  className="font-semibold text-white/75 underline underline-offset-2 hover:text-white"
+                >
+                  Activar
+                </button>
+              </p>
+            ) : null}
+            {historyEnabled === true ? (
+              <p className="mt-6 text-[11px] text-white/30">
+                <button
+                  type="button"
+                  onClick={() => void toggleHistory(false)}
+                  className="underline underline-offset-2 hover:text-white/60"
+                >
+                  Dejar de recordar mis compras
+                </button>
+              </p>
+            ) : null}
+          </div>
+
+          <div
+            data-testid="shopping-list-composer"
+            className="min-w-0 rounded-2xl border p-5"
+            style={{ borderColor: 'rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.08)' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-white/70" htmlFor="shopping-list">
+                Tu lista
+              </label>
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
+                {parsedList.length} de {MAX_SHOPPING_LIST_ITEMS}
+              </span>
+            </div>
+            <div className="mt-2">
+              <textarea
+                id="shopping-list"
+                className="min-h-36 w-full rounded-xl border p-4 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.10)' }}
+                placeholder={'2 arroz\nleche x 6\naceite\npapel higiénico 2'}
+                ref={listRef}
+                value={shoppingInput}
+                maxLength={MAX_SHOPPING_LIST_CHARS}
+                onChange={event => {
+                  setShoppingInput(event.target.value);
+                  invalidateComparison();
+                  setCaret(event.target.selectionStart ?? 0);
+                }}
+                onKeyUp={event => setCaret(event.currentTarget.selectionStart ?? 0)}
+                onClick={event => setCaret(event.currentTarget.selectionStart ?? 0)}
+                onBlur={() => setSuggestions([])}
+              />
+            </div>
+            {/*
+              Sugerencias del catálogo para la línea que se está escribiendo.
+              Van en una fila y no en un desplegable sobre el texto: la lista se
+              escribe de corrido y un menú flotante taparía las líneas de abajo.
+              `onMouseDown` en vez de `onClick` porque el blur del textarea llega
+              antes y cerraría la fila sin llegar a aplicar nada.
+            */}
+            {suggestions.length > 0 ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70">
+                  En el catálogo
+                </span>
+                {suggestions.map(suggestion => (
+                  <button
+                    key={suggestion.term}
+                    type="button"
+                    onMouseDown={event => { event.preventDefault(); applySuggestion(suggestion.term); }}
+                    className="rounded-full px-2.5 py-1 text-xs font-semibold text-white/85 hover:bg-white/20"
+                    style={{ background: 'rgba(255,255,255,0.12)' }}
+                  >
+                    {suggestion.term}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {/*
+              Cómo quedó leída la lista. Es la misma lectura que hará la
+              comparación, así que aquí se ve —y se corrige— antes de comparar,
+              en vez de descubrir al final que "papel hgienico" buscó cualquier
+              papel.
+            */}
+            {parsedList.length > 0 ? (
+              <div className="mt-3">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70">
+                      Así lo leí · {parsedList.length} producto{parsedList.length === 1 ? '' : 's'}
+                    </p>
+                    <p className="mt-1 text-[10px] text-white/70">
+                      La foto aparece al comparar, cuando ya existe un producto exacto de la tienda.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 grid max-h-[22rem] gap-2 overflow-x-hidden overflow-y-auto pr-1 xl:grid-cols-2">
+                  {parsedList.map(item => {
+                    const review = reviews[item.term];
+                    const dudoso = review?.status === 'unknown';
+                    const resolved = resolvedByTerm.get(item.term);
+                    const missingAfterComparison = comparisonMatchesInput && !resolved;
+                    const needsAttention = dudoso || missingAfterComparison;
+                    return (
+                      <article
+                        key={`${item.term}-${item.unit ?? 'unidad'}`}
+                        data-testid="parsed-shopping-item"
+                        className="min-w-0 rounded-xl border p-2.5"
+                        style={{
+                          background: needsAttention ? 'rgba(224,168,90,0.16)' : 'rgba(255,255,255,0.08)',
+                          borderColor: needsAttention ? 'rgba(224,168,90,0.48)' : 'rgba(255,255,255,0.12)',
+                        }}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <SupermarketProductThumbnail
+                            imageUrl={resolved?.imageUrl}
+                            alt={resolved?.name ?? item.term}
+                            size="compact"
+                            tone="dark"
+                            pending={!resolved && !missingAfterComparison}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold capitalize text-white/90">{item.term}</p>
+                                <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-white/70">
+                                  {resolved?.name ?? (missingAfterComparison
+                                    ? 'No encontrado en la canasta seleccionada'
+                                    : dudoso ? 'Necesita revisión' : `Listo para buscar en ${SUPERMARKET_STORES.length} cadenas`)}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                aria-label={`Quitar ${item.term} de la lista`}
+                                onClick={() => rewriteList(item.term, null)}
+                                className="flex min-h-8 min-w-8 items-center justify-center rounded-full text-white/70 hover:bg-white/15 hover:text-white"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => { setEditingTerm(item.term); setEditedTerm(item.term); }}
+                                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] hover:ring-1 hover:ring-white/50"
+                                style={{
+                                  background: needsAttention ? 'rgba(224,168,90,0.22)' : 'rgba(255,255,255,0.10)',
+                                  color: needsAttention ? '#F5C781' : 'rgba(255,255,255,0.78)',
+                                }}
+                              >
+                                {resolved ? 'Producto elegido' : missingAfterComparison ? 'Corregir' : dudoso ? 'Revisar' : 'Editar'}
+                              </button>
+                              <span className="inline-flex shrink-0 items-center rounded-full border border-white/15 bg-white/5">
+                                <button
+                                  type="button"
+                                  aria-label={`Disminuir cantidad de ${item.term}`}
+                                  onClick={() => rewriteList(
+                                    item.term,
+                                    item.quantity > 1 ? { quantity: item.quantity - 1 } : null,
+                                  )}
+                                  className="flex min-h-8 min-w-8 items-center justify-center text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                                >
+                                  −
+                                </button>
+                                <span className="min-w-8 px-1 text-center text-[10px] font-bold text-white/90">
+                                  {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  aria-label={`Aumentar cantidad de ${item.term}`}
+                                  onClick={() => rewriteList(item.term, { quantity: item.quantity + 1 })}
+                                  className="flex min-h-8 min-w-8 items-center justify-center text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                                >
+                                  +
+                                </button>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {editingTerm === item.term ? (
+                          <form className="mt-2 flex gap-2" onSubmit={event => { event.preventDefault(); if (editedTerm.trim()) rewriteList(item.term, { term: editedTerm.trim() }); setEditingTerm(null); }}>
+                            <input aria-label={`Corregir ${item.term}`} value={editedTerm} onChange={event => setEditedTerm(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white/10 px-2 py-1 text-xs text-white" />
+                            <button type="submit" className="rounded-lg bg-white px-2 text-xs font-bold text-slate-900">Guardar</button>
+                          </form>
+                        ) : null}
+                        {dudoso ? (
+                          <div className="mt-2 border-t border-white/10 pt-2 text-[10px] leading-4 text-white/75">
+                            {review.suggestions.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span>¿Quisiste decir?</span>
+                                {review.suggestions.map(suggestion => (
+                                  <button
+                                    key={suggestion.term}
+                                    type="button"
+                                    onClick={() => rewriteList(item.term, { term: suggestion.term })}
+                                    className="rounded-full bg-white/10 px-2 py-0.5 font-semibold text-white/85 hover:bg-white/20"
+                                  >
+                                    {suggestion.term}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <span>
+                                {missingAfterComparison
+                                  ? 'No apareció en la canasta seleccionada.'
+                                  : 'No aparece en el catálogo; se buscará igual, pero puede volver vacío.'}
+                              </span>
+                            )}
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => void processShoppingList()}
+              disabled={loading || !shoppingInput.trim()}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+              style={{ background: '#fff', color: 'var(--cc-copper)' }}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+              {loading
+                ? `Comparando ${SUPERMARKET_STORES.length} cadenas…`
+                : parsedList.length > 0
+                  ? `Comparar ${parsedList.length} producto${parsedList.length === 1 ? '' : 's'}`
+                  : 'Comparar lista'}
+            </button>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-white/60">También puedes separar productos con coma o punto y coma.</p>
+              <label
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold text-white/85 hover:bg-white/10"
+                style={{ borderColor: 'rgba(255,255,255,0.18)' }}
+              >
+                <FileUp className="h-4 w-4" />
+                Subir TXT o CSV
+                <input
+                  type="file"
+                  accept=".txt,.csv,text/plain,text/csv"
+                  className="sr-only"
+                  onChange={event => {
+                    void importShoppingList(event.target.files?.[0]);
+                    event.currentTarget.value = '';
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {basketOptions.length > 0 && hasResults && (
+        <>
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Resultado de las {SUPERMARKET_STORES.length} cadenas</p>
+                <h2 className="mt-1 text-2xl font-bold cc-text-primary">
+                  {completeBaskets.length > 0 ? 'Mejor compra completa' : 'Mayor cobertura disponible'}
+                </h2>
+                {winnerSavings > 0 && winner && (
+                  <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--cc-sage)' }}>
+                    Según los estimados, {winner.store} sale {money(winnerSavings)} más barata que la
+                    siguiente canasta completa.
+                  </p>
+                )}
+                <p className="mt-2 max-w-xl text-xs cc-text-tertiary">
+                  Estimado sumando el precio de cada producto. Las promociones por volumen y los montos
+                  mínimos de despacho pueden cambiar el total en la tienda.
+                </p>
+                {/*
+                  Un total real y un estimado no son comparables entre si. Mezclarlos
+                  en el orden daria una recomendacion que parece firme y no lo es, asi
+                  que el ranking se deja como esta y se dice que quedo en duda.
+                */}
+                {rankingEnDuda ? (
+                  <p className="mt-2 max-w-xl text-xs font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                    Consultaste el total real de {realTotalStoreName} y difiere del estimado. El orden de
+                    arriba sigue calculado con estimados, así que esta comparación quedó en duda:
+                    consulta el total real de las otras cadenas antes de decidir.
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => void copyComparison()}
+                className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold cc-text-primary"
+                style={{ borderColor: 'var(--cc-line)' }}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Comparación copiada' : 'Copiar comparación'}
+              </button>
+            </div>
+
+            <div className="mt-5 flex gap-3 overflow-x-auto pb-2" data-testid="store-comparison-row">
+              {basketOptions.map((basket, index) => {
+                const selected = basket.store === selectedBasket?.store;
+                const isWinner = basket.store === winner?.store;
+                const hasStoreResults = basket.coveredCount > 0;
+                return (
+                  <button
+                    key={basket.store}
+                    type="button"
+                    onClick={() => selectBasket(basket)}
+                    className="min-w-[220px] flex-1 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5"
+                    style={{
+                      borderColor: selected ? 'var(--cc-copper)' : 'var(--cc-line)',
+                      background: selected ? 'var(--cc-paper-warm)' : 'var(--cc-paper)',
+                      opacity: hasStoreResults ? 1 : 0.68,
+                    }}
+                    aria-label={`Ver comparación de ${basket.store}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
+                        style={{ background: STORE_ACCENT[basket.store] ?? 'var(--cc-ink)' }}
+                      >
+                        {index + 1}
+                      </span>
+                      {isWinner && hasStoreResults && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
+                    </div>
+                    <p className="mt-3 text-lg font-bold cc-text-primary">{basket.store}</p>
+                    <p className="mt-1 text-2xl font-bold cc-text-primary">
+                      {hasStoreResults ? money(basket.subtotal) : '—'}
+                    </p>
+                    <p className="mt-2 text-xs cc-text-secondary">
+                      {basket.coveredCount} de {basket.requestedCount} productos
+                    </p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--cc-paper-deep)' }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${basket.coveragePercent}%`,
+                          background: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)',
+                        }}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs font-semibold" style={{ color: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
+                      {!hasStoreResults
+                        ? 'Sin precios vigentes para esta lista'
+                        : basket.complete
+                          ? 'Canasta completa'
+                          : `${basket.missingTerms.length} productos faltantes`}
+                    </p>
+                    <p className="mt-2 text-[10px] cc-text-tertiary">Actualización: {freshness(basket.fetchedAt)}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {selectedBasket && (
+            <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl p-3" style={{ background: 'var(--cc-paper-warm)' }}>
+                    <Store className="h-5 w-5" style={{ color: STORE_ACCENT[selectedBasket.store] ?? 'var(--cc-copper)' }} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Canasta seleccionada</p>
+                    <h2 className="mt-1 text-2xl font-bold cc-text-primary">{selectedBasket.store}</h2>
+                    <p className="mt-1 text-sm cc-text-secondary">
+                      {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos · {money(selectedBasket.subtotal)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <RemoteCartButton
+                    store={selectedBasket.store}
+                    items={selectedBasket.items}
+                    complete={selectedBasket.complete}
+                  />
+                  {historyEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => void recordPurchase()}
+                      disabled={recordingPurchase || loading || recordedBasket === basketKey || !list.some(item => item.available)}
+                      className="rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary disabled:opacity-50"
+                      style={{ borderColor: 'var(--cc-line)' }}
+                    >
+                      {recordingPurchase ? 'Guardando…' : recordedBasket === basketKey ? 'Compra registrada' : 'Ya compré esta canasta'}
+                    </button>
+                  ) : null}
+                  <a
+                    href={STORE_HOME[selectedBasket.store]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold cc-text-primary"
+                    style={{ borderColor: 'var(--cc-line)' }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir sitio de {selectedBasket.store}
+                  </a>
+                </div>
+              </div>
+
+              {!selectedBasket.complete && selectedBasket.missingTerms.length > 0 && (
+                <div className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
+                  <p className="text-sm font-bold cc-text-primary">
+                    Esta canasta no compite como completa: faltan {selectedBasket.missingTerms.length} productos.
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {selectedBasket.missingTerms.map(term => {
+                      const search = storeSearchUrl(selectedBasket.store, term);
+                      const alternatives = basketOptions.filter(option => (
+                        option.store !== selectedBasket.store
+                        && option.coveredCount > 0
+                        && !option.missingTerms.includes(term)
+                      ));
+                      return (
+                        <li key={term} className="text-xs cc-text-secondary">
+                          <strong className="cc-text-primary">{term}</strong>
+                          {search && (
+                            <>
+                              {' · '}
+                              <a href={search} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                                buscar en {selectedBasket.store}
+                              </a>
+                            </>
+                          )}
+                          {alternatives.length > 0 && (
+                            <>
+                              {' · disponible en '}
+                              {alternatives.map((option, optionIndex) => (
+                                <span key={option.store}>
+                                  {optionIndex > 0 && ', '}
+                                  <button type="button" onClick={() => selectBasket(option)} className="font-semibold underline">
+                                    {option.store}
+                                  </button>
+                                </span>
+                              ))}
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )}
+
+          <section
+            data-testid="basket-detail"
+            className="overflow-hidden rounded-2xl border"
+            style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--cc-line)' }}>
+              <div>
+                <h2 className="text-lg font-bold cc-text-primary">Detalle de la canasta</h2>
+                <p className="text-xs cc-text-secondary">Producto equivalente, cantidad calculada y precio observado.</p>
+                {showingRealTotal ? (
+                  realTotal?.complete && typeof realTotal.total === 'number' ? (
+                    <p className="mt-1 text-xs font-bold" style={{ color: 'var(--cc-sage)' }}>
+                      Subtotal consultado en {selectedBasket?.store}: {money(realTotal.total)} · sin despacho
+                      {selectedBasket && Math.abs(realTotal.total - selectedBasket.subtotal) >= 1
+                        ? ` · ${money(Math.abs(realTotal.total - selectedBasket.subtotal))} ${realTotal.total < selectedBasket.subtotal ? 'menos' : 'más'} que el estimado`
+                        : ' · igual que el estimado'}
+                      {realTotal.discount ? ` · incluye ${money(realTotal.discount)} de promociones` : ''}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>
+                      {realTotal?.supported ? realTotal.reason || 'No se pudo verificar toda la canasta.' : `${selectedBasket?.store} no permite consultar el total antes de comprar.`}
+                    </p>
+                  )
+                ) : null}
+                {/*
+                  Un minimo desconocido y un minimo inexistente no son lo mismo.
+                  La consulta va sin direccion, asi que la tienda puede exigir un
+                  minimo que aca no aparece: aCuenta pide sobre $25.000 y ninguna
+                  API disponible lo anticipa. Se dice lo que se sabe y hasta donde.
+                */}
+                {showingRealTotal && realTotal?.complete ? (
+                  <p className="mt-1 text-xs cc-text-tertiary">
+                    {typeof realTotal.minimumOrder === 'number'
+                      ? `Pedido mínimo declarado por ${selectedBasket?.store}: ${money(realTotal.minimumOrder)}`
+                      : `${selectedBasket?.store} no declaró un pedido mínimo en esta consulta`}
+                    {realTotal.minimumOrderWithoutAddress
+                      ? ' · consultado sin dirección, puede cambiar al elegir comuna o retiro'
+                      : ''}
+                  </p>
+                ) : null}
+                {showingSeals && sealsUnsupported ? (
+                  <p className="mt-1 text-xs" style={{ color: 'var(--cc-amber)' }}>
+                    {selectedBasket?.store} no publica los sellos de advertencia en su catálogo.
+                  </p>
+                ) : null}
+                {showingAlternatives ? (
+                  <p className="mt-1 text-xs cc-text-tertiary">
+                    Mismo formato, misma tienda, menos sellos informados. Los sellos advierten sobre
+                    azúcares, sodio, grasas y calorías: menos sellos no garantiza una compra más sana.
+                    La comparación de precios no cambia.
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadRealTotal()}
+                  disabled={realTotalLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold cc-text-primary disabled:opacity-60"
+                  style={{ borderColor: 'var(--cc-line)' }}
+                >
+                  {realTotalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  Ver total real
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void loadSeals()}
+                  disabled={sealsLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold cc-text-primary disabled:opacity-60"
+                  style={{ borderColor: 'var(--cc-line)' }}
+                >
+                  {sealsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {showingSeals ? 'Ocultar sellos' : 'Ver sellos'}
+                </button>
+                {showingSeals && !sealsUnsupported ? (
+                  <button
+                    type="button"
+                    onClick={() => void loadAlternatives()}
+                    disabled={alternativesLoading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold cc-text-primary disabled:opacity-60"
+                    style={{ borderColor: 'var(--cc-line)' }}
+                  >
+                    {alternativesLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    {showingAlternatives ? 'Ocultar alternativas' : 'Con menos sellos'}
+                  </button>
+                ) : null}
+                <span className="rounded-full px-3 py-1.5 text-xs font-bold cc-text-secondary" style={{ background: 'var(--cc-paper-warm)' }}>
+                  {list.filter(item => item.available).length} de {list.length}
+                </span>
+              </div>
+            </div>
+
+            <div data-testid="basket-product-grid" className="p-4 md:max-h-[44rem] md:overflow-auto">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {list.map(item => (
+                  <article
+                    key={`${item.requestedTerm}-${item.id}`}
+                    data-testid="basket-product-card"
+                    data-product-name={item.available ? item.name : item.requestedTerm}
+                    className="flex min-h-64 flex-col rounded-2xl border p-4"
+                    style={{
+                      borderColor: item.available ? 'var(--cc-line)' : 'var(--cc-amber)',
+                      background: item.available ? 'var(--cc-paper)' : 'var(--cc-amber-tint)',
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <SupermarketProductThumbnail
+                        imageUrl={item.imageUrl}
+                        alt={item.available ? item.name : item.requestedTerm}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="inline-flex rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em]"
+                          style={{ background: 'var(--cc-paper-warm)', color: 'var(--cc-text-tertiary)' }}
+                        >
+                          Pediste {item.requestedTerm}
+                        </span>
+                        {item.available ? (
+                          <>
+                            {item.productUrl ? (
+                              <a
+                                href={item.productUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group mt-2 flex items-start gap-1.5 text-sm font-bold leading-5 cc-text-primary hover:text-[var(--cc-copper)]"
+                              >
+                                <span className="line-clamp-3">{item.name}</span>
+                                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-55" />
+                              </a>
+                            ) : (
+                              <p className="mt-2 line-clamp-3 text-sm font-bold leading-5 cc-text-primary">{item.name}</p>
+                            )}
+                            <p className="mt-1 text-xs cc-text-tertiary">
+                              {item.brand || selectedBasket?.store}
+                              {item.isOffer ? ' · oferta observada' : ''}
+                            </p>
+                          </>
+                        ) : (
+                          <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                            <AlertTriangle className="h-4 w-4" /> No encontrado
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {item.available && showingSeals && item.sku ? (
+                      (seals?.[item.sku] ?? []).length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          {(seals?.[item.sku] ?? []).map(seal => (
+                            <span
+                              key={seal}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                              style={{ background: '#1a1a1a', color: '#fff' }}
+                            >
+                              {seal}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[10px] cc-text-tertiary">
+                          {Object.prototype.hasOwnProperty.call(seals, item.sku)
+                            ? 'Sin sellos informados por la tienda'
+                            : 'Sin información de sellos'}
+                        </p>
+                      )
+                    ) : null}
+
+                    {item.available && showingAlternatives && item.sku && alternativesBySku[item.sku] ? (
+                      <div className="mt-3 rounded-xl p-2.5" style={{ background: 'var(--cc-paper-warm)' }}>
+                        {alternativesBySku[item.sku].unknownCurrent ? (
+                          <p className="text-[10px] cc-text-tertiary">
+                            Sin sellos conocidos de este producto no hay con qué comparar.
+                          </p>
+                        ) : alternativesBySku[item.sku].options.length === 0 ? (
+                          <p className="text-[10px] cc-text-tertiary">
+                            Sin equivalentes con menos sellos en este formato.
+                          </p>
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Con menos sellos</p>
+                            {alternativesBySku[item.sku].options.slice(0, MAX_ALTERNATIVES_SHOWN).map(option => (
+                              <p key={option.sku} className="text-[11px] leading-4 cc-text-secondary">
+                                {option.name} · {option.seals.length} sello{option.seals.length === 1 ? '' : 's'} ·{' '}
+                                {option.priceDelta === 0
+                                  ? 'mismo precio'
+                                  : `${option.priceDelta > 0 ? '+' : '−'}${money(Math.abs(option.priceDelta))}`}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {(() => {
+                      const options = (productOptions[item.requestedTerm] ?? [])
+                        .filter(option => option.store === selectedBasket?.store && option.id !== item.id);
+                      return options.length > 0 ? (
+                        <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
+                          <p className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Elegir marca o presentación</p>
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            {options.map(option => (
+                              <button key={option.id} type="button" onClick={() => chooseProduct(option)}
+                                className="rounded-lg border px-2 py-1.5 text-left text-xs cc-text-primary hover:bg-[var(--cc-paper-warm)]"
+                                style={{ borderColor: 'var(--cc-line)' }}>
+                                {option.name} · {money(option.lineTotal)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                    <div className="mt-auto grid grid-cols-2 gap-3 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Cantidad</p>
+                        <p className="mt-1 text-xs font-semibold cc-text-primary">
+                          {item.requestedUnit
+                            ? `${item.requestedQuantity} ${item.requestedUnit} · ${item.quantity} envase${item.quantity === 1 ? '' : 's'}`
+                            : `${item.quantity} unidad${item.quantity === 1 ? '' : 'es'}`}
+                        </p>
+                        {item.available ? (
+                          <p className="mt-0.5 text-[10px] cc-text-tertiary">{money(item.price)} por envase</p>
+                        ) : null}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Total</p>
+                        <p className="mt-1 text-lg font-bold cc-text-primary">
+                          {item.available ? money(item.lineTotal) : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-2">
+            <div
+              className="flex items-start gap-3 rounded-2xl border p-5"
+              style={{
+                borderColor: selectedBasket?.complete ? 'var(--cc-success-border)' : 'var(--cc-amber)',
+                background: selectedBasket?.complete ? 'var(--cc-sage-tint)' : 'var(--cc-amber-tint)',
+              }}
+            >
+              {selectedBasket?.complete
+                ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-fg" />
+                : <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--cc-amber)' }} />}
+              <div>
+                <p className="font-bold cc-text-primary">
+                  {selectedBasket?.complete ? 'Comparación válida como canasta completa' : 'Subtotal parcial, no ganador'}
+                </p>
+                <p className="mt-1 text-sm cc-text-secondary">
+                  {selectedBasket?.complete
+                    ? 'Incluye todos los productos y las cantidades solicitadas.'
+                    : 'Los productos faltantes se muestran y el subtotal no se presenta como la compra más barata.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+              <Drone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--cc-copper)' }} />
+              <div>
+                <p className="font-bold cc-text-primary">Despacho separado del precio de productos</p>
+                <p className="mt-1 text-sm cc-text-secondary">
+                  El total no incluye envío, propina, beneficios de tarjeta ni membresías. Esos valores dependen de dirección, sesión y medio de pago.
+                </p>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {basketOptions.length > 0 && !hasResults && !loading && compared && (
+        <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+          <AlertTriangle className="mx-auto h-10 w-10" style={{ color: 'var(--cc-amber)' }} />
+          <p className="mt-3 font-bold cc-text-secondary">Las {SUPERMARKET_STORES.length} cadenas quedaron sin resultados vigentes para esta lista.</p>
+          <p className="mt-1 text-sm cc-text-tertiary">Prueba nombres más simples o vuelve a intentar cuando se actualicen los catálogos.</p>
+        </section>
+      )}
+
+      {basketOptions.length === 0 && !loading && !compared && (
+        <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+          <Info className="mx-auto h-10 w-10 cc-text-disabled" />
+          <p className="mt-3 font-bold cc-text-secondary">Pega tu lista para comparar las {SUPERMARKET_STORES.length} cadenas.</p>
+          <p className="mt-1 text-sm cc-text-tertiary">No mezclaremos una canasta incompleta con una completa.</p>
+        </section>
+      )}
+    </div>
+  );
+}
