@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { foldAccents } from '@/lib/supermarketText';
+import { canonicalCatalogTerm, foldAccents } from '@/lib/supermarketText';
 import type { ShoppingTermReview, ShoppingTermSuggestion } from '@/lib/types';
 
 /**
@@ -115,13 +115,14 @@ export async function suggestShoppingTerms(
   const wanted = normalize(query);
   if (wanted.length < MIN_QUERY_LENGTH) return [];
   const entries = await vocabulary();
+  const canonical = canonicalCatalogTerm(wanted);
 
   return entries
-    .filter(entry => entry.folded.includes(wanted))
+    .filter(entry => entry.folded.includes(wanted) || entry.folded.includes(canonical))
     .sort((left, right) => (
       // Lo que empieza con lo escrito va primero: es lo que la persona esta
       // tecleando. Despues, lo que mas productos tiene.
-      Number(right.folded.startsWith(wanted)) - Number(left.folded.startsWith(wanted))
+      Number(right.folded.startsWith(canonical)) - Number(left.folded.startsWith(canonical))
       || right.products - left.products
       || left.term.length - right.term.length
     ))
@@ -192,6 +193,21 @@ export async function reviewShoppingTerms(terms: string[]): Promise<ShoppingTerm
     const folded = normalize(term);
     if (!folded) return { term, status: 'unverified' as const, suggestions: [] };
     if (isKnown(entries, words, folded)) return { term, status: 'ok' as const, suggestions: [] };
+    const canonical = canonicalCatalogTerm(folded);
+    const aliases = canonical !== folded ? suggestCanonical(entries, canonical) : [];
+    if (aliases.length > 0) {
+      return { term, status: 'unknown' as const, suggestions: aliases };
+    }
     return { term, status: 'unknown' as const, suggestions: corrections(entries, folded) };
   });
+}
+
+function suggestCanonical(entries: VocabularyEntry[], canonical: string): ShoppingTermSuggestion[] {
+  return entries.filter(entry => entry.folded === canonical
+    || entry.folded.startsWith(`${canonical} `)
+    || entry.folded.includes(` ${canonical} `)
+    || entry.folded.endsWith(` ${canonical}`))
+    .sort((left, right) => right.products - left.products)
+    .slice(0, MAX_CORRECTIONS)
+    .map(entry => ({ term: entry.term, products: entry.products }));
 }

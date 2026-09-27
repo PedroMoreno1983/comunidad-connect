@@ -40,6 +40,7 @@ const CATALOGO = [
   { term: 'detergente liquido', products: 176 },
   { term: 'arroz', products: 88 },
   { term: 'aceite', products: 70 },
+  { term: 'pan pita', products: 32 },
 ];
 
 describe('sugerencias de la lista de compras', () => {
@@ -100,6 +101,13 @@ describe('revision de la lista de compras', () => {
 
   it('corrige una letra faltante', async () => {
     expect((await reviewShoppingTerms(['detergnte']))[0].suggestions[0].term).toBe('detergente');
+  });
+
+  it('ofrece pan pita cuando se escribe pampita', async () => {
+    expect((await suggestShoppingTerms('pampita')).map(item => item.term)).toContain('pan pita');
+    const [review] = await reviewShoppingTerms(['pampita']);
+    expect(review.status).toBe('unknown');
+    expect(review.suggestions.map(item => item.term)).toContain('pan pita');
   });
 
   it('corrige una palabra mal escrita aunque la primera este bien', async () => {

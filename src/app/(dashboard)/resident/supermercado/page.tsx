@@ -51,6 +51,7 @@ import type {
   SupermarketSealAlternative,
   SupermarketSealsResponse,
   SupermarketSearchResponse,
+  SupermarketSearchCandidate,
   SupermarketShoppingItem,
   SupermarketSimulationResult,
 } from '@/lib/types';
@@ -144,6 +145,9 @@ export default function SupermarketPage() {
   const [list, setList] = useState<SupermarketShoppingItem[]>([]);
   const [requestedItems, setRequestedItems] = useState<SupermarketRequestedItem[]>([]);
   const [basketOptions, setBasketOptions] = useState<SupermarketBasketCandidate[]>([]);
+  const [productOptions, setProductOptions] = useState<Record<string, SupermarketSearchCandidate[]>>({});
+  const [editingTerm, setEditingTerm] = useState<string | null>(null);
+  const [editedTerm, setEditedTerm] = useState('');
   const [sources, setSources] = useState<SupermarketComparisonSource[]>([]);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [compared, setCompared] = useState(false);
@@ -167,6 +171,14 @@ export default function SupermarketPage() {
   const [recordingPurchase, setRecordingPurchase] = useState(false);
   const [recordedBasket, setRecordedBasket] = useState<string | null>(null);
 
+  const invalidateComparison = () => {
+    setBasketOptions([]);
+    setProductOptions({});
+    setList([]);
+    setCompared(false);
+    setSelectedStore(null);
+  };
+
   /**
    * Lo que la lista dice, leido con el mismo parser que usa la comparacion.
    * No es una version aparte: si aca se ve "papel higienico x2", eso es
@@ -186,6 +198,7 @@ export default function SupermarketPage() {
       return [{ ...item, ...change }];
     });
     setShoppingInput(shoppingListText(next));
+    invalidateComparison();
   };
 
   useEffect(() => {
@@ -231,6 +244,7 @@ export default function SupermarketPage() {
     const replacement = replaceTermInLine(text.slice(start, end), term);
     const next = text.slice(0, start) + replacement + text.slice(end);
     setShoppingInput(next);
+    invalidateComparison();
     setSuggestions([]);
     window.requestAnimationFrame(() => {
       const node = listRef.current;
@@ -262,6 +276,7 @@ export default function SupermarketPage() {
       const normalized = imported.trim().slice(0, MAX_SHOPPING_LIST_CHARS);
       if (!normalized) throw new Error('El archivo no contiene productos legibles.');
       setShoppingInput(normalized);
+      invalidateComparison();
       toast({ title: 'Lista importada', description: 'Revísala y pulsa comparar.', variant: 'success' });
     } catch (error) {
       toast({
@@ -352,6 +367,28 @@ export default function SupermarketPage() {
     }));
   };
 
+  const chooseProduct = (candidate: SupermarketSearchCandidate) => {
+    if (!selectedBasket || candidate.store !== selectedBasket.store) return;
+    setBasketOptions(current => current.map(basket => {
+      if (basket.store !== selectedBasket.store) return basket;
+      const items = [...basket.items.filter(item => item.requestedTerm !== candidate.requestedTerm), candidate];
+      const covered = new Set(items.map(item => item.requestedTerm));
+      const missingTerms = requestedItems.map(item => item.term).filter(term => !covered.has(term));
+      return {
+        ...basket, items, missingTerms,
+        coveredCount: covered.size,
+        requestedCount: requestedItems.length,
+        coveragePercent: requestedItems.length ? Math.round(covered.size * 100 / requestedItems.length) : 0,
+        complete: missingTerms.length === 0 && requestedItems.length > 0,
+        subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
+      };
+    }));
+    setList(current => current.map(item => item.requestedTerm === candidate.requestedTerm
+      ? { ...candidate, checked: false, available: true, source: 'catalog' as const }
+      : item));
+    setBasketRevision(value => value + 1);
+  };
+
   const processShoppingList = async () => {
     if (!shoppingInput.trim()) return;
     setLoading(true);
@@ -373,6 +410,7 @@ export default function SupermarketPage() {
       const nextOptions = data.basketOptions ?? [];
       setRequestedItems(nextRequested);
       setBasketOptions(nextOptions);
+      setProductOptions(data.alternativesByTerm ?? {});
       setSources(data.sources ?? []);
       setCompared(true);
       setSelectedStore(nextOptions.find(basket => basket.coveredCount > 0)?.store ?? null);
@@ -766,6 +804,7 @@ export default function SupermarketPage() {
                 maxLength={MAX_SHOPPING_LIST_CHARS}
                 onChange={event => {
                   setShoppingInput(event.target.value);
+                  invalidateComparison();
                   setCaret(event.target.selectionStart ?? 0);
                 }}
                 onKeyUp={event => setCaret(event.currentTarget.selectionStart ?? 0)}
@@ -862,15 +901,17 @@ export default function SupermarketPage() {
                               </button>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                              <span
-                                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em]"
+                              <button
+                                type="button"
+                                onClick={() => { setEditingTerm(item.term); setEditedTerm(item.term); }}
+                                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] hover:ring-1 hover:ring-white/50"
                                 style={{
                                   background: needsAttention ? 'rgba(224,168,90,0.22)' : 'rgba(255,255,255,0.10)',
                                   color: needsAttention ? '#F5C781' : 'rgba(255,255,255,0.78)',
                                 }}
                               >
-                                {resolved ? 'Producto elegido' : missingAfterComparison ? 'No encontrado' : dudoso ? 'Revisar' : 'Por comparar'}
-                              </span>
+                                {resolved ? 'Producto elegido' : missingAfterComparison ? 'Corregir' : dudoso ? 'Revisar' : 'Editar'}
+                              </button>
                               <span className="inline-flex shrink-0 items-center rounded-full border border-white/15 bg-white/5">
                                 <button
                                   type="button"
@@ -899,6 +940,12 @@ export default function SupermarketPage() {
                           </div>
                         </div>
 
+                        {editingTerm === item.term ? (
+                          <form className="mt-2 flex gap-2" onSubmit={event => { event.preventDefault(); if (editedTerm.trim()) rewriteList(item.term, { term: editedTerm.trim() }); setEditingTerm(null); }}>
+                            <input aria-label={`Corregir ${item.term}`} value={editedTerm} onChange={event => setEditedTerm(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/30 bg-white/10 px-2 py-1 text-xs text-white" />
+                            <button type="submit" className="rounded-lg bg-white px-2 text-xs font-bold text-slate-900">Guardar</button>
+                          </form>
+                        ) : null}
                         {dudoso ? (
                           <div className="mt-2 border-t border-white/10 pt-2 text-[10px] leading-4 text-white/75">
                             {review.suggestions.length > 0 ? (
@@ -1353,6 +1400,24 @@ export default function SupermarketPage() {
                       </div>
                     ) : null}
 
+                    {(() => {
+                      const options = (productOptions[item.requestedTerm] ?? [])
+                        .filter(option => option.store === selectedBasket?.store && option.id !== item.id);
+                      return options.length > 0 ? (
+                        <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
+                          <p className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Elegir marca o presentación</p>
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            {options.map(option => (
+                              <button key={option.id} type="button" onClick={() => chooseProduct(option)}
+                                className="rounded-lg border px-2 py-1.5 text-left text-xs cc-text-primary hover:bg-[var(--cc-paper-warm)]"
+                                style={{ borderColor: 'var(--cc-line)' }}>
+                                {option.name} · {money(option.lineTotal)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="mt-auto grid grid-cols-2 gap-3 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-wider cc-text-tertiary">Cantidad</p>
