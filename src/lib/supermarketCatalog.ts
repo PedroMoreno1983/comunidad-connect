@@ -276,8 +276,15 @@ export async function comparePersistedSupermarkets(
         || left.lineTotal - right.lineTotal
         || left.store.localeCompare(right.store)
       ))
-      .slice(0, 8);
-    return [term, alternatives] as const;
+      .filter(candidate => SUPERMARKET_STORES.includes(candidate.store as typeof SUPERMARKET_STORES[number]));
+    const perStore = new Map<string, number>();
+    const visibleAlternatives = alternatives.filter(candidate => {
+      const count = perStore.get(candidate.store) ?? 0;
+      if (count >= 6) return false;
+      perStore.set(candidate.store, count + 1);
+      return true;
+    });
+    return [term, visibleAlternatives] as const;
   }));
 
   return { ...comparison, alternativesByTerm };
