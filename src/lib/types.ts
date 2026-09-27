@@ -310,6 +310,31 @@ export interface SupermarketSearchCandidate {
   fetchedAt?: string;
 }
 
+  export interface SupermarketCatalogProduct {
+    id: string;
+    store: string;
+    name: string;
+    brand: string;
+    sku?: string;
+    offerId?: string;
+    salesUnit?: string;
+    price: number;
+    imageUrl?: string;
+    productUrl?: string;
+    fetchedAt?: string;
+  }
+
+  export interface SupermarketCatalogResponse {
+    products: SupermarketCatalogProduct[];
+    hasMore: boolean;
+    error?: string;
+  }
+
+  export interface SupermarketSelectedProduct extends SupermarketCatalogProduct {
+    requestedTerm: string;
+    quantity: number;
+  }
+
 export interface SupermarketShoppingItem extends SupermarketSearchCandidate {
   checked: boolean;
   available: boolean;
