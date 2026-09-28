@@ -57,13 +57,13 @@ JUMBO_CATEGORIES = (
     "carnes-y-pescados",
     "quesos-y-fiambres",
     "panaderia-y-pasteleria",
-    "desayuno-y-dulces",
-    "congelados",
+    "chocolates-galletas-y-snacks",
     "licores-bebidas-y-aguas",
     "limpieza",
-    "cuidado-personal-y-bebe",
+    "belleza-y-cuidado-personal",
+    "bebe-y-jugueteria",
     "mascotas",
-    "hogar",
+    "hogar-electro-y-libreria",
 )
 ACUENTA_HOME_URL = "https://www.acuenta.cl/"
 ACUENTA_HEADERS = {
@@ -1038,8 +1038,25 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             _playwright_goto_with_retry(page, url)
             return current_catalog_page(category)
 
-        def load_catalog_page(page_number: int, category: str) -> tuple[list[Product], int]:
-            return load_catalog_url(jumbo_category_page_url(category, page_number), category)
+        def load_catalog_page(
+            page_number: int,
+            category: str,
+            seen_signatures: set[tuple[str, ...]] | None = None,
+        ) -> tuple[list[Product], int]:
+            # Navigation can finish before Jumbo's client-side catalog response.
+            # Retry empty or repeated content before treating a category as partial.
+            products: list[Product] = []
+            total = 0
+            for attempt in range(3):
+                products, total = load_catalog_url(
+                    jumbo_category_page_url(category, page_number), category
+                )
+                signature = tuple(product_key(product) for product in products)
+                if products and (seen_signatures is None or signature not in seen_signatures):
+                    return products, total
+                if attempt < 2:
+                    page.wait_for_timeout(1_500 * (attempt + 1))
+            return products, total
 
         page.on("response", capture_catalog_response)
         coverage_warnings: list[str] = []
@@ -1078,7 +1095,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 repeated_page = False
                 for page_number in range(2, final_page + 1):
                     try:
-                        products, _ = load_catalog_page(page_number, category)
+                        products, _ = load_catalog_page(page_number, category, seen_pages)
                     except RuntimeError as error:
                         coverage_warnings.append(
                             f"{category}: page {page_number} failed ({error})"
