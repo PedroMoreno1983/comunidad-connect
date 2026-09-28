@@ -41,7 +41,14 @@ class FullCatalogParserTests(unittest.TestCase):
     def test_jumbo_crawls_panaderia_and_fiambres_not_just_eight_aisles(self) -> None:
         self.assertIn("panaderia-y-pasteleria", JUMBO_CATEGORIES)
         self.assertIn("quesos-y-fiambres", JUMBO_CATEGORIES)
-        self.assertIn("desayuno-y-dulces", JUMBO_CATEGORIES)
+        self.assertIn("chocolates-galletas-y-snacks", JUMBO_CATEGORIES)
+        self.assertIn("belleza-y-cuidado-personal", JUMBO_CATEGORIES)
+        self.assertIn("bebe-y-jugueteria", JUMBO_CATEGORIES)
+        self.assertIn("hogar-electro-y-libreria", JUMBO_CATEGORIES)
+        self.assertNotIn("desayuno-y-dulces", JUMBO_CATEGORIES)
+        self.assertNotIn("congelados", JUMBO_CATEGORIES)
+        self.assertNotIn("cuidado-personal-y-bebe", JUMBO_CATEGORIES)
+        self.assertNotIn("hogar", JUMBO_CATEGORIES)
         self.assertGreaterEqual(len(JUMBO_CATEGORIES), 12)
 
     def test_acuenta_uses_stable_categories_when_homepage_is_blocked(self) -> None:

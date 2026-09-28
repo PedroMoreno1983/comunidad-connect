@@ -159,6 +159,16 @@ jobs:
 
           exit "$exit_code"
 
+      - name: Reject incomplete catalog coverage
+        if: steps.selection.outputs.run == 'true' && steps.crawl.outcome == 'success'
+        shell: bash
+        run: |
+          report="full-catalog-${{ matrix.store }}.json"
+          if jq -e '.refreshed > 0' "$report" > /dev/null; then
+            echo "::error::${{ matrix.store }} refreshed only part of its catalog; inspect the uploaded report."
+            exit 1
+          fi
+
       - name: Upload catalog report
         if: always() && steps.selection.outputs.run == 'true'
         uses: actions/upload-artifact@v4
