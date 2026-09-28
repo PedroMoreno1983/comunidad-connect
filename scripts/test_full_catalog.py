@@ -20,6 +20,7 @@ from full_catalog import (
     extract_santa_render_data,
     extract_next_flight_stream,
     jumbo_category_page_url,
+    jumbo_category_coverage_sufficient,
     jumbo_page_count_from_links,
     jumbo_pagination_target,
     jumbo_payload_candidates,
@@ -153,6 +154,12 @@ class FullCatalogParserTests(unittest.TestCase):
         self.assertEqual(jumbo_final_page(None, 40, 41), (40, False))
         self.assertEqual(jumbo_final_page(2, 40, 41), (2, False))
         self.assertEqual(jumbo_final_page(None, 1, 1), (200, True))
+
+    def test_jumbo_coverage_accepts_filtered_tail_but_rejects_early_cutoff(self) -> None:
+        self.assertTrue(jumbo_category_coverage_sufficient(2873, 3760))
+        self.assertTrue(jumbo_category_coverage_sufficient(437, 520))
+        self.assertFalse(jumbo_category_coverage_sufficient(77, 1880))
+        self.assertFalse(jumbo_category_coverage_sufficient(119, 640))
 
     def test_tottus_categories_split_catalog_below_page_cap(self) -> None:
         payload = json.dumps(
