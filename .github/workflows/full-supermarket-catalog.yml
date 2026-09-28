@@ -7,6 +7,7 @@ on:
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
       - "scripts/test_ingest_full_supermarket_catalog.py"
+      - "scripts/backfill-lider-offer-id.js"
       - "supabase/migrations/20260810180000_reconcile_supermarket_stock.sql"
       - ".github/workflows/full-supermarket-catalog.yml"
   push:
@@ -17,6 +18,7 @@ on:
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
       - "scripts/test_ingest_full_supermarket_catalog.py"
+      - "scripts/backfill-lider-offer-id.js"
       - "supabase/migrations/20260810180000_reconcile_supermarket_stock.sql"
       - ".github/workflows/full-supermarket-catalog.yml"
   schedule:
@@ -161,6 +163,7 @@ jobs:
 
       - name: Reject incomplete catalog coverage
         if: steps.selection.outputs.run == 'true' && steps.crawl.outcome == 'success'
+        id: coverage
         shell: bash
         run: |
           report="full-catalog-${{ matrix.store }}.json"
@@ -168,6 +171,21 @@ jobs:
             echo "::error::${{ matrix.store }} refreshed only part of its catalog; inspect the uploaded report."
             exit 1
           fi
+
+      - name: Set up Node.js for Lider offer IDs
+        if: matrix.store == 'lider' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Complete Lider cart identifiers
+        if: matrix.store == 'lider' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          npm ci --ignore-scripts
+          node scripts/backfill-lider-offer-id.js --apply --limit 1000
 
       - name: Upload catalog report
         if: always() && steps.selection.outputs.run == 'true'
