@@ -625,14 +625,17 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
     const price = asNumber(offer?.price);
     const name = asString(product.name);
     const brand = asString(asRecord(product.brand)?.name) || asString(product.brand);
-    const sku = asString(product.sku) || undefined;
+    const productUrl = asString(product.url) || undefined;
+    const canonicalUrl = productUrl?.split('?', 1)[0];
+    const sku = asString(product.sku)
+      || canonicalUrl?.match(/\/([0-9]{14})\/?$/)?.[1]
+      || undefined;
     const image = asArray(product.image)[0];
     const imageUrl = typeof image === 'string' ? image : undefined;
     if (product['@type'] !== 'Product' || !name || price <= 0) return [];
 
     const offerInfo = detectLiderOffer(html);
     const listPrice = asNumber(offer?.priceValidUntil ? offer?.price : undefined);
-    const productUrl = asString(product.url) || undefined;
 
     return [{
       name,
@@ -643,7 +646,7 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
       isOffer: offerInfo.isOffer || listPrice > price,
       originalPrice: listPrice > price ? listPrice : undefined,
       query,
-      productUrl,
+      productUrl: canonicalUrl,
       sku,
       offerId: sku ? offerBySku.get(sku)?.offerId : undefined,
       salesUnit: sku ? offerBySku.get(sku)?.salesUnit : undefined,
