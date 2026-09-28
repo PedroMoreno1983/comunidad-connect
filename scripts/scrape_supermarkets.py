@@ -294,6 +294,11 @@ def scrape_lider(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
                 name = str(product.get("name") or "")
                 if not name or price <= 0:
                     continue
+                product_url = html.unescape(str(product.get("url") or "").strip()).split("?", 1)[0]
+                sku_match = re.search(r"/([0-9]{14})/?$", product_url)
+                if not sku_match:
+                    continue
+                sku = sku_match.group(1)
                 products.append(Product(
                     store="Lider",
                     query=query,
@@ -302,8 +307,9 @@ def scrape_lider(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
                     list_price=None,
                     in_stock="InStock" in str(offer.get("availability") if isinstance(offer, dict) else ""),
                     brand=None,
-                    sku=None,
-                    product_url=str(product.get("url") or url),
+                    sku=sku,
+                    ean=sku,
+                    product_url=product_url,
                     image_url=str(product.get("image") or "") or None,
                     scraped_at=utc_now(),
                 ))
