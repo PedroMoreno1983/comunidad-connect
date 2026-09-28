@@ -57,6 +57,13 @@ async function main() {
     const notice = page.getByRole('button', { name: 'Entendido' });
     if (await notice.count()) await notice.click();
     await page.getByRole('button', { name: 'Lider' }).click();
+    const milkResponse = page.waitForResponse(response => response.url().includes('/api/supermarket/catalog?') && response.url().includes('q=leche'), { timeout: 30_000 });
+    await page.getByRole('searchbox', { name: 'Buscar productos en Lider' }).fill('leche');
+    const milkPayload = await (await milkResponse).json();
+    assert.equal(milkPayload.products?.length, 24, 'Milk search did not fill the first catalog page');
+    assert(milkPayload.hasMore, 'Milk search lost its next page');
+    assert(milkPayload.products.some(product => /Leche Natural Entera/i.test(product.name)), 'Ordinary milk is missing from the first page');
+    await page.getByText(/Leche Natural Entera/i).first().waitFor({ timeout: 30_000 });
     await page.getByRole('searchbox', { name: 'Buscar productos en Lider' }).fill('pampita');
     await page.getByText(/pan pita/i).first().waitFor({ timeout: 30_000 });
     const card = page.locator('article').filter({ hasText: /pan pita/i }).first();
