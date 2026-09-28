@@ -6,6 +6,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -35,9 +36,32 @@ from full_catalog import (
     santa_categories,
     unique_products,
 )
+from scrape_supermarkets import scrape_lider
 
 
 class FullCatalogParserTests(unittest.TestCase):
+    def test_lider_price_refresh_keeps_cart_sku_from_product_url(self) -> None:
+        catalog = {
+            "@type": "ItemList",
+            "itemListElement": [{"item": {
+                "@type": "Product",
+                "name": "Leche natural 1 L",
+                "url": "https://super.lider.cl/ip/leche/leche-natural/00780257527115?channable=abc",
+                "offers": {"price": "1000", "availability": "https://schema.org/InStock"},
+            }}],
+        }
+        page = f'<script type="application/ld+json">{json.dumps(catalog)}</script>'
+        with patch("scrape_supermarkets.fetch", return_value=page):
+            products, status = scrape_lider("leche", 5)
+        self.assertEqual(status.status, "ok")
+        self.assertEqual(len(products), 1)
+        self.assertEqual(products[0].sku, "00780257527115")
+        self.assertEqual(products[0].ean, "00780257527115")
+        self.assertEqual(
+            products[0].product_url,
+            "https://super.lider.cl/ip/leche/leche-natural/00780257527115",
+        )
+
     def test_jumbo_crawls_panaderia_and_fiambres_not_just_eight_aisles(self) -> None:
         self.assertIn("panaderia-y-pasteleria", JUMBO_CATEGORIES)
         self.assertIn("quesos-y-fiambres", JUMBO_CATEGORIES)
