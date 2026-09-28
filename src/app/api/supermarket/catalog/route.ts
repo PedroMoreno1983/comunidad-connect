@@ -57,6 +57,9 @@ export async function GET(req: NextRequest) {
         .eq('in_stock', true)
         .gt('price', 0)
         .gte('last_seen_at', new Date(Date.now() - maxAge).toISOString());
+      // Líder exige ambos identificadores para transferir el producto al carro.
+      // La búsqueda histórica dejó duplicados sin ellos que no se pueden comprar.
+      if (store === 'Lider') request = request.not('sku', 'is', null).not('offer_id', 'is', null);
       if (anchor) request = request.ilike('name', `%${anchor}%`);
       const from = page * PAGE_SIZE;
       const size = PAGE_SIZE;
