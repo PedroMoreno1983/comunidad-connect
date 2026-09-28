@@ -170,6 +170,25 @@ describe('supermarket live catalog parsers', () => {
     });
   });
 
+  it('recovers the Lider SKU from a tracked product URL when JSON-LD omits it', () => {
+    const jsonLd = {
+      '@type': 'ItemList',
+      itemListElement: [{ item: {
+        '@type': 'Product',
+        name: 'Leche Descremada Sin Lactosa Caja 200 ml Surlat',
+        url: 'https://super.lider.cl/ip/leche/leche-descremada-sin-lactosa-caja/00780870950435?channable=tracked',
+        offers: { price: '470' },
+      } }],
+    };
+    const html = `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
+
+    expect(parseLiderProducts(html, 'leche')[0]).toMatchObject({
+      sku: '00780870950435',
+      price: 470,
+      productUrl: 'https://super.lider.cl/ip/leche/leche-descremada-sin-lactosa-caja/00780870950435',
+    });
+  });
+
   it('reads current Unimarc search cards and ignores bundle-only discounts', () => {
     const html = `
       <section id="shelf__vertical--arroz-oferta">
