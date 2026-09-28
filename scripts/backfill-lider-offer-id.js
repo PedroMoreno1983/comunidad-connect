@@ -59,8 +59,7 @@ const LIMIT = limitFlag > -1 ? Number(process.argv[limitFlag + 1]) || 500 : 500;
 const DELAY_MS = 900;
 /** PostgREST corta cualquier select en 1000 filas: un --limit mayor exige paginar. */
 const PAGE_SIZE = 1000;
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-  + '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -118,6 +117,7 @@ async function main() {
     .from('supermarket_products')
     .select('*', { count: 'exact', head: true })
     .eq('store', 'Lider')
+    .eq('in_stock', true)
     .is('offer_id', null)
     .not('product_url', 'is', null);
 
@@ -145,8 +145,10 @@ async function main() {
       .from('supermarket_products')
       .select('id, sku, product_url')
       .eq('store', 'Lider')
+      .eq('in_stock', true)
       .is('offer_id', null)
       .not('product_url', 'is', null)
+      .order('last_seen_at', { ascending: false })
       .order('id')
       .range(from, to);
     if (error) throw new Error(`No se pudo leer el catalogo: ${error.message}`);
@@ -168,15 +170,20 @@ async function main() {
 
     try {
       const response = await fetch(product.product_url, {
-        headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'es-CL,es;q=0.9' },
+        headers: { 'User-Agent': USER_AGENT },
         signal: AbortSignal.timeout(20000),
       });
       visited += 1;
-      if (!response.ok) {
+      if (!response.ok || response.url.includes('/blocked?')) {
         failed += 1;
         continue;
       }
-      for (const ref of parseOfferRefs(await response.text())) {
+      const refs = parseOfferRefs(await response.text());
+      if (refs.length === 0) {
+        failed += 1;
+        continue;
+      }
+      for (const ref of refs) {
         if (!resolved.has(ref.usItemId)) resolved.set(ref.usItemId, ref);
       }
     } catch {
@@ -187,6 +194,9 @@ async function main() {
 
   console.log(`\nFichas visitadas: ${visited} (fallidas: ${failed})`);
   console.log(`Pares usItemId<->offerId obtenidos: ${resolved.size}`);
+  if (pending.length > 0 && resolved.size === 0) {
+    throw new Error('Lider no entrego ningun offerId; revisa si las fichas redirigen a una pagina de bloqueo.');
+  }
 
   // La mayoria de los pares que devuelve una ficha son de OTROS productos: en la
   // primera corrida, 13 fichas dieron 206 pares para un lote de 20.
