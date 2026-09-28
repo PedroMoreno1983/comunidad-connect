@@ -356,7 +356,7 @@ def main() -> int:
     # entera seria gastar dos minutos para llegar al mismo vocabulario.
     vocabulary_terms = (
         refresh_search_vocabulary()
-        if any(result["status"] in {"completed", "refreshed"} for result in results)
+        if not args.dry_run and any(result["status"] in {"completed", "refreshed"} for result in results)
         else None
     )
     summary = {

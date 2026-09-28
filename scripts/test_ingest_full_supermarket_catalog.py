@@ -6,6 +6,7 @@ import io
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -30,6 +31,17 @@ def sample_product() -> Product:
 
 
 class FullCatalogIngestionTests(unittest.TestCase):
+    def test_dry_run_does_not_refresh_database_vocabulary(self) -> None:
+        args = SimpleNamespace(store="tottus", batch_size=75, max_pages=1, dry_run=True, pretty=False)
+        with (
+            patch.object(ingest, "parse_args", return_value=args),
+            patch.object(ingest, "crawl_store", return_value={"status": "completed", "scraped_count": 1, "persisted_count": 0}),
+            patch.object(ingest, "refresh_search_vocabulary") as refresh,
+            patch("sys.stdout", new_callable=io.StringIO),
+        ):
+            self.assertEqual(ingest.main(), 0)
+        refresh.assert_not_called()
+
     def test_complete_full_crawl_reconciles_stock(self) -> None:
         reconciliation = {"marked_out_of_stock": 3}
         with (
