@@ -1042,21 +1042,27 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             page_number: int,
             category: str,
             seen_signatures: set[tuple[str, ...]] | None = None,
+            page_size: int | None = None,
         ) -> tuple[list[Product], int]:
             # Navigation can finish before Jumbo's client-side catalog response.
-            # Retry empty or repeated content before treating a category as partial.
+            # Retry empty, repeated, or short content before treating it as final.
             products: list[Product] = []
             total = 0
+            best_products: list[Product] = []
+            best_total = 0
             for attempt in range(3):
                 products, total = load_catalog_url(
                     jumbo_category_page_url(category, page_number), category
                 )
                 signature = tuple(product_key(product) for product in products)
                 if products and (seen_signatures is None or signature not in seen_signatures):
-                    return products, total
+                    if len(products) > len(best_products):
+                        best_products, best_total = products, total
+                    if page_size is None or len(products) >= page_size:
+                        return products, total
                 if attempt < 2:
                     page.wait_for_timeout(1_500 * (attempt + 1))
-            return products, total
+            return (best_products, best_total) if best_products else (products, total)
 
         page.on("response", capture_catalog_response)
         coverage_warnings: list[str] = []
@@ -1095,7 +1101,9 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 repeated_page = False
                 for page_number in range(2, final_page + 1):
                     try:
-                        products, _ = load_catalog_page(page_number, category, seen_pages)
+                        products, _ = load_catalog_page(
+                            page_number, category, seen_pages, page_size
+                        )
                     except RuntimeError as error:
                         coverage_warnings.append(
                             f"{category}: page {page_number} failed ({error})"
@@ -1121,6 +1129,10 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     category_product_count += len(products)
                     yielded += len(products)
                     yield from products
+                    # Jumbo's advertised total includes products absent from its
+                    # paginated listing. A short page is the actual last page.
+                    if len(products) < page_size:
+                        break
 
                 if (
                     probes_until_repeat
