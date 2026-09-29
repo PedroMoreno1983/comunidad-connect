@@ -16,6 +16,28 @@ describe('catalog list package sizes', () => {
     expect(matchesRequestedPackageSize('Arroz Preparado Campesino 210 g', 'arroz 1 kg')).toBe(false);
     expect(matchesRequestedPackageSize('Arroz Grado 1 Bolsa 1 kg', 'arroz 1 kg')).toBe(true);
   });
+
+  it('keeps a leading size, and understands kilo, litro and decimals', () => {
+    expect(parseGroupShoppingList('500 g mantequilla\n1 L de leche\n2 arroz 1 kilo\nleche 1,5 L\n1 kilo plátanos', true)).toEqual([
+      { term: 'mantequilla 500 g', quantity: 1, unit: undefined },
+      { term: 'leche 1 l', quantity: 1, unit: undefined },
+      { term: 'arroz 1 kg', quantity: 2, unit: undefined },
+      { term: 'leche 1500 ml', quantity: 1, unit: undefined },
+      { term: 'platanos 1 kg', quantity: 1, unit: undefined },
+    ]);
+    expect(parseGroupShoppingList('3 kilos de papas\n2 kg tomates', false)).toEqual([
+      { term: 'papas', quantity: 3, unit: 'kg' },
+      { term: 'tomates', quantity: 2, unit: 'kg' },
+    ]);
+  });
+
+  it('matches spelled sizes and decimals to the catalog name', () => {
+    expect(matchesRequestedPackageSize('Arroz Grado 1 1 kilo', 'arroz 1 kg')).toBe(true);
+    expect(matchesRequestedPackageSize('Leche Entera 1 litro', 'leche 1 l')).toBe(true);
+    expect(matchesRequestedPackageSize('Leche Entera 1,5 L', 'leche 1500 ml')).toBe(true);
+    expect(matchesRequestedPackageSize('Mantequilla 250 g', 'mantequilla 500 g')).toBe(false);
+    expect(matchesRequestedPackageSize('Mantequilla Con Sal 500 g', 'mantequilla 500 g')).toBe(true);
+  });
 });
 import { extractSupermarketTerms } from '@/lib/supermarketLive';
 import {
@@ -172,6 +194,24 @@ describe('lista semanal desordenada (Pedro)', () => {
       'Filetitos Superpollo 800 g',
     )).toBe(true);
     expect(termMatchesProductName('huevos santa marta cafe', 'Huevos SantaMarta 30 un')).toBe(true);
+  });
+
+  it('no toma mantequilla de maní como mantequilla', () => {
+    expect(isProductSuitableForRequest(
+      'Mantequilla De Maní Clásica 500 g Great Value',
+      'mantequilla 500 g',
+      undefined,
+    )).toBe(false);
+    expect(isProductSuitableForRequest(
+      'Mantequilla Con Sal Colun 500 g',
+      'mantequilla 500 g',
+      undefined,
+    )).toBe(true);
+    expect(isProductSuitableForRequest(
+      'Mantequilla De Maní Clásica 500 g',
+      'mantequilla de maní',
+      undefined,
+    )).toBe(true);
   });
 
   it('no deja carne molida de vacuno como pollo', () => {

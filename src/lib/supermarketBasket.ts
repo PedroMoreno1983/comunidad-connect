@@ -79,9 +79,10 @@ export function normalizeRequestedQuantity(
 }
 
 function normalizedProductUnit(value: string): SupermarketMeasurementUnit {
-  if (value === 'kg') return 'kg';
-  if (value === 'g' || value === 'gr') return 'g';
-  if (value === 'l' || value === 'lt') return 'l';
+  const unit = value.toLowerCase();
+  if (unit === 'kg' || unit.startsWith('kilo')) return 'kg';
+  if (unit === 'g' || unit === 'gr' || unit.startsWith('gram')) return 'g';
+  if (unit === 'l' || unit === 'lt' || unit.startsWith('litr')) return 'l';
   return 'ml';
 }
 
@@ -98,7 +99,7 @@ function parseProductMeasurement(name: string) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
-  const match = normalizedName.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc)\b/);
+  const match = normalizedName.match(/\b(\d+(?:[.,]\d+)?)\s*(kilogramos?|kilos?|kg|gramos?|gr|g|litros?|lt|l|ml|cc)\b/);
   if (!match) return null;
   return {
     amount: Number(match[1].replace(',', '.')),
@@ -111,7 +112,7 @@ function productMeasurementInBaseUnits(name: string): { dimension: 'mass' | 'vol
   if (!measurement) return null;
   return {
     dimension: unitDimension(measurement.unit),
-    amount: measurement.amount * unitBaseFactor(measurement.unit),
+    amount: Math.round(measurement.amount * unitBaseFactor(measurement.unit)),
   };
 }
 
@@ -166,6 +167,15 @@ export function isProductSuitableForRequest(
     && !/\b(?:pollo|pavo|cerdo)\b/.test(normalizedTerm)
     && /\b(?:pollo|pavo|cerdo)\b/.test(normalizedName)
     && !/\b(?:vacuno|res|vacuna)\b/.test(normalizedName)
+  ) {
+    return false;
+  }
+
+  // "Mantequilla" en la lista es lácteo. Al mismo gramaje, la de maní ganaba por precio.
+  if (
+    /\bmantequilla\b/.test(normalizedTerm)
+    && !/\bmani\b/.test(normalizedTerm)
+    && /\bmani\b/.test(normalizedName)
   ) {
     return false;
   }
