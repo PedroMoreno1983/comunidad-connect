@@ -15,7 +15,7 @@ import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
-import type { ExpenseDatabaseRow, UnitExpenseView } from "@/lib/types";
+import type { ExpenseDatabaseRow, FinanceDocumentLink, UnitExpenseView } from "@/lib/types";
 import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
 
 function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
@@ -51,6 +51,7 @@ export default function ExpensesPage() {
     const [contributionType, setContributionType] = useState<string>("none");
     const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number; paidAt?: string | null } | null>(null);
     const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+    const [documentLinks, setDocumentLinks] = useState<FinanceDocumentLink[]>([]);
 
     const targetUnitId = user?.unitId;
     const paymentReturnExpenseId = searchParams.get("payment") === "return"
@@ -123,6 +124,16 @@ export default function ExpensesPage() {
         .filter(expense => expense.status === "pending" || expense.status === "overdue")
         .sort((a, b) => a.month.localeCompare(b.month) || a.dueDate.localeCompare(b.dueDate));
     const activeExpense = pendingExpenses.find(expense => expense.id === selectedExpenseId) || pendingExpenses[0];
+
+    useEffect(() => {
+        if (!activeExpense?.id) return;
+        let cancelled = false;
+        fetch(`/api/finance-documents?chargeId=${activeExpense.id}`, { cache: "no-store" })
+            .then(response => response.ok ? response.json() : { documents: [] })
+            .then(payload => { if (!cancelled) setDocumentLinks(payload.documents || []); })
+            .catch(() => { if (!cancelled) setDocumentLinks([]); });
+        return () => { cancelled = true; };
+    }, [activeExpense?.id]);
 
     const getContributionAmount = (type: string, base: number) => {
         switch (type) {
@@ -379,6 +390,11 @@ export default function ExpensesPage() {
                                     <div className="font-mono text-[13px]">${row.amount.toLocaleString("es-CL")}</div>
                                 </div>
                             ))}
+                            {documentLinks.length > 0 && <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)" }}>
+                                <p className="mb-2 text-xs font-semibold cc-text-secondary">Respaldos de este cobro</p>
+                                {documentLinks.map(document => <a key={document.id} href={`/api/finance-documents/${document.id}`}
+                                    target="_blank" rel="noopener noreferrer" className="mr-3 inline-block text-xs font-semibold text-brand-700 underline">{document.label}</a>)}
+                            </div>}
                             {extraContribution > 0 && (
                                 <div
                                     className="flex justify-between items-center py-3"
