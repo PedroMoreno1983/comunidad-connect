@@ -33,9 +33,24 @@ function normalizeMeasurementUnit(value: string): SupermarketMeasurementUnit {
   if (/^(?:l|lt|litro|litros)$/.test(unit)) return 'l';
   return 'ml';
 }
-export function parseGroupShoppingList(value: string): GroupItemInput[] {
+
+const MEASURE_UNIT = 'kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc';
+const LEADING_PACKAGE_SIZE = new RegExp(`^(\\d{1,5}(?:[.,]\\d{1,3})?)\\s*(${MEASURE_UNIT})\\s+(?:de\\s+)?(.+)$`, 'i');
+const TRAILING_PACKAGE_SIZE = new RegExp(`^(.+?)\\s+(\\d{1,5}(?:[.,]\\d{1,3})?)\\s*(${MEASURE_UNIT})\\s*$`, 'i');
+
+/** Integer sizes stay readable (1 kg, 500 g). Decimals become base units so "1,5 L" survives normalization. */
+function canonicalPackageLabel(amountRaw: string, unitRaw: string): string {
+  const amount = Number(amountRaw.replace(',', '.'));
+  const unit = normalizeMeasurementUnit(unitRaw);
+  const short = unit === 'kg' ? 'kg' : unit === 'g' ? 'g' : unit === 'l' ? 'l' : 'ml';
+  if (Number.isFinite(amount) && Number.isInteger(amount)) return `${amount} ${short}`;
+  const base = Math.round(amount * (unit === 'kg' || unit === 'l' ? 1000 : 1));
+  return `${base} ${unit === 'kg' || unit === 'g' ? 'g' : 'ml'}`;
+}
+export function parseGroupShoppingList(value: string, preservePackageSize = false): GroupItemInput[] {
   const consolidated = new Map<string, GroupItemInput>();
-  const source = collapseDuplicatedList(value.slice(0, MAX_SHOPPING_LIST_CHARS));
+  const source = collapseDuplicatedList(value.slice(0, MAX_SHOPPING_LIST_CHARS))
+    .replace(/(\d),(\d)/g, '$1.$2');
   for (const [index, rawEntry] of source.split(/[,;\n]+/).entries()) {
     let entry = rawEntry
       .trim()
@@ -67,6 +82,8 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     const trailingMeasure = entry.match(
       /^(.+?)\s+(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
     );
+    const leadingPackageSize = preservePackageSize ? entry.match(LEADING_PACKAGE_SIZE) : null;
+    const trailingPackageSize = preservePackageSize ? entry.match(TRAILING_PACKAGE_SIZE) : null;
     const leadingQuantity = entry.match(/^(\d{1,3})\s*(?:x|un(?:idad(?:es)?)?|uds?|u)?\s+(.+)$/i)
       || entry.match(/^(\d{1,3})\s*[xX]\s*(.+)$/);
     const trailingQuantity = entry.match(/^(.+?)\s+[xX]\s*(\d{1,3})(?:\s*(?:un(?:idad(?:es)?)?|uds?|u))?\s*$/i)
@@ -79,6 +96,14 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     } else if (packageOfCount) {
       quantity = Number(packageOfCount[1]);
       rawTerm = packageOfCount[2];
+    } else if (trailingPackageSize) {
+      const leadingCount = trailingPackageSize[1].match(/^(\d{1,3})\s+(.+)$/);
+      quantity = leadingCount ? Number(leadingCount[1]) : 1;
+      const name = leadingCount ? leadingCount[2] : trailingPackageSize[1];
+      rawTerm = `${name} ${canonicalPackageLabel(trailingPackageSize[2], trailingPackageSize[3])}`;
+    } else if (leadingPackageSize) {
+      quantity = 1;
+      rawTerm = `${leadingPackageSize[3]} ${canonicalPackageLabel(leadingPackageSize[1], leadingPackageSize[2])}`;
     } else if (leadingMeasure) {
       quantity = Number(leadingMeasure[1]);
       unit = normalizeMeasurementUnit(leadingMeasure[2]);
