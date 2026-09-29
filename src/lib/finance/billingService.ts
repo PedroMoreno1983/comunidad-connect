@@ -42,6 +42,8 @@ export interface CommunityExpenseInput {
     prorateMethod?: 'share' | 'equal';
     provider?: string | null;
     notes?: string | null;
+    documentPath?: string | null;
+    documentSha256?: string | null;
 }
 
 export interface BillingPreview {
@@ -144,7 +146,7 @@ export async function listCommunityExpenses(communityId: string, month: string) 
     const [expensesResult, runResult] = await Promise.all([
         admin
             .from('community_expenses')
-            .select('id, month, category, label, amount, provider, notes, prorate_method, created_at')
+            .select('id, month, category, label, amount, provider, notes, prorate_method, document_url, created_at')
             .eq('community_id', communityId)
             .eq('month', month)
             .order('created_at', { ascending: true }),
@@ -198,8 +200,10 @@ export async function addCommunityExpense(
             notes: (input.notes ? String(input.notes).trim().slice(0, 500) : null) || null,
             prorate_method: prorateMethod,
             created_by: createdBy,
+            document_url: input.documentPath || null,
+            document_sha256: input.documentSha256 || null,
         })
-        .select('id, month, category, label, amount, provider, notes, prorate_method, created_at')
+        .select('id, month, category, label, amount, provider, notes, prorate_method, document_url, created_at')
         .single();
     if (error) throw error;
     return data;
@@ -210,7 +214,7 @@ export async function deleteCommunityExpense(communityId: string, expenseId: str
     const admin = getSupabaseAdmin();
     const { data: expense } = await admin
         .from('community_expenses')
-        .select('id, month')
+        .select('id, month, document_url')
         .eq('id', expenseId)
         .eq('community_id', communityId)
         .maybeSingle();
@@ -224,6 +228,10 @@ export async function deleteCommunityExpense(communityId: string, expenseId: str
         .eq('id', expenseId)
         .eq('community_id', communityId);
     if (error) throw error;
+    if (expense.document_url) {
+        const { error: storageError } = await admin.storage.from('finance-documents').remove([expense.document_url]);
+        if (storageError) console.warn('[billingService] finance document cleanup failed:', storageError);
+    }
     return { ok: true };
 }
 
@@ -296,6 +304,9 @@ export async function issueBilling(
         .eq('community_id', communityId)
         .eq('month', month);
     const alreadyCharged = new Set((existing ?? []).map(row => String(row.unit_id)));
+    if (alreadyCharged.size > 0) {
+        throw new BillingError('existing_charges', 'Ya existen cobros para algunas unidades de este mes. Revisa y resuelve esos cobros antes de emitir el gasto común completo.', 409);
+    }
 
     const pending = result.units.filter(unit => unit.total > 0 && !alreadyCharged.has(unit.unitId));
     const skipped = result.units.filter(unit => alreadyCharged.has(unit.unitId));
@@ -344,15 +355,21 @@ export async function issueBilling(
         if (!expenseId) return [];
         return unit.items.map(item => ({
             expense_id: expenseId,
+            source_expense_id: item.expenseId,
             category: item.category,
             label: item.label,
             amount: item.amount,
         }));
     });
     if (items.length > 0) {
-        // El desglose es informativo: si falla, el cobro sigue siendo válido.
         const { error: itemsError } = await admin.from('expense_items').insert(items);
-        if (itemsError) console.warn('[billingService] expense_items insert failed:', itemsError);
+        if (itemsError) {
+            const { error: rollbackError } = await admin.from('expenses').delete().eq('billing_run_id', run.id);
+            if (!rollbackError) await admin.from('billing_runs').delete().eq('id', run.id);
+            throw new BillingError('breakdown_failed', rollbackError
+                ? 'Falló el desglose y no se pudo revertir la emisión. Revisa los cobros antes de reintentar.'
+                : 'Falló el desglose de los cobros. Se revirtió la emisión; puedes reintentar.', 500);
+        }
     }
 
     const notifications = pending.flatMap(unit => {
@@ -368,11 +385,12 @@ export async function issueBilling(
             community_id: communityId,
         }];
     });
+    let notified = 0;
     if (notifications.length > 0) {
-        await admin.from('notifications').insert(notifications).then(
-            () => undefined,
-            () => undefined,
-        );
+        const { data: insertedNotifications, error: notificationError } = await admin
+            .from('notifications').insert(notifications).select('id');
+        if (notificationError) console.warn('[billingService] notifications insert failed:', notificationError);
+        else notified = insertedNotifications?.length ?? 0;
     }
 
     const totalCharged = pending.reduce((sum, unit) => sum + unit.total, 0);
@@ -414,7 +432,7 @@ export async function issueBilling(
         issuedUnits: pending.length,
         skippedUnits: skipped.map(unit => unit.label),
         totalCharged,
-        notified: notifications.length,
+        notified,
         fellBackToEqualSplit: result.fellBackToEqualSplit,
         warnings: result.warnings,
         reserveContribution,
@@ -562,14 +580,18 @@ export async function createUnitExpense(
         .single();
     if (expenseError) throw expenseError;
 
-    // El desglose es informativo: si falla, el cobro sigue siendo válido.
     const { error: itemError } = await admin.from('expense_items').insert({
         expense_id: expense.id,
         category: 'other',
         label,
         amount,
     });
-    if (itemError) console.warn('[billingService] expense_item insert failed:', itemError);
+    if (itemError) {
+        const { error: rollbackError } = await admin.from('expenses').delete().eq('id', expense.id);
+        throw new BillingError('breakdown_failed', rollbackError
+            ? 'Falló el desglose y no se pudo revertir el cobro. Revisa la unidad antes de reintentar.'
+            : 'Falló el desglose. Se revirtió el cobro; puedes reintentar.', 500);
+    }
 
     void createdBy;
     return { expense, unitNumber: String(unit.number) };

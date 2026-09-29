@@ -2157,6 +2157,7 @@ CREATE TABLE IF NOT EXISTS "public"."community_expenses" (
     "amount" numeric(12,2) NOT NULL,
     "provider" "text",
     "document_url" "text",
+    "document_sha256" "text",
     "notes" "text",
     "prorate_method" "text" DEFAULT 'share'::"text" NOT NULL,
     "created_by" "uuid",
@@ -4650,4 +4651,14 @@ CREATE TABLE IF NOT EXISTS public.payroll_lines (
   role_title text NOT NULL,
   amount integer NOT NULL
 );
+
+-- Respaldo financiero privado y vínculo desde el desglose emitido.
+ALTER TABLE public.expense_items ADD COLUMN IF NOT EXISTS source_expense_id uuid REFERENCES public.community_expenses(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS community_expenses_document_sha256_uniq
+  ON public.community_expenses (community_id, document_sha256) WHERE document_sha256 IS NOT NULL;
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('finance-documents', 'finance-documents', false, 10485760,
+  ARRAY['application/pdf','image/jpeg','image/png','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','text/csv'])
+ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 10485760;
 

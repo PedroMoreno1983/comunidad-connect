@@ -78,9 +78,9 @@ export function CondoFeesTable() {
             const data = await res.json();
             if (res.ok) {
                 toast({
-                    title: "Emails enviados",
-                    description: `${data.sent} residentes notificados correctamente.`,
-                    variant: "success",
+                    title: data.failed > 0 ? "Envío parcial" : "Correos aceptados",
+                    description: `${data.sent} aceptados por el proveedor; ${data.failed} fallidos. La entrega al buzón puede demorar.`,
+                    variant: data.failed > 0 ? "destructive" : "success",
                 });
             } else {
                 throw new Error(data.error || 'Error desconocido');
