@@ -115,6 +115,13 @@ function productMeasurementInBaseUnits(name: string): { dimension: 'mass' | 'vol
   };
 }
 
+export function matchesRequestedPackageSize(name: string, requestedTerm: string): boolean {
+  const requested = productMeasurementInBaseUnits(requestedTerm);
+  if (!requested) return true;
+  const actual = productMeasurementInBaseUnits(name);
+  return actual !== null && actual.dimension === requested.dimension && actual.amount === requested.amount;
+}
+
 /**
  * A bare category word is not permission to choose the cheapest tiny serving.
  * These defaults mirror what a Chilean household normally means in a shopping

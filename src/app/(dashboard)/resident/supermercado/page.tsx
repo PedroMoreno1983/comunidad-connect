@@ -187,7 +187,7 @@ export default function SupermarketPage() {
       setListError(`La lista admite hasta ${MAX_SHOPPING_LIST_CHARS.toLocaleString('es-CL')} caracteres.`);
       return;
     }
-    const requested = parseGroupShoppingList(input);
+    const requested = parseGroupShoppingList(input, true);
     if (!requested.length || requested.length > MAX_SHOPPING_LIST_ITEMS) {
       setListError('No encontramos productos legibles en la lista.');
       return;
