@@ -8,7 +8,17 @@ import { extractExpenseDocument } from '@/lib/finance/expenseDocumentExtractor';
 
 export const runtime = 'nodejs';
 const BUCKET = 'finance-documents';
-const ALLOWED = new Set(['pdf', 'png', 'jpg', 'jpeg', 'docx', 'xlsx', 'txt', 'csv']);
+const MIME_BY_EXTENSION: Record<string, string> = {
+    pdf: 'application/pdf',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    txt: 'text/plain',
+    csv: 'text/csv',
+};
+const ALLOWED = new Set(Object.keys(MIME_BY_EXTENSION));
 
 export async function POST(req: NextRequest) {
     const limited = await enforceDistributedRateLimit(req, 'admin.finance_documents', { limit: 20, windowMs: 60_000 });
@@ -40,7 +50,7 @@ export async function POST(req: NextRequest) {
         if (duplicate) throw new BillingError('duplicate_document', 'Este respaldo ya está asociado a un egreso de la comunidad.', 409);
         const path = `${profile.community_id}/${randomUUID()}.${extension}`;
         const { error: uploadError } = await admin.storage.from(BUCKET).upload(path, bytes, {
-            contentType: file.type || 'application/octet-stream', upsert: false,
+            contentType: MIME_BY_EXTENSION[extension], upsert: false,
         });
         if (uploadError) throw uploadError;
         try {

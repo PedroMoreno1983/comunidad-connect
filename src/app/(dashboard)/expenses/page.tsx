@@ -126,9 +126,14 @@ export default function ExpensesPage() {
     const activeExpense = pendingExpenses.find(expense => expense.id === selectedExpenseId) || pendingExpenses[0];
 
     useEffect(() => {
-        if (!activeExpense?.id) return;
+        if (!activeExpense?.id) {
+            setDocumentLinks([]);
+            return;
+        }
+        setDocumentLinks([]);
         let cancelled = false;
-        fetch(`/api/finance-documents?chargeId=${activeExpense.id}`, { cache: "no-store" })
+        const chargeId = activeExpense.id;
+        fetch(`/api/finance-documents?chargeId=${chargeId}`, { cache: "no-store" })
             .then(response => response.ok ? response.json() : { documents: [] })
             .then(payload => { if (!cancelled) setDocumentLinks(payload.documents || []); })
             .catch(() => { if (!cancelled) setDocumentLinks([]); });
@@ -390,7 +395,7 @@ export default function ExpensesPage() {
                                     <div className="font-mono text-[13px]">${row.amount.toLocaleString("es-CL")}</div>
                                 </div>
                             ))}
-                            {documentLinks.length > 0 && <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)" }}>
+                            {activeExpense && documentLinks.length > 0 && <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)" }}>
                                 <p className="mb-2 text-xs font-semibold cc-text-secondary">Respaldos de este cobro</p>
                                 {documentLinks.map(document => <a key={document.id} href={`/api/finance-documents/${document.id}`}
                                     target="_blank" rel="noopener noreferrer" className="mr-3 inline-block text-xs font-semibold text-brand-700 underline">{document.label}</a>)}
