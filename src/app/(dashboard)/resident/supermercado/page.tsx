@@ -176,7 +176,7 @@ export default function SupermarketPage() {
         : [...current, { ...product, quantity: 1, requestedTerm: comparisonTerm }];
     });
     clearComparison();
-    if (query.trim()) setUnresolved(current => current.filter(term => term !== parseGroupShoppingList(query.trim())[0]?.term));
+    if (query.trim()) setUnresolved(current => current.filter(term => term !== parseGroupShoppingList(query.trim(), true)[0]?.term));
     setCheckoutStore(primaryStore);
   };
 
