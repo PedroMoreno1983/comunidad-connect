@@ -644,6 +644,11 @@ def jumbo_final_page(
     return 200, True
 
 
+def jumbo_category_coverage_sufficient(observed: int, advertised: int) -> bool:
+    """Allow stock-filtered totals, but reject a category that ended far too early."""
+    return advertised <= 0 or observed >= math.ceil(advertised * 0.75)
+
+
 
 def _json_ld_objects(page_html: str) -> Iterator[dict[str, Any]]:
     for match in re.finditer(
@@ -1099,6 +1104,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 seen_pages = {first_signature}
                 category_product_count = len(first_products)
                 repeated_page = False
+                first_empty_page: int | None = None
                 for page_number in range(2, final_page + 1):
                     try:
                         products, _ = load_catalog_page(
@@ -1111,11 +1117,19 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                         break
                     signature = tuple(product_key(product) for product in products)
                     if not products:
+                        if probes_until_repeat:
+                            coverage_warnings.append(
+                                f"{category}: page {page_number} was empty without a published last page"
+                            )
+                            break
+                        if first_empty_page is None:
+                            first_empty_page = page_number
+                        continue
+                    if first_empty_page is not None:
                         coverage_warnings.append(
-                            f"{category}: page {page_number} was empty after "
-                            f"{category_product_count} of {total} advertised products"
+                            f"{category}: empty page {first_empty_page} before page {page_number} returned products"
                         )
-                        break
+                        first_empty_page = None
                     if signature in seen_pages:
                         if probes_until_repeat:
                             repeated_page = True
@@ -1129,10 +1143,13 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     category_product_count += len(products)
                     yielded += len(products)
                     yield from products
-                    # Jumbo's advertised total includes products absent from its
-                    # paginated listing. A short page is the actual last page.
-                    if len(products) < page_size:
-                        break
+
+                if max_pages is None and not jumbo_category_coverage_sufficient(
+                    category_product_count, total
+                ):
+                    coverage_warnings.append(
+                        f"{category}: only {category_product_count} of {total} advertised products were visible"
+                    )
 
                 if (
                     probes_until_repeat
