@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Check, ChevronLeft, ExternalLink, Loader2, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, ChevronLeft, ExternalLink, Loader2, Search, ShoppingCart, Trash2, Upload } from 'lucide-react';
 import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartButton';
 import { SupermarketProductThumbnail } from '@/components/resident/supermarket/SupermarketProductThumbnail';
 import { SupermarketCatalogService } from '@/lib/api';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { comparableProduct, comparisonTerm } from '@/lib/supermarketEquivalence';
+import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketCandidate,
   SupermarketCatalogProduct,
@@ -66,6 +68,11 @@ export default function SupermarketPage() {
   const [catalogError, setCatalogError] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [cart, setCart] = useState<SupermarketSelectedProduct[]>([]);
+  const [listInput, setListInput] = useState('');
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState('');
+  const [unresolved, setUnresolved] = useState<string[]>([]);
+  const listRequest = useRef<AbortController | null>(null);
   const [comparisonStores, setComparisonStores] = useState<string[]>([]);
   const [comparison, setComparison] = useState<SupermarketSearchResponse | null>(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
@@ -102,23 +109,30 @@ export default function SupermarketPage() {
   }, [primaryStore, query, page]);
 
   const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
+  const hasDuplicateTerms = new Set(cart.map(item => item.requestedTerm)).size !== cart.length;
   const otherStores = SUPERMARKET_STORES.filter(store => store !== primaryStore);
   const activeStore = checkoutStore ?? primaryStore;
   const selectedComparison = comparison?.basketOptions?.find(basket => basket.store === activeStore);
+  const comparableAlternatives = (selected: SupermarketSelectedProduct, store: string) =>
+    (comparison?.alternativesByTerm?.[selected.requestedTerm] ?? [])
+      .filter(candidate => candidate.store === store && validForCart(store, candidate) && comparableProduct(selected, candidate))
+      .sort((a, b) => Number(comparableProduct(selected, b) === 'same_brand') - Number(comparableProduct(selected, a) === 'same_brand')
+        || a.lineTotal - b.lineTotal);
   const comparisonItems = useMemo(() => {
     if (!selectedComparison || activeStore === primaryStore) return [];
     return cart.flatMap(selected => {
       const key = `${activeStore}:${selected.requestedTerm}`;
-      const choice = chosenAlternatives[key]
-        ?? selectedComparison.items.find(item => item.requestedTerm === selected.requestedTerm);
+      const options = comparableAlternatives(selected, activeStore ?? '');
+      const choice = options.find(item => item.id === chosenAlternatives[key]?.id) ?? options[0];
       return choice ? [choice] : [];
     });
-  }, [activeStore, cart, chosenAlternatives, primaryStore, selectedComparison]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStore, cart, chosenAlternatives, primaryStore, selectedComparison, comparison]);
   const checkoutItems = activeStore === primaryStore ? cart.map(cartCandidate) : comparisonItems;
   const missingTerms = activeStore === primaryStore ? [] : cart
     .filter(selected => !comparisonItems.some(item => item.requestedTerm === selected.requestedTerm))
     .map(item => item.requestedTerm);
-  const checkoutReady = cart.length > 0 && missingTerms.length === 0
+  const checkoutReady = !listLoading && cart.length > 0 && unresolved.length === 0 && missingTerms.length === 0
     && checkoutItems.length === cart.length
     && checkoutItems.every(item => validForCart(activeStore ?? '', item));
   const activeTotal = checkoutItems.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -127,6 +141,10 @@ export default function SupermarketPage() {
     setPrimaryStore(store);
     setCheckoutStore(store);
     setCart([]);
+    listRequest.current?.abort();
+    setListLoading(false);
+    setUnresolved([]);
+    setListError('');
     setQuery('');
     setProducts([]);
     setCatalogLoading(true);
@@ -145,7 +163,7 @@ export default function SupermarketPage() {
 
   const addProduct = (product: SupermarketCatalogProduct) => {
     if (!primaryStore) return;
-    const requestedTerm = query.trim() || product.name;
+    const requestedTerm = comparisonTerm(product);
     setCart(current => {
       const exists = current.find(item => item.id === product.id);
       const comparisonTerm = current.some(item => item.requestedTerm === requestedTerm)
@@ -156,7 +174,81 @@ export default function SupermarketPage() {
         : [...current, { ...product, quantity: 1, requestedTerm: comparisonTerm }];
     });
     clearComparison();
+    if (query.trim()) setUnresolved(current => current.filter(term => term !== parseGroupShoppingList(query.trim())[0]?.term));
     setCheckoutStore(primaryStore);
+  };
+
+  const loadList = async (value: string) => {
+    if (!primaryStore) return;
+    const input = value.trim();
+    if (!input || input.length > MAX_SHOPPING_LIST_CHARS) {
+      setListError(`La lista admite hasta ${MAX_SHOPPING_LIST_CHARS.toLocaleString('es-CL')} caracteres.`);
+      return;
+    }
+    const requested = parseGroupShoppingList(input);
+    if (!requested.length || requested.length > MAX_SHOPPING_LIST_ITEMS) {
+      setListError('No encontramos productos legibles en la lista.');
+      return;
+    }
+    listRequest.current?.abort();
+    const controller = new AbortController();
+    listRequest.current = controller;
+    setListLoading(true);
+    setListError('');
+    setUnresolved([]);
+    setCart([]);
+    clearComparison();
+    setCheckoutStore(primaryStore);
+    const found = new Map<string, SupermarketSelectedProduct>();
+    const missing: string[] = [];
+    try {
+      for (let offset = 0; offset < requested.length; offset += 20) {
+        const batch = requested.slice(offset, offset + 20);
+        const results = await SupermarketCatalogService.resolveList(primaryStore, batch.map(item => `${item.quantity} ${item.term}`).join('\n'), controller.signal);
+        if (controller.signal.aborted) return;
+        for (const result of results) {
+          if (!result.product || !validForCart(primaryStore, result.product)) {
+            missing.push(result.term);
+            continue;
+          }
+          const previous = found.get(result.product.id);
+          found.set(result.product.id, {
+            ...result.product, requestedTerm: comparisonTerm(result.product),
+            quantity: Math.min(99, (previous?.quantity ?? 0) + Math.min(99, result.quantity)),
+          });
+        }
+        setCart(current => [...current.filter(item => !found.has(item.id)), ...found.values()]);
+        setUnresolved([...missing]);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setListError(error instanceof Error ? error.message : 'No se pudo cargar la lista.');
+        setUnresolved(requested.map(item => item.term).filter(term => !missing.includes(term)));
+      }
+    } finally {
+      if (!controller.signal.aborted) setListLoading(false);
+    }
+  };
+
+  const importList = async (file?: File) => {
+    if (!file) return;
+    if (file.size > 1_000_000 || !/\.(txt|csv|xlsx)$/i.test(file.name)) {
+      setListError('Sube un archivo TXT, CSV o XLSX de hasta 1 MB.');
+      return;
+    }
+    try {
+      const raw = /\.xlsx$/i.test(file.name) ? await SupermarketCatalogService.extractList(file) : await file.text();
+      const value = /\.csv$/i.test(file.name)
+        ? raw.split(/\r?\n/).map(row => {
+          const cells = row.split(/[;\t]/).map(cell => cell.trim());
+          return /^\d{1,3}$/.test(cells[1] || '') ? `${cells[1]} ${cells[0]}` : cells[0];
+        }).filter(Boolean).join('\n')
+        : raw;
+      setListInput(value);
+      await loadList(value);
+    } catch (error) {
+      setListError(error instanceof Error ? error.message : 'No se pudo leer el archivo.');
+    }
   };
 
   const changeQuantity = (id: string, difference: number) => {
@@ -170,7 +262,7 @@ export default function SupermarketPage() {
   };
 
   const compare = async () => {
-    if (!cart.length || !comparisonStores.length) return;
+    if (!cart.length || !comparisonStores.length || unresolved.length || listLoading || hasDuplicateTerms) return;
     compareRequest.current?.abort();
     const controller = new AbortController();
     compareRequest.current = controller;
@@ -191,7 +283,18 @@ export default function SupermarketPage() {
     }
   };
 
-  const comparisonBasket = (store: string): SupermarketBasketCandidate | undefined => comparison?.basketOptions?.find(item => item.store === store);
+  const comparisonBasket = (store: string): SupermarketBasketCandidate | undefined => {
+    const basket = comparison?.basketOptions?.find(item => item.store === store);
+    if (!basket) return undefined;
+    const items = cart.flatMap(selected => {
+      const options = comparableAlternatives(selected, store);
+      const matching = options[0];
+      return matching ? [matching] : [];
+    });
+    const missingTerms = cart.filter(selected => !items.some(item => item.requestedTerm === selected.requestedTerm)).map(item => item.name);
+    return { ...basket, items, missingTerms, coveredCount: items.length,
+      subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0), complete: missingTerms.length === 0 && items.length === cart.length };
+  };
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 pb-20 sm:px-0">
@@ -226,6 +329,29 @@ export default function SupermarketPage() {
                 placeholder="Busca pan pita, leche, arroz…" aria-label={`Buscar productos en ${primaryStore}`}
                 className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none cc-text-primary" />
             </label>
+            <div className="mt-4 rounded-xl border p-4" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}>
+              <h3 className="text-sm font-bold cc-text-primary">Carga una lista completa</h3>
+              <p className="mt-1 text-xs cc-text-secondary">Pega una lista o sube un TXT, CSV o XLSX. La búsqueda en {primaryStore} empieza al pegar o subir el archivo; revisa cada producto antes de comprar.</p>
+              <textarea value={listInput} onChange={event => setListInput(event.target.value)}
+                onPaste={event => {
+                  const pasted = event.clipboardData.getData('text');
+                  if (pasted.trim()) { event.preventDefault(); setListInput(pasted); void loadList(pasted); }
+                }} rows={3} placeholder={'2 leche entera 1 L\n1 arroz 1 kg\n3 yogur natural'}
+                aria-label="Lista completa de compras" className="mt-3 w-full rounded-lg border p-3 text-sm cc-text-primary" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }} />
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={() => void loadList(listInput)} disabled={listLoading || !listInput.trim()} className="rounded-lg px-3 py-2 text-xs font-bold text-white disabled:opacity-50" style={{ background: 'var(--cc-copper)' }}>Cargar lista escrita</button>
+                <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold underline cc-text-primary"><Upload className="h-4 w-4" /> Subir TXT, CSV o XLSX
+                  <input type="file" accept=".txt,.csv,.xlsx,text/plain,text/csv" className="sr-only" onChange={event => {
+                    void importList(event.target.files?.[0]); event.currentTarget.value = '';
+                  }} />
+                </label>
+                {listLoading ? <span role="status" className="flex items-center gap-1 text-xs cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Cargando productos…</span> : null}
+              </div>
+              {listError ? <p role="alert" className="mt-2 text-xs text-red-700">{listError}</p> : null}
+              {unresolved.length > 0 ? <div className="mt-3 text-xs text-amber-800"><p className="font-bold">Revisa {unresolved.length} productos sin coincidencia segura:</p>
+                <ul className="mt-1 space-y-1">{unresolved.map(term => <li key={term} className="flex items-center gap-2"><button type="button" className="underline" onClick={() => changeQuery(term)}>{term} · buscar en catálogo</button><button type="button" aria-label={`Quitar ${term} de pendientes`} onClick={() => setUnresolved(current => current.filter(value => value !== term))}>Quitar</button></li>)}</ul>
+              </div> : null}
+            </div>
             {catalogError ? <p role="alert" className="mt-4 text-sm text-red-700">{catalogError}</p> : null}
             {catalogLoading && products.length === 0 ? <p className="mt-6 flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Cargando productos…</p> : null}
             {!catalogLoading && !catalogError && products.length === 0 ? <p className="mt-6 text-sm cc-text-secondary">No encontramos productos vigentes para esta búsqueda. Prueba otro nombre.</p> : null}
@@ -283,7 +409,7 @@ export default function SupermarketPage() {
       {primaryStore && cart.length > 0 ? (
         <section className="rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
           <h2 className="text-lg font-bold cc-text-primary">3. ¿Quieres comparar antes de comprar?</h2>
-          <p className="mt-1 text-sm cc-text-secondary">Elige las cadenas que te interesan. Tu carro original en {primaryStore} conserva las marcas que seleccionaste.</p>
+          <p className="mt-1 text-sm cc-text-secondary">Comparamos el producto elegido con la misma marca y presentación cuando existe. Otra marca se muestra como equivalente solo si coinciden tipo, atributos y cantidad del envase. Sin coincidencia verificable, la tienda queda incompleta.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {otherStores.map(store => (
               <label key={store} className="flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm cc-text-primary" style={{ borderColor: 'var(--cc-line)' }}>
@@ -295,7 +421,8 @@ export default function SupermarketPage() {
               </label>
             ))}
           </div>
-          <button type="button" disabled={comparisonLoading || comparisonStores.length === 0} onClick={() => void compare()}
+          {hasDuplicateTerms ? <p className="mt-3 text-xs text-amber-700">Hay dos productos distintos con la misma descripción de comparación. Revisa esas variantes en el carro antes de comparar otras tiendas.</p> : null}
+          <button type="button" disabled={comparisonLoading || listLoading || hasDuplicateTerms || unresolved.length > 0 || comparisonStores.length === 0} onClick={() => void compare()}
             className="mt-4 rounded-xl px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: 'var(--cc-copper)' }}>
             {comparisonLoading ? 'Comparando…' : 'Comparar mi carro'}
           </button>
@@ -330,12 +457,11 @@ export default function SupermarketPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {cart.map(selected => {
               const item = checkoutItems.find(candidate => candidate.requestedTerm === selected.requestedTerm);
-              const alternatives = activeStore === primaryStore ? [] : (comparison?.alternativesByTerm?.[selected.requestedTerm] ?? [])
-                .filter(candidate => candidate.store === activeStore && validForCart(activeStore ?? '', candidate));
+              const alternatives = activeStore === primaryStore ? [] : comparableAlternatives(selected, activeStore ?? '');
               return (
                 <article key={selected.id} className="rounded-xl border p-3" style={{ borderColor: item ? 'var(--cc-line)' : 'var(--cc-amber)' }}>
                   <div className="flex gap-3"><SupermarketProductThumbnail imageUrl={item?.imageUrl} alt={item?.name ?? selected.requestedTerm} size="compact" />
-                    <div className="min-w-0"><p className="text-xs cc-text-tertiary">Buscaste {selected.requestedTerm}</p><p className="mt-1 text-sm font-semibold cc-text-primary">{item?.name ?? 'No encontrado en esta tienda'}</p></div>
+                    <div className="min-w-0"><p className="text-xs cc-text-tertiary">Elegiste {selected.name}</p><p className="mt-1 text-sm font-semibold cc-text-primary">{item?.name ?? 'Sin equivalente verificable en esta tienda'}</p>{item && activeStore !== primaryStore ? <p className="mt-1 text-xs cc-text-secondary">{comparableProduct(selected, item) === 'same_brand' ? 'Misma marca y formato' : 'Marca equivalente; revisa antes de comprar'}</p> : null}</div>
                   </div>
                   {item ? <p className="mt-3 text-sm font-bold cc-text-primary">{item.quantity} × {money(item.price)} = {money(item.lineTotal)}</p> : null}
                   {alternatives.length > 0 ? <label className="mt-3 block text-xs cc-text-secondary">Cambiar marca o presentación
@@ -352,7 +478,7 @@ export default function SupermarketPage() {
               );
             })}
           </div>
-          <p className="mt-4 text-lg font-bold cc-text-primary">Subtotal estimado: {money(activeTotal)}</p>
+          <p className="mt-4 text-lg font-bold cc-text-primary">{checkoutReady ? 'Subtotal estimado' : 'Subtotal parcial'}: {money(activeTotal)}</p>
           {!checkoutReady ? <p className="mt-2 flex items-start gap-2 text-sm text-amber-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Esta tienda tiene productos faltantes o sin identificador de carro. Revisa las alternativas o vuelve a {primaryStore}.</p> : null}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {checkoutReady && activeStore ? <RemoteCartButton store={activeStore} items={checkoutItems} complete /> : null}
