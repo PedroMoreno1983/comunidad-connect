@@ -239,10 +239,14 @@ export default function SupermarketPage() {
     try {
       const raw = /\.xlsx$/i.test(file.name) ? await SupermarketCatalogService.extractList(file) : await file.text();
       const value = /\.csv$/i.test(file.name)
-        ? raw.split(/\r?\n/).map(row => {
-          const cells = row.split(/[;\t]/).map(cell => cell.trim());
-          return /^\d{1,3}$/.test(cells[1] || '') ? `${cells[1]} ${cells[0]}` : cells[0];
-        }).filter(Boolean).join('\n')
+        ? (() => {
+          const rows = raw.split(/\r?\n/).map(row => row.split(/[;\t]/).map(cell => cell.trim()));
+          const quantityColumn = /^(cantidad|cant\.?|unidades|qty)$/i.test(rows[0]?.[1] || '');
+          return rows.map(cells => {
+            if (/^(producto|nombre|item|art[ií]culo)$/i.test(cells[0] || '')) return '';
+            return quantityColumn && /^\d{1,3}$/.test(cells[1] || '') ? `${cells[1]} ${cells[0]}` : cells[0];
+          }).filter(Boolean).join('\n');
+        })()
         : raw;
       setListInput(value);
       await loadList(value);

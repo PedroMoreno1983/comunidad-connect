@@ -29,14 +29,17 @@ export async function POST(req: NextRequest) {
     const bytes = Buffer.from(await file.arrayBuffer());
     await workbook.xlsx.load(bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     const lines: string[] = [];
-    workbook.eachSheet(sheet => sheet.eachRow({ includeEmpty: false }, row => {
+    workbook.eachSheet(sheet => {
+      const quantityColumn = /^(cantidad|cant\.?|unidades|qty)$/i.test(cellText(sheet.getRow(1).getCell(2)));
+      sheet.eachRow({ includeEmpty: false }, row => {
       if (lines.length >= MAX_SHOPPING_LIST_ITEMS) return;
       const first = cellText(row.getCell(1));
       const second = cellText(row.getCell(2));
       if (!first || /^(producto|nombre|item|art[ií]culo)$/i.test(first)) return;
-      const quantity = /^\d{1,3}$/.test(second) ? Number(second) : 1;
+      const quantity = quantityColumn && /^\d{1,3}$/.test(second) ? Number(second) : 1;
       lines.push(`${quantity} ${first}`);
-    }));
+      });
+    });
     const list = lines.join('\n');
     if (!list || list.length > MAX_SHOPPING_LIST_CHARS) {
       return NextResponse.json({ error: 'El archivo no contiene una lista legible dentro del límite.' }, { status: 400 });
