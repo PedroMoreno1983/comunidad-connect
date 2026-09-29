@@ -7,6 +7,7 @@
  * módulo financiero.
  */
 
+import { createHash } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, DATE_PATTERN } from './billingService';
 import {
@@ -21,6 +22,26 @@ export interface BankTransactionInput {
     amount: number;
     description?: string | null;
     reference?: string | null;
+}
+
+
+export interface BankImportRow {
+    txn_date: string;
+    amount: number;
+    description: string;
+    reference: string | null;
+}
+
+/** Clave estable para cartolas sin numero de operacion. La misma fila, en el mismo orden entre iguales, produce la misma clave. */
+export function withBankImportKeys<T extends BankImportRow>(rows: T[]): Array<T & { import_key: string | null }> {
+    const seen = new Map<string, number>();
+    return rows.map(row => {
+        if (row.reference) return { ...row, import_key: null };
+        const fingerprint = `${row.txn_date}|${row.amount}|${row.description}`;
+        const occurrence = (seen.get(fingerprint) ?? 0) + 1;
+        seen.set(fingerprint, occurrence);
+        return { ...row, import_key: createHash("sha256").update(`${fingerprint}|${occurrence}`).digest("hex") };
+    });
 }
 
 function unitLabel(row: { number?: unknown; tower?: unknown }) {
@@ -127,15 +148,16 @@ export async function importBankTransactions(
         };
     });
 
-    // Se inserta fila por fila y se saltan los duplicados por el código 23505:
-    // el índice único de dedup es PARCIAL (solo cuando hay referencia), y Postgres
+    // Se inserta fila por fila y se saltan los duplicados por el código 23505.
+    // Con referencia usa el índice parcial existente. Sin referencia, import_key
+    // cubre el reingreso de la misma cartola. Postgres
     // no acepta ON CONFLICT contra un índice parcial sin repetir su predicado, así
     // que un upsert con onConflict de columnas fallaba. Una cartola trae decenas
     // de filas, no miles, así que el costo es despreciable.
     const admin = getSupabaseAdmin();
     let imported = 0;
     let skippedDuplicates = 0;
-    for (const row of clean) {
+    for (const row of withBankImportKeys(clean)) {
         const { error } = await admin.from('bank_transactions').insert(row);
         if (error) {
             if ((error as { code?: string }).code === '23505') { skippedDuplicates += 1; continue; }

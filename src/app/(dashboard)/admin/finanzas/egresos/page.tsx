@@ -63,9 +63,9 @@ export default function EgresosPage() {
                 const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "No se pudo extraer.");
-                draft = { ...result.draft, file, status: "pending" };
+                draft = { ...result.draft, id: crypto.randomUUID(), file, status: "pending" };
             } catch (error) {
-                draft = { file, fileName: file.name, label: file.name.replace(/\.[^.]+$/, ""), amount: 0,
+                draft = { id: crypto.randomUUID(), file, fileName: file.name, label: file.name.replace(/\.[^.]+$/, ""), amount: 0,
                     category: "other", provider: "", documentDate: "", documentNumber: "", status: "pending",
                     warnings: [error instanceof Error ? error.message : "Revisa e ingresa los datos manualmente."] };
             }
@@ -74,17 +74,23 @@ export default function EgresosPage() {
         setExtracting(false);
     }
 
-    function editDocument(index: number, changes: Partial<FinanceDocumentReview>) {
-        setDocuments(current => current.map((item, position) => position === index ? { ...item, ...changes } : item));
+    function editDocument(id: string, changes: Partial<FinanceDocumentReview>) {
+        setDocuments(current => current.map(item => item.id === id ? { ...item, ...changes } : item));
     }
 
-    async function saveDocument(index: number) {
-        const item = documents[index];
-        if (!item || !item.label.trim() || !Number.isFinite(item.amount) || item.amount <= 0) {
-            toast({ title: "Revisa el respaldo", description: "Confirma concepto y monto mayor que cero.", variant: "destructive" });
+    function discardDocument(id: string) {
+        setDocuments(current => current.filter(item => item.id !== id || item.status === "saving"));
+    }
+
+    async function saveDocument(id: string) {
+        const item = documents.find(document => document.id === id);
+        if (!item || item.status === "saving" || !item.label.trim() || !Number.isFinite(item.amount) || item.amount <= 0) {
+            if (item && item.status !== "saving") {
+                toast({ title: "Revisa el respaldo", description: "Confirma concepto y monto mayor que cero.", variant: "destructive" });
+            }
             return;
         }
-        editDocument(index, { status: "saving" });
+        editDocument(id, { status: "saving" });
         try {
             const form = new FormData();
             form.append("action", "save"); form.append("file", item.file); form.append("month", month);
@@ -95,10 +101,10 @@ export default function EgresosPage() {
             const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || "No se pudo guardar el respaldo.");
-            editDocument(index, { status: "saved" });
+            editDocument(id, { status: "saved" });
             await load();
         } catch (error) {
-            editDocument(index, { status: "pending" });
+            editDocument(id, { status: "pending" });
             toast({ title: "Respaldo no guardado", description: error instanceof Error ? error.message : "Error inesperado.", variant: "destructive" });
         }
     }
@@ -333,17 +339,17 @@ export default function EgresosPage() {
                         <input className="mt-3 block w-full text-sm" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.txt,.csv"
                             disabled={extracting || saving} onChange={event => { if (event.target.files) void inspectDocuments(event.target.files); event.target.value = ""; }} />
                         {extracting && <p className="mt-2 text-sm cc-text-secondary"><Loader2 className="mr-1 inline h-4 w-4 animate-spin" /> Leyendo documentos…</p>}
-                        <div className="mt-4 space-y-3">{documents.map((item, index) => <div key={`${item.fileName}-${index}`} className="rounded-xl border p-3" style={{ borderColor: "var(--cc-line)" }}>
+                        <div className="mt-4 space-y-3">{documents.map(item => <div key={item.id} className="rounded-xl border p-3" style={{ borderColor: "var(--cc-line)" }}>
                             <p className="mb-2 text-sm font-semibold cc-text-primary">{item.fileName} {item.status === "saved" ? "· Registrado" : "· Pendiente de revisión"}</p>
                             {item.warnings.map(warning => <p key={warning} className="text-xs text-warning-fg">{warning}</p>)}
                             <div className="mt-2 grid gap-2 sm:grid-cols-4">
-                                <input aria-label="Concepto" placeholder="Concepto" value={item.label} disabled={item.status !== "pending"} onChange={event => editDocument(index, { label: event.target.value })} className="rounded-lg border p-2 text-sm" />
-                                <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={item.amount || ""} disabled={item.status !== "pending"} onChange={event => editDocument(index, { amount: Number(event.target.value.replace(/[^\d]/g, "")) })} className="rounded-lg border p-2 text-sm" />
-                                <input aria-label="Proveedor" placeholder="Proveedor" value={item.provider} disabled={item.status !== "pending"} onChange={event => editDocument(index, { provider: event.target.value })} className="rounded-lg border p-2 text-sm" />
-                                <select aria-label="Categoría" value={item.category} disabled={item.status !== "pending"} onChange={event => editDocument(index, { category: event.target.value })} className="rounded-lg border p-2 text-sm">{CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+                                <input aria-label="Concepto" placeholder="Concepto" value={item.label} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { label: event.target.value })} className="rounded-lg border p-2 text-sm" />
+                                <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={item.amount || ""} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { amount: Number(event.target.value.replace(/[^\d]/g, "")) })} className="rounded-lg border p-2 text-sm" />
+                                <input aria-label="Proveedor" placeholder="Proveedor" value={item.provider} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { provider: event.target.value })} className="rounded-lg border p-2 text-sm" />
+                                <select aria-label="Categoría" value={item.category} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { category: event.target.value })} className="rounded-lg border p-2 text-sm">{CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
                             </div>
-                            {item.status !== "saved" && <div className="mt-2 flex gap-2"><Button type="button" onClick={() => void saveDocument(index)} disabled={item.status === "saving"}>Confirmar y registrar</Button>
-                                <Button type="button" variant="ghost" onClick={() => setDocuments(current => current.filter((_, position) => position !== index))}>Descartar</Button></div>}
+                            {item.status !== "saved" && <div className="mt-2 flex gap-2"><Button type="button" onClick={() => void saveDocument(item.id)} disabled={item.status === "saving"}>Confirmar y registrar</Button>
+                                <Button type="button" variant="ghost" onClick={() => discardDocument(item.id)} disabled={item.status === "saving"}>Descartar</Button></div>}
                         </div>)}</div>
                     </section>
                 )}

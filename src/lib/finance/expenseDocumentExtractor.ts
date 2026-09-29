@@ -39,14 +39,25 @@ export async function extractExpenseDocument(file: File, context: { userId: stri
     if (!response.ok) throw new Error(`No se pudo leer el documento (servicio ${response.status}).`);
     const payload = await response.json();
     const output = String(payload?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
-    const parsed = JSON.parse(output) as Record<string, unknown>;
     const inputTokens = Number(payload?.usageMetadata?.promptTokenCount ?? promptTokens);
     const completionTokens = Number(payload?.usageMetadata?.candidatesTokenCount ?? estimateTokensFromText(output));
-    await recordAiUsage({ communityId: context.communityId, userId: context.userId, role: 'admin',
-        module: 'finance.document_extract', provider: 'gemini', model, actionType: 'extraction',
+    const usage = {
+        communityId: context.communityId, userId: context.userId, role: 'admin' as const,
+        module: 'finance.document_extract', provider: 'gemini' as const, model, actionType: 'extraction' as const,
         promptTokens: inputTokens, completionTokens, totalTokens: inputTokens + completionTokens,
         estimatedCostCents: estimateAiCostCents({ provider: 'gemini', model, promptTokens: inputTokens, completionTokens }),
-        status: 'success', metadata: { fileName: file.name } });
+        metadata: { fileName: file.name },
+    };
+    let parsed: Record<string, unknown>;
+    try {
+        const value = JSON.parse(output) as unknown;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('formato');
+        parsed = value as Record<string, unknown>;
+    } catch {
+        await recordAiUsage({ ...usage, status: 'error' });
+        throw new Error('La lectura automática no devolvió un formato utilizable. Registra el egreso manualmente.');
+    }
+    await recordAiUsage({ ...usage, status: 'success' });
     const allowed = new Set(['water', 'electricity', 'salaries', 'maintenance', 'security', 'other']);
     const rawAmount = parsed.amount;
     const amount = typeof rawAmount === 'number' && Number.isSafeInteger(rawAmount) ? rawAmount

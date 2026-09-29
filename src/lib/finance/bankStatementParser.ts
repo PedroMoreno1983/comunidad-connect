@@ -16,9 +16,41 @@ function normalize(value: unknown): string {
         .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function csvSeparator(content: string): ';' | ',' {
+    let quoted = false;
+    let semicolons = 0;
+    let commas = 0;
+    for (let i = 0; i < content.length; i += 1) {
+        const char = content[i];
+        if (char === '"') {
+            if (quoted && content[i + 1] === '"') { i += 1; continue; }
+            quoted = !quoted;
+            continue;
+        }
+        if (quoted) continue;
+        if (char === '\n' || char === '\r') {
+            if (semicolons > 0 || commas > 0) return semicolons > commas ? ';' : ',';
+            if (char === '\r' && content[i + 1] === '\n') i += 1;
+            continue;
+        }
+        if (char === ';') semicolons += 1;
+        else if (char === ',') commas += 1;
+    }
+    return semicolons > commas ? ';' : ',';
+}
+
+function displayedCell(value: unknown): unknown {
+    if (value == null || typeof value !== 'object' || value instanceof Date) return value;
+    const record = value as { result?: unknown; text?: unknown; error?: unknown; richText?: { text?: string }[] };
+    if ('result' in record) return displayedCell(record.result);
+    if (Array.isArray(record.richText)) return record.richText.map(part => part?.text ?? '').join('');
+    if ('text' in record) return record.text;
+    if (typeof record.error === 'string') return record.error;
+    return value;
+}
+
 function csvRows(content: string): string[][] {
-    const firstLine = content.split(/\r?\n/, 1)[0] ?? '';
-    const separator = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ',';
+    const separator = csvSeparator(content);
     const rows: string[][] = [];
     let row: string[] = [], cell = '', quoted = false;
     for (let i = 0; i < content.length; i++) {
@@ -85,8 +117,7 @@ export async function parseBankStatement(file: File): Promise<BankTransactionInp
         const sheet = book.worksheets[0];
         if (!sheet) throw new BillingError('empty_file', 'La planilla no tiene hojas.');
         table = [];
-        sheet.eachRow(row => table.push((row.values as unknown[]).slice(1).map(value =>
-            typeof value === 'object' && value !== null && 'text' in value ? (value as { text: unknown }).text : value)));
+        sheet.eachRow(row => table.push((row.values as unknown[]).slice(1).map(displayedCell)));
     } else throw new BillingError('bad_file', 'Sube una cartola CSV o XLSX.');
 
     const headerIndex = table.findIndex(row => row.some(cell => HEADER_ALIASES.date.includes(normalize(cell))));

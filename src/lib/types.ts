@@ -2848,6 +2848,7 @@ export interface FinanceDocumentDraft {
     warnings: string[];
 }
 export interface FinanceDocumentReview extends FinanceDocumentDraft {
+    id: string;
     file: File;
     status: "pending" | "saving" | "saved";
 }
