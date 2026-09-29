@@ -132,9 +132,10 @@ export default function SupermarketPage() {
   const missingTerms = activeStore === primaryStore ? [] : cart
     .filter(selected => !comparisonItems.some(item => item.requestedTerm === selected.requestedTerm))
     .map(item => item.requestedTerm);
-  const checkoutReady = !listLoading && cart.length > 0 && unresolved.length === 0 && missingTerms.length === 0
+  const basketComplete = !listLoading && cart.length > 0 && unresolved.length === 0 && missingTerms.length === 0
     && checkoutItems.length === cart.length
     && checkoutItems.every(item => validForCart(activeStore ?? '', item));
+  const transferableItems = checkoutItems.filter(item => validForCart(activeStore ?? '', item));
   const activeTotal = checkoutItems.reduce((sum, item) => sum + item.lineTotal, 0);
 
   const changeStore = (store: string) => {
@@ -201,12 +202,14 @@ export default function SupermarketPage() {
     setCheckoutStore(primaryStore);
     const found = new Map<string, SupermarketSelectedProduct>();
     const missing: string[] = [];
+    const processed = new Set<string>();
     try {
       for (let offset = 0; offset < requested.length; offset += 20) {
         const batch = requested.slice(offset, offset + 20);
         const results = await SupermarketCatalogService.resolveList(primaryStore, batch.map(item => `${item.quantity} ${item.term}`).join('\n'), controller.signal);
         if (controller.signal.aborted) return;
         for (const result of results) {
+          processed.add(result.term);
           if (!result.product || !validForCart(primaryStore, result.product)) {
             missing.push(result.term);
             continue;
@@ -223,7 +226,7 @@ export default function SupermarketPage() {
     } catch (error) {
       if (!controller.signal.aborted) {
         setListError(error instanceof Error ? error.message : 'No se pudo cargar la lista.');
-        setUnresolved(requested.map(item => item.term).filter(term => !missing.includes(term)));
+        setUnresolved([...missing, ...requested.map(item => item.term).filter(term => !processed.has(term))]);
       }
     } finally {
       if (!controller.signal.aborted) setListLoading(false);
@@ -443,9 +446,9 @@ export default function SupermarketPage() {
                 return (
                   <div key={store} className="rounded-xl border p-4" style={{ borderColor: activeStore === store ? STORE_COLORS[store] : 'var(--cc-line)' }}>
                     <p className="font-bold cc-text-primary">{store}</p>
-                    <p className="mt-1 text-sm cc-text-secondary">{basket ? `${basket.coveredCount} de ${cart.length} · ${basket.complete ? money(basket.subtotal) : 'Subtotal parcial'}` : 'Sin resultados vigentes'}</p>
+                    <p className="mt-1 text-sm cc-text-secondary">{basket ? `${basket.coveredCount} de ${cart.length} · ${basket.complete ? money(basket.subtotal) : `Subtotal parcial ${money(basket.subtotal)}`}` : 'Sin resultados vigentes'}</p>
                     {basket && !basket.complete ? <p className="mt-1 text-xs text-amber-700">Faltan: {basket.missingTerms.join(', ') || 'productos sin código de carro'}</p> : null}
-                    {basket?.items.length ? <button type="button" onClick={() => setCheckoutStore(store)} className="mt-3 text-xs font-bold underline cc-text-primary">{activeStore === store ? 'Tienda elegida' : 'Revisar productos'}</button> : null}
+                    <button type="button" onClick={() => setCheckoutStore(store)} className="mt-3 text-xs font-bold underline cc-text-primary">{activeStore === store ? 'Tienda elegida' : 'Elegir y revisar tienda'}</button>
                   </div>
                 );
               })}
@@ -482,10 +485,13 @@ export default function SupermarketPage() {
               );
             })}
           </div>
-          <p className="mt-4 text-lg font-bold cc-text-primary">{checkoutReady ? 'Subtotal estimado' : 'Subtotal parcial'}: {money(activeTotal)}</p>
-          {!checkoutReady ? <p className="mt-2 flex items-start gap-2 text-sm text-amber-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Esta tienda tiene productos faltantes o sin identificador de carro. Revisa las alternativas o vuelve a {primaryStore}.</p> : null}
+          <p className="mt-4 text-lg font-bold cc-text-primary">{basketComplete ? 'Subtotal estimado' : 'Subtotal parcial'}: {money(activeTotal)}</p>
+          {!basketComplete ? <p className="mt-2 flex items-start gap-2 text-sm text-amber-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {transferableItems.length > 0
+            ? `Puedes abrir ${transferableItems.length} ${transferableItems.length === 1 ? 'producto disponible' : 'productos disponibles'} en ${activeStore}.`
+            : `No hay productos para cargar automáticamente en ${activeStore}; puedes entrar a la tienda y buscarlos allí.`}
+            {' '}Tu lista sigue incompleta{unresolved.length + missingTerms.length > 0 ? `: ${[...unresolved, ...missingTerms].join(', ')}` : ''}. El subtotal mostrado no cubre toda la compra.</p> : null}
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            {checkoutReady && activeStore ? <RemoteCartButton store={activeStore} items={checkoutItems} complete /> : null}
+            {!listLoading && activeStore && transferableItems.length > 0 ? <RemoteCartButton store={activeStore} items={transferableItems} complete={basketComplete} /> : null}
             {activeStore && STORE_SITES[activeStore] ? <a href={STORE_SITES[activeStore]}
               target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs underline cc-text-secondary"><ExternalLink className="h-3.5 w-3.5" /> Abrir sitio de {activeStore}</a> : null}
           </div>

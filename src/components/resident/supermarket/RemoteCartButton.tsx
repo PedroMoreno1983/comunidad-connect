@@ -27,7 +27,7 @@ function handoffItems(items: SupermarketSearchCandidate[]): SupermarketCartHando
 export function RemoteCartButton({ store, items, complete }: SupermarketCartButtonProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const liderIncomplete = store === 'Lider' && complete === false;
+  const partial = complete === false;
 
   const loadCart = async () => {
     setLoading(true);
@@ -55,10 +55,14 @@ export function RemoteCartButton({ store, items, complete }: SupermarketCartButt
       }
 
       toast({
-        title: handoff.mode === 'remote_browser'
+        title: partial
+          ? `Compra parcial abierta en ${store}`
+          : handoff.mode === 'remote_browser'
           ? `Sesión de revisión abierta en ${store}`
           : `Carro oficial abierto en ${store}`,
-        description: handoff.mode === 'remote_browser'
+        description: partial
+          ? `Se intentarán cargar ${handoff.plannedCount} productos disponibles. Tu lista sigue incompleta: busca los faltantes en ${store} y confirma el carro antes de pagar.`
+          : handoff.mode === 'remote_browser'
           ? store === 'Lider'
             ? `${handoff.plannedCount} productos por procesar. Si Líder pide una verificación humana, resuélvela en esa sesión y continúa; el carro solo se marcará listo después de comprobar productos y cantidades.`
             : `${handoff.plannedCount} productos por procesar. El visor mostrará el carro para que confirmes productos y cantidades.`
@@ -78,8 +82,8 @@ export function RemoteCartButton({ store, items, complete }: SupermarketCartButt
     }
   };
 
-  const buttonLabel = liderIncomplete
-    ? 'Canasta incompleta en Líder'
+  const buttonLabel = partial
+    ? `Abrir ${items.length} ${items.length === 1 ? 'producto disponible' : 'productos disponibles'} en ${store}`
     : store === 'Lider'
       ? 'Abrir carro asistido en Líder'
       : `Abrir canasta en ${store}`;
@@ -88,10 +92,8 @@ export function RemoteCartButton({ store, items, complete }: SupermarketCartButt
     <button
       type="button"
       onClick={() => void loadCart()}
-      disabled={loading || items.length === 0 || liderIncomplete}
-      title={liderIncomplete
-        ? 'Completa todos los productos antes de abrir la canasta de Líder.'
-        : store === 'Lider'
+      disabled={loading || items.length === 0}
+      title={store === 'Lider'
           ? 'Líder puede pedir una verificación humana antes de cargar los productos.'
           : undefined}
       className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
