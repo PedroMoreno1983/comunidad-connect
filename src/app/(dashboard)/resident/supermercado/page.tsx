@@ -139,6 +139,7 @@ export default function SupermarketPage() {
   const activeTotal = checkoutItems.reduce((sum, item) => sum + item.lineTotal, 0);
 
   const changeStore = (store: string) => {
+    if (store === primaryStore) return;
     setPrimaryStore(store);
     setCheckoutStore(store);
     setCart([]);
