@@ -33,7 +33,7 @@ function normalizeMeasurementUnit(value: string): SupermarketMeasurementUnit {
   if (/^(?:l|lt|litro|litros)$/.test(unit)) return 'l';
   return 'ml';
 }
-export function parseGroupShoppingList(value: string): GroupItemInput[] {
+export function parseGroupShoppingList(value: string, preservePackageSize = false): GroupItemInput[] {
   const consolidated = new Map<string, GroupItemInput>();
   const source = collapseDuplicatedList(value.slice(0, MAX_SHOPPING_LIST_CHARS));
   for (const [index, rawEntry] of source.split(/[,;\n]+/).entries()) {
@@ -83,6 +83,10 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
       quantity = Number(leadingMeasure[1]);
       unit = normalizeMeasurementUnit(leadingMeasure[2]);
       rawTerm = leadingMeasure[3];
+    } else if (trailingMeasure && preservePackageSize) {
+      const leadingCount = trailingMeasure[1].match(/^(\d{1,3})\s+(.+)$/);
+      quantity = leadingCount ? Number(leadingCount[1]) : 1;
+      rawTerm = `${leadingCount ? leadingCount[2] : trailingMeasure[1]} ${trailingMeasure[2]} ${trailingMeasure[3]}`;
     } else if (trailingMeasure) {
       quantity = Number(trailingMeasure[2]);
       unit = normalizeMeasurementUnit(trailingMeasure[3]);
