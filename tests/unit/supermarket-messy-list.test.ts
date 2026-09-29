@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
-import { isProductSuitableForRequest } from '@/lib/supermarketBasket';
+import { isProductSuitableForRequest, matchesRequestedPackageSize } from '@/lib/supermarketBasket';
+
+describe('catalog list package sizes', () => {
+  it('keeps the item count separate from the requested package size', () => {
+    expect(parseGroupShoppingList('2 leche entera 1 L\n1 arroz 1 kg', true)).toEqual([
+      { term: 'leche entera 1 l', quantity: 2, unit: undefined },
+      { term: 'arroz 1 kg', quantity: 1, unit: undefined },
+    ]);
+  });
+
+  it('rejects a smaller pack and accepts an equivalent measurement', () => {
+    expect(matchesRequestedPackageSize('Leche Entera Natural 200 ml Soprole', 'leche entera 1 l')).toBe(false);
+    expect(matchesRequestedPackageSize('Leche Natural Entera caja 1000 ml Lider', 'leche entera 1 l')).toBe(true);
+    expect(matchesRequestedPackageSize('Arroz Preparado Campesino 210 g', 'arroz 1 kg')).toBe(false);
+    expect(matchesRequestedPackageSize('Arroz Grado 1 Bolsa 1 kg', 'arroz 1 kg')).toBe(true);
+  });
+});
 import { extractSupermarketTerms } from '@/lib/supermarketLive';
 import {
   canonicalCatalogTerm,
