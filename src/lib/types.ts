@@ -335,6 +335,12 @@ export interface SupermarketSearchCandidate {
     quantity: number;
   }
 
+export interface SupermarketListResolution {
+  term: string;
+  quantity: number;
+  product?: SupermarketCatalogProduct;
+}
+
 export interface SupermarketShoppingItem extends SupermarketSearchCandidate {
   checked: boolean;
   available: boolean;
