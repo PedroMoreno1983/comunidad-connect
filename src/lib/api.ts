@@ -62,6 +62,7 @@ import {
     SupermarketCartHandoff,
     SupermarketCartHandoffItem,
     SupermarketCatalogResponse,
+    SupermarketListResolution,
     SupermarketSearchResponse,
     SupermarketGroupComparison,
     SupermarketGroupCreateInput,
@@ -2371,6 +2372,21 @@ export const SupermarketCartService = {
 };
 
 export const SupermarketCatalogService = {
+    async extractList(file: File): Promise<string> {
+        const form = new FormData();
+        form.append('file', file);
+        const response = await fetch('/api/supermarket/list-upload', { method: 'POST', body: form });
+        const data = await readJsonResponse<{ list: string }>(response);
+        return data.list;
+    },
+    async resolveList(store: string, list: string, signal?: AbortSignal): Promise<SupermarketListResolution[]> {
+        const response = await fetch('/api/supermarket/catalog/resolve', {
+            method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ store, list }),
+        });
+        const data = await readJsonResponse<{ resolved: SupermarketListResolution[] }>(response);
+        return data.resolved;
+    },
     async search(store: string, query: string, page: number, signal?: AbortSignal): Promise<SupermarketCatalogResponse> {
         const params = new URLSearchParams({ store, q: query, page: String(page) });
         const response = await fetch(`/api/supermarket/catalog?${params}`, { signal });
