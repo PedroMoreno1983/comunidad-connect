@@ -9,6 +9,7 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type { BankTransactionInput } from '@/lib/types';
+import { planBankImport, type BankIdentityRow } from './bankImportIdentity';
 import { BillingError, DATE_PATTERN } from './billingService';
 import {
     suggestMatches,
@@ -123,20 +124,66 @@ export async function importBankTransactions(
         };
     });
 
-    // The file hash and row position make a retry idempotent without conflating
-    // distinct bank movements that happen to have the same date, amount and text.
-    // Bounded concurrency avoids hundreds of serial PostgREST round trips.
+    // La clave del archivo hace idempotente una recarga. Las filas anteriores,
+    // guardadas sin clave, se adoptan una vez. El índice viejo por referencia
+    // ya no debe impedir que otra cartola traiga el mismo número de operación.
     const admin = getSupabaseAdmin();
+    const dates = [...new Set(clean.map(row => row.txn_date))];
+    const existing = await admin.from('bank_transactions')
+        .select('id, txn_date, amount, description, reference, import_key')
+        .eq('community_id', communityId)
+        .in('txn_date', dates);
+    if (existing.error) throw existing.error;
+    const known: BankIdentityRow[] = (existing.data ?? []).map(row => ({
+        id: String(row.id),
+        txnDate: String(row.txn_date),
+        amount: Math.round(Number(row.amount)),
+        description: String(row.description ?? ''),
+        reference: row.reference ? String(row.reference) : null,
+        importKey: row.import_key ? String(row.import_key) : null,
+    }));
+    const claimed = new Set<string>();
     let imported = 0;
     let skippedDuplicates = 0;
-    for (let offset = 0; offset < clean.length; offset += 20) {
-        const outcomes = await Promise.all(clean.slice(offset, offset + 20).map(row =>
-            admin.from('bank_transactions').insert(row)));
-        for (const outcome of outcomes) {
-            if (!outcome.error) imported += 1;
-            else if (outcome.error.code === '23505') skippedDuplicates += 1;
-            else throw outcome.error;
+    for (const row of clean) {
+        const plan = planBankImport({
+            txnDate: row.txn_date, amount: row.amount, description: row.description,
+            reference: row.reference, importKey: row.import_key,
+        }, known, claimed);
+        if (plan.kind === 'skip') { skippedDuplicates += 1; continue; }
+        if (plan.kind === 'adopt') {
+            claimed.add(plan.id);
+            const adopted = await admin.from('bank_transactions')
+                .update({ import_key: row.import_key })
+                .eq('id', plan.id)
+                .eq('community_id', communityId)
+                .is('import_key', null)
+                .select('id');
+            if (adopted.error) {
+                if (adopted.error.code === '23505') { skippedDuplicates += 1; continue; }
+                throw adopted.error;
+            }
+            if ((adopted.data ?? []).length > 0) {
+                const target = known.find(item => item.id === plan.id);
+                if (target) target.importKey = row.import_key;
+                skippedDuplicates += 1;
+                continue;
+            }
         }
+        const inserted = await admin.from('bank_transactions').insert(row).select('id').single();
+        if (inserted.error) {
+            if (inserted.error.code === '23505') { skippedDuplicates += 1; continue; }
+            throw inserted.error;
+        }
+        known.push({
+            id: String(inserted.data.id),
+            txnDate: row.txn_date,
+            amount: row.amount,
+            description: row.description,
+            reference: row.reference,
+            importKey: row.import_key,
+        });
+        imported += 1;
     }
     return { imported, skippedDuplicates };
 }

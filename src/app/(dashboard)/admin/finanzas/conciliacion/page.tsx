@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Wand2, Plus, Check, Undo2, EyeOff, Trash2 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -19,6 +19,7 @@ export default function ConciliacionPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [form, setForm] = useState({ txnDate: today(), amount: "", description: "", reference: "" });
+    const manualImportKey = useRef<string | null>(null);
     const [statementRows, setStatementRows] = useState<BankStatementPreviewRow[]>([]);
     const [statementName, setStatementName] = useState("");
 
@@ -71,14 +72,19 @@ export default function ConciliacionPage() {
             toast({ title: "Monto inválido", description: "Usa un monto distinto de cero (negativo para egresos).", variant: "destructive" });
             return;
         }
+        if (!manualImportKey.current) {
+            manualImportKey.current = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                .map(byte => byte.toString(16).padStart(2, "0")).join("");
+        }
         const result = await post({
             action: "import",
-            rows: [{ txnDate: form.txnDate, amount, description: form.description, reference: form.reference }],
+            rows: [{ txnDate: form.txnDate, amount, description: form.description, reference: form.reference, importKey: manualImportKey.current }],
         });
         if (result) {
             if (result.imported > 0) toast({ title: "Movimiento agregado", variant: "success" });
             else toast({ title: "Ese movimiento ya estaba cargado", variant: "default" });
             setForm({ txnDate: today(), amount: "", description: "", reference: "" });
+            manualImportKey.current = null;
         }
     }
 
@@ -193,10 +199,10 @@ export default function ConciliacionPage() {
                         <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                             <h2 className="mb-3 font-semibold cc-text-primary">Agregar movimiento de la cartola</h2>
                             <form onSubmit={addTransaction} className="grid gap-3 sm:grid-cols-[130px_120px_1fr_130px_auto]">
-                                <input type="date" value={form.txnDate} onChange={e => setForm({ ...form, txnDate: e.target.value })} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
-                                <input inputMode="numeric" placeholder="Monto" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
-                                <input placeholder="Glosa / descripción" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
-                                <input placeholder="N° operación" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
+                                <input type="date" value={form.txnDate} onChange={e => { manualImportKey.current = null; setForm({ ...form, txnDate: e.target.value }); }} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
+                                <input inputMode="numeric" placeholder="Monto" value={form.amount} onChange={e => { manualImportKey.current = null; setForm({ ...form, amount: e.target.value }); }} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
+                                <input placeholder="Glosa / descripción" value={form.description} onChange={e => { manualImportKey.current = null; setForm({ ...form, description: e.target.value }); }} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
+                                <input placeholder="N° operación" value={form.reference} onChange={e => { manualImportKey.current = null; setForm({ ...form, reference: e.target.value }); }} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                                 <Button type="submit" disabled={busy}><Plus className="mr-1.5 h-4 w-4" /> Agregar</Button>
                             </form>
                             <p className="mt-2 text-xs cc-text-tertiary">Monto positivo para ingresos (abonos), negativo para egresos. La conciliación cruza los ingresos contra tus pagos registrados.</p>

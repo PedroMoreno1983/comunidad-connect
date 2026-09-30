@@ -2836,6 +2836,7 @@ export interface BankStatementPreviewRow {
     amount: number;
     description: string;
     reference: string;
+    importKey?: string;
 }
 export interface FinanceDocumentDraft {
     fileName: string;
