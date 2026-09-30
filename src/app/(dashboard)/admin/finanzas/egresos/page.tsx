@@ -53,6 +53,8 @@ export default function EgresosPage() {
 
     async function inspectDocuments(files: FileList) {
         setExtracting(true);
+        const reviewMonth = month;
+        const reviewProrateMethod = prorateMethod;
         const selected = Array.from(files).slice(0, 10);
         for (const file of selected) {
             const form = new FormData();
@@ -63,9 +65,9 @@ export default function EgresosPage() {
                 const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "No se pudo extraer.");
-                draft = { ...result.draft, id: crypto.randomUUID(), file, status: "pending" };
+                draft = { ...result.draft, id: crypto.randomUUID(), file, month: reviewMonth, prorateMethod: reviewProrateMethod, status: "pending" };
             } catch (error) {
-                draft = { id: crypto.randomUUID(), file, fileName: file.name, label: file.name.replace(/\.[^.]+$/, ""), amount: 0,
+                draft = { id: crypto.randomUUID(), file, month: reviewMonth, prorateMethod: reviewProrateMethod, fileName: file.name, label: file.name.replace(/\.[^.]+$/, ""), amount: 0,
                     category: "other", provider: "", documentDate: "", documentNumber: "", status: "pending",
                     warnings: [error instanceof Error ? error.message : "Revisa e ingresa los datos manualmente."] };
             }
@@ -93,11 +95,11 @@ export default function EgresosPage() {
         editDocument(id, { status: "saving" });
         try {
             const form = new FormData();
-            form.append("action", "save"); form.append("file", item.file); form.append("month", month);
+            form.append("action", "save"); form.append("file", item.file); form.append("month", item.month);
             form.append("label", item.label); form.append("amount", String(item.amount));
             form.append("category", item.category); form.append("provider", item.provider);
             form.append("documentDate", item.documentDate); form.append("documentNumber", item.documentNumber);
-            form.append("prorateMethod", prorateMethod);
+            form.append("prorateMethod", item.prorateMethod);
             const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || "No se pudo guardar el respaldo.");
@@ -347,6 +349,10 @@ export default function EgresosPage() {
                                 <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={item.amount || ""} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { amount: Number(event.target.value.replace(/[^\d]/g, "")) })} className="rounded-lg border p-2 text-sm" />
                                 <input aria-label="Proveedor" placeholder="Proveedor" value={item.provider} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { provider: event.target.value })} className="rounded-lg border p-2 text-sm" />
                                 <select aria-label="Categoría" value={item.category} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { category: event.target.value })} className="rounded-lg border p-2 text-sm">{CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                <label className="text-xs cc-text-secondary">Período <input type="month" value={item.month} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { month: event.target.value })} className="ml-1 rounded-lg border p-2 text-sm" /></label>
+                                <label className="text-xs cc-text-secondary">Reparto <select value={item.prorateMethod} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { prorateMethod: event.target.value === "equal" ? "equal" : "share" })} className="ml-1 rounded-lg border p-2 text-sm"><option value="share">Por alícuota</option><option value="equal">En partes iguales</option></select></label>
                             </div>
                             {item.status !== "saved" && <div className="mt-2 flex gap-2"><Button type="button" onClick={() => void saveDocument(item.id)} disabled={item.status === "saving"}>Confirmar y registrar</Button>
                                 <Button type="button" variant="ghost" onClick={() => discardDocument(item.id)} disabled={item.status === "saving"}>Descartar</Button></div>}

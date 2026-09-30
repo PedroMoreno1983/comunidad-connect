@@ -3468,8 +3468,6 @@ CREATE INDEX "idx_annual_budgets_community_year" ON "public"."annual_budgets" US
 
 CREATE INDEX "idx_bank_transactions_community" ON "public"."bank_transactions" USING "btree" ("community_id", "txn_date" DESC);
 
-CREATE UNIQUE INDEX "idx_bank_transactions_dedup" ON "public"."bank_transactions" USING "btree" ("community_id", "txn_date", "amount", "reference") WHERE (("reference" IS NOT NULL) AND ("reference" <> ''::"text"));
-
 CREATE UNIQUE INDEX "idx_bank_transactions_import_key" ON "public"."bank_transactions" USING "btree" ("community_id", "import_key") WHERE ("import_key" IS NOT NULL);
 
 CREATE UNIQUE INDEX "idx_bank_transactions_payment_once" ON "public"."bank_transactions" USING "btree" ("matched_payment_id") WHERE ("matched_payment_id" IS NOT NULL);

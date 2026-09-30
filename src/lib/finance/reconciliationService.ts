@@ -7,8 +7,9 @@
  * módulo financiero.
  */
 
-import { createHash } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { BankTransactionInput } from '@/lib/types';
+import { planBankImport, type BankIdentityRow } from './bankImportIdentity';
 import { BillingError, DATE_PATTERN } from './billingService';
 import {
     suggestMatches,
@@ -16,37 +17,6 @@ import {
     type BankMovement,
     type RecordedPayment,
 } from './reconciliation';
-
-export interface BankTransactionInput {
-    txnDate: string;
-    amount: number;
-    description?: string | null;
-    reference?: string | null;
-}
-
-
-export interface BankImportRow {
-    txn_date: string;
-    amount: number;
-    description: string;
-    reference: string | null;
-}
-
-/** Clave estable para cartolas sin numero de operacion. La misma fila, en el mismo orden entre iguales, produce la misma clave. */
-export function withBankImportKeys<T extends BankImportRow>(rows: T[]): Array<T & { occurrence: number; import_key: string | null }> {
-    const seen = new Map<string, number>();
-    return rows.map(row => {
-        if (row.reference) return { ...row, occurrence: 0, import_key: null };
-        const fingerprint = `${row.txn_date}|${row.amount}|${row.description}`;
-        const occurrence = (seen.get(fingerprint) ?? 0) + 1;
-        seen.set(fingerprint, occurrence);
-        return {
-            ...row,
-            occurrence,
-            import_key: createHash("sha256").update(`${fingerprint}|${occurrence}`).digest("hex"),
-        };
-    });
-}
 
 function unitLabel(row: { number?: unknown; tower?: unknown }) {
     const number = String(row.number ?? '');
@@ -132,6 +102,7 @@ export async function importBankTransactions(
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new BillingError('no_rows', 'No hay movimientos para importar.');
     }
+    if (rows.length > 500) throw new BillingError('too_many_rows', 'La cartola supera 500 movimientos.');
 
     const clean = rows.map((row, index) => {
         const txnDate = String(row.txnDate || '').trim();
@@ -148,37 +119,70 @@ export async function importBankTransactions(
             amount,
             description: (row.description ? String(row.description).trim().slice(0, 300) : '') || '',
             reference: (row.reference ? String(row.reference).trim().slice(0, 120) : null) || null,
+            import_key: typeof row.importKey === 'string' && /^[a-f0-9]{64}$/.test(row.importKey) ? row.importKey : null,
             created_by: createdBy,
         };
     });
 
-    // Se inserta fila por fila y se saltan los duplicados por el código 23505.
-    // Con referencia usa el índice parcial existente. Sin referencia se compara
-    // fecha, monto y glosa, contando repeticiones iguales dentro de la cartola. Postgres
-    // no acepta ON CONFLICT contra un índice parcial sin repetir su predicado, así
-    // que un upsert con onConflict de columnas fallaba. Una cartola trae decenas
-    // de filas, no miles, así que el costo es despreciable.
+    // La clave del archivo hace idempotente una recarga. Las filas anteriores,
+    // guardadas sin clave, se adoptan una vez. El índice viejo por referencia
+    // ya no debe impedir que otra cartola traiga el mismo número de operación.
     const admin = getSupabaseAdmin();
+    const dates = [...new Set(clean.map(row => row.txn_date))];
+    const existing = await admin.from('bank_transactions')
+        .select('id, txn_date, amount, description, reference, import_key')
+        .eq('community_id', communityId)
+        .in('txn_date', dates);
+    if (existing.error) throw existing.error;
+    const known: BankIdentityRow[] = (existing.data ?? []).map(row => ({
+        id: String(row.id),
+        txnDate: String(row.txn_date),
+        amount: Math.round(Number(row.amount)),
+        description: String(row.description ?? ''),
+        reference: row.reference ? String(row.reference) : null,
+        importKey: row.import_key ? String(row.import_key) : null,
+    }));
+    const claimed = new Set<string>();
     let imported = 0;
     let skippedDuplicates = 0;
-    for (const keyed of withBankImportKeys(clean)) {
-        const { import_key: _importKey, occurrence, ...row } = keyed;
-        if (!row.reference) {
-            const existing = await admin.from('bank_transactions')
-                .select('id', { count: 'exact', head: true })
+    for (const row of clean) {
+        const plan = planBankImport({
+            txnDate: row.txn_date, amount: row.amount, description: row.description,
+            reference: row.reference, importKey: row.import_key,
+        }, known, claimed);
+        if (plan.kind === 'skip') { skippedDuplicates += 1; continue; }
+        if (plan.kind === 'adopt') {
+            claimed.add(plan.id);
+            const adopted = await admin.from('bank_transactions')
+                .update({ import_key: row.import_key })
+                .eq('id', plan.id)
                 .eq('community_id', communityId)
-                .eq('txn_date', row.txn_date)
-                .eq('amount', row.amount)
-                .eq('description', row.description)
-                .is('reference', null);
-            if (existing.error) throw existing.error;
-            if ((existing.count ?? 0) >= occurrence) { skippedDuplicates += 1; continue; }
+                .is('import_key', null)
+                .select('id');
+            if (adopted.error) {
+                if (adopted.error.code === '23505') { skippedDuplicates += 1; continue; }
+                throw adopted.error;
+            }
+            if ((adopted.data ?? []).length > 0) {
+                const target = known.find(item => item.id === plan.id);
+                if (target) target.importKey = row.import_key;
+                skippedDuplicates += 1;
+                continue;
+            }
         }
-        const { error } = await admin.from('bank_transactions').insert(row);
-        if (error) {
-            if ((error as { code?: string }).code === '23505') { skippedDuplicates += 1; continue; }
-            throw error;
+        const inserted = await admin.from('bank_transactions').insert(row).select('id').single();
+        if (inserted.error) {
+            if (inserted.error.code === '23505') { skippedDuplicates += 1; continue; }
+            throw inserted.error;
         }
+        known.push({
+            id: String(inserted.data.id),
+            txnDate: row.txn_date,
+            amount: row.amount,
+            description: row.description,
+            reference: row.reference,
+            importKey: row.import_key,
+        });
         imported += 1;
     }
     return { imported, skippedDuplicates };

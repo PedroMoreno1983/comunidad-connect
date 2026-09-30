@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
-import type { BankTransactionInput } from './reconciliationService';
+import { createHash } from 'node:crypto';
+import type { BankTransactionInput } from '@/lib/types';
 import { BillingError } from './billingService';
 
 const HEADER_ALIASES = {
@@ -108,12 +109,14 @@ function parseDate(value: unknown): string {
 export async function parseBankStatement(file: File): Promise<BankTransactionInput[]> {
     if (file.size > 5 * 1024 * 1024) throw new BillingError('large_file', 'La cartola supera 5 MB.');
     const extension = file.name.toLowerCase().split('.').pop();
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const fileIdentity = createHash('sha256').update(bytes).digest('hex');
     let table: unknown[][];
     if (extension === 'csv') {
-        table = csvRows((await file.text()).replace(/^\uFEFF/, ''));
+        table = csvRows(bytes.toString('utf8').replace(/^\uFEFF/, ''));
     } else if (extension === 'xlsx') {
         const book = new ExcelJS.Workbook();
-        await book.xlsx.load(Buffer.from(await file.arrayBuffer()) as unknown as Parameters<typeof book.xlsx.load>[0]);
+        await book.xlsx.load(bytes as unknown as Parameters<typeof book.xlsx.load>[0]);
         const sheet = book.worksheets[0];
         if (!sheet) throw new BillingError('empty_file', 'La planilla no tiene hojas.');
         table = [];
@@ -144,6 +147,7 @@ export async function parseBankStatement(file: File): Promise<BankTransactionInp
                 txnDate: parseDate(row[dateColumn]), amount,
                 description: descriptionColumn >= 0 ? String(row[descriptionColumn] ?? '').slice(0, 300) : '',
                 reference: referenceColumn >= 0 ? String(row[referenceColumn] ?? '').slice(0, 120) : '',
+                importKey: createHash('sha256').update(`${fileIdentity}:${headerIndex + index + 2}`).digest('hex'),
             };
         } catch (error) {
             throw new BillingError('bad_row', `Fila ${headerIndex + index + 2}: ${error instanceof Error ? error.message : 'datos inválidos'}`);
