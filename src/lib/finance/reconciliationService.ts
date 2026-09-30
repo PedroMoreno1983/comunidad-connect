@@ -33,14 +33,18 @@ export interface BankImportRow {
 }
 
 /** Clave estable para cartolas sin numero de operacion. La misma fila, en el mismo orden entre iguales, produce la misma clave. */
-export function withBankImportKeys<T extends BankImportRow>(rows: T[]): Array<T & { import_key: string | null }> {
+export function withBankImportKeys<T extends BankImportRow>(rows: T[]): Array<T & { occurrence: number; import_key: string | null }> {
     const seen = new Map<string, number>();
     return rows.map(row => {
-        if (row.reference) return { ...row, import_key: null };
+        if (row.reference) return { ...row, occurrence: 0, import_key: null };
         const fingerprint = `${row.txn_date}|${row.amount}|${row.description}`;
         const occurrence = (seen.get(fingerprint) ?? 0) + 1;
         seen.set(fingerprint, occurrence);
-        return { ...row, import_key: createHash("sha256").update(`${fingerprint}|${occurrence}`).digest("hex") };
+        return {
+            ...row,
+            occurrence,
+            import_key: createHash("sha256").update(`${fingerprint}|${occurrence}`).digest("hex"),
+        };
     });
 }
 
@@ -149,15 +153,27 @@ export async function importBankTransactions(
     });
 
     // Se inserta fila por fila y se saltan los duplicados por el código 23505.
-    // Con referencia usa el índice parcial existente. Sin referencia, import_key
-    // cubre el reingreso de la misma cartola. Postgres
+    // Con referencia usa el índice parcial existente. Sin referencia se compara
+    // fecha, monto y glosa, contando repeticiones iguales dentro de la cartola. Postgres
     // no acepta ON CONFLICT contra un índice parcial sin repetir su predicado, así
     // que un upsert con onConflict de columnas fallaba. Una cartola trae decenas
     // de filas, no miles, así que el costo es despreciable.
     const admin = getSupabaseAdmin();
     let imported = 0;
     let skippedDuplicates = 0;
-    for (const row of withBankImportKeys(clean)) {
+    for (const keyed of withBankImportKeys(clean)) {
+        const { import_key: _importKey, occurrence, ...row } = keyed;
+        if (!row.reference) {
+            const existing = await admin.from('bank_transactions')
+                .select('id', { count: 'exact', head: true })
+                .eq('community_id', communityId)
+                .eq('txn_date', row.txn_date)
+                .eq('amount', row.amount)
+                .eq('description', row.description)
+                .is('reference', null);
+            if (existing.error) throw existing.error;
+            if ((existing.count ?? 0) >= occurrence) { skippedDuplicates += 1; continue; }
+        }
         const { error } = await admin.from('bank_transactions').insert(row);
         if (error) {
             if ((error as { code?: string }).code === '23505') { skippedDuplicates += 1; continue; }
