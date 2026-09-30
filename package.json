@@ -88,7 +88,7 @@
       "brace-expansion": "1.1.18"
     },
     "exceljs": {
-      "archiver": "8.0.0",
+      "archiver": "7.0.1",
       "unzipper": "0.12.5"
     }
   },
