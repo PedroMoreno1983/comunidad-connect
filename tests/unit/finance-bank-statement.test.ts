@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
 import { parseBankStatement } from '@/lib/finance/bankStatementParser';
+import { planBankImport, type BankIdentityRow } from '@/lib/finance/bankImportIdentity';
 
 describe('cartola bancaria', () => {
     it('lee CSV chileno con abonos, cargos y glosas entre comillas', async () => {
@@ -47,5 +48,47 @@ describe('cartola bancaria', () => {
         expect(first[0].importKey).not.toBe(first[1].importKey);
         expect(first.map(row => row.importKey)).toEqual(retry.map(row => row.importKey));
         expect(first[0].importKey).not.toBe(other[0].importKey);
+    });
+});
+
+describe('identidad de una cartola', () => {
+    const legacy = (id: string, reference: string | null, importKey: string | null = null): BankIdentityRow => ({
+        id, txnDate: '2026-09-28', amount: 1000, description: 'Pago', reference, importKey,
+    });
+
+    it('adopta la fila vieja sin clave y no la usa dos veces', () => {
+        const existing = [legacy('a', null), legacy('b', null)];
+        const claimed = new Set<string>();
+        const first = planBankImport(
+            { txnDate: '2026-09-28', amount: 1000, description: 'Pago', reference: null, importKey: 'aa' },
+            existing, claimed,
+        );
+        expect(first).toEqual({ kind: 'adopt', id: 'a' });
+        if (first.kind === 'adopt') claimed.add(first.id);
+        const second = planBankImport(
+            { txnDate: '2026-09-28', amount: 1000, description: 'Pago', reference: null, importKey: 'bb' },
+            existing, claimed,
+        );
+        expect(second).toEqual({ kind: 'adopt', id: 'b' });
+    });
+
+    it('no confunde otra cartola cuando la fila vieja ya tiene clave', () => {
+        const existing = [legacy('a', 'OP-1', 'archivo-uno')];
+        expect(planBankImport(
+            { txnDate: '2026-09-28', amount: 1000, description: 'Pago', reference: 'OP-1', importKey: 'archivo-dos' },
+            existing, new Set(),
+        )).toEqual({ kind: 'insert' });
+    });
+
+    it('omite la misma cartola y un alta manual repetida', () => {
+        const existing = [legacy('a', null, 'misma-cartola')];
+        expect(planBankImport(
+            { txnDate: '2026-09-28', amount: 1000, description: 'Pago', reference: null, importKey: 'misma-cartola' },
+            existing, new Set(),
+        )).toEqual({ kind: 'skip' });
+        expect(planBankImport(
+            { txnDate: '2026-09-28', amount: 1000, description: 'Pago', reference: null, importKey: null },
+            existing, new Set(),
+        )).toEqual({ kind: 'skip' });
     });
 });
