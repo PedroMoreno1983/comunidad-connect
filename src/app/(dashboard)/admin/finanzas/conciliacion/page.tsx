@@ -22,6 +22,7 @@ export default function ConciliacionPage() {
     const manualImportKey = useRef<string | null>(null);
     const [statementRows, setStatementRows] = useState<BankStatementPreviewRow[]>([]);
     const [statementName, setStatementName] = useState("");
+    const [statementError, setStatementError] = useState("");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -102,16 +103,22 @@ export default function ConciliacionPage() {
     async function previewStatement(file: File) {
         setBusy(true);
         setStatementRows([]);
+        setStatementError("");
         try {
             const body = new FormData();
             body.append("file", file);
             const response = await fetch("/api/admin/bank-reconciliation/parse", { method: "POST", body });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.error || "No se pudo leer la cartola.");
+            if (!Array.isArray(payload.rows) || payload.rows.length === 0) {
+                throw new Error("La cartola no contiene movimientos para revisar.");
+            }
             setStatementRows(payload.rows);
             setStatementName(file.name);
         } catch (error) {
-            toast({ title: "Cartola no cargada", description: error instanceof Error ? error.message : "Error inesperado.", variant: "destructive" });
+            const message = error instanceof Error ? error.message : "Error inesperado.";
+            setStatementError(message);
+            toast({ title: "Cartola no cargada", description: message, variant: "destructive" });
         } finally { setBusy(false); }
     }
 
@@ -184,6 +191,7 @@ export default function ConciliacionPage() {
                                 if (file) void previewStatement(file);
                                 event.target.value = "";
                             }} className="block w-full text-sm cc-text-secondary" />
+                            {statementError && <p role="alert" className="mt-3 text-sm text-red-700">Cartola no cargada: {statementError}</p>}
                             {statementRows.length > 0 && <div className="mt-4 space-y-3">
                                 <p className="text-sm font-semibold cc-text-primary">{statementName}: {statementRows.length} movimiento(s) para revisar</p>
                                 <div className="max-h-60 overflow-auto rounded-lg border text-xs" style={{ borderColor: "var(--cc-line)" }}>
