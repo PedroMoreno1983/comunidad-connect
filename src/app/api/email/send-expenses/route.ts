@@ -145,7 +145,10 @@ export async function POST(request: Request) {
             }),
         })));
 
-        const sent = results.filter(result => result.status === 'fulfilled').length;
+        // Resend can resolve the promise with { error }; only an accepted id counts.
+        const sent = results.filter(result => result.status === 'fulfilled'
+            && result.value.error === null
+            && Boolean(result.value.data?.id)).length;
         const failed = results.length - sent;
         const totalNotifiedAmount = recipients.reduce((sum, recipient) => sum + Number(recipient.expense.amount || 0), 0);
 
@@ -157,12 +160,12 @@ export async function POST(request: Request) {
             entityType: 'expense_batch',
             severity: failed ? 'warning' : 'success',
             status: failed ? 'pending' : 'success',
-            summary: `Recordatorios financieros enviados: ${sent} de ${recipients.length}`,
+            summary: `Recordatorios aceptados por el proveedor: ${sent} de ${recipients.length}`,
             metadata: { month, sent, failed, recipients: recipients.length, totalNotifiedAmount },
             requestId: getRequestId(request),
         });
 
-        return NextResponse.json({ ok: true, sent, failed, total: recipients.length });
+        return NextResponse.json({ ok: failed === 0, sent, failed, total: recipients.length });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error desconocido';
         console.error('[email/send-expenses]', message);
