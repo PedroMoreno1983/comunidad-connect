@@ -7,8 +7,8 @@
  * módulo financiero.
  */
 
-import { createHash } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { BankTransactionInput } from '@/lib/types';
 import { BillingError, DATE_PATTERN } from './billingService';
 import {
     suggestMatches,
@@ -16,37 +16,6 @@ import {
     type BankMovement,
     type RecordedPayment,
 } from './reconciliation';
-
-export interface BankTransactionInput {
-    txnDate: string;
-    amount: number;
-    description?: string | null;
-    reference?: string | null;
-}
-
-
-export interface BankImportRow {
-    txn_date: string;
-    amount: number;
-    description: string;
-    reference: string | null;
-}
-
-/** Clave estable para cartolas sin numero de operacion. La misma fila, en el mismo orden entre iguales, produce la misma clave. */
-export function withBankImportKeys<T extends BankImportRow>(rows: T[]): Array<T & { occurrence: number; import_key: string | null }> {
-    const seen = new Map<string, number>();
-    return rows.map(row => {
-        if (row.reference) return { ...row, occurrence: 0, import_key: null };
-        const fingerprint = `${row.txn_date}|${row.amount}|${row.description}`;
-        const occurrence = (seen.get(fingerprint) ?? 0) + 1;
-        seen.set(fingerprint, occurrence);
-        return {
-            ...row,
-            occurrence,
-            import_key: createHash("sha256").update(`${fingerprint}|${occurrence}`).digest("hex"),
-        };
-    });
-}
 
 function unitLabel(row: { number?: unknown; tower?: unknown }) {
     const number = String(row.number ?? '');
@@ -132,6 +101,7 @@ export async function importBankTransactions(
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new BillingError('no_rows', 'No hay movimientos para importar.');
     }
+    if (rows.length > 500) throw new BillingError('too_many_rows', 'La cartola supera 500 movimientos.');
 
     const clean = rows.map((row, index) => {
         const txnDate = String(row.txnDate || '').trim();
@@ -148,38 +118,25 @@ export async function importBankTransactions(
             amount,
             description: (row.description ? String(row.description).trim().slice(0, 300) : '') || '',
             reference: (row.reference ? String(row.reference).trim().slice(0, 120) : null) || null,
+            import_key: typeof row.importKey === 'string' && /^[a-f0-9]{64}$/.test(row.importKey) ? row.importKey : null,
             created_by: createdBy,
         };
     });
 
-    // Se inserta fila por fila y se saltan los duplicados por el código 23505.
-    // Con referencia usa el índice parcial existente. Sin referencia se compara
-    // fecha, monto y glosa, contando repeticiones iguales dentro de la cartola. Postgres
-    // no acepta ON CONFLICT contra un índice parcial sin repetir su predicado, así
-    // que un upsert con onConflict de columnas fallaba. Una cartola trae decenas
-    // de filas, no miles, así que el costo es despreciable.
+    // The file hash and row position make a retry idempotent without conflating
+    // distinct bank movements that happen to have the same date, amount and text.
+    // Bounded concurrency avoids hundreds of serial PostgREST round trips.
     const admin = getSupabaseAdmin();
     let imported = 0;
     let skippedDuplicates = 0;
-    for (const keyed of withBankImportKeys(clean)) {
-        const { import_key: _importKey, occurrence, ...row } = keyed;
-        if (!row.reference) {
-            const existing = await admin.from('bank_transactions')
-                .select('id', { count: 'exact', head: true })
-                .eq('community_id', communityId)
-                .eq('txn_date', row.txn_date)
-                .eq('amount', row.amount)
-                .eq('description', row.description)
-                .is('reference', null);
-            if (existing.error) throw existing.error;
-            if ((existing.count ?? 0) >= occurrence) { skippedDuplicates += 1; continue; }
+    for (let offset = 0; offset < clean.length; offset += 20) {
+        const outcomes = await Promise.all(clean.slice(offset, offset + 20).map(row =>
+            admin.from('bank_transactions').insert(row)));
+        for (const outcome of outcomes) {
+            if (!outcome.error) imported += 1;
+            else if (outcome.error.code === '23505') skippedDuplicates += 1;
+            else throw outcome.error;
         }
-        const { error } = await admin.from('bank_transactions').insert(row);
-        if (error) {
-            if ((error as { code?: string }).code === '23505') { skippedDuplicates += 1; continue; }
-            throw error;
-        }
-        imported += 1;
     }
     return { imported, skippedDuplicates };
 }
