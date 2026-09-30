@@ -2850,9 +2850,20 @@ export interface FinanceDocumentDraft {
 export interface FinanceDocumentReview extends FinanceDocumentDraft {
     id: string;
     file: File;
+    month: string;
+    prorateMethod: 'share' | 'equal';
     status: "pending" | "saving" | "saved";
 }
 export interface FinanceDocumentLink {
     id: string;
     label: string;
+}
+
+export interface BankTransactionInput {
+    txnDate: string;
+    amount: number;
+    description?: string | null;
+    reference?: string | null;
+    /** Stable identity for one row of an uploaded bank statement. Manual entries omit it. */
+    importKey?: string;
 }
