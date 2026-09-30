@@ -129,22 +129,31 @@ export async function importBankTransactions(
     // ya no debe impedir que otra cartola traiga el mismo número de operación.
     const admin = getSupabaseAdmin();
     const dates = [...new Set(clean.map(row => row.txn_date))];
-    const existing = await admin.from('bank_transactions')
-        .select('id, txn_date, amount, description, reference, import_key')
-        .eq('community_id', communityId)
-        .in('txn_date', dates);
-    if (existing.error) throw existing.error;
-    const known: BankIdentityRow[] = (existing.data ?? []).map(row => ({
-        id: String(row.id),
-        txnDate: String(row.txn_date),
-        amount: Math.round(Number(row.amount)),
-        description: String(row.description ?? ''),
-        reference: row.reference ? String(row.reference) : null,
-        importKey: row.import_key ? String(row.import_key) : null,
-    }));
+    const known: BankIdentityRow[] = [];
+    for (let dateOffset = 0; dateOffset < dates.length; dateOffset += 40) {
+        for (let page = 0; ; page += 1) {
+            const existing = await admin.from('bank_transactions')
+                .select('id, txn_date, amount, description, reference, import_key')
+                .eq('community_id', communityId)
+                .in('txn_date', dates.slice(dateOffset, dateOffset + 40))
+                .order('id')
+                .range(page * 1000, page * 1000 + 999);
+            if (existing.error) throw existing.error;
+            known.push(...(existing.data ?? []).map(row => ({
+                id: String(row.id),
+                txnDate: String(row.txn_date),
+                amount: Math.round(Number(row.amount)),
+                description: String(row.description ?? ''),
+                reference: row.reference ? String(row.reference) : null,
+                importKey: row.import_key ? String(row.import_key) : null,
+            })));
+            if ((existing.data?.length ?? 0) < 1000) break;
+        }
+    }
     const claimed = new Set<string>();
     let imported = 0;
     let skippedDuplicates = 0;
+    const pending: typeof clean = [];
     for (const row of clean) {
         const plan = planBankImport({
             txnDate: row.txn_date, amount: row.amount, description: row.description,
@@ -170,20 +179,27 @@ export async function importBankTransactions(
                 continue;
             }
         }
-        const inserted = await admin.from('bank_transactions').insert(row).select('id').single();
-        if (inserted.error) {
-            if (inserted.error.code === '23505') { skippedDuplicates += 1; continue; }
-            throw inserted.error;
-        }
+        pending.push(row);
         known.push({
-            id: String(inserted.data.id),
+            id: `pending-${pending.length}`,
             txnDate: row.txn_date,
             amount: row.amount,
             description: row.description,
             reference: row.reference,
-            importKey: row.import_key,
+            importKey: row.import_key ?? 'pending-manual',
         });
-        imported += 1;
+    }
+    for (let offset = 0; offset < pending.length; offset += 20) {
+        const batch = pending.slice(offset, offset + 20);
+        const inserted = await admin.from('bank_transactions').insert(batch);
+        if (!inserted.error) { imported += batch.length; continue; }
+        if (inserted.error.code !== '23505') throw inserted.error;
+        const outcomes = await Promise.all(batch.map(row => admin.from('bank_transactions').insert(row)));
+        for (const outcome of outcomes) {
+            if (!outcome.error) imported += 1;
+            else if (outcome.error.code === '23505') skippedDuplicates += 1;
+            else throw outcome.error;
+        }
     }
     return { imported, skippedDuplicates };
 }
