@@ -1990,6 +1990,7 @@ export interface CommunityExpense {
     label: string;
     amount: number;
     provider: string | null;
+    document_url?: string | null;
     prorate_method: "share" | "equal";
 }
 
@@ -2829,4 +2830,29 @@ export interface ShoppingSuggestionsResponse {
 export interface ShoppingReviewResponse {
     error?: string;
     items?: ShoppingTermReview[];
+}
+export interface BankStatementPreviewRow {
+    txnDate: string;
+    amount: number;
+    description: string;
+    reference: string;
+}
+export interface FinanceDocumentDraft {
+    fileName: string;
+    label: string;
+    amount: number;
+    provider: string;
+    category: string;
+    documentDate: string;
+    documentNumber: string;
+    warnings: string[];
+}
+export interface FinanceDocumentReview extends FinanceDocumentDraft {
+    id: string;
+    file: File;
+    status: "pending" | "saving" | "saved";
+}
+export interface FinanceDocumentLink {
+    id: string;
+    label: string;
 }

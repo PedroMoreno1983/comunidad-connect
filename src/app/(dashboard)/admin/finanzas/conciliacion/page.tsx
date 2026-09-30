@@ -7,7 +7,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import type { ReconciliationData, ReconciliationSuggestion } from "@/lib/types";
+import type { BankStatementPreviewRow, ReconciliationData, ReconciliationSuggestion } from "@/lib/types";
 
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
@@ -19,6 +19,8 @@ export default function ConciliacionPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [form, setForm] = useState({ txnDate: today(), amount: "", description: "", reference: "" });
+    const [statementRows, setStatementRows] = useState<BankStatementPreviewRow[]>([]);
+    const [statementName, setStatementName] = useState("");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -91,6 +93,33 @@ export default function ConciliacionPage() {
         }
     }
 
+    async function previewStatement(file: File) {
+        setBusy(true);
+        setStatementRows([]);
+        try {
+            const body = new FormData();
+            body.append("file", file);
+            const response = await fetch("/api/admin/bank-reconciliation/parse", { method: "POST", body });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || "No se pudo leer la cartola.");
+            setStatementRows(payload.rows);
+            setStatementName(file.name);
+        } catch (error) {
+            toast({ title: "Cartola no cargada", description: error instanceof Error ? error.message : "Error inesperado.", variant: "destructive" });
+        } finally { setBusy(false); }
+    }
+
+    async function importStatement() {
+        if (statementRows.length === 0) return;
+        const result = await post({ action: "import", rows: statementRows });
+        if (result) {
+            toast({ title: `${result.imported} movimiento(s) importado(s)`,
+                description: `${result.skippedDuplicates} duplicado(s) omitido(s). Revisa las sugerencias antes de conciliar.`, variant: "success" });
+            setStatementRows([]);
+            setStatementName("");
+        }
+    }
+
     const statusChip = (status: string) => {
         const map: Record<string, { bg: string; fg: string; label: string }> = {
             matched: { bg: "var(--cc-success-bg)", fg: "var(--cc-success-fg)", label: "Conciliado" },
@@ -139,6 +168,26 @@ export default function ConciliacionPage() {
                                     <p className="mt-1 text-xs font-semibold uppercase tracking-[0.1em] cc-text-tertiary">{card.label}</p>
                                 </div>
                             ))}
+                        </section>
+
+                        <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                            <h2 className="mb-2 font-semibold cc-text-primary">Importar cartola</h2>
+                            <p className="mb-3 text-sm cc-text-secondary">Sube un CSV o XLSX con Fecha, Monto y, si están disponibles, Glosa y Referencia. También admite columnas Abonos y Cargos. Revisa los movimientos antes de guardarlos.</p>
+                            <input type="file" accept=".csv,.xlsx" disabled={busy} onChange={event => {
+                                const file = event.target.files?.[0];
+                                if (file) void previewStatement(file);
+                                event.target.value = "";
+                            }} className="block w-full text-sm cc-text-secondary" />
+                            {statementRows.length > 0 && <div className="mt-4 space-y-3">
+                                <p className="text-sm font-semibold cc-text-primary">{statementName}: {statementRows.length} movimiento(s) para revisar</p>
+                                <div className="max-h-60 overflow-auto rounded-lg border text-xs" style={{ borderColor: "var(--cc-line)" }}>
+                                    {statementRows.map((row, index) => <div key={`${row.txnDate}-${index}`} className="grid grid-cols-[110px_100px_1fr] gap-2 border-b p-2" style={{ borderColor: "var(--cc-line)" }}>
+                                        <span>{row.txnDate}</span><span>{money(row.amount)}</span><span>{row.description || row.reference || "Sin descripción"}</span>
+                                    </div>)}
+                                </div>
+                                <div className="flex gap-2"><Button onClick={importStatement} disabled={busy}>Importar revisados</Button>
+                                    <Button variant="ghost" onClick={() => setStatementRows([])} disabled={busy}>Cancelar</Button></div>
+                            </div>}
                         </section>
 
                         <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>

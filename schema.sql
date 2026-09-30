@@ -2083,6 +2083,7 @@ CREATE TABLE IF NOT EXISTS "public"."bank_transactions" (
     "amount" numeric(12,2) NOT NULL,
     "description" "text" DEFAULT ''::"text" NOT NULL,
     "reference" "text",
+    "import_key" "text",
     "status" "text" DEFAULT 'pending'::"text" NOT NULL,
     "matched_payment_id" "uuid",
     "created_by" "uuid",
@@ -2157,6 +2158,7 @@ CREATE TABLE IF NOT EXISTS "public"."community_expenses" (
     "amount" numeric(12,2) NOT NULL,
     "provider" "text",
     "document_url" "text",
+    "document_sha256" "text",
     "notes" "text",
     "prorate_method" "text" DEFAULT 'share'::"text" NOT NULL,
     "created_by" "uuid",
@@ -3468,6 +3470,8 @@ CREATE INDEX "idx_bank_transactions_community" ON "public"."bank_transactions" U
 
 CREATE UNIQUE INDEX "idx_bank_transactions_dedup" ON "public"."bank_transactions" USING "btree" ("community_id", "txn_date", "amount", "reference") WHERE (("reference" IS NOT NULL) AND ("reference" <> ''::"text"));
 
+CREATE UNIQUE INDEX "idx_bank_transactions_import_key" ON "public"."bank_transactions" USING "btree" ("community_id", "import_key") WHERE ("import_key" IS NOT NULL);
+
 CREATE UNIQUE INDEX "idx_bank_transactions_payment_once" ON "public"."bank_transactions" USING "btree" ("matched_payment_id") WHERE ("matched_payment_id" IS NOT NULL);
 
 CREATE INDEX "idx_bank_transactions_status" ON "public"."bank_transactions" USING "btree" ("community_id", "status");
@@ -4650,4 +4654,14 @@ CREATE TABLE IF NOT EXISTS public.payroll_lines (
   role_title text NOT NULL,
   amount integer NOT NULL
 );
+
+-- Respaldo financiero privado y vínculo desde el desglose emitido.
+ALTER TABLE public.expense_items ADD COLUMN IF NOT EXISTS source_expense_id uuid REFERENCES public.community_expenses(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS community_expenses_document_sha256_uniq
+  ON public.community_expenses (community_id, document_sha256) WHERE document_sha256 IS NOT NULL;
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('finance-documents', 'finance-documents', false, 10485760,
+  ARRAY['application/pdf','image/jpeg','image/png','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','text/csv'])
+ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 10485760;
 

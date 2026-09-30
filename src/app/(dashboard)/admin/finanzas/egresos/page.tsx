@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-import type { BillingPreview, CommunityExpense, IssuedBillingRun } from "@/lib/types";
+import type { BillingPreview, CommunityExpense, FinanceDocumentReview, IssuedBillingRun } from "@/lib/types";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
@@ -48,6 +48,66 @@ export default function EgresosPage() {
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState<string>("other");
     const [prorateMethod, setProrateMethod] = useState<"share" | "equal">("share");
+    const [documents, setDocuments] = useState<FinanceDocumentReview[]>([]);
+    const [extracting, setExtracting] = useState(false);
+
+    async function inspectDocuments(files: FileList) {
+        setExtracting(true);
+        const selected = Array.from(files).slice(0, 10);
+        for (const file of selected) {
+            const form = new FormData();
+            form.append("action", "extract");
+            form.append("file", file);
+            let draft: FinanceDocumentReview;
+            try {
+                const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "No se pudo extraer.");
+                draft = { ...result.draft, id: crypto.randomUUID(), file, status: "pending" };
+            } catch (error) {
+                draft = { id: crypto.randomUUID(), file, fileName: file.name, label: file.name.replace(/\.[^.]+$/, ""), amount: 0,
+                    category: "other", provider: "", documentDate: "", documentNumber: "", status: "pending",
+                    warnings: [error instanceof Error ? error.message : "Revisa e ingresa los datos manualmente."] };
+            }
+            setDocuments(current => [...current, draft]);
+        }
+        setExtracting(false);
+    }
+
+    function editDocument(id: string, changes: Partial<FinanceDocumentReview>) {
+        setDocuments(current => current.map(item => item.id === id ? { ...item, ...changes } : item));
+    }
+
+    function discardDocument(id: string) {
+        setDocuments(current => current.filter(item => item.id !== id || item.status === "saving"));
+    }
+
+    async function saveDocument(id: string) {
+        const item = documents.find(document => document.id === id);
+        if (!item || item.status === "saving" || !item.label.trim() || !Number.isFinite(item.amount) || item.amount <= 0) {
+            if (item && item.status !== "saving") {
+                toast({ title: "Revisa el respaldo", description: "Confirma concepto y monto mayor que cero.", variant: "destructive" });
+            }
+            return;
+        }
+        editDocument(id, { status: "saving" });
+        try {
+            const form = new FormData();
+            form.append("action", "save"); form.append("file", item.file); form.append("month", month);
+            form.append("label", item.label); form.append("amount", String(item.amount));
+            form.append("category", item.category); form.append("provider", item.provider);
+            form.append("documentDate", item.documentDate); form.append("documentNumber", item.documentNumber);
+            form.append("prorateMethod", prorateMethod);
+            const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "No se pudo guardar el respaldo.");
+            editDocument(id, { status: "saved" });
+            await load();
+        } catch (error) {
+            editDocument(id, { status: "pending" });
+            toast({ title: "Respaldo no guardado", description: error instanceof Error ? error.message : "Error inesperado.", variant: "destructive" });
+        }
+    }
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -274,6 +334,28 @@ export default function EgresosPage() {
 
                 {!issuedRun && (
                     <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                        <h2 className="font-semibold cc-text-primary">Cargar respaldos de egresos</h2>
+                        <p className="mt-1 text-sm cc-text-secondary">Sube hasta 10 boletas, facturas o planillas a la vez. CoCo propone los datos; comprueba cada monto y concepto antes de registrarlo.</p>
+                        <input className="mt-3 block w-full text-sm" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.txt,.csv"
+                            disabled={extracting || saving} onChange={event => { if (event.target.files) void inspectDocuments(event.target.files); event.target.value = ""; }} />
+                        {extracting && <p className="mt-2 text-sm cc-text-secondary"><Loader2 className="mr-1 inline h-4 w-4 animate-spin" /> Leyendo documentos…</p>}
+                        <div className="mt-4 space-y-3">{documents.map(item => <div key={item.id} className="rounded-xl border p-3" style={{ borderColor: "var(--cc-line)" }}>
+                            <p className="mb-2 text-sm font-semibold cc-text-primary">{item.fileName} {item.status === "saved" ? "· Registrado" : "· Pendiente de revisión"}</p>
+                            {item.warnings.map(warning => <p key={warning} className="text-xs text-warning-fg">{warning}</p>)}
+                            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                                <input aria-label="Concepto" placeholder="Concepto" value={item.label} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { label: event.target.value })} className="rounded-lg border p-2 text-sm" />
+                                <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={item.amount || ""} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { amount: Number(event.target.value.replace(/[^\d]/g, "")) })} className="rounded-lg border p-2 text-sm" />
+                                <input aria-label="Proveedor" placeholder="Proveedor" value={item.provider} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { provider: event.target.value })} className="rounded-lg border p-2 text-sm" />
+                                <select aria-label="Categoría" value={item.category} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { category: event.target.value })} className="rounded-lg border p-2 text-sm">{CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+                            </div>
+                            {item.status !== "saved" && <div className="mt-2 flex gap-2"><Button type="button" onClick={() => void saveDocument(item.id)} disabled={item.status === "saving"}>Confirmar y registrar</Button>
+                                <Button type="button" variant="ghost" onClick={() => discardDocument(item.id)} disabled={item.status === "saving"}>Descartar</Button></div>}
+                        </div>)}</div>
+                    </section>
+                )}
+
+                {!issuedRun && (
+                    <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 Agregar egreso
@@ -350,6 +432,7 @@ export default function EgresosPage() {
                                             {" · "}
                                             {item.prorate_method === "equal" ? "Partes iguales" : "Por alícuota"}
                                         </p>
+                                        {item.document_url && <a href={`/api/finance-documents/${item.id}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-brand-700 underline">Ver respaldo</a>}
                                     </div>
                                     <span className="text-sm font-semibold cc-text-primary">{money(item.amount)}</span>
                                     {!issuedRun && (
