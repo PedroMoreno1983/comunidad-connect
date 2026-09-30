@@ -11,8 +11,8 @@ import {
     setTransactionIgnored,
     autoReconcile,
     deleteBankTransaction,
-    type BankTransactionInput,
 } from '@/lib/finance/reconciliationService';
+import type { BankTransactionInput } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
