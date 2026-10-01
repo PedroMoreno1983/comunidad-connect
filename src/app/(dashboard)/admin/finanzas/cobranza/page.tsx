@@ -11,14 +11,15 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import type { CommunityBalances, UnitBalance, UnitStatement } from "@/lib/types";
+import { currentMonthInChile, todayInChile } from "@/lib/finance/chileDates";
 
 
 
 
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const today = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const today = todayInChile;
+const currentMonth = currentMonthInChile;
 
 const KIND_LABELS: Record<string, string> = {
     gasto_comun: "Gasto común",

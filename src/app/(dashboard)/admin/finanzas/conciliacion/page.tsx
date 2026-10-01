@@ -8,10 +8,11 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { BankStatementPreviewRow, ReconciliationData, ReconciliationSuggestion } from "@/lib/types";
+import { todayInChile } from "@/lib/finance/chileDates";
 
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInChile;
 
 export default function ConciliacionPage() {
     const { toast } = useToast();
