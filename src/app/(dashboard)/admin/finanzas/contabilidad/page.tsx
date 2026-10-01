@@ -8,9 +8,10 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
 import type { JournalView } from "@/lib/types";
+import { todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInChile;
 
 const FALLBACK_ACCOUNTS = [
     { code: "1100", name: "Banco" },

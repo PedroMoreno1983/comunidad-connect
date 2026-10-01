@@ -8,9 +8,10 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
 import type { FinanceUnitOption, PaymentAgreement } from "@/lib/types";
+import { todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInChile;
 
 const STATUS_LABEL: Record<PaymentAgreement["status"], string> = {
     active: "Vigente",

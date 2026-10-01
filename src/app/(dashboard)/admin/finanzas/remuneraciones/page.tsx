@@ -8,10 +8,11 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
 import type { CommunityEmployeeRecord, PayrollRunRecord } from "@/lib/types";
+import { currentMonthInChile, todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const today = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const today = todayInChile;
+const currentMonth = currentMonthInChile;
 
 const fieldClass = "w-full rounded-xl border px-3 py-2 text-sm cc-text-primary";
 const fieldStyle = { borderColor: "var(--cc-line)", background: "var(--cc-paper)" };

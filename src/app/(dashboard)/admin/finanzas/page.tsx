@@ -12,9 +12,10 @@ import Link from "next/link";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useAuth } from "@/lib/authContext";
+import { currentMonthInChile } from "@/lib/finance/chileDates";
 
 const fallbackFinances: CommunityFinance = {
-    period: new Date().toISOString().slice(0, 7),
+    period: currentMonthInChile(),
     totalRevenue: 0,
     totalBilled: 0,
     totalExpenses: 0,

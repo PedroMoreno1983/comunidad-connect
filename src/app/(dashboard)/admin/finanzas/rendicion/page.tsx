@@ -9,12 +9,13 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import type { FinanceSettings, MonthlyFinanceReport, ReserveFund } from "@/lib/types";
+import { currentMonthInChile } from "@/lib/finance/chileDates";
 
 
 
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const currentMonth = currentMonthInChile;
 
 export default function RendicionPage() {
     const { toast } = useToast();
