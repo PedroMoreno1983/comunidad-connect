@@ -17,6 +17,7 @@ import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
 import type { ExpenseDatabaseRow, FinanceDocumentLink, UnitExpenseView } from "@/lib/types";
 import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
+import { formatFinanceDate } from "@/lib/finance/chileDates";
 
 function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
     return {
@@ -257,7 +258,7 @@ export default function ExpensesPage() {
 
     // Format due date
     const formattedDueDate = activeExpense
-        ? new Date(activeExpense.dueDate).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+        ? formatFinanceDate(activeExpense.dueDate)
         : "--";
 
     // History calculation
@@ -372,7 +373,7 @@ export default function ExpensesPage() {
                                                 <div>
                                                     <div className="text-sm font-semibold capitalize">{label}</div>
                                                     <div className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                                        {expense.status === "overdue" ? "Vencido" : "Pendiente"} · vence {new Date(expense.dueDate).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })}
+                                                        {expense.status === "overdue" ? "Vencido" : "Pendiente"} · vence {formatFinanceDate(expense.dueDate)}
                                                     </div>
                                                 </div>
                                                 <div className="font-mono text-sm">${expense.amount.toLocaleString("es-CL")}</div>

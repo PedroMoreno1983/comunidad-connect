@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import type { BillingPreview, CommunityExpense, FinanceDocumentReview, IssuedBillingRun } from "@/lib/types";
+import { currentMonthInChile, nextMonthFifthInChile } from "@/lib/finance/chileDates";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
@@ -26,12 +27,8 @@ const CATEGORIES = [
 
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
-const currentMonth = () => new Date().toISOString().slice(0, 7);
-const defaultDueDate = () => {
-    const date = new Date();
-    date.setMonth(date.getMonth() + 1, 5);
-    return date.toISOString().slice(0, 10);
-};
+const currentMonth = currentMonthInChile;
+const defaultDueDate = nextMonthFifthInChile;
 
 export default function EgresosPage() {
     const { toast } = useToast();
