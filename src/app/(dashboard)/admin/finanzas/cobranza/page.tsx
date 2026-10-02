@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-import type { CommunityBalances, UnitBalance, UnitStatement } from "@/lib/types";
+import { TransferService } from "@/lib/api";
+import type { CommunityBalances, TransferReport, UnitBalance, UnitStatement } from "@/lib/types";
 import { currentMonthInChile, todayInChile } from "@/lib/finance/chileDates";
 
 
@@ -38,6 +39,10 @@ export default function CobranzaPage() {
     const [selected, setSelected] = useState<UnitBalance | null>(null);
     const [statement, setStatement] = useState<UnitStatement | null>(null);
     const [busy, setBusy] = useState(false);
+    const [transferReports, setTransferReports] = useState<TransferReport[]>([]);
+    const [transferNotes, setTransferNotes] = useState<Record<string, string>>({});
+    const [verifiedReports, setVerifiedReports] = useState<Record<string, boolean>>({});
+    const [reviewingId, setReviewingId] = useState<string | null>(null);
 
     const [payAmount, setPayAmount] = useState("");
     const [payDate, setPayDate] = useState(today);
@@ -67,6 +72,32 @@ export default function CobranzaPage() {
     }, [toast]);
 
     useEffect(() => { void loadBalances(); }, [loadBalances]);
+    const loadTransferReports = useCallback(async () => {
+        try { setTransferReports(await TransferService.getForAdmin()); }
+        catch (error) { toast({ title: "No se cargaron los avisos", description: error instanceof Error ? error.message : "Intenta nuevamente.", variant: "destructive" }); }
+    }, [toast]);
+    useEffect(() => { void loadTransferReports(); }, [loadTransferReports]);
+
+    async function reviewTransfer(report: TransferReport, action: 'confirm' | 'reject') {
+        const note = transferNotes[report.id] || '';
+        if (action === 'confirm' && !verifiedReports[report.id]) {
+            toast({ title: "Falta verificar", description: "Comprueba el abono en la cuenta bancaria antes de confirmarlo.", variant: "destructive" });
+            return;
+        }
+        if (action === 'reject' && note.trim().length < 5) {
+            toast({ title: "Indica el motivo", description: "Explica al residente por qué no se confirmó su aviso.", variant: "destructive" });
+            return;
+        }
+        setReviewingId(report.id);
+        try {
+            await TransferService.review(report.id, action, note, action === 'confirm');
+            toast({ title: action === 'confirm' ? "Pago confirmado" : "Aviso rechazado", description: `${money(report.amount)} · ${report.unitLabel} · ${report.month}`, variant: "success" });
+            await Promise.all([loadTransferReports(), loadBalances()]);
+            if (selected?.unitId === report.unitId) await openUnit(selected);
+        } catch (error) {
+            toast({ title: "No se completó la revisión", description: error instanceof Error ? error.message : "Intenta nuevamente.", variant: "destructive" });
+        } finally { setReviewingId(null); }
+    }
 
     const openUnit = useCallback(async (unit: UnitBalance) => {
         setSelected(unit);
@@ -242,6 +273,40 @@ export default function CobranzaPage() {
                         ))}
                     </section>
                 )}
+
+                <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Transferencias informadas por residentes</h2>
+                    <p className="mt-1 text-sm cc-text-secondary">Revisa el movimiento en la cuenta bancaria. El aviso no reduce la deuda hasta que confirmes el abono.</p>
+                    {transferReports.filter(report => report.status === 'pending').length === 0 ? (
+                        <p className="mt-4 text-sm cc-text-tertiary">No hay transferencias pendientes de revisión.</p>
+                    ) : (
+                        <div className="mt-4 space-y-4">
+                            {transferReports.filter(report => report.status === 'pending').map(report => (
+                                <div key={report.id} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>
+                                    <p className="font-semibold cc-text-primary">{report.unitLabel} · {report.month} · {money(report.amount)}</p>
+                                    <p className="mt-1 text-sm cc-text-secondary">Transferencia del {report.paidAt} · Operación {report.reference}</p>
+                                    <label className="mt-3 block text-sm cc-text-secondary">Nota o motivo de rechazo
+                                        <input value={transferNotes[report.id] || ''} maxLength={500}
+                                            onChange={event => setTransferNotes(current => ({ ...current, [report.id]: event.target.value }))}
+                                            className="mt-1 w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--cc-line)" }} />
+                                    </label>
+                                    <label className="mt-3 flex items-center gap-2 text-sm cc-text-primary">
+                                        <input type="checkbox" checked={!!verifiedReports[report.id]}
+                                            onChange={event => setVerifiedReports(current => ({ ...current, [report.id]: event.target.checked }))} />
+                                        Verifiqué el abono en la cuenta bancaria
+                                    </label>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        <Button type="button" disabled={reviewingId !== null || !verifiedReports[report.id]}
+                                            onClick={() => void reviewTransfer(report, 'confirm')}>Confirmar pago</Button>
+                                        <Button type="button" disabled={reviewingId !== null || (transferNotes[report.id] || '').trim().length < 5}
+                                            onClick={() => void reviewTransfer(report, 'reject')}
+                                            style={{ background: "transparent", color: "var(--cc-ink)", border: "1px solid var(--cc-line)" }}>No confirmar</Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
 
                 <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <h2 className="border-b px-5 py-4 font-semibold cc-text-primary" style={{ borderColor: "var(--cc-line)", fontFamily: "var(--cc-font-display)" }}>

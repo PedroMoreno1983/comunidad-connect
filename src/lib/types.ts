@@ -2860,6 +2860,53 @@ export interface FinanceDocumentLink {
     label: string;
 }
 
+export interface TransferReport {
+    id: string;
+    unitId: string;
+    unitLabel: string;
+    expenseId: string;
+    month: string;
+    amount: number;
+    paidAt: string;
+    reference: string;
+    status: 'pending' | 'confirmed' | 'rejected';
+    createdAt: string;
+    reviewedAt: string | null;
+    reviewNote: string | null;
+    paymentId: string | null;
+}
+
+export interface TransferReportRow {
+    id: string;
+    unit_id: string;
+    expense_id: string;
+    amount: number;
+    paid_at: string;
+    reference: string;
+    status: string;
+    created_at: string;
+    reviewed_at: string | null;
+    review_note: string | null;
+}
+
+export interface TransferReportInput {
+    expenseId: string;
+    amount: number;
+    paidAt: string;
+    reference: string;
+}
+
+export interface TransferReceipt {
+    reportId: string;
+    paymentId: string;
+    unitLabel: string;
+    month: string;
+    amount: number;
+    paidAt: string;
+    reference: string;
+    reviewedAt: string;
+}
+
 export interface BankTransactionInput {
     txnDate: string;
     amount: number;

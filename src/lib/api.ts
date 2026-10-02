@@ -72,7 +72,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, JournalView, PaymentAgreement, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, JournalView, PaymentAgreement, PayrollRunRecord, ProductCapabilities, TransferReport, TransferReportInput, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
@@ -2006,6 +2006,30 @@ export const ExpensesService = {
 
         return (data || []) as ExpenseDatabaseRow[];
     }
+};
+
+export const TransferService = {
+    async getMine(): Promise<TransferReport[]> {
+        const response = await fetch('/api/resident/transfers', { cache: 'no-store' });
+        return (await readJsonResponse<{ reports: TransferReport[] }>(response)).reports;
+    },
+    async submit(input: TransferReportInput): Promise<TransferReport> {
+        const response = await fetch('/api/resident/transfers', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+        });
+        return (await readJsonResponse<{ report: TransferReport }>(response)).report;
+    },
+    async getForAdmin(): Promise<TransferReport[]> {
+        const response = await fetch('/api/admin/transfer-reports', { cache: 'no-store' });
+        return (await readJsonResponse<{ reports: TransferReport[] }>(response)).reports;
+    },
+    async review(reportId: string, action: 'confirm' | 'reject', note: string, verifiedInBank: boolean): Promise<TransferReport> {
+        const response = await fetch('/api/admin/transfer-reports', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reportId, action, note, verifiedInBank }),
+        });
+        return (await readJsonResponse<{ report: TransferReport }>(response)).report;
+    },
 };
 
 type FinanceExpenseItemRow = {

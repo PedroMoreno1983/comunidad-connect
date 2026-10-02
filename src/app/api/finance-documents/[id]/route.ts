@@ -22,8 +22,23 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
             .limit(1).maybeSingle();
         if (!ownedItem) return NextResponse.json({ error: 'No tienes acceso a este respaldo.' }, { status: 403 });
     }
-    const { data: signed, error: signedError } = await admin.storage.from('finance-documents')
-        .createSignedUrl(document.document_url, 60);
-    if (signedError || !signed?.signedUrl) return NextResponse.json({ error: 'No se pudo abrir el respaldo.' }, { status: 500 });
-    return NextResponse.redirect(signed.signedUrl, { headers: { 'Cache-Control': 'no-store' } });
+    const { data: file, error: downloadError } = await admin.storage.from('finance-documents')
+        .download(document.document_url);
+    if (downloadError || !file) return NextResponse.json({ error: 'No se pudo abrir el respaldo.' }, { status: 500 });
+    const extension = document.document_url.split('.').pop()?.toLowerCase() || '';
+    const mime: Record<string, string> = {
+        pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        txt: 'text/plain; charset=utf-8', csv: 'text/csv; charset=utf-8',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+    const disposition = ['pdf', 'png', 'jpg', 'jpeg', 'txt'].includes(extension) ? 'inline' : 'attachment';
+    return new NextResponse(file, {
+        headers: {
+            'Content-Type': mime[extension] || 'application/octet-stream',
+            'Content-Disposition': `${disposition}; filename="respaldo-${id}.${extension || 'bin'}"`,
+            'Cache-Control': 'private, no-store',
+            'X-Content-Type-Options': 'nosniff',
+        },
+    });
 }
