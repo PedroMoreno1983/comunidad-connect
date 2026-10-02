@@ -32,6 +32,33 @@ export interface LedgerPayment {
     method: string;
     reference: string | null;
     createdAt: string;
+    expenseId?: string | null;
+    chargeId?: string | null;
+}
+
+/** Explicitly assigned payments cover their chosen charge before free payments
+ * are applied to the oldest remaining debt. */
+export function allocateDebtPayments(charges: LedgerCharge[], payments: LedgerPayment[]): Map<string, number> {
+    const covered = new Map<string, number>();
+    const byId = new Map(charges.map(charge => [charge.id, charge]));
+    let free = 0;
+    for (const payment of payments) {
+        let amount = Math.max(0, Math.round(payment.amount));
+        const target = byId.get(payment.expenseId || payment.chargeId || '');
+        if (target) {
+            const applied = Math.min(amount, Math.max(0, Math.round(target.amount) - (covered.get(target.id) || 0)));
+            covered.set(target.id, (covered.get(target.id) || 0) + applied);
+            amount -= applied;
+        }
+        free += amount;
+    }
+    const oldestFirst = [...charges].sort((left, right) => chargeDate(left).localeCompare(chargeDate(right)) || left.id.localeCompare(right.id));
+    for (const charge of oldestFirst) {
+        const applied = Math.min(free, Math.max(0, Math.round(charge.amount) - (covered.get(charge.id) || 0)));
+        covered.set(charge.id, (covered.get(charge.id) || 0) + applied);
+        free -= applied;
+    }
+    return covered;
 }
 
 export interface LedgerEntry {
@@ -119,20 +146,17 @@ export function buildAccountStatement(
     const totalCharged = chargeEntries.reduce((sum, entry) => sum + entry.amount, 0);
     const totalPaid = payments.reduce((sum, payment) => sum + Math.round(payment.amount), 0);
 
-    // La mora se calcula contra el saldo, no cargo por cargo: los pagos se
-    // imputan a la deuda más antigua primero (criterio habitual en copropiedad),
-    // así un residente que pagó parcialmente no aparece moroso por el total.
+    // Los pagos asignados se imputan al mes elegido; los demás cubren la deuda
+    // más antigua. El saldo total conserva todos los pagos.
     const overdueCharges = chargeEntries
         .filter(entry => entry.date <= asOf)
         .sort((left, right) => left.date.localeCompare(right.date));
 
-    let unapplied = totalPaid;
+    const coveredByCharge = allocateDebtPayments(charges, payments);
     let overdueAmount = 0;
     let oldestOverdueMonth: string | null = null;
     for (const charge of overdueCharges) {
-        const covered = Math.min(unapplied, charge.amount);
-        unapplied -= covered;
-        const outstanding = charge.amount - covered;
+        const outstanding = charge.amount - (coveredByCharge.get(charge.id) || 0);
         if (outstanding > 0) {
             overdueAmount += outstanding;
             if (!oldestOverdueMonth) oldestOverdueMonth = charge.month;

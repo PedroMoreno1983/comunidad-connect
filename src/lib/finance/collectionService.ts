@@ -11,9 +11,11 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { todayInChile } from './chileDates';
 import { BillingError, MONTH_PATTERN, DATE_PATTERN } from './billingService';
 import {
     buildAccountStatement,
+    allocateDebtPayments,
     calculateLateInterest,
     monthsBetween,
     type AccountStatement,
@@ -244,9 +246,7 @@ export async function deletePayment(communityId: string, paymentId: string) {
 /**
  * Ajusta el status de cuotas y cargos según lo efectivamente pagado.
  *
- * Los pagos se imputan a la deuda más antigua primero, que es el criterio
- * habitual en copropiedad y el que menos perjudica al residente (deja de estar
- * moroso por lo más viejo, que es lo que devenga interés).
+ * Los pagos dirigidos cubren el cargo elegido; el resto cubre la deuda más antigua.
  */
 export async function reconcileUnitStatuses(communityId: string, unitId: string) {
     const admin = getSupabaseAdmin();
@@ -258,15 +258,12 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
             .select('id, month, amount, status, due_date, created_at')
             .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
         admin.from('unit_payments')
-            .select('amount')
+            .select('id, amount, paid_at, method, reference, created_at, expense_id, charge_id')
             .eq('community_id', communityId).eq('unit_id', unitId),
     ]);
     if (expensesResult.error) throw expensesResult.error;
     if (chargesResult.error) throw chargesResult.error;
     if (paymentsResult.error) throw paymentsResult.error;
-
-    const totalPaid = (paymentsResult.data ?? [])
-        .reduce((sum, row) => sum + Math.round(Number(row.amount || 0)), 0);
 
     const debts = [
         ...(expensesResult.data ?? []).map(row => ({
@@ -274,6 +271,7 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
             id: String(row.id),
             amount: Math.round(Number(row.amount || 0)),
             status: String(row.status),
+            month: String(row.month),
             sortKey: String(row.due_date || row.created_at || ''),
         })),
         ...(chargesResult.data ?? []).map(row => ({
@@ -281,32 +279,43 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
             id: String(row.id),
             amount: Math.round(Number(row.amount || 0)),
             status: String(row.status),
+            month: String(row.month),
             sortKey: String(row.due_date || row.created_at || ''),
         })),
     ].sort((left, right) => left.sortKey.localeCompare(right.sortKey));
-
-    let remaining = totalPaid;
-    const today = new Date().toISOString().slice(0, 10);
+    const coveredByCharge = allocateDebtPayments(debts.map(debt => ({
+        id: debt.id, kind: debt.table === 'expenses' ? 'gasto_comun' : 'other',
+        label: '', amount: debt.amount, month: debt.month,
+        dueDate: debt.sortKey.slice(0, 10), createdAt: debt.sortKey,
+    })), (paymentsResult.data ?? []).map(row => ({
+        id: String(row.id), amount: Number(row.amount), paidAt: String(row.paid_at),
+        method: String(row.method), reference: row.reference ? String(row.reference) : null,
+        createdAt: String(row.created_at), expenseId: row.expense_id ? String(row.expense_id) : null,
+        chargeId: row.charge_id ? String(row.charge_id) : null,
+    })));
+    const today = todayInChile();
 
     for (const debt of debts) {
-        const covered = remaining >= debt.amount;
-        remaining = Math.max(0, remaining - debt.amount);
+        const covered = (coveredByCharge.get(debt.id) || 0) >= debt.amount;
 
         if (debt.table === 'expenses') {
             // 'overdue' se conserva como señal de mora para la vista de cobranza:
             // una cuota impaga y vencida no es lo mismo que una simplemente pendiente.
             const next = covered
                 ? 'paid'
-                : (debts.find(d => d.id === debt.id)!.sortKey || today) < today ? 'overdue' : 'pending';
+                : debt.sortKey.slice(0, 10) < today ? 'overdue' : 'pending';
             if (next !== debt.status) {
-                await admin.from('expenses')
+                const { error } = await admin.from('expenses')
                     .update({ status: next, paid_at: covered ? new Date().toISOString() : null })
-                    .eq('id', debt.id);
+                    .eq('id', debt.id).eq('community_id', communityId);
+                if (error) throw error;
             }
         } else {
             const next = covered ? 'paid' : 'pending';
             if (next !== debt.status) {
-                await admin.from('unit_charges').update({ status: next }).eq('id', debt.id);
+                const { error } = await admin.from('unit_charges').update({ status: next })
+                    .eq('id', debt.id).eq('community_id', communityId);
+                if (error) throw error;
             }
         }
     }
@@ -328,7 +337,7 @@ export async function getUnitStatement(
             .select('id, month, kind, label, amount, due_date, created_at')
             .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
         admin.from('unit_payments')
-            .select('id, amount, paid_at, method, reference, created_at')
+            .select('id, amount, paid_at, method, reference, created_at, expense_id, charge_id')
             .eq('community_id', communityId).eq('unit_id', unitId),
     ]);
     if (expensesResult.error) throw expensesResult.error;
@@ -363,6 +372,8 @@ export async function getUnitStatement(
         method: String(row.method),
         reference: row.reference ? String(row.reference) : null,
         createdAt: String(row.created_at),
+        expenseId: row.expense_id ? String(row.expense_id) : null,
+        chargeId: row.charge_id ? String(row.charge_id) : null,
     }));
 
     return { ...buildAccountStatement(charges, payments), unitLabel: unitLabel(unit) };
