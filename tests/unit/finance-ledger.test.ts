@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    buildAccountStatement, calculateLateInterest, monthsBetween,
+    allocateDebtPayments, buildAccountStatement, calculateLateInterest, monthsBetween,
     type LedgerCharge, type LedgerPayment,
 } from '@/lib/finance/ledger';
 
@@ -58,6 +58,20 @@ describe('buildAccountStatement', () => {
 
         expect(statement.overdueAmount).toBe(120_000);
         expect(statement.oldestOverdueMonth).toBe('2026-06');
+    });
+
+    it('respeta el mes elegido al verificar una transferencia', () => {
+        const may = charge('may', '2026-05', 100_000, '2026-06-05');
+        const july = charge('july', '2026-07', 75_000, '2026-08-05');
+        const reported = { ...payment('p1', '2026-08-03', 75_000), expenseId: 'july' };
+        const covered = allocateDebtPayments([may, july], [reported]);
+        const statement = buildAccountStatement([may, july], [reported], '2026-08-10');
+
+        expect(covered.get('may')).toBe(0);
+        expect(covered.get('july')).toBe(75_000);
+        expect(statement.balance).toBe(100_000);
+        expect(statement.overdueAmount).toBe(100_000);
+        expect(statement.oldestOverdueMonth).toBe('2026-05');
     });
 
     it('no cuenta como vencido un cargo cuyo vencimiento aún no llega', () => {

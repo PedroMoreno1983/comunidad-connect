@@ -1,6 +1,6 @@
 "use client";
 
-import { ExpensesService } from "@/lib/api";
+import { ExpensesService, TransferService } from "@/lib/api";
 import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
@@ -15,9 +15,10 @@ import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
-import type { ExpenseDatabaseRow, FinanceDocumentLink, UnitExpenseView } from "@/lib/types";
+import type { ExpenseDatabaseRow, FinanceDocumentLink, TransferReport, UnitExpenseView } from "@/lib/types";
 import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
 import { formatFinanceDate } from "@/lib/finance/chileDates";
+import { todayInChile } from "@/lib/finance/chileDates";
 
 function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
     return {
@@ -53,6 +54,11 @@ export default function ExpensesPage() {
     const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number; paidAt?: string | null } | null>(null);
     const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
     const [documentLinks, setDocumentLinks] = useState<FinanceDocumentLink[]>([]);
+    const [transferReports, setTransferReports] = useState<TransferReport[]>([]);
+    const [transferAmount, setTransferAmount] = useState("");
+    const [transferDate, setTransferDate] = useState(todayInChile);
+    const [transferReference, setTransferReference] = useState("");
+    const [transferBusy, setTransferBusy] = useState(false);
 
     const targetUnitId = user?.unitId;
     const paymentReturnExpenseId = searchParams.get("payment") === "return"
@@ -125,6 +131,18 @@ export default function ExpensesPage() {
         .filter(expense => expense.status === "pending" || expense.status === "overdue")
         .sort((a, b) => a.month.localeCompare(b.month) || a.dueDate.localeCompare(b.dueDate));
     const activeExpense = pendingExpenses.find(expense => expense.id === selectedExpenseId) || pendingExpenses[0];
+    const activeExpenseId = activeExpense?.id;
+    const activeExpenseAmount = activeExpense?.amount;
+
+    useEffect(() => {
+        if (!targetUnitId) return;
+        void TransferService.getMine().then(setTransferReports).catch(() => setTransferReports([]));
+    }, [targetUnitId]);
+
+    useEffect(() => {
+        setTransferAmount(activeExpenseAmount == null ? "" : String(activeExpenseAmount));
+        setTransferReference("");
+    }, [activeExpenseId, activeExpenseAmount]);
 
     useEffect(() => {
         if (!activeExpense?.id) {
@@ -220,6 +238,25 @@ export default function ExpensesPage() {
             });
         } finally {
             setIsPaying(null);
+        }
+    };
+
+    const submitTransfer = async () => {
+        if (!activeExpense) return;
+        const amount = Number(transferAmount.replace(/[^\d]/g, ""));
+        setTransferBusy(true);
+        try {
+            await TransferService.submit({
+                expenseId: activeExpense.id, amount, paidAt: transferDate,
+                reference: transferReference.trim(),
+            });
+            setTransferReports(await TransferService.getMine());
+            setTransferReference("");
+            toast({ title: "Transferencia informada", description: "La administración revisará el abono. Tu cobro sigue pendiente hasta que lo confirme.", variant: "success" });
+        } catch (error) {
+            toast({ title: "No se pudo informar", description: error instanceof Error ? error.message : "Intenta nuevamente.", variant: "destructive" });
+        } finally {
+            setTransferBusy(false);
         }
     };
 
@@ -320,6 +357,19 @@ export default function ExpensesPage() {
 
                 <PaymentAgreementCard />
 
+                {transferReports.length > 0 && <section className="mt-5 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <h2 className="text-sm font-semibold">Transferencias informadas</h2>
+                    <div className="mt-3 space-y-2">
+                        {transferReports.map(report => <div key={report.id} className="rounded-lg border p-3 text-xs" style={{ borderColor: "var(--cc-line)" }}>
+                            <p className="font-semibold">{report.month} · {report.status === "pending" ? "En revisión" : report.status === "confirmed" ? "Pago confirmado" : "No confirmada"} · ${report.amount.toLocaleString("es-CL")} · {report.reference}</p>
+                            {report.status === "pending" && <p className="mt-1">Este aviso todavía no reduce tu deuda.</p>}
+                            {report.status === "rejected" && <p className="mt-1">{report.reviewNote || "Consulta a la administración."}</p>}
+                            {report.status === "confirmed" && report.paymentId && <a href={`/api/resident/transfers/${report.id}/receipt`}
+                                target="_blank" rel="noopener noreferrer" className="mt-1 inline-block font-semibold underline">Ver comprobante confirmado</a>}
+                        </div>)}
+                    </div>
+                </section>}
+
                 {step === "review" && (
                     <>
                         {/* Period */}
@@ -351,6 +401,29 @@ export default function ExpensesPage() {
                                 </span>
                             </div>
                         </div>
+
+                        {activeExpense && <section className="mb-6 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                            <h2 className="text-sm font-semibold" style={{ color: "var(--cc-ink)" }}>¿Pagaste por transferencia?</h2>
+                            <p className="mt-1 text-xs" style={{ color: "var(--cc-ink-muted)" }}>
+                                Informa el abono del período elegido. La deuda solo bajará cuando administración confirme que recibió el dinero.
+                            </p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <label className="text-xs" style={{ color: "var(--cc-ink-soft)" }}>Monto transferido
+                                    <input type="number" min="1" max={activeExpense.amount} value={transferAmount}
+                                        onChange={event => setTransferAmount(event.target.value)} className="mt-1 w-full rounded-lg border p-2" />
+                                </label>
+                                <label className="text-xs" style={{ color: "var(--cc-ink-soft)" }}>Fecha de transferencia
+                                    <input type="date" max={todayInChile()} value={transferDate}
+                                        onChange={event => setTransferDate(event.target.value)} className="mt-1 w-full rounded-lg border p-2" />
+                                </label>
+                                <label className="text-xs sm:col-span-2" style={{ color: "var(--cc-ink-soft)" }}>Número de operación del banco
+                                    <input value={transferReference} maxLength={120} onChange={event => setTransferReference(event.target.value)}
+                                        placeholder="Número que aparece en el comprobante" className="mt-1 w-full rounded-lg border p-2" />
+                                </label>
+                            </div>
+                            <Button type="button" onClick={() => void submitTransfer()} disabled={transferBusy || !transferReference.trim()}
+                                className="mt-3 w-full">{transferBusy ? "Enviando…" : "Informar transferencia"}</Button>
+                        </section>}
 
                         {pendingExpenses.length > 0 && (
                             <div className="mt-5 mb-2">
@@ -566,9 +639,7 @@ export default function ExpensesPage() {
                                         Tienes ${paymentSummary.pending_amount.toLocaleString("es-CL")} por pagar
                                     </div>
                                     <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                        El pago en línea aún no está activo. La administración debe configurar
-                                        HAULMER_ACCOUNT_ID y HAULMER_SECRET_KEY en Vercel. Mientras tanto,
-                                        coordina el pago con administración.
+                                        El pago en línea aún no está activo. Si ya transferiste, informa el pago en el período correspondiente para que administración lo revise.
                                     </div>
                                 </div>
                             </div>
