@@ -365,7 +365,9 @@ function safeOrigin(request) {
 
 function viewerHtml(session) {
   const vncPath = `${PUBLIC_BASE_PATH.replace(/^\//, '')}/browser/${session.id}/websockify`;
-  const vncUrl = `${PUBLIC_BASE_PATH}/browser/${session.id}/vnc.html?autoconnect=1&resize=scale&reconnect=1&path=${encodeURIComponent(vncPath)}`;
+  // Lower JPEG quality reduces screen traffic over residential connections.
+  // Keep compression moderate to avoid trading bandwidth for excessive CPU.
+  const vncUrl = `${PUBLIC_BASE_PATH}/browser/${session.id}/vnc.html?autoconnect=1&resize=scale&reconnect=1&quality=4&compression=2&path=${encodeURIComponent(vncPath)}`;
   const sessionPath = `${PUBLIC_BASE_PATH}/session/${session.id}`;
   return `<!doctype html>
 <html lang="es">

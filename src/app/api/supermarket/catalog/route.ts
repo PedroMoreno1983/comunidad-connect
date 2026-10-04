@@ -1,18 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { canonicalCatalogTerm, matchAnchor, productMatchScore } from '@/lib/supermarketText';
+import { canonicalCatalogTerm, catalogNameOrFilter, catalogSearchScore, foldAccents, matchAnchor } from '@/lib/supermarketText';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { FRESH_PRICE_AGE_MS, STALE_PRICE_AGE_MS } from '@/lib/supermarketCatalogGaps';
+import { rememberLiveProducts } from '@/lib/supermarketCatalogLiveFill';
+import { searchAllRetailerProducts, type ScrapedItem } from '@/lib/supermarketLive';
 import type { SupermarketCatalogProduct, SupermarketCatalogResponse } from '@/lib/types';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 const PAGE_SIZE = 24;
 const SEARCH_BATCH_SIZE = 1000;
 const MAX_SEARCH_MATCHES = 5000;
-const COLUMNS = 'id,store,name,brand,sku,offer_id,sales_unit,price,image_url,product_url,last_seen_at';
+const COLUMNS = 'id,store,name,brand,sku,offer_id,sales_unit,price,image_url,product_url,last_seen_at,last_query';
+const LIVE_FILL_BELOW = 8;
+const LIVE_QUERY_REFRESH_MS = 12 * 60 * 60 * 1000;
+const LIVE_STORES = new Set<ScrapedItem['store']>(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus']);
 
 function productFromRow(row: Record<string, unknown>): SupermarketCatalogProduct {
   return {
@@ -31,7 +37,7 @@ function productFromRow(row: Record<string, unknown>): SupermarketCatalogProduct
 }
 
 function catalogMatchScore(query: string, name: string): number {
-  const score = productMatchScore(query, name);
+  const score = catalogSearchScore(query, name);
   if (score < 0) return score;
   // A generic milk search should surface everyday cartons before flavoured
   // drinks. The comparison matcher deliberately treats these as equal matches.
@@ -42,6 +48,46 @@ function catalogMatchScore(query: string, name: string): number {
     return score + 20;
   }
   return score;
+}
+
+function isLiveStore(store: string): store is ScrapedItem['store'] {
+  return LIVE_STORES.has(store as ScrapedItem['store']);
+}
+
+function queryFilledRecently(rows: Record<string, unknown>[], query: string): boolean {
+  const wanted = foldAccents(query);
+  return rows.some(row => {
+    const seen = Date.parse(String(row.last_seen_at || ''));
+    return foldAccents(String(row.last_query || '')) === wanted
+      && Number.isFinite(seen)
+      && Date.now() - seen < LIVE_QUERY_REFRESH_MS;
+  });
+}
+
+function liveRow(item: ScrapedItem): Record<string, unknown> {
+  return {
+    id: item.sku || item.productUrl || `${item.store}:${item.name}`,
+    store: item.store,
+    name: item.name,
+    brand: item.brand,
+    sku: item.sku,
+    offer_id: item.offerId,
+    sales_unit: item.salesUnit,
+    price: item.price,
+    image_url: item.imageUrl,
+    product_url: item.productUrl,
+    last_seen_at: new Date().toISOString(),
+    last_query: item.query,
+  };
+}
+
+function mergeCatalogRows(stored: Record<string, unknown>[], live: Record<string, unknown>[]): Record<string, unknown>[] {
+  const rows = new Map(stored.map(row => [String(row.sku || row.id), row]));
+  for (const row of live) {
+    const key = String(row.sku || row.id);
+    rows.set(key, { ...rows.get(key), ...row });
+  }
+  return [...rows.values()];
 }
 
 export async function GET(req: NextRequest) {
@@ -76,7 +122,7 @@ export async function GET(req: NextRequest) {
       // Líder exige ambos identificadores para transferir el producto al carro.
       // La búsqueda histórica dejó duplicados sin ellos que no se pueden comprar.
       if (store === 'Lider') request = request.not('sku', 'is', null).not('offer_id', 'is', null);
-      if (anchor) request = request.ilike('name', `%${anchor}%`);
+      if (anchor) request = request.or(catalogNameOrFilter(anchor));
       return request.order('last_seen_at', { ascending: false }).range(from, to);
     };
 
@@ -106,6 +152,28 @@ export async function GET(req: NextRequest) {
 
     let data = await fetchMatches(FRESH_PRICE_AGE_MS);
     if (!data.length) data = await fetchMatches(STALE_PRICE_AGE_MS);
+
+    const storedMatches = (data ?? []).filter(row => !query || catalogMatchScore(query, String(row.name)) >= 0);
+    // El páprika y el sabor sandía puntúan bajo. No cuentan como catálogo
+    // suficiente: si no hay una ficha firme, se lee la tienda.
+    const solidMatches = storedMatches.filter(row => !query || catalogMatchScore(query, String(row.name)) >= 70);
+    const catalogAlreadyChecked = solidMatches.length === 0 && queryFilledRecently(data ?? [], query);
+    if (query && page === 0 && isLiveStore(store) && solidMatches.length < LIVE_FILL_BELOW && !queryFilledRecently(solidMatches, query) && !catalogAlreadyChecked) {
+      try {
+        const live = (await searchAllRetailerProducts(store, query))
+          .filter(item => item.store === store
+            && item.price > 0
+            && (store !== 'Lider' || Boolean(item.sku && item.offerId))
+            && catalogMatchScore(query, item.name) >= 0);
+        data = mergeCatalogRows(data ?? [], live.map(liveRow));
+        after(async () => {
+          try { await rememberLiveProducts(store, query, live); }
+          catch (error) { console.error('[supermarket catalog] live persistence failed', error); }
+        });
+      } catch (error) {
+        console.error('[supermarket catalog] no se pudo completar la busqueda en la tienda', error);
+      }
+    }
 
     const scored = (data ?? []).map(row => ({
       product: productFromRow(row),

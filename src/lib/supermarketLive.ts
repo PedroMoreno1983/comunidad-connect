@@ -599,6 +599,7 @@ function parseLiderProductsFromNextData(html: string, query: string): ScrapedIte
         sku: usItemId,
         offerId,
         salesUnit: asString(record.salesUnit) || 'EACH',
+        imageUrl: asString(record.image).startsWith('https://') ? asString(record.image) : undefined,
       });
     }
     Object.values(record).forEach(walk);

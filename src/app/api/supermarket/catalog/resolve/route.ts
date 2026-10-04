@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { canonicalCatalogTerm, matchAnchor, productMatchScore } from '@/lib/supermarketText';
+import { rememberLiveProducts } from '@/lib/supermarketCatalogLiveFill';
+import { searchAllRetailerProducts, type ScrapedItem } from '@/lib/supermarketLive';
+import { canonicalCatalogTerm, catalogNameOrFilter, catalogSearchScore, matchAnchor, matchAnchors } from '@/lib/supermarketText';
 import { isProductSuitableForRequest, matchesRequestedPackageSize, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { parseGroupShoppingList, MAX_SHOPPING_LIST_CHARS } from '@/lib/supermarketGroupDomain';
 import { FRESH_PRICE_AGE_MS, STALE_PRICE_AGE_MS } from '@/lib/supermarketCatalogGaps';
@@ -35,23 +37,69 @@ export async function POST(req: NextRequest) {
       const anchor = matchAnchor(canonicalCatalogTerm(item.term)).replace(/[%_]/g, '');
       if (anchor.length < 2) return { term: item.term, quantity: item.quantity };
       const fetchRows = async (age: number) => {
-        let query = admin.from('supermarket_products').select(COLUMNS)
-          .eq('store', store).eq('in_stock', true).gt('price', 0)
-          .gte('last_seen_at', new Date(Date.now() - age).toISOString())
-          .ilike('name', `%${anchor}%`).order('last_seen_at', { ascending: false }).limit(350);
-        if (store === 'Lider') query = query.not('sku', 'is', null).not('offer_id', 'is', null);
-        const result = await query;
-        if (result.error) throw result.error;
-        return result.data ?? [];
+        const rows: Record<string, unknown>[] = [];
+        const filters = matchAnchors(canonicalCatalogTerm(item.term)).map(catalogNameOrFilter).join(',');
+        // Rank every candidate, not only the newest 350. The desired brand or
+        // package can be further down the same catalog that browsing displays.
+        for (let offset = 0; ; offset += 500) {
+          let query = admin.from('supermarket_products').select(COLUMNS)
+            .eq('store', store).eq('in_stock', true).gt('price', 0)
+            .gte('last_seen_at', new Date(Date.now() - age).toISOString())
+            .or(filters).order('last_seen_at', { ascending: false }).order('id');
+          if (store === 'Lider') query = query.not('sku', 'is', null).not('offer_id', 'is', null);
+          const result = await query.range(offset, offset + 499);
+          if (result.error) throw result.error;
+          const batch = result.data ?? [];
+          rows.push(...batch);
+          if (batch.length < 500) break;
+        }
+        return rows;
       };
       let rows = await fetchRows(FRESH_PRICE_AGE_MS);
       if (!rows.length) rows = await fetchRows(STALE_PRICE_AGE_MS);
-      const best = rows.map(row => ({ row, score: productMatchScore(item.term, String(row.name || '')) }))
-        .filter(entry => entry.score >= 0 && isProductSuitableForRequest(String(entry.row.name), item.term, item.unit)
-          && matchesRequestedPackageSize(String(entry.row.name), item.term)
-          && (store !== 'Lider' || Boolean(entry.row.sku && entry.row.offer_id)))
+      const suitable = (name: string, sku?: string, offerId?: string) => (
+        catalogSearchScore(item.term, name) >= 0
+        && isProductSuitableForRequest(name, item.term, item.unit)
+        && matchesRequestedPackageSize(name, item.term)
+        && (store !== 'Lider' || Boolean(sku && offerId))
+      );
+      const pickBest = (candidates: Record<string, unknown>[]) => candidates.map(row => ({ row, score: catalogSearchScore(item.term, String(row.name || '')) }))
+        .filter(entry => suitable(String(entry.row.name), String(entry.row.sku || ''), String(entry.row.offer_id || '')))
         .sort((a, b) => b.score - a.score || Number(a.row.price) - Number(b.row.price))[0];
-      if (!best) return { term: item.term, quantity: item.quantity };
+      let best = pickBest(rows);
+      // Fresh but unrelated candidates must not suppress the older exact match.
+      if (!best && rows.length) best = pickBest(await fetchRows(STALE_PRICE_AGE_MS));
+      if (!best && (['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'] as const).includes(store as ScrapedItem['store'])) {
+        const live = (await searchAllRetailerProducts(store as ScrapedItem['store'], item.term).catch(error => {
+          console.error('[supermarket list resolution] live search failed', error);
+          return [];
+        }))
+          .filter(hit => hit.store === store && suitable(hit.name, hit.sku, hit.offerId))
+          .sort((a, b) => catalogSearchScore(item.term, b.name) - catalogSearchScore(item.term, a.name) || a.price - b.price);
+        const chosen = live[0];
+        if (!chosen) return { term: item.term, quantity: item.quantity };
+        after(async () => {
+          try { await rememberLiveProducts(store, item.term, live.slice(0, 8)); }
+          catch (error) { console.error('[supermarket list resolution] live persistence failed', error); }
+        });
+        return {
+          term: item.term,
+          quantity: item.quantity,
+          product: {
+            id: chosen.sku || `${store}:${chosen.name}`,
+            store,
+            name: chosen.name,
+            brand: chosen.brand || '',
+            sku: chosen.sku,
+            offerId: chosen.offerId,
+            salesUnit: chosen.salesUnit,
+            price: chosen.price,
+            imageUrl: chosen.imageUrl,
+            productUrl: chosen.productUrl,
+            fetchedAt: new Date().toISOString(),
+          },
+        };
+      }
       const row = best.row;
       const product: SupermarketCatalogProduct = {
         id: String(row.id), store, name: String(row.name), brand: String(row.brand || ''),
