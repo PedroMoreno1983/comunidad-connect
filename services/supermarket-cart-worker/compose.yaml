@@ -15,8 +15,9 @@ x-browser: &browser
   pids_limit: 512
   environment: &browser-environment
     TZ: America/Santiago
-    SE_SCREEN_WIDTH: "1440"
-    SE_SCREEN_HEIGHT: "900"
+    # Fewer pixels to transmit, and larger text when the viewer fits the screen.
+    SE_SCREEN_WIDTH: "1024"
+    SE_SCREEN_HEIGHT: "768"
     SE_SCREEN_DEPTH: "24"
     SE_START_VNC: "true"
     SE_VNC_NO_PASSWORD: "true"
