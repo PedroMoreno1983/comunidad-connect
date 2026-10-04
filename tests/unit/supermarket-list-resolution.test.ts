@@ -33,8 +33,8 @@ import { POST } from '@/app/api/supermarket/catalog/resolve/route';
 const product = (id: string, name: string) => ({
   id, name, store: 'Lider', sku: id, offer_id: `offer-${id}`, price: 1000,
 });
-const resolve = (list: string) => POST(new NextRequest('http://localhost/api/supermarket/catalog/resolve', {
-  method: 'POST', body: JSON.stringify({ store: 'Lider', list }),
+const resolve = (list: string, store = 'Lider') => POST(new NextRequest('http://localhost/api/supermarket/catalog/resolve', {
+  method: 'POST', body: JSON.stringify({ store, list }),
 }));
 
 describe('shopping list catalog resolution', () => {
@@ -61,6 +61,14 @@ describe('shopping list catalog resolution', () => {
     state.fresh = [product('milk', 'Leche Entera Soprole 1 L')];
     state.liveFails = true;
     const response = await resolve('leche entera soprole 1 l\nproducto inexistente');
+    expect(response.status).toBe(200);
+    const { resolved } = await response.json();
+    expect(resolved[0].product.id).toBe('milk');
+    expect(resolved[1].product).toBeUndefined();
+  });
+  it('keeps available products when a store without live search has a missing item', async () => {
+    state.fresh = [product('milk', 'Leche Entera Soprole 1 L')];
+    const response = await resolve('leche entera soprole 1 l\nproducto inexistente', 'aCuenta');
     expect(response.status).toBe(200);
     const { resolved } = await response.json();
     expect(resolved[0].product.id).toBe('milk');
