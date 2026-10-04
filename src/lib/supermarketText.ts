@@ -77,6 +77,7 @@ const NON_DIMINUTIVE_ILL = new Set([
     'morcilla', 'natilla', 'quesillo', 'tomillo', 'membrillo', 'cuchillo',
     'cepillo', 'ladrillo', 'palillo', 'martillo', 'tornillo', 'bolsillo',
     'pasillo', 'amarillo', 'cigarrillo', 'polvillo', 'colmillo', 'gargantilla',
+    'barquillo', 'frutilla',
 ]);
 
 /**
@@ -130,17 +131,27 @@ const PACKAGE_PREFIXES = new Set([
 
 const FRESH_PRODUCE = new Set([
     'ajo', 'apio', 'brocoli', 'cebolla', 'lechuga', 'limon', 'mandarina',
-    'manzana', 'naranja', 'palta', 'papa', 'pepino', 'pera', 'platano',
+    'manzana', 'naranja', 'palta', 'papa', 'pepino', 'pera', 'pimenton', 'platano',
     'repollo', 'tomate', 'zanahoria',
 ]);
 
 const PROCESSED_PRODUCE_MARKERS = new Set([
     'apanada', 'artesanal', 'bebida', 'caldo', 'chips', 'cocida', 'congelada',
     'congelado', 'conserva', 'crema', 'crispy', 'deshidratada', 'deshidratado',
-    'duquesa', 'frita', 'gajo', 'galleta', 'jugo', 'mermelada', 'polvo',
-    'prefrita', 'pure', 'rellena', 'rodaja', 'sal', 'salsa', 'sabor',
-    'sazonador', 'snack', 'sopa', 'souffle',
+    'duquesa', 'especia', 'frita', 'gajo', 'galleta', 'jugo', 'mermelada', 'paprika',
+    'polvo', 'prefrita', 'pure', 'rellena', 'rodaja', 'sal', 'salsa', 'sabor',
+    'sazonador', 'snack', 'sopa', 'souffle', 'specia',
 ]);
+
+/** El páprika se vende como pimentón dulce, picante o ahumado, no como la verdura. */
+const PIMENTON_SPICE_MARKERS = new Set([
+    'ahumado', 'ahumada', 'carmencita', 'dulce', 'picante',
+]);
+
+function produceIsProcessed(firstTerm: string, nameWords: string[]): boolean {
+    if (nameWords.some(word => PROCESSED_PRODUCE_MARKERS.has(word))) return true;
+    return firstTerm === 'pimenton' && nameWords.some(word => PIMENTON_SPICE_MARKERS.has(word));
+}
 
 /**
  * Palabras que convierten un producto base en OTRO producto.
@@ -218,6 +229,22 @@ function stemmedWords(value: string): string[] {
     return significantWords(value).map(stem);
 }
 
+/** En Chile el tomate cherry se vende como tomate cóctel o cocktail. */
+const CHERRY_TOMATO_STEMS = new Set(['coctel', 'cocktail']);
+
+function stemEquals(termWords: string[], wanted: string, candidate: string): boolean {
+    if (wanted === candidate) return true;
+    return wanted === 'cherry' && termWords.includes('tomate') && CHERRY_TOMATO_STEMS.has(candidate);
+}
+
+function termCovered(termWords: string[], nameWords: string[]): boolean {
+    return termWords.every(word => nameWords.some(nameWord => stemEquals(termWords, word, nameWord)));
+}
+
+function termWordIndex(termWords: string[], nameWords: string[], word: string): number {
+    return nameWords.findIndex(nameWord => stemEquals(termWords, word, nameWord));
+}
+
 /**
  * Lexical relevance for catalog results. Matching is done with complete words.
  * Generic fresh-produce requests reject derivatives such as tomato sauce or
@@ -228,10 +255,10 @@ export function productMatchScore(term: string, productName: string): number {
     const termWords = requiredStemmedWords(term);
     const nameWords = stemmedWords(productName);
     if (termWords.length === 0 || nameWords.length === 0) return -1;
-    if (!termWords.every(word => nameWords.includes(word))) return -1;
+    if (!termCovered(termWords, nameWords)) return -1;
 
     const firstTerm = termWords[0];
-    const firstPosition = nameWords.indexOf(firstTerm);
+    const firstPosition = termWordIndex(termWords, nameWords, firstTerm);
     if (firstPosition < 0) return -1;
 
     if (termWords.length === 1) {
@@ -239,21 +266,18 @@ export function productMatchScore(term: string, productName: string): number {
             && nameWords.slice(0, firstPosition).every(word => PACKAGE_PREFIXES.has(word));
         const brandAnywhere = BRAND_ANYWHERE.has(firstTerm);
         if (firstPosition !== 0 && !packagePrefixed && !brandAnywhere) return -1;
-        if (
-            FRESH_PRODUCE.has(firstTerm)
-            && nameWords.some(word => PROCESSED_PRODUCE_MARKERS.has(word))
-        ) {
+        if (FRESH_PRODUCE.has(firstTerm) && produceIsProcessed(firstTerm, nameWords)) {
             return -1;
         }
     }
 
     const phrasePosition = nameWords.findIndex((_, index) => (
-        termWords.every((word, offset) => nameWords[index + offset] === word)
+        termWords.every((word, offset) => stemEquals(termWords, word, nameWords[index + offset] ?? ''))
     ));
     const directBonus = firstPosition === 0 ? 100 : 70;
     const phraseBonus = phrasePosition >= 0 ? 30 : 0;
     const compactnessPenalty = termWords.reduce((sum, word) => (
-        sum + Math.max(0, nameWords.indexOf(word) - firstPosition)
+        sum + Math.max(0, termWordIndex(termWords, nameWords, word) - firstPosition)
     ), 0);
 
     /*
@@ -276,6 +300,48 @@ export function productMatchScore(term: string, productName: string): number {
 }
 
 /**
+ * Puntaje del buscador del catálogo. La lista automática sigue usando
+ * productMatchScore y descarta el brócoli congelado cuando alguien pide
+ * "brócoli" a secas. En el buscador la persona quiere ver las fichas que
+ * Lider muestra para esa palabra: unidad, pote, brotes, congelado y mix.
+ * Leche y el resto de términos generales conservan el filtro estricto.
+ */
+export function catalogBrowseScore(term: string, productName: string): number {
+    const strict = productMatchScore(term, productName);
+    if (strict >= 0) return strict;
+    if (productIntent(term) !== 'fresh_produce') return -1;
+    const termWords = requiredStemmedWords(term);
+    const nameWords = stemmedWords(productName);
+    if (termWords.length === 0 || !termCovered(termWords, nameWords)) return -1;
+    const firstPosition = termWordIndex(termWords, nameWords, termWords[0]);
+    const leadBonus = firstPosition === 0 ? 30 : 8;
+    const processedPenalty = produceIsProcessed(termWords[0] ?? '', nameWords) ? 12 : 0;
+    return Math.max(1, leadBonus + termWords.length * 5 - processedPenalty);
+}
+
+/** Formatos que la persona agrega y que otra cadena a veces no escribe en el nombre. */
+const REQUEST_FORMAT_WORDS = new Set([
+    'bandeja', 'bolsa', 'bolsas', 'malla', 'mallas', 'pack', 'packs',
+    'paquete', 'paquetes', 'sachet', 'sachets', 'pote', 'potes', 'lata', 'latas',
+]);
+
+/**
+ * Puntaje de la búsqueda y de la lista, igual en todas las cadenas.
+ * Si el nombre trae el pedido completo, gana. Si la cadena omite el formato
+ * ("champiñones bandeja" y el SKU dice solo "Champiñones"), igual se muestra,
+ * debajo de la coincidencia completa.
+ */
+export function catalogSearchScore(term: string, productName: string): number {
+    const direct = catalogBrowseScore(term, productName);
+    if (direct >= 0) return direct;
+    const words = significantWords(term);
+    const relaxed = words.filter(word => !REQUEST_FORMAT_WORDS.has(word));
+    if (relaxed.length === 0 || relaxed.length === words.length) return -1;
+    const fallback = catalogBrowseScore(relaxed.join(' '), productName);
+    return fallback >= 0 ? 1 : -1;
+}
+
+/**
  * Palabra ancla para el ILIKE de Postgres: primera palabra significativa con
  * stem aplicado. Sin stem, "jaleas" jamás calza con el producto "Jalea Soprole"
  * y el término queda vacío aunque el catálogo tenga el producto.
@@ -283,6 +349,67 @@ export function productMatchScore(term: string, productName: string): number {
 export function matchAnchor(term: string): string {
     const first = significantWords(term)[0] || foldAccents(term).split(/\s+/)[0] || foldAccents(term);
     return stem(first);
+}
+
+const VOWEL_ACCENTS: Record<string, string> = {
+    a: 'á',
+    e: 'é',
+    i: 'í',
+    o: 'ó',
+    u: 'ú',
+};
+
+/**
+ * Grafías que ILIKE tiene que probar. Postgres distingue acentos, y el
+ * catálogo guarda "Brócoli" mientras el ancla llega plegada como "brocoli".
+ * Una palabra española lleva como mucho un acento y una eñe, así que basta
+ * con marcar una vocal, una ene, o ambas a la vez.
+ */
+export function foldedAccentVariants(value: string): string[] {
+    const base = foldAccents(value).replace(/[%_"]/g, '');
+    if (!base) return [];
+    const chars = [...base];
+    const vowelIndexes = chars.flatMap((char, index) => (VOWEL_ACCENTS[char] ? [index] : []));
+    const nIndexes = chars.flatMap((char, index) => (char === 'n' ? [index] : []));
+    const forms = [chars];
+    for (const index of nIndexes) {
+        const copy = chars.slice();
+        copy[index] = 'ñ';
+        forms.push(copy);
+    }
+    const variants = new Set<string>();
+    for (const form of forms) {
+        variants.add(form.join(''));
+        for (const index of vowelIndexes) {
+            const accent = VOWEL_ACCENTS[form[index] ?? ''];
+            if (!accent) continue;
+            const copy = form.slice();
+            copy[index] = accent;
+            variants.add(copy.join(''));
+        }
+    }
+    return [...variants].slice(0, 24);
+}
+
+/**
+ * Filtro PostgREST: el nombre contiene el ancla en cualquiera de sus grafías.
+ * Una ancla de dos letras no puede ir entre porcentajes: "%te%" calza dentro
+ * de tomate, aceite y detergente, y el buscador se llena antes de llegar al té.
+ */
+export function catalogNameOrFilter(anchor: string): string {
+    const needles = foldedAccentVariants(anchor);
+    const usable = needles.length > 0 ? needles : [anchor.replace(/[%_"]/g, '')];
+    const clauses = usable.flatMap(needle => (
+        needle.length <= 2
+            ? [
+                `name.ilike."${needle}"`,
+                `name.ilike."${needle} %"`,
+                `name.ilike."% ${needle}"`,
+                `name.ilike."% ${needle} %"`,
+            ]
+            : [`name.ilike."%${needle}%"`]
+    ));
+    return [...new Set(clauses)].join(',');
 }
 
 /** Catalogs use yogur, yogurt and yoghurt for the same product family. */
