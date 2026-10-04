@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
           },
         };
       }
+      if (!best) return { term: item.term, quantity: item.quantity };
       const row = best.row;
       const product: SupermarketCatalogProduct = {
         id: String(row.id), store, name: String(row.name), brand: String(row.brand || ''),
