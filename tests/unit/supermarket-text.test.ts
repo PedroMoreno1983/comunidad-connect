@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
     buildSelectionReason,
     foldAccents,
+    catalogBrowseScore,
+    catalogSearchScore,
+    catalogNameOrFilter,
+    foldedAccentVariants,
     matchAnchor,
     productMatchScore,
     significantWords,
@@ -37,6 +41,81 @@ describe('supermarketText matchAnchor', () => {
     it('strips accents and keeps non-plural words intact', () => {
         expect(matchAnchor('Atún')).toBe('atun');
         expect(matchAnchor('arroz')).toBe('arroz');
+    });
+
+    it('busca también la grafía acentuada que guarda el catálogo', () => {
+        expect(foldedAccentVariants('brocoli')).toEqual(expect.arrayContaining(['brocoli', 'brócoli']));
+        expect(foldedAccentVariants('Brócoli')).toContain('brócoli');
+        expect(catalogNameOrFilter('brocoli')).toContain('name.ilike."%brócoli%"');
+        expect(termMatchesProductName('brócoli', 'Brócoli 1 Un')).toBe(true);
+        expect(termMatchesProductName('brocoli', 'Brócoli Congelado 350 g')).toBe(false);
+    });
+
+    it('en el buscador muestra las fichas de brócoli que Lider lista juntas', () => {
+        const fresh = catalogBrowseScore('brócoli', 'Brócoli, 1 Un');
+        const frozen = catalogBrowseScore('brócoli', 'Brócoli Congelado, 350 g');
+        const sprouts = catalogBrowseScore('brócoli', 'Brotes de Brócoli Pote, 70 g');
+        expect(fresh).toBeGreaterThan(frozen);
+        expect(frozen).toBeGreaterThan(0);
+        expect(sprouts).toBeGreaterThan(0);
+        expect(catalogBrowseScore('brócoli', 'Repollo Crespo, 1 Un')).toBeLessThan(0);
+        expect(catalogBrowseScore('leche', 'Chocolate con leche 100 g')).toBeLessThan(0);
+    });
+
+    it('encuentra champiñones en bandeja, barquillo, plátano y rúcula como los nombra Lider', () => {
+        expect(matchAnchor('barquillo')).toBe('barquillo');
+        expect(matchAnchor('frutillas')).toBe('frutilla');
+        expect(catalogNameOrFilter(matchAnchor('champinones bandeja'))).toContain('name.ilike."%champiñon%"');
+        expect(catalogNameOrFilter(matchAnchor('plátanos'))).toContain('name.ilike."%plátano%"');
+        expect(catalogNameOrFilter(matchAnchor('rucula'))).toContain('name.ilike."%rúcula%"');
+        expect(termMatchesProductName('champinones bandeja', 'Champiñones Blanco Bandeja 200 g')).toBe(true);
+        expect(termMatchesProductName('barquillo', 'Barquillo Para Helado Caja 189 g Lider')).toBe(true);
+        expect(termMatchesProductName('plátanos', 'Plátano Granel 500 g (3 a 4 un aprox)')).toBe(true);
+        expect(termMatchesProductName('plátanos', 'Queque Plátano 1 Un 300 g')).toBe(false);
+        expect(termMatchesProductName('rucula', 'Rúcula Bolsa 200 g')).toBe(true);
+        expect(termMatchesProductName('rucula', 'Pesto Rúcula Albahaca Frasco 190 g')).toBe(false);
+    });
+
+    it('si una cadena omite el formato, igual encuentra el alimento y deja la bandeja primero', () => {
+        const tray = catalogSearchScore('champinones bandeja', 'Champiñones Blanco Bandeja 200 g');
+        const can = catalogSearchScore('champinones bandeja', 'Champiñones Laminados Lata Drenado 114 g');
+        expect(tray).toBeGreaterThan(can);
+        expect(can).toBeGreaterThan(0);
+        expect(catalogSearchScore('champinones bandeja', 'Salsa Champiñones Sobre 30 g')).toBeLessThan(0);
+        expect(catalogSearchScore('papa', 'Papa granel 1 kg')).toBeGreaterThan(catalogSearchScore('papa', 'Papas Fritas Corte Liso 200 g'));
+        expect(catalogSearchScore('coliflor', 'Coliflor Films 1 un.')).toBeGreaterThan(0);
+    });
+
+    it('el té se busca como palabra, no como letras dentro de tomate o aceite', () => {
+        const clauses = catalogNameOrFilter('te').split(',');
+        expect(clauses).toContain('name.ilike."té %"');
+        expect(clauses).toContain('name.ilike."% té %"');
+        expect(clauses).not.toContain('name.ilike."%te%"');
+        expect(clauses).not.toContain('name.ilike."%té%"');
+        expect(termMatchesProductName('té', 'Té Ceylán Mildred Tea Caja 20 un.')).toBe(true);
+        expect(termMatchesProductName('té', 'Aceite Vegetal 1 L')).toBe(false);
+        expect(termMatchesProductName('té', 'Tomates en trocitos 380 g')).toBe(false);
+    });
+
+    it('tomate cherry también es el tomate cóctel de las otras cadenas', () => {
+        expect(catalogSearchScore('tomate cherry', 'Tomate Cherry Clamshell 500 g')).toBeGreaterThan(0);
+        expect(catalogSearchScore('tomate cherry', 'Tomate Cóctel Pote 250 g')).toBeGreaterThan(0);
+        expect(catalogSearchScore('tomate cherry', 'Tomate Cocktail Pote 250 gr')).toBeGreaterThan(0);
+        expect(catalogSearchScore('tomate cherry', 'Servilletas Cóctel 50 un')).toBeLessThan(0);
+        expect(catalogSearchScore('tomate cherry', 'Salsa de Tomate 200 g')).toBeLessThan(0);
+    });
+
+    it('el pimentón fresco queda delante del páprika', () => {
+        const fresh = catalogSearchScore('pimentón', 'Pimentón rojo 1 un');
+        const paprika = catalogSearchScore('pimentón', 'Pimentón Paprika 100 g');
+        const branded = catalogSearchScore('pimentón', 'Pimentón Rojo Specia 70 g');
+        const jar = catalogSearchScore('pimentón', 'Pimentón Carmencita Picante 75 g');
+        expect(fresh).toBeGreaterThan(paprika);
+        expect(fresh).toBeGreaterThan(branded);
+        expect(fresh).toBeGreaterThan(jar);
+        expect(paprika).toBeGreaterThan(0);
+        expect(branded).toBeGreaterThan(0);
+        expect(jar).toBeGreaterThan(0);
     });
 
     it('reduce diminutivos chilenos a su base, para que el ILIKE encuentre el producto', () => {

@@ -153,6 +153,7 @@ describe('supermarket live catalog parsers', () => {
             name: 'Avena Integral Multisemilla, 600 g',
             price: 2290,
             canonicalUrl: '/ip/cereales/00780226400121',
+            image: 'https://i5.walmartimages.cl/asr/avena.jpeg',
           }],
         },
       },
@@ -167,6 +168,7 @@ describe('supermarket live catalog parsers', () => {
       offerId: '973536',
       salesUnit: 'EACH',
       productUrl: 'https://super.lider.cl/ip/cereales/00780226400121',
+      imageUrl: 'https://i5.walmartimages.cl/asr/avena.jpeg',
     });
   });
 
