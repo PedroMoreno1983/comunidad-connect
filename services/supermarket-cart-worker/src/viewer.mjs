@@ -10,11 +10,12 @@ export function viewerHtml(session, PUBLIC_BASE_PATH = '') {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Carro seguro · ${session.store}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap">
   <style>
-    :root{color-scheme:light;--ink:#17221d;--muted:#5d6b64;--line:#d9e2dd;--green:#176b45;--cream:#f4f1e8;--white:#fff;--danger:#a2382c}
-    *{box-sizing:border-box}html,body{height:100%;margin:0}body{display:grid;grid-template-rows:auto 1fr;background:var(--cream);color:var(--ink);font:15px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    :root{color-scheme:light;--ink:#17221d;--muted:#5d6b64;--line:#d9e2dd;--green:#176b45;--cream:#f4f1e8;--white:#fff;--danger:#a2382c;--cc-font-display:Fraunces,Georgia,serif;--cc-font-sans:"Source Sans 3",ui-sans-serif,system-ui,sans-serif}
+    *{box-sizing:border-box}html,body{height:100%;margin:0}body{display:grid;grid-template-rows:auto 1fr;background:var(--cream);color:var(--ink);font:15px/1.55 var(--cc-font-sans);font-variant-numeric:lining-nums tabular-nums}
     header{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,520px) auto;gap:18px;align-items:center;padding:12px 18px;background:var(--white);border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(23,34,29,.08);z-index:2}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:800}.brand svg{width:30px;height:30px;color:var(--green)}.store{color:var(--green)}
+    .brand{display:flex;align-items:center;gap:10px;font-family:var(--cc-font-display);font-weight:500;letter-spacing:-0.02em}.brand svg{width:30px;height:30px;color:var(--green)}.store{color:var(--green)}
     .status{min-width:0}.status-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}.missing{margin-top:4px;font-size:12px;color:var(--amber,#b45309);white-space:normal}.host{font-size:11px;color:var(--muted);font-weight:400}progress{display:block;width:100%;height:8px;accent-color:var(--green)}
     .actions{display:flex;gap:8px}button{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--white);color:var(--ink);font:inherit;font-weight:750;cursor:pointer}button.primary{display:none;border-color:var(--green);background:var(--green);color:#fff}button.danger{color:var(--danger)}button:disabled{cursor:wait;opacity:.6}
     body{grid-template-rows:auto auto minmax(0,1fr) auto;height:100dvh}

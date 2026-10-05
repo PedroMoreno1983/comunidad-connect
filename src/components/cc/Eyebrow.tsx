@@ -35,7 +35,7 @@ export function Eyebrow({
 }
 
 /**
- * Display heading helper — combines Instrument Serif with optional italic accent.
+ * Display heading helper — Fraunces with an optional italic accent.
  *
  *   <DisplayHeading>Buenos días, <em>Martina</em>.</DisplayHeading>
  *

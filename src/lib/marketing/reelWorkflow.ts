@@ -933,7 +933,7 @@ function buildConviveBrandDirection() {
         'Direccion de arte ConviveConnect obligatoria:',
         'Paleta: fondo marfil calido #FAF7F1 y #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 y #1F1713, cobre terracota #9C5636 y #733D24 como acento, verde grisaceo sobrio #5F7A46 solo para confirmaciones.',
         'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Cinematografia limpia, luz natural, espacios modernos, detalles de administracion real, tecnologia discreta.',
-        'Tipografia aproximada: titulos serif editorial tipo Instrument Serif, textos de interfaz sans moderna tipo Geist.',
+        'Tipografia aproximada: titulos y cifras grandes en serif editorial suave tipo Fraunces (contraste optico, italica para acentos); cuerpo e interfaz en sans humanista tipo Source Sans 3. Numeros tabulares. Nada de Inter ni una sola sans para todo.',
         'Evitar: azules corporativos genericos, morados, neones, fondos oscuros dominantes, futurismo exagerado, efectos ruidosos, estetica infantil o videojuego.',
         'Regla critica para IA visual: no escribir logos, no escribir palabras legibles, no inventar marcas, no generar pantallas de software, no generar dashboards, no generar texto falso, no mostrar avatares ni presentadores. Puede mostrar manos, tablets apagadas o con pantalla abstracta borrosa, conserjeria, lobbies y residentes de espalda o fuera de foco, sin close-ups de rostros.',
     ].join('\n');
@@ -1224,7 +1224,7 @@ function buildHeyGenPrompt(reel: MarketingReelRecord) {
         '- Paleta principal: fondo marfil calido #FAF7F1 / #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 / #1F1713, cobre terracota #9C5636 / #733D24 como acento, verde grisaceo sobrio #5F7A46 solo para confirmaciones.',
         '- Evita azules corporativos genericos, morados, neones, degradados futuristas, colores saturados o fondos oscuros dominantes.',
         '- Estilo visual: SaaS premium sobrio, editorial, elegante y operativo. Mucho espacio en blanco, bordes finos, cards de radio 8-10px, sombras muy suaves, layouts tipo dashboard real.',
-        '- Tipografia aproximada: titulos con serif editorial similar a Instrument Serif, peso liviano; textos de interfaz con sans moderna similar a Geist. Nada de fuentes futuristas, comic, bold exagerado o letras 3D.',
+        '- Tipografia aproximada: titulos y numeros grandes con serif editorial suave similar a Fraunces, peso medio y cursiva solo en una palabra de acento; textos de interfaz con sans humanista similar a Source Sans 3. Numeros alineados y tabulares. Nada de Inter, fuentes futuristas, comic, bold exagerado o letras 3D.',
         '- Composicion: mostrar pantallas tipo dashboard de administracion, paneles claros, chips de estado, checklists auditables, tablas limpias, permisos y trazabilidad. Transiciones sutiles, no efectos de TikTok ruidosos.',
         '- Subtitulos: fondo claro o etiqueta marfil, texto tinta, acentos cobre. Maximo 7 palabras por linea. Mantener zona segura para Instagram.',
         '- Logo/cierre: cierre minimalista con texto ConviveConnect en tinta/cobre y URL conviveconnect.com claramente visible sobre fondo marfil.',

@@ -84,9 +84,9 @@ export const formatCLP = (n: number) =>
  * por defecto de Tailwind (#f1f5f9 / #0f172a), que no aparece en ninguna
  * pantalla de la aplicación y le daba aire de plantilla genérica.
  *
- * Instrument Serif no se puede cargar en la mayoría de los clientes de
- * correo, así que la pila cae en Georgia: no es la misma letra, pero
- * conserva el carácter editorial de la marca en vez de saltar a Arial.
+ * Fraunces y Source Sans 3 no se pueden cargar en la mayoría de los
+ * clientes de correo, así que la pila cae en Georgia y en la sans del
+ * sistema: no es la misma letra, pero conserva el contraste editorial.
  */
 export const BRAND = {
     ivory: '#F4EFE6',
@@ -100,8 +100,8 @@ export const BRAND = {
     copperDeep: '#8E4A35',
     copperBg: '#F2DDD0',
     sage: '#6E8268',
-    serif: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-    sans: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    serif: "'Fraunces', Georgia, 'Iowan Old Style', 'Times New Roman', serif",
+    sans: "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 } as const;
 
 /** Wordmark: "Convive" en tinta y "Connect" en cursiva cobre, como en la app. */
@@ -372,7 +372,7 @@ export async function sendWelcomeEmail({
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${BRAND.copperBg};border:1px solid ${BRAND.copper};border-radius:14px;margin-bottom:28px;">
       <tr><td style="padding:20px 24px;">
         <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:${BRAND.copperDeep};margin-bottom:8px;">Contraseña temporal</div>
-        <div style="font-size:22px;font-weight:600;color:${BRAND.ink};font-family:'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:0.5px;">${temporaryPassword}</div>
+        <div style="font-size:22px;font-weight:600;color:${BRAND.ink};font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace;letter-spacing:0.5px;font-variant-numeric:lining-nums tabular-nums;">${temporaryPassword}</div>
         <div style="margin-top:8px;font-size:13px;color:${BRAND.inkMuted};">Cámbiala la primera vez que entres.</div>
       </td></tr>
     </table>` : ''}

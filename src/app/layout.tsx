@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProviders } from "@/components/ThemeProviders";
 import { AppProviders } from "@/components/AppProviders";
 import { CANONICAL_SITE_URL } from "@/lib/config";
+import { editorialFontClassName } from "@/lib/fonts";
 import { headers } from "next/headers";
 
 const structuredData = {
@@ -152,7 +153,7 @@ export default async function RootLayout({
 }>) {
   const nonce = (await headers()).get("x-nonce") || undefined;
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" className={editorialFontClassName} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#FBF8F3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#1E1E24" media="(prefers-color-scheme: dark)" />
