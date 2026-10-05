@@ -7,6 +7,7 @@ import { getBillNotices } from '@/lib/finance/billNotice';
 import { renderBillNoticesPdf } from '@/lib/finance/billPdf';
 import { todayInChile } from '@/lib/finance/chileDates';
 import { PUBLIC_SITE_URL } from '@/lib/config';
+import { resolvePaymentProvider } from '@/lib/payments/providerEnv';
 
 export const runtime = 'nodejs';
 
@@ -49,7 +50,11 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: `No hay cobros ni deudas para emitir avisos de ${month}.` }, { status: 404 });
         }
 
-        const bytes = await renderBillNoticesPdf(notices, { siteUrl: PUBLIC_SITE_URL, generatedAt: todayInChile() });
+        const bytes = await renderBillNoticesPdf(notices, {
+            siteUrl: PUBLIC_SITE_URL,
+            generatedAt: todayInChile(),
+            onlinePay: resolvePaymentProvider() !== null,
+        });
         const fileName = notices.length === 1
             ? `aviso-cobro-${notices[0].unit.label.replace(/[^a-zA-Z0-9-]+/g, '')}-${month}.pdf`
             : `avisos-cobro-${month}.pdf`;

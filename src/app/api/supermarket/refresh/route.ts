@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cronAccess } from '@/lib/cronAuth';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import type { ScrapedItem } from '@/lib/supermarketLive';
@@ -132,14 +133,20 @@ async function stalestTerms(limit: number): Promise<string[]> {
   }
 }
 
+function rejectCron(req: NextRequest) {
+  const access = cronAccess(
+    process.env.CRON_SECRET,
+    req.headers.get('authorization'),
+    req.headers.get('x-cron-secret'),
+  );
+  if (access === 'ok') return null;
+  if (access === 'missing') return NextResponse.json({ error: 'Scheduler no configurado.' }, { status: 503 });
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+
 export async function POST(req: NextRequest) {
-  // Verificar autenticación para ejecución programada
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('x-cron-secret');
-  
-  if (cronSecret && authHeader !== cronSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const rejected = rejectCron(req);
+  if (rejected) return rejected;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -253,16 +260,12 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET handler para health check o ejecución manual simple.
- * Requiere x-cron-secret.
+ * GET lo llama Vercel Cron con Authorization: Bearer CRON_SECRET.
+ * El header x-cron-secret sigue valiendo para una corrida manual.
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('x-cron-secret');
-  
-  if (cronSecret && authHeader !== cronSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const rejected = rejectCron(req);
+  if (rejected) return rejected;
 
   // Reenviar a POST con el catálogo base
   const fakeRequest = new NextRequest(req.url, {
