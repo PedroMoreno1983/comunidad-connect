@@ -1,15 +1,13 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Clock3, Search, Star, X } from "lucide-react";
+import { Clock3, Search, X } from "lucide-react";
 import type { ServiceProvider } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
-import { getInitials } from "@/lib/utils/avatar";
-import { getCategoryVisual } from "@/components/services/categoryVisuals";
+import { ProviderCard } from "@/components/services/ProviderCard";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -35,12 +33,6 @@ const CATEGORY_LABELS: Record<ServiceProvider["category"], string> = {
 
 function normalize(value: string) {
     return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
-
-function availabilityLabel(value: ServiceProvider["availability"]) {
-    if (value === "available") return { label: "Disponible hoy", color: "var(--cc-sage)" };
-    if (value === "busy") return { label: "Agenda ocupada", color: "var(--cc-amber)" };
-    return { label: "Sin cupos", color: "var(--cc-rose)" };
 }
 
 export function ServicesCatalogClient({ categories, providers }: ServicesCatalogClientProps) {
@@ -146,105 +138,9 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
 
             {filteredProviders.length > 0 ? (
                 <section className="space-y-4">
-                    {filteredProviders.map(provider => {
-                        const status = availabilityLabel(provider.availability);
-                        const visual = getCategoryVisual(provider.category);
-                        return (
-                            <Link key={provider.id} href={`/services/provider/${provider.id}`} className="group block">
-                                <article
-                                    className="flex flex-col gap-5 rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:p-6"
-                                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
-                                >
-                                    {/* Avatar tipo foto */}
-                                    <div className="relative shrink-0">
-                                        {provider.photo ? (
-                                            <img
-                                                src={provider.photo}
-                                                alt={provider.name}
-                                                className="h-24 w-24 rounded-2xl object-cover sm:h-28 sm:w-28"
-                                            />
-                                        ) : (
-                                            <div
-                                                className="grid h-24 w-24 place-items-center rounded-2xl text-3xl text-white sm:h-28 sm:w-28"
-                                                style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
-                                            >
-                                                {getInitials(provider.name)}
-                                            </div>
-                                        )}
-                                        <span
-                                            className="absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full ring-2"
-                                            style={{ background: status.color, ["--tw-ring-color" as string]: "var(--cc-paper)" }}
-                                            title={status.label}
-                                        />
-                                    </div>
-
-                                    {/* Info principal */}
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="truncate text-lg font-bold cc-text-primary sm:text-xl">{provider.name}</h2>
-                                            {provider.verified && <BadgeCheck className="h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
-                                            <span
-                                                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
-                                                style={{ background: visual.soft, color: visual.accent }}
-                                            >
-                                                <visual.Icon className="h-3 w-3" />
-                                                {visual.label}
-                                            </span>
-                                        </div>
-
-                                        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs cc-text-secondary">
-                                            {provider.reviewCount > 0 ? (
-                                                <span className="inline-flex items-center gap-1 font-semibold cc-text-primary">
-                                                    <Star className="h-3.5 w-3.5" style={{ color: "var(--cc-amber)", fill: "var(--cc-amber)" }} />
-                                                    {provider.rating}
-                                                    <span className="font-normal cc-text-tertiary">({provider.reviewCount} reseña{provider.reviewCount === 1 ? "" : "s"})</span>
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 cc-text-tertiary">
-                                                    <Star className="h-3.5 w-3.5" style={{ color: "var(--cc-amber)" }} />
-                                                    Nuevo en la red
-                                                </span>
-                                            )}
-                                            <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: status.color }}>
-                                                <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} />
-                                                {status.label}
-                                            </span>
-                                        </p>
-
-                                        {(provider.specialties || []).length > 0 && (
-                                            <p className="mt-2.5 line-clamp-1 text-sm cc-text-secondary">
-                                                <strong className="cc-text-primary">Especialidades:</strong> {(provider.specialties || []).slice(0, 3).join(" · ")}
-                                            </p>
-                                        )}
-
-                                        {provider.bio && (
-                                            <p className="mt-1.5 line-clamp-2 text-sm leading-6 cc-text-tertiary">{provider.bio}</p>
-                                        )}
-                                    </div>
-
-                                    {/* Precio + CTA */}
-                                    <div
-                                        className="flex items-center justify-between gap-3 border-t pt-4 sm:w-44 sm:shrink-0 sm:flex-col sm:items-end sm:justify-center sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0"
-                                        style={{ borderColor: "var(--cc-line)" }}
-                                    >
-                                        <div className="sm:text-right">
-                                            <p className="text-xl font-bold cc-text-primary">
-                                                {provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}` : "Cotiza"}
-                                            </p>
-                                            <p className="text-xs cc-text-tertiary">{provider.hourlyRate ? "por hora" : "sin tarifa fija"}</p>
-                                        </div>
-                                        <span
-                                            className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold transition group-hover:opacity-90"
-                                            style={{ background: "var(--cc-ink)", color: "var(--cc-paper)" }}
-                                        >
-                                            Ver perfil
-                                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                                        </span>
-                                    </div>
-                                </article>
-                            </Link>
-                        );
-                    })}
+                    {filteredProviders.map(provider => (
+                        <ProviderCard key={provider.id} provider={provider} showCategory />
+                    ))}
                 </section>
             ) : (
                 <EmptyState

@@ -73,7 +73,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
             </section>
 
             {filteredProviders.length > 0 ? (
-                <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <section className="space-y-4">
                     {filteredProviders.map(provider => (
                         <ProviderCard key={provider.id} provider={provider} />
                     ))}
