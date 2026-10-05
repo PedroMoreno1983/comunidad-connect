@@ -5,7 +5,7 @@ vi.mock('next/server', async importOriginal => ({
   after: (callback: () => Promise<void>) => { void callback(); },
 }));
 
-const liveItems = vi.hoisted(() => ({ current: [] as Array<Record<string, unknown>> }));
+const liveItems = vi.hoisted(() => ({ current: [] as Array<Record<string, unknown>>, filter: '' }));
 
 const rows = vi.hoisted(() => Array.from({ length: 30 }, (_, index) => ({
   id: `chocolate-${index}`,
@@ -47,7 +47,7 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
         gte: () => query,
         not: () => query,
         ilike: () => query,
-        or: () => query,
+        or: (filter: string) => { liveItems.filter = filter; return query; },
         order: () => query,
         range: async (from: number, to: number) => ({ data: rows.slice(from, to + 1), error: null }),
       };
@@ -93,5 +93,12 @@ describe('supermarket catalog search', () => {
     ]));
     expect(names).not.toContain('Repollo Crespo, 1 Un');
     liveItems.current = [];
+  });
+
+  it('busca yogur también con la grafía yoghurt del catálogo', async () => {
+    liveItems.filter = '';
+    const response = await GET(new NextRequest('http://localhost/api/supermarket/catalog?store=Lider&q=yogur&page=0'));
+    expect(response.status).toBe(200);
+    expect(liveItems.filter).toContain('yoghurt');
   });
 });

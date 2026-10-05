@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { MarketplaceItem } from "@/lib/types";
+import { getApiUrl } from "@/lib/config";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
+import { redirectToPaymentCheckout } from "@/lib/payments/redirectToCheckout";
+import type { MarketplaceItem, PaymentCheckout } from "@/lib/types";
 import {
     Dialog,
     DialogContent,
@@ -12,8 +15,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { CreditCard, ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getApiUrl } from "@/lib/config";
-import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 
 interface PaymentModalProps {
     item: MarketplaceItem | null;
@@ -32,7 +33,7 @@ export function PaymentModal({ item, isOpen, onClose }: PaymentModalProps) {
         setStep('processing');
 
         try {
-            const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
+            const response = await fetch(getApiUrl('/api/payments/checkout'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -47,8 +48,9 @@ export function PaymentModal({ item, isOpen, onClose }: PaymentModalProps) {
                 throw new Error(payload.error || "No se pudo iniciar el pago.");
             }
 
-            const { url } = await response.json();
-            window.location.href = url;
+            const checkout = await response.json() as PaymentCheckout;
+            if (!checkout.url) throw new Error("La pasarela no devolvió URL de pago.");
+            redirectToPaymentCheckout(checkout);
 
         } catch (error: unknown) {
             console.error("Payment error:", error);

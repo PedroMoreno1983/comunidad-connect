@@ -12,7 +12,7 @@ const HEADER_ALIASES = {
     reference: ['referencia', 'numero operacion', 'n operacion', 'folio', 'documento', 'reference'],
 };
 
-function normalize(value: unknown): string {
+export function normalize(value: unknown): string {
     return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -72,7 +72,7 @@ function csvRows(content: string): string[][] {
     return rows;
 }
 
-function parseAmount(value: unknown): number {
+export function parseAmount(value: unknown): number {
     const raw = String(value ?? '').trim();
     if (!raw) return 0;
     const cleaned = raw.replace(/[^\d,.-]/g, '');
@@ -88,7 +88,7 @@ function parseAmount(value: unknown): number {
     return Math.round(number);
 }
 
-function parseDate(value: unknown): string {
+export function parseDate(value: unknown): string {
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
     const raw = String(value ?? '').trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
@@ -106,22 +106,29 @@ function parseDate(value: unknown): string {
     return date;
 }
 
-export async function parseBankStatement(file: File): Promise<BankTransactionInput[]> {
-    if (file.size > 5 * 1024 * 1024) throw new BillingError('large_file', 'La cartola supera 5 MB.');
+/** Lee la primera hoja de un XLSX o un CSV como tabla de celdas visibles. */
+export async function readSpreadsheetTable(file: File, documentName: string): Promise<{ table: unknown[][]; bytes: Buffer }> {
+    if (file.size > 5 * 1024 * 1024) throw new BillingError('large_file', `${documentName} supera 5 MB.`);
     const extension = file.name.toLowerCase().split('.').pop();
     const bytes = Buffer.from(await file.arrayBuffer());
-    const fileIdentity = createHash('sha256').update(bytes).digest('hex');
-    let table: unknown[][];
     if (extension === 'csv') {
-        table = csvRows(bytes.toString('utf8').replace(/^\uFEFF/, ''));
-    } else if (extension === 'xlsx') {
+        return { table: csvRows(bytes.toString('utf8').replace(/^\uFEFF/, '')), bytes };
+    }
+    if (extension === 'xlsx') {
         const book = new ExcelJS.Workbook();
         await book.xlsx.load(bytes as unknown as Parameters<typeof book.xlsx.load>[0]);
         const sheet = book.worksheets[0];
         if (!sheet) throw new BillingError('empty_file', 'La planilla no tiene hojas.');
-        table = [];
+        const table: unknown[][] = [];
         sheet.eachRow(row => table.push((row.values as unknown[]).slice(1).map(displayedCell)));
-    } else throw new BillingError('bad_file', 'Sube una cartola CSV o XLSX.');
+        return { table, bytes };
+    }
+    throw new BillingError('bad_file', `Sube ${documentName.toLowerCase()} en CSV o XLSX.`);
+}
+
+export async function parseBankStatement(file: File): Promise<BankTransactionInput[]> {
+    const { table, bytes } = await readSpreadsheetTable(file, 'La cartola');
+    const fileIdentity = createHash('sha256').update(bytes).digest('hex');
 
     const headerIndex = table.findIndex(row => row.some(cell => HEADER_ALIASES.date.includes(normalize(cell))));
     if (headerIndex < 0) throw new BillingError('missing_headers', 'No se encontró una columna Fecha.');

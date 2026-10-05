@@ -341,6 +341,14 @@ export interface SupermarketListResolution {
   product?: SupermarketCatalogProduct;
 }
 
+export interface SavedShoppingList {
+  id: string;
+  title: string;
+  body: string;
+  store: string | null;
+  updatedAt: string;
+}
+
 export interface SupermarketShoppingItem extends SupermarketSearchCandidate {
   checked: boolean;
   available: boolean;
@@ -1268,12 +1276,29 @@ export interface MarketingReelRecord {
   updatedAt?: string | null;
 }
 
+export type PaymentProviderId = 'haulmer' | 'transbank';
+
 export interface ProductCapabilities {
   onlinePayments: boolean;
+  /** Pasarela que se usará si hay más de una configurada. null si ninguna. */
+  paymentProvider: PaymentProviderId | null;
   marketingReels: boolean;
   iotAutomation: boolean;
   externalMonitoring: boolean;
   supermarketOrdering: boolean;
+}
+
+/** Respuesta de iniciar un cobro en línea. El pago solo se confirma por la pasarela. */
+export interface PaymentCheckout {
+  provider: PaymentProviderId;
+  url: string;
+  token: string;
+  reference: string;
+  amount: number;
+  baseAmount: number;
+  serviceFee: number;
+  redirectMethod: 'GET' | 'POST';
+  tokenField: string | null;
 }
 
 export type ProductCapabilityKey = keyof ProductCapabilities;
@@ -1889,6 +1914,7 @@ export interface ReserveFund {
     totalContributions: number;
     totalWithdrawals: number;
     movements: Array<{ id: string; kind: string; amount: number; month: string; label: string }>;
+    additionalFunds: Array<{ name: string; balance: number; totalContributions: number; totalWithdrawals: number }>;
 }
 
 /** Tasas que la comunidad define para su cobranza. Antes `Settings`. */
@@ -1991,7 +2017,7 @@ export interface CommunityExpense {
     amount: number;
     provider: string | null;
     document_url?: string | null;
-    prorate_method: "share" | "equal";
+    prorate_method: "share" | "equal" | "consumption";
 }
 
 export interface FinanceUnitOption {
@@ -2107,6 +2133,118 @@ export interface BillingPreview {
     fellBackToEqualSplit: boolean;
     warnings: string[];
     units: BillingPreviewUnit[];
+    billingMode?: "proration" | "fixed";
+}
+
+/** Totales del condominio que el art. 31 de la Ley 21.442 exige en el aviso de cobro. */
+export interface BillNoticeCommunitySummary {
+    monthIncome: number;
+    monthExpenses: number;
+    cashBalance: number;
+    cashBalanceIsEstimate: boolean;
+    reserveFundBalance: number;
+}
+
+/** Aviso de cobro de una unidad para un periodo. */
+export interface BillNotice {
+    month: string;
+    community: { name: string; address: string | null };
+    unit: {
+        id: string;
+        label: string;
+        ownerName: string | null;
+        sharePermille: number | null;
+    };
+    dueDate: string | null;
+    items: Array<{ label: string; amount: number }>;
+    gastoComun: number;
+    reserveContribution: number;
+    monthCharges: Array<{ label: string; kind: string; amount: number }>;
+    previousBalance: number;
+    periodCharges: number;
+    paymentsSinceStart: number;
+    totalDue: number;
+    unpaidPenalties: Array<{ label: string; kind: string; amount: number; month: string }>;
+    history: Array<{ month: string; amount: number }>;
+    summary: BillNoticeCommunitySummary;
+}
+
+export type PaymentImportRowStatus = 'ready' | 'error' | 'recorded';
+
+/** Una fila de la planilla de carga masiva, ya validada o con su error. */
+export interface PaymentImportRow {
+    line: number;
+    rawUnit: string;
+    unitId: string | null;
+    unitLabel: string | null;
+    amount: number;
+    paidAt: string;
+    method: string;
+    reference: string | null;
+    status: PaymentImportRowStatus;
+    message: string | null;
+}
+
+/** Resultado de previsualizar o confirmar una carga masiva de pagos. */
+export interface PaymentImportResult {
+    committed: boolean;
+    rows: PaymentImportRow[];
+    readyCount: number;
+    errorCount: number;
+    totalAmount: number;
+}
+
+export interface FinancialStatementLine {
+    label: string;
+    total: number;
+}
+
+export interface FinancialStatementExpenseLine {
+    category: string;
+    label: string;
+    total: number;
+}
+
+export interface FinancialStatementMonthFlow {
+    month: string;
+    inflow: number;
+    outflow: number;
+    net: number;
+    closing: number;
+}
+
+/** Estado de resultado, flujo de caja y situación patrimonial del condominio. */
+export interface FinancialStatements {
+    year: number;
+    cutoffMonth: string;
+    openingCash: number;
+    income: {
+        lines: FinancialStatementLine[];
+        totalIncome: number;
+        expenseLines: FinancialStatementExpenseLine[];
+        totalExpenses: number;
+        reserveTransfer: number;
+        result: number;
+    };
+    cashFlow: {
+        startingCash: number;
+        months: FinancialStatementMonthFlow[];
+        totalInflow: number;
+        totalOutflow: number;
+        endingCash: number;
+    };
+    position: {
+        cash: number;
+        receivables: number;
+        totalAssets: number;
+        advances: number;
+        totalLiabilities: number;
+        reserveFund: number;
+        accumulatedSurplus: number;
+        totalEquity: number;
+        unitsWithDebt: number;
+        journalBank: number;
+    };
 }
 
 /** Una alternativa concreta con menos sellos informados que el producto elegido. */
@@ -2852,7 +2990,7 @@ export interface FinanceDocumentReview extends FinanceDocumentDraft {
     id: string;
     file: File;
     month: string;
-    prorateMethod: 'share' | 'equal';
+    prorateMethod: 'share' | 'equal' | 'consumption';
     status: "pending" | "saving" | "saved";
 }
 export interface FinanceDocumentLink {

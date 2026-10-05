@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-    AlertTriangle, ArrowLeft, Calculator, CheckCircle2, Copy, Loader2, Plus, Send, Trash2,
+    AlertTriangle, ArrowLeft, Calculator, CheckCircle2, Copy, Loader2, Mail, Plus, Send, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -45,6 +45,12 @@ export default function EgresosPage() {
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState<string>("other");
     const [prorateMethod, setProrateMethod] = useState<"share" | "equal">("share");
+    const [billingMode, setBillingMode] = useState<"proration" | "fixed">("proration");
+    const [quotaAmount, setQuotaAmount] = useState("");
+    const [quotaMethod, setQuotaMethod] = useState<"share" | "equal">("share");
+    const [cashBalance, setCashBalance] = useState("");
+    const [notifyByEmail, setNotifyByEmail] = useState(true);
+    const [sendingNotices, setSendingNotices] = useState(false);
     const [documents, setDocuments] = useState<FinanceDocumentReview[]>([]);
     const [extracting, setExtracting] = useState(false);
 
@@ -110,10 +116,14 @@ export default function EgresosPage() {
 
     const load = useCallback(async () => {
         setLoading(true);
+        const parsedQuota = Number(quotaAmount.replace(/[^\d]/g, ""));
+        const quotaQuery = billingMode === "fixed" && Number.isFinite(parsedQuota) && parsedQuota > 0
+            ? `&quotaAmount=${parsedQuota}&quotaMethod=${quotaMethod}`
+            : "";
         try {
             const [expensesRes, previewRes] = await Promise.all([
                 fetch(`/api/admin/community-expenses?month=${month}`, { cache: "no-store" }),
-                fetch(`/api/admin/billing?month=${month}`, { cache: "no-store" }),
+                fetch(`/api/admin/billing?month=${month}${quotaQuery}`, { cache: "no-store" }),
             ]);
             const expensesData = await expensesRes.json();
             const previewData = await previewRes.json();
@@ -131,7 +141,7 @@ export default function EgresosPage() {
         } finally {
             setLoading(false);
         }
-    }, [month, toast]);
+    }, [month, toast, billingMode, quotaAmount, quotaMethod]);
 
     useEffect(() => { void load(); }, [load]);
 
@@ -220,19 +230,31 @@ export default function EgresosPage() {
     async function issue() {
         setIssuing(true);
         try {
+            const parsedQuota = Number(quotaAmount.replace(/[^\d]/g, ""));
+            const parsedCash = cashBalance.trim() === "" ? null : Number(cashBalance.replace(/[^\d-]/g, ""));
             const response = await fetch("/api/admin/billing", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ month, dueDate }),
+                body: JSON.stringify({
+                    month,
+                    dueDate,
+                    notifyByEmail,
+                    declaredCashBalance: parsedCash !== null && Number.isFinite(parsedCash) ? parsedCash : null,
+                    quotaAmount: billingMode === "fixed" && Number.isFinite(parsedQuota) && parsedQuota > 0 ? parsedQuota : undefined,
+                    quotaMethod,
+                }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "No se pudo emitir.");
 
             const skipped = (data.skippedUnits || []).length;
+            const emailed = Number(data.emailed || 0);
+            const emailFailed = Number(data.emailFailed || 0);
             toast({
                 title: "Gasto común emitido",
                 description: `${data.issuedUnits} unidades por ${money(data.totalCharged)}. `
-                    + `${data.notified} residentes notificados.`
+                    + `${data.notified} residentes notificados en la app.`
+                    + (notifyByEmail ? ` Correos: ${emailed} aceptados, ${emailFailed} fallidos.` : "")
                     + (skipped > 0 ? ` ${skipped} unidad(es) se omitieron por tener un cobro previo.` : ""),
                 variant: "success",
             });
@@ -265,6 +287,37 @@ export default function EgresosPage() {
         }
     }
 
+    async function sendNotices() {
+        setSendingNotices(true);
+        try {
+            const parsedCash = cashBalance.trim() === "" ? null : Number(cashBalance.replace(/[^\d-]/g, ""));
+            const response = await fetch("/api/email/send-expenses", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    month,
+                    attachPdf: true,
+                    cashBalance: parsedCash !== null && Number.isFinite(parsedCash) ? parsedCash : undefined,
+                }),
+            });
+            const data = await response.json() as { error?: string; sent?: number; failed?: number; total?: number };
+            if (!response.ok) throw new Error(data.error || "No se pudieron enviar los avisos.");
+            toast({
+                title: (data.failed || 0) > 0 ? "Envío parcial" : "Avisos enviados",
+                description: `${data.sent} correos aceptados de ${data.total}.`,
+                variant: (data.failed || 0) > 0 ? "default" : "success",
+            });
+        } catch (error) {
+            toast({
+                title: "No se enviaron",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setSendingNotices(false);
+        }
+    }
+
     const total = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
 
     return (
@@ -283,7 +336,8 @@ export default function EgresosPage() {
                         <DisplayHeading size={32}>Egresos y emisión del mes</DisplayHeading>
                         <p className="mt-2 text-sm leading-6 cc-text-secondary">
                             Carga los gastos del edificio, revisa cómo se reparten entre las
-                            unidades y emite el cobro de todas de una vez.
+                            unidades y emite el cobro de todas de una vez. Si hay lecturas de agua
+                            consecutivas, el egreso de agua se reparte por m³ y no por alícuota.
                         </p>
                     </header>
                 </div>
@@ -309,6 +363,17 @@ export default function EgresosPage() {
                             style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                         />
                     </label>
+                    <label className="text-sm">
+                        <span className="mb-1 block font-semibold cc-text-primary">Saldo de caja (art. 31)</span>
+                        <input
+                            value={cashBalance}
+                            onChange={event => setCashBalance(event.target.value)}
+                            inputMode="numeric"
+                            placeholder="Opcional"
+                            className="rounded-lg border px-3 py-2 text-sm"
+                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                        />
+                    </label>
                     <div className="ml-auto text-right">
                         <p className="text-xs cc-text-tertiary">Total egresos del mes</p>
                         <p className="text-2xl font-bold cc-text-primary">{money(total)}</p>
@@ -325,10 +390,50 @@ export default function EgresosPage() {
                                 Para corregir los egresos, primero anula la emisión.
                             </p>
                         </div>
-                        <Button type="button" onClick={() => void cancelRun()} className="text-xs" style={{ background: "transparent", color: "var(--cc-ink)", border: "1px solid var(--cc-line)" }}>
-                            Anular emisión
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button type="button" onClick={() => void sendNotices()} disabled={sendingNotices} className="text-xs" style={{ background: "transparent", color: "var(--cc-ink)", border: "1px solid var(--cc-line)" }}>
+                                {sendingNotices ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Mail className="mr-2 h-3.5 w-3.5" />}
+                                Reenviar boletas
+                            </Button>
+                            <Button type="button" onClick={() => void cancelRun()} className="text-xs" style={{ background: "transparent", color: "var(--cc-ink)", border: "1px solid var(--cc-line)" }}>
+                                Anular emisión
+                            </Button>
+                        </div>
                     </div>
+                )}
+
+                {!issuedRun && (
+                    <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                        <h2 className="font-semibold cc-text-primary">Cómo se cobra</h2>
+                        <p className="mt-1 text-sm cc-text-secondary">
+                            Prorrateo suma los egresos del mes. Cuota fija cobra un monto acordado y deja los egresos solo en la rendición; el agua, si hay lecturas, se suma por m³.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-4">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="radio" name="billingMode" checked={billingMode === "proration"} onChange={() => setBillingMode("proration")} />
+                                Prorrateo de egresos
+                            </label>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="radio" name="billingMode" checked={billingMode === "fixed"} onChange={() => setBillingMode("fixed")} />
+                                Cuota fija
+                            </label>
+                        </div>
+                        {billingMode === "fixed" && (
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <input value={quotaAmount} onChange={event => setQuotaAmount(event.target.value)} inputMode="numeric" placeholder="Monto total de la cuota"
+                                    className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
+                                <select value={quotaMethod} onChange={event => setQuotaMethod(event.target.value === "equal" ? "equal" : "share")}
+                                    className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                    <option value="share">Repartir por alícuota</option>
+                                    <option value="equal">Repartir en partes iguales</option>
+                                </select>
+                            </div>
+                        )}
+                        <label className="mt-4 flex items-center gap-2 text-sm cc-text-secondary">
+                            <input type="checkbox" checked={notifyByEmail} onChange={event => setNotifyByEmail(event.target.checked)} />
+                            Enviar boleta PDF por correo al emitir
+                        </label>
+                    </section>
                 )}
 
                 {!issuedRun && (
@@ -433,7 +538,7 @@ export default function EgresosPage() {
                                         <p className="text-xs cc-text-tertiary">
                                             {CATEGORIES.find(c => c.value === item.category)?.label || item.category}
                                             {" · "}
-                                            {item.prorate_method === "equal" ? "Partes iguales" : "Por alícuota"}
+                                            {item.prorate_method === "equal" ? "Partes iguales" : item.prorate_method === "consumption" ? "Por consumo de agua" : "Por alícuota"}
                                         </p>
                                         {item.document_url && <a href={`/api/finance-documents/${item.id}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-brand-700 underline">Ver respaldo</a>}
                                     </div>
@@ -454,7 +559,7 @@ export default function EgresosPage() {
                     )}
                 </section>
 
-                {preview && preview.units.length > 0 && total > 0 && (
+                {preview && preview.units.length > 0 && preview.totalCharged > 0 && (
                     <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-center gap-2 border-b px-5 py-4" style={{ borderColor: "var(--cc-line)" }}>
                             <Calculator className="h-4 w-4 cc-text-tertiary" />
@@ -501,13 +606,15 @@ export default function EgresosPage() {
                                     {preview.unitCount} unidades · Total a cobrar{" "}
                                     <strong className="cc-text-primary">{money(preview.totalCharged)}</strong>
                                 </p>
-                                {preview.totalCharged === preview.totalExpenses ? (
-                                    <p className="text-xs text-success-fg">Cuadra exactamente con los egresos del mes.</p>
-                                ) : (
-                                    <p className="text-xs text-danger-fg">
-                                        Descuadre: egresos {money(preview.totalExpenses)} vs cobrado {money(preview.totalCharged)}.
-                                    </p>
-                                )}
+                        {preview.billingMode === "fixed" ? (
+                            <p className="text-xs cc-text-tertiary">Cuota fija: el total a cobrar no tiene que coincidir con los egresos cargados.</p>
+                        ) : preview.totalCharged === preview.totalExpenses ? (
+                            <p className="text-xs text-success-fg">Cuadra exactamente con los egresos del mes.</p>
+                        ) : (
+                            <p className="text-xs text-danger-fg">
+                                Descuadre: egresos {money(preview.totalExpenses)} vs cobrado {money(preview.totalCharged)}.
+                            </p>
+                        )}
                             </div>
                             {!issuedRun && (
                                 <Button

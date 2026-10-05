@@ -31,6 +31,7 @@ export default function RendicionPage() {
     const [moveLabel, setMoveLabel] = useState("");
     const [moveAmount, setMoveAmount] = useState("");
     const [moveKind, setMoveKind] = useState<"contribution" | "withdrawal">("withdrawal");
+    const [fundName, setFundName] = useState("reserva");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -95,7 +96,7 @@ export default function RendicionPage() {
             const response = await fetch("/api/admin/finance-report", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ kind: moveKind, amount, month, label: moveLabel.trim() }),
+                body: JSON.stringify({ kind: moveKind, amount, month, label: moveLabel.trim(), fundName }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "No se pudo registrar.");
@@ -127,6 +128,8 @@ export default function RendicionPage() {
                             <DisplayHeading size={32}>Rendición de cuentas</DisplayHeading>
                             <p className="mt-2 text-sm leading-6 cc-text-secondary">
                                 Qué se cobró, qué se recaudó y en qué se gastó. El informe que el comité revisa y firma.
+                                Los estados anuales (resultado, situación y flujo) están en{" "}
+                                <Link href="/admin/finanzas/contabilidad" className="font-semibold underline">Contabilidad</Link>.
                             </p>
                         </div>
                         <label className="text-sm">
@@ -213,10 +216,14 @@ export default function RendicionPage() {
                                 <p className="px-5 pt-4 text-xs leading-5 cc-text-tertiary">
                                     Exigido por la Ley 21.442. Se alimenta con un porcentaje de cada emisión del
                                     gasto común y se lleva aparte de los egresos corrientes.
-                                    Aportes: {money(fund.totalContributions)} · Retiros: {money(fund.totalWithdrawals)}
+                                    Aportes: {money(fund.totalContributions)} · Retiros: {money(fund.totalWithdrawals)}.
+                                    Otros fondos (pintura, ascensor, etc.) se anotan con un nombre distinto de “reserva”.
                                 </p>
 
-                                <div className="grid gap-2 p-5 sm:grid-cols-[1fr_140px_150px_auto]">
+                                <div className="grid gap-2 p-5 sm:grid-cols-[140px_1fr_140px_150px_auto]">
+                                    <input value={fundName} onChange={e => setFundName(e.target.value)} placeholder="reserva"
+                                        className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                                        aria-label="Nombre del fondo" />
                                     <input value={moveLabel} onChange={e => setMoveLabel(e.target.value)} placeholder="Ej: Reparación de bomba de agua"
                                         className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                                     <input value={moveAmount} onChange={e => setMoveAmount(e.target.value)} inputMode="numeric" placeholder="Monto"
@@ -230,6 +237,17 @@ export default function RendicionPage() {
                                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Registrar"}
                                     </Button>
                                 </div>
+
+                                {fund.additionalFunds && fund.additionalFunds.length > 0 && (
+                                    <ul className="divide-y border-t" style={{ borderColor: "var(--cc-line)" }}>
+                                        {fund.additionalFunds.map(extra => (
+                                            <li key={extra.name} className="flex items-center justify-between px-5 py-3 text-sm">
+                                                <span className="cc-text-primary">Fondo {extra.name}</span>
+                                                <span className="font-semibold cc-text-primary">{money(extra.balance)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
 
                                 {fund.movements.length > 0 && (
                                     <ul className="divide-y border-t" style={{ borderColor: "var(--cc-line)" }}>

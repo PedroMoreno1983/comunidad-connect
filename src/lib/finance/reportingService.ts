@@ -8,6 +8,7 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, MONTH_PATTERN } from './billingService';
+import { formatFundLabel, groupFundMovements, LEGAL_RESERVE_FUND, normalizeFundName, parseFundLabel } from './funds';
 
 export interface ReserveFundState {
     balance: number;
@@ -21,6 +22,12 @@ export interface ReserveFundState {
         month: string;
         label: string;
         createdAt: string;
+    }>;
+    additionalFunds: Array<{
+        name: string;
+        balance: number;
+        totalContributions: number;
+        totalWithdrawals: number;
     }>;
 }
 
@@ -45,19 +52,17 @@ export async function getReserveFund(communityId: string): Promise<ReserveFundSt
         createdAt: String(row.created_at),
     }));
 
-    const totalContributions = movements
-        .filter(m => m.kind === 'contribution')
-        .reduce((sum, m) => sum + m.amount, 0);
-    const totalWithdrawals = movements
-        .filter(m => m.kind === 'withdrawal')
-        .reduce((sum, m) => sum + m.amount, 0);
+    const grouped = groupFundMovements(movements);
+    const legal = grouped.find(fund => fund.name === LEGAL_RESERVE_FUND);
+    const additionalFunds = grouped.filter(fund => fund.name !== LEGAL_RESERVE_FUND);
 
     return {
-        balance: totalContributions - totalWithdrawals,
-        totalContributions,
-        totalWithdrawals,
+        balance: legal?.balance ?? 0,
+        totalContributions: legal?.totalContributions ?? 0,
+        totalWithdrawals: legal?.totalWithdrawals ?? 0,
         ratePercent: Number(communityResult.data?.reserve_fund_rate || 0),
         movements,
+        additionalFunds,
     };
 }
 
@@ -65,7 +70,14 @@ export async function getReserveFund(communityId: string): Promise<ReserveFundSt
 export async function addReserveFundMovement(
     communityId: string,
     createdBy: string | null,
-    input: { kind: 'contribution' | 'withdrawal'; amount: number; month: string; label: string; notes?: string | null },
+    input: {
+        kind: 'contribution' | 'withdrawal';
+        amount: number;
+        month: string;
+        label: string;
+        notes?: string | null;
+        fundName?: string | null;
+    },
 ) {
     if (!MONTH_PATTERN.test(input.month)) {
         throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
@@ -73,7 +85,11 @@ export async function addReserveFundMovement(
     if (input.kind !== 'contribution' && input.kind !== 'withdrawal') {
         throw new BillingError('bad_kind', 'El movimiento debe ser un aporte o un retiro.');
     }
-    if (!input.label.trim()) {
+    const parsed = parseFundLabel(input.label);
+    const requested = normalizeFundName(input.fundName);
+    const fundName = requested !== LEGAL_RESERVE_FUND ? requested : parsed.fundName;
+    const label = formatFundLabel(fundName, parsed.description || input.label);
+    if (!label) {
         throw new BillingError('bad_label', 'Describe el movimiento del fondo.');
     }
     const amount = Math.round(Number(input.amount));
@@ -81,14 +97,18 @@ export async function addReserveFundMovement(
         throw new BillingError('bad_amount', 'El monto debe ser mayor que cero.');
     }
 
-    // Un retiro que deja el fondo en negativo casi siempre es un error de
-    // digitación; y un fondo negativo no existe en la práctica.
+    const resolvedFund = parseFundLabel(label).fundName;
+    const fund = await getReserveFund(communityId);
+    const fundBalance = resolvedFund === LEGAL_RESERVE_FUND
+        ? fund.balance
+        : (fund.additionalFunds.find(item => item.name === resolvedFund)?.balance ?? 0);
+
     if (input.kind === 'withdrawal') {
-        const fund = await getReserveFund(communityId);
-        if (amount > fund.balance) {
+        if (amount > fundBalance) {
+            const name = resolvedFund === LEGAL_RESERVE_FUND ? 'fondo de reserva' : `fondo ${resolvedFund}`;
             throw new BillingError(
                 'insufficient_fund',
-                `El fondo de reserva tiene $${fund.balance.toLocaleString('es-CL')}. No puedes retirar más que eso.`,
+                `El ${name} tiene $${fundBalance.toLocaleString('es-CL')}. No puedes retirar más que eso.`,
             );
         }
     }
@@ -100,7 +120,7 @@ export async function addReserveFundMovement(
             kind: input.kind,
             amount,
             month: input.month,
-            label: input.label.trim(),
+            label,
             notes: input.notes || null,
             created_by: createdBy,
         })

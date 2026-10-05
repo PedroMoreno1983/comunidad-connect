@@ -1,7 +1,7 @@
 "use client";
 
 import { ExpensesService } from "@/lib/api";
-import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Loader2 } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Loader2, Download } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { useState, useEffect } from "react";
@@ -13,9 +13,10 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
+import { redirectToPaymentCheckout } from "@/lib/payments/redirectToCheckout";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
-import type { ExpenseDatabaseRow, FinanceDocumentLink, UnitExpenseView } from "@/lib/types";
+import type { ExpenseDatabaseRow, FinanceDocumentLink, PaymentCheckout, UnitExpenseView } from "@/lib/types";
 import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
 import { formatFinanceDate } from "@/lib/finance/chileDates";
 
@@ -189,13 +190,13 @@ export default function ExpensesPage() {
 
         try {
             setIsPaying(activeExpense.id);
-            const response = await fetch(getApiUrl("/api/payments/create-haulmer-link"), {
+            const response = await fetch(getApiUrl("/api/payments/checkout"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     amount: paymentBaseAmount,
                     extraContribution,
-                    includeServiceFee: true,
+                    includeServiceFee: capabilities.paymentProvider === "haulmer",
                     reference: `EXP_${activeExpense.id}`,
                     returnUrl: `${window.location.origin}/expenses`,
                 }),
@@ -205,9 +206,9 @@ export default function ExpensesPage() {
                 throw new Error(data.error || "No se pudo generar el enlace de pago.");
             }
 
-            const data = await response.json() as { url?: string };
+            const data = await response.json() as PaymentCheckout;
             if (!data.url) throw new Error("La pasarela no devolvio URL de pago.");
-            window.location.href = data.url;
+            redirectToPaymentCheckout(data);
             return;
         } catch (error: unknown) {
             const description = error instanceof Error && error.message
@@ -243,7 +244,7 @@ export default function ExpensesPage() {
 
     const extraContribution = getContributionAmount(contributionType, baseAmount);
     const paymentBaseAmount = baseAmount + extraContribution;
-    const serviceFee = capabilities.onlinePayments && activeExpense && activeExpense.status !== "paid"
+    const serviceFee = capabilities.onlinePayments && capabilities.paymentProvider === "haulmer" && activeExpense && activeExpense.status !== "paid"
         ? calculateHaulmerServiceFee(paymentBaseAmount).totalFee
         : 0;
     const totalAmount = paymentBaseAmount + serviceFee;
@@ -401,6 +402,15 @@ export default function ExpensesPage() {
                                 {documentLinks.map(document => <a key={document.id} href={`/api/finance-documents/${document.id}`}
                                     target="_blank" rel="noopener noreferrer" className="mr-3 inline-block text-xs font-semibold text-brand-700 underline">{document.label}</a>)}
                             </div>}
+                            {activeExpense && (
+                                <a
+                                    href={`/api/finance/bill?month=${activeExpense.month}`}
+                                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold underline"
+                                    style={{ color: "var(--cc-copper)" }}
+                                >
+                                    <Download size={12} /> Descargar aviso de cobro (PDF)
+                                </a>
+                            )}
                             {extraContribution > 0 && (
                                 <div
                                     className="flex justify-between items-center py-3"
@@ -553,7 +563,9 @@ export default function ExpensesPage() {
                                     </div>
                                 )}
                                 <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                        Webpay vía Tuu/Haulmer, comisión e IVA incluidos
+                                        {capabilities.paymentProvider === "transbank"
+                                            ? "Webpay Plus (Transbank). El cobro se confirma solo cuando Transbank autoriza el pago."
+                                            : "Webpay vía Tuu/Haulmer, comisión e IVA incluidos"}
                                 </div>
                             </div>
                         ) : (
@@ -566,9 +578,9 @@ export default function ExpensesPage() {
                                         Tienes ${paymentSummary.pending_amount.toLocaleString("es-CL")} por pagar
                                     </div>
                                     <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                        El pago en línea aún no está activo. La administración debe configurar
-                                        HAULMER_ACCOUNT_ID y HAULMER_SECRET_KEY en Vercel. Mientras tanto,
-                                        coordina el pago con administración.
+                                        El pago en línea aún no está activo. Administración debe configurar
+                                        Haulmer (HAULMER_ACCOUNT_ID y HAULMER_SECRET_KEY) o Transbank Webpay Plus
+                                        (TRANSBANK_COMMERCE_CODE y TRANSBANK_API_KEY). Mientras tanto, coordina el pago con administración.
                                     </div>
                                 </div>
                             </div>

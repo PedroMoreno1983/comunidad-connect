@@ -1803,6 +1803,23 @@ CREATE INDEX IF NOT EXISTS supermarket_purchase_history_user_recent_idx
 
 ALTER TABLE public.supermarket_purchase_history ENABLE ROW LEVEL SECURITY;
 
+-- Listas escritas, para reabrirlas. Ver 20261005014000_supermarket_saved_lists.sql.
+CREATE TABLE IF NOT EXISTS public.supermarket_saved_lists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 80),
+  body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 12000),
+  body_key TEXT NOT NULL CHECK (char_length(body_key) BETWEEN 1 AND 12000),
+  store TEXT CHECK (store IS NULL OR store IN ('Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS supermarket_saved_lists_user_recent_idx
+  ON public.supermarket_saved_lists (user_id, updated_at DESC);
+
+ALTER TABLE public.supermarket_saved_lists ENABLE ROW LEVEL SECURITY;
+
 
 -- ############################################################################
 -- Esquema completado desde la base, 2026-09-06
