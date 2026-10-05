@@ -10,6 +10,8 @@ import { PUBLIC_SITE_URL, SUPPORT_EMAIL } from '@/lib/config';
 import { getBillNotices } from './billNotice';
 import { renderBillNoticesPdf } from './billPdf';
 import { todayInChile } from './chileDates';
+import { collectionNoticeCopy } from './collectionNoticeCopy';
+import { resolvePaymentProvider } from '@/lib/payments/providerEnv';
 
 type ExpenseEmailItem = { label?: string | null; amount?: number | string | null };
 type ExpenseEmailRow = {
@@ -33,7 +35,9 @@ function renderExpenseEmail(input: {
     dueDate?: string | null;
     amount: number;
     items: ExpenseEmailItem[];
+    onlinePay: boolean;
 }) {
+    const notice = collectionNoticeCopy(PUBLIC_SITE_URL, input.onlinePay);
     const itemRows = input.items.length
         ? input.items.map(item => `
             <tr>
@@ -65,8 +69,8 @@ function renderExpenseEmail(input: {
             </tr>
           </table>
           ${dueDate ? `<p style="margin:18px 0 0;color:#7a5b21"><strong>Vencimiento:</strong> ${escapeEmailHtml(dueDate)}</p>` : ''}
-          <p style="margin:28px 0 0;text-align:center"><a href="${PUBLIC_SITE_URL}/expenses" style="display:inline-block;padding:14px 26px;border-radius:10px;background:#b5664e;color:#fff;text-decoration:none;font-weight:700">Revisar y pagar</a></p>
-          <p style="margin:24px 0 0;color:#8a8179;font-size:12px;line-height:1.5">El pago solo se registra cuando la pasarela envia una confirmacion firmada. Consultas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#733D24">${SUPPORT_EMAIL}</a>.</p>
+          <p style="margin:28px 0 0;text-align:center"><a href="${PUBLIC_SITE_URL}/expenses" style="display:inline-block;padding:14px 26px;border-radius:10px;background:#b5664e;color:#fff;text-decoration:none;font-weight:700">${escapeEmailHtml(notice.emailButton)}</a></p>
+          <p style="margin:24px 0 0;color:#8a8179;font-size:12px;line-height:1.5">${escapeEmailHtml(notice.emailNote)} Consultas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#733D24">${SUPPORT_EMAIL}</a>.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -129,6 +133,7 @@ export async function sendExpenseNotices(input: {
     const monthLabel = new Date(`${input.month}-02T12:00:00`).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
     const communityName = community?.name || 'Tu comunidad';
     const generatedAt = todayInChile();
+    const onlinePay = resolvePaymentProvider() !== null;
 
     const pdfByUnit = new Map<string, Uint8Array>();
     if (input.attachPdf) {
@@ -137,6 +142,7 @@ export async function sendExpenseNotices(input: {
             pdfByUnit.set(notice.unit.id, await renderBillNoticesPdf([notice], {
                 siteUrl: PUBLIC_SITE_URL,
                 generatedAt,
+                onlinePay,
             }));
         }
     }
@@ -155,6 +161,7 @@ export async function sendExpenseNotices(input: {
                 dueDate: recipient.expense.due_date,
                 amount: Number(recipient.expense.amount || 0),
                 items: recipient.expense.items || [],
+                onlinePay,
             }),
             attachments: pdf
                 ? [{ filename: fileName, content: Buffer.from(pdf) }]

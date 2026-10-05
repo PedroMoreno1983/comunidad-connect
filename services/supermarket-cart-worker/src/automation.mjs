@@ -180,7 +180,10 @@ async function navigate(driver, url) {
 }
 
 async function bodyText(driver) {
-  return normalize(await driver.executeScript('return document.body ? document.body.innerText : ""').catch(() => ''));
+  return normalize(await driver.executeScript(`
+    const body = document.body ? document.body.innerText : '';
+    return (document.title || '') + '\n' + body;
+  `).catch(() => ''));
 }
 
 function containsAny(text, values) {

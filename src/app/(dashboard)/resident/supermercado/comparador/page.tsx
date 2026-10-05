@@ -36,6 +36,7 @@ import {
   termBeingTyped,
 } from '@/lib/supermarketListEditor';
 import { supermarketBasketIdentity } from '@/lib/supermarketBasketIdentity';
+import { publishesBasketTotal, rankPurchases } from '@/lib/supermarketPurchaseRank';
 import type {
   ShoppingReviewResponse,
   ShoppingSuggestionsResponse,
@@ -154,8 +155,7 @@ export default function SupermarketPage() {
   const [alternatives, setAlternatives] = useState<SupermarketSealAlternative[] | null>(null);
   const [alternativesStore, setAlternativesStore] = useState<string | null>(null);
   const [alternativesLoading, setAlternativesLoading] = useState(false);
-  const [realTotal, setRealTotal] = useState<SupermarketSimulationResult | null>(null);
-  const [realTotalStore, setRealTotalStore] = useState<string | null>(null);
+  const [quotes, setQuotes] = useState<Record<string, SupermarketSimulationResult>>({});
   const [realTotalLoading, setRealTotalLoading] = useState(false);
   const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
   const [repurchases, setRepurchases] = useState<NonNullable<SupermarketHistoryResponse['suggestions']>>([]);
@@ -313,30 +313,25 @@ export default function SupermarketPage() {
   );
   const basketKey = `${basketRevision}:${supermarketBasketIdentity(selectedBasket?.store, list)}`;
   const showingSeals = seals !== null && sealsStore === basketKey;
-  const showingRealTotal = realTotal !== null && realTotalStore === basketKey;
+  const realTotal = selectedBasket ? quotes[selectedBasket.store] ?? null : null;
+  const showingRealTotal = realTotal !== null;
   const showingAlternatives = alternatives !== null && alternativesStore === basketKey;
   const alternativesBySku = useMemo(
     () => Object.fromEntries((showingAlternatives ? alternatives ?? [] : []).map(entry => [entry.current.sku, entry])),
     [showingAlternatives, alternatives],
   );
-  /**
-   * El ranking se calcula con estimados. Cuando se conoce el total real de una
-   * cadena y no coincide, el orden deja de ser comparable: el resto sigue
-   * estimado. Se marca la duda en vez de reordenar con datos de dos naturalezas.
-   */
-  const realTotalStoreName = selectedBasket?.store ?? '';
-  const rankingEnDuda = Boolean(
-    showingRealTotal
-    && realTotal?.complete
-    && typeof realTotal.total === 'number'
-    && selectedBasket
-    && Math.abs(realTotal.total - selectedBasket.subtotal) >= 1,
+  const ranking = useMemo(() => rankPurchases(basketOptions, quotes), [basketOptions, quotes]);
+  const rankedBaskets = useMemo(
+    () => ranking.standings.flatMap(standing => {
+      const basket = basketOptions.find(option => option.store === standing.store);
+      return basket ? [{ standing, basket }] : [];
+    }),
+    [basketOptions, ranking.standings],
   );
   const completeBaskets = basketOptions.filter(basket => basket.complete);
   const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
-  const winner = completeBaskets[0] ?? basketOptions.find(basket => basket.coveredCount > 0) ?? null;
-  const runnerUp = winner?.complete ? completeBaskets[1] : undefined;
-  const winnerSavings = winner && runnerUp ? Math.max(0, runnerUp.subtotal - winner.subtotal) : 0;
+  const winner = basketOptions.find(basket => basket.store === ranking.winnerStore) ?? null;
+  const winnerSavings = ranking.savings;
   const sourceByStore = useMemo(
     () => new Map(sources.map(source => [source.store, source.status])),
     [sources],
@@ -440,6 +435,40 @@ export default function SupermarketPage() {
 
   useEffect(() => { void refreshHistory(); }, []);
 
+  useEffect(() => {
+    const targets = basketOptions.filter(basket => (
+      basket.complete
+      && publishesBasketTotal(basket.store)
+      && basket.items.length > 0
+      && basket.items.every(item => item.sku)
+    ));
+    if (targets.length === 0) {
+      setQuotes(current => Object.keys(current).length === 0 ? current : {});
+      return;
+    }
+    let cancelled = false;
+    setQuotes({});
+    void Promise.all(targets.map(async basket => {
+      try {
+        const response = await fetch('/api/supermarket/real-total', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            store: basket.store,
+            items: basket.items.map(item => ({ sku: item.sku, quantity: item.quantity })),
+          }),
+        });
+        const data = await response.json() as SupermarketSimulationResult;
+        return [basket.store, response.ok ? data : { supported: true, complete: false, reason: data.error }] as const;
+      } catch {
+        return [basket.store, { supported: true, complete: false, reason: 'No se pudo contactar a la tienda.' }] as const;
+      }
+    })).then(entries => {
+      if (!cancelled) setQuotes(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+  }, [basketOptions]);
+
   const recordPurchase = async () => {
     if (!selectedBasket || !historyEnabled || recordingPurchase) return;
     setRecordingPurchase(true);
@@ -503,7 +532,6 @@ export default function SupermarketPage() {
       toast({ title: 'Canasta incompleta', description: 'No se puede consultar el total de toda la canasta mientras haya productos faltantes o sin código.', variant: 'destructive' });
       return;
     }
-    setRealTotal(null);
     setRealTotalLoading(true);
     try {
       const response = await fetch('/api/supermarket/real-total', {
@@ -516,8 +544,7 @@ export default function SupermarketPage() {
       });
       const data = await response.json() as SupermarketSimulationResult;
       if (!response.ok) throw new Error(data.error || 'No se pudo consultar el total real.');
-      setRealTotal(data);
-      setRealTotalStore(basketKey);
+      setQuotes(current => ({ ...current, [store]: data }));
     } catch (error) {
       toast({
         title: 'No se pudo ver el total real',
@@ -601,18 +628,24 @@ export default function SupermarketPage() {
   };
 
   const copyComparison = async () => {
-    const rows = basketOptions.map(basket => (
-      basket.coveredCount > 0
-        ? `${basket.store}: ${money(basket.subtotal)} · ${basket.coveredCount}/${basket.requestedCount}`
-        : `${basket.store}: sin resultados vigentes`
-    ));
+    const rows = rankedBaskets.map(({ basket, standing }) => {
+      if (basket.coveredCount === 0) return `${basket.store}: sin resultados vigentes`;
+      const kind = standing.kind === 'published'
+        ? 'total de la tienda'
+        : standing.belowMinimum
+          ? 'bajo el mínimo'
+          : standing.kind === 'pending'
+            ? 'consultando'
+            : 'estimado de catálogo';
+      return `${basket.store}: ${money(standing.kind === 'published' ? standing.amount : basket.subtotal)} · ${kind} · ${basket.coveredCount}/${basket.requestedCount}`;
+    });
     try {
       await navigator.clipboard.writeText([
         'Comparación de supermercados · Convive Connect',
         ...rows,
         '',
-        'Estimado sumando el precio de cada producto. No incluye promociones por volumen,',
-        'montos mínimos de despacho, membresías ni medios de pago.',
+        'Jumbo, Santa Isabel y Unimarc usan el total que publica la tienda, con promociones.',
+        'Lider y aCuenta siguen con el precio de catálogo: no publican combos ni el mínimo de pedido.',
       ].join('\n'));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2_000);
@@ -1015,30 +1048,27 @@ export default function SupermarketPage() {
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Resultado de las {SUPERMARKET_STORES.length} cadenas</p>
                 <h2 className="mt-1 text-2xl font-bold cc-text-primary">
-                  {completeBaskets.length > 0 ? 'Mejor compra completa' : 'Mayor cobertura disponible'}
+                  {winner ? 'Mejor compra completa' : completeBaskets.length > 0 ? 'Comparando totales' : 'Mayor cobertura disponible'}
                 </h2>
-                {winnerSavings > 0 && winner && (
+                {winner && winnerSavings > 0 && (
                   <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--cc-sage)' }}>
-                    Según los estimados, {winner.store} sale {money(winnerSavings)} más barata que la
-                    siguiente canasta completa.
+                    {ranking.basis === 'published'
+                      ? `Según el total que publica la tienda, ${winner.store} sale ${money(winnerSavings)} más barata que la siguiente canasta completa.`
+                      : ranking.basis === 'mixed'
+                        ? `Entre las tiendas que publican el total, ${winner.store} sale ${money(winnerSavings)} más barata. Lider y aCuenta siguen estimados.`
+                        : `Según el precio de catálogo, ${winner.store} sale ${money(winnerSavings)} más barata que la siguiente canasta completa.`}
                   </p>
                 )}
                 <p className="mt-2 max-w-xl text-xs cc-text-tertiary">
-                  Estimado sumando el precio de cada producto. Las promociones por volumen y los montos
-                  mínimos de despacho pueden cambiar el total en la tienda.
+                  {ranking.standings.some(row => row.kind === 'pending')
+                    ? 'Consultando el total que publican Jumbo, Santa Isabel y Unimarc, con sus promociones.'
+                    : 'Jumbo, Santa Isabel y Unimarc se ordenan con el total publicado. Si no alcanza el pedido mínimo, esa canasta no se ofrece como la más barata. Lider y aCuenta no publican combos ni el mínimo.'}
                 </p>
-                {/*
-                  Un total real y un estimado no son comparables entre si. Mezclarlos
-                  en el orden daria una recomendacion que parece firme y no lo es, asi
-                  que el ranking se deja como esta y se dice que quedo en duda.
-                */}
-                {rankingEnDuda ? (
-                  <p className="mt-2 max-w-xl text-xs font-semibold" style={{ color: 'var(--cc-amber)' }}>
-                    Consultaste el total real de {realTotalStoreName} y difiere del estimado. El orden de
-                    arriba sigue calculado con estimados, así que esta comparación quedó en duda:
-                    consulta el total real de las otras cadenas antes de decidir.
+                {ranking.standings.filter(row => row.belowMinimum).map(row => (
+                  <p key={row.store} className="mt-2 max-w-xl text-xs font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                    {row.store} publica {money(row.amount)} y exige un mínimo de {money(row.minimumOrder ?? 0)}. Faltan {money(row.shortfall ?? 0)}. No se recomienda como compra.
                   </p>
-                ) : null}
+                ))}
               </div>
               <button
                 type="button"
@@ -1052,10 +1082,11 @@ export default function SupermarketPage() {
             </div>
 
             <div className="mt-5 flex gap-3 overflow-x-auto pb-2" data-testid="store-comparison-row">
-              {basketOptions.map((basket, index) => {
+              {rankedBaskets.map(({ basket, standing }, index) => {
                 const selected = basket.store === selectedBasket?.store;
                 const isWinner = basket.store === winner?.store;
                 const hasStoreResults = basket.coveredCount > 0;
+                const shownAmount = standing.kind === 'published' ? standing.amount : basket.subtotal;
                 return (
                   <button
                     key={basket.store}
@@ -1080,7 +1111,7 @@ export default function SupermarketPage() {
                     </div>
                     <p className="mt-3 text-lg font-bold cc-text-primary">{basket.store}</p>
                     <p className="mt-1 text-2xl font-bold cc-text-primary">
-                      {hasStoreResults ? money(basket.subtotal) : '—'}
+                      {hasStoreResults ? money(shownAmount) : '—'}
                     </p>
                     <p className="mt-2 text-xs cc-text-secondary">
                       {basket.coveredCount} de {basket.requestedCount} productos
@@ -1094,12 +1125,20 @@ export default function SupermarketPage() {
                         }}
                       />
                     </div>
-                    <p className="mt-3 text-xs font-semibold" style={{ color: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
+                    <p className="mt-3 text-xs font-semibold" style={{ color: standing.belowMinimum ? 'var(--cc-amber)' : basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
                       {!hasStoreResults
                         ? 'Sin precios vigentes para esta lista'
-                        : basket.complete
-                          ? 'Canasta completa'
-                          : `${basket.missingTerms.length} productos faltantes`}
+                        : standing.belowMinimum
+                          ? `Bajo el mínimo de ${money(standing.minimumOrder ?? 0)}`
+                          : standing.kind === 'published'
+                            ? 'Total de la tienda'
+                            : standing.kind === 'pending'
+                              ? 'Consultando total…'
+                              : standing.kind === 'unverified'
+                                ? 'La tienda no confirmó el total'
+                                : basket.complete
+                                  ? 'Estimado de catálogo'
+                                  : `${basket.missingTerms.length} productos faltantes`}
                     </p>
                     <p className="mt-2 text-[10px] cc-text-tertiary">Actualización: {freshness(basket.fetchedAt)}</p>
                   </button>
@@ -1261,7 +1300,7 @@ export default function SupermarketPage() {
                   style={{ borderColor: 'var(--cc-line)' }}
                 >
                   {realTotalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  Ver total real
+                  Actualizar total
                 </button>
                 <button
                   type="button"

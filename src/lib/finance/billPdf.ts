@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { collectionNoticeCopy } from '@/lib/finance/collectionNoticeCopy';
 import type { BillNotice } from '@/lib/types';
 
 const PAGE_WIDTH = 595;
@@ -96,7 +97,7 @@ class Writer {
     }
 }
 
-function drawNotice(page: PDFPage, fonts: Fonts, notice: BillNotice, siteUrl: string, generatedAt: string) {
+function drawNotice(page: PDFPage, fonts: Fonts, notice: BillNotice, generatedAt: string, collectionLine: string) {
     const w = new Writer(page, fonts);
 
     w.text(notice.community.name, MARGIN, w.y, { size: 13, bold: true });
@@ -170,11 +171,11 @@ function drawNotice(page: PDFPage, fonts: Fonts, notice: BillNotice, siteUrl: st
     w.y -= 24;
 
     w.rule(MARGIN + 42);
-    w.text(`Paga en línea o revisa tu cartola en ${siteUrl}/expenses. Si pagaste por transferencia, envía el comprobante a la administración.`, MARGIN, MARGIN + 28, { size: 8, color: MUTED });
+    w.text(collectionLine, MARGIN, MARGIN + 28, { size: 8, color: MUTED });
     w.text(`Documento generado el ${longDate(generatedAt)} a partir de los registros de la comunidad. Pagos posteriores a esa fecha no están reflejados.`, MARGIN, MARGIN + 16, { size: 7.5, color: MUTED });
 }
 
-export async function renderBillNoticesPdf(notices: BillNotice[], options: { siteUrl: string; generatedAt: string }): Promise<Uint8Array> {
+export async function renderBillNoticesPdf(notices: BillNotice[], options: { siteUrl: string; generatedAt: string; onlinePay?: boolean }): Promise<Uint8Array> {
     const pdf = await PDFDocument.create();
     pdf.setTitle(pdfSafe(notices.length === 1
         ? `Aviso de cobro ${notices[0].unit.label} ${periodLabel(notices[0].month)}`
@@ -185,7 +186,8 @@ export async function renderBillNoticesPdf(notices: BillNotice[], options: { sit
     };
     for (const notice of notices) {
         const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-        drawNotice(page, fonts, notice, options.siteUrl.replace(/\/$/, ''), options.generatedAt);
+        const siteUrl = options.siteUrl.replace(/\/$/, '');
+        drawNotice(page, fonts, notice, options.generatedAt, collectionNoticeCopy(siteUrl, options.onlinePay === true).pdfLine);
     }
     return pdf.save();
 }
