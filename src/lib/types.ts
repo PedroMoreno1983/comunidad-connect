@@ -1952,6 +1952,7 @@ export interface StatementEntry {
     amount: number;
     balance: number;
     reference: string | null;
+    month?: string | null;
 }
 
 /** Cartola de una unidad: sus movimientos y el saldo que dejan. */

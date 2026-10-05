@@ -43,6 +43,7 @@ export default function CobranzaPage() {
     const [payDate, setPayDate] = useState(today);
     const [payMethod, setPayMethod] = useState("transfer");
     const [payReference, setPayReference] = useState("");
+    const [payExpenseId, setPayExpenseId] = useState("");
 
     const [chargeLabel, setChargeLabel] = useState("");
     const [chargeAmount, setChargeAmount] = useState("");
@@ -81,6 +82,7 @@ export default function CobranzaPage() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "No se pudo cargar la cartola.");
             setStatement(data);
+            setPayExpenseId("");
             setPayAmount(String(Math.max(0, data.balance)));
         } catch (error) {
             toast({
@@ -110,6 +112,7 @@ export default function CobranzaPage() {
                     paidAt: payDate,
                     method: payMethod,
                     reference: payReference.trim() || null,
+                    expenseId: payExpenseId || null,
                 }),
             });
             const data = await response.json();
@@ -537,6 +540,13 @@ export default function CobranzaPage() {
                                                 <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)}
                                                     className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                                             </div>
+                                            <select value={payExpenseId} onChange={e => setPayExpenseId(e.target.value)}
+                                                className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                                <option value="">Crédito sin mes elegido</option>
+                                                {(statement?.entries ?? []).filter(entry => entry.kind === "gasto_comun").map(entry => (
+                                                    <option key={entry.id} value={entry.id}>{entry.label}</option>
+                                                ))}
+                                            </select>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
                                                     className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
