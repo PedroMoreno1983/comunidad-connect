@@ -1,6 +1,6 @@
 "use client";
 
-import { ExpensesService } from "@/lib/api";
+import { ExpensesService, ResidentFinanceService } from "@/lib/api";
 import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Loader2, Download } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
@@ -16,9 +16,9 @@ import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { redirectToPaymentCheckout } from "@/lib/payments/redirectToCheckout";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
-import type { ExpenseDatabaseRow, FinanceDocumentLink, PaymentCheckout, UnitExpenseView } from "@/lib/types";
+import type { ExpenseDatabaseRow, FinanceDocumentLink, PaymentCheckout, UnitExpenseView, UnitStatement } from "@/lib/types";
 import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
-import { formatFinanceDate } from "@/lib/finance/chileDates";
+import { formatFinanceDate, todayInChile } from "@/lib/finance/chileDates";
 
 function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
     return {
@@ -54,6 +54,12 @@ export default function ExpensesPage() {
     const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number; paidAt?: string | null } | null>(null);
     const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
     const [documentLinks, setDocumentLinks] = useState<FinanceDocumentLink[]>([]);
+    const [statement, setStatement] = useState<UnitStatement | null>(null);
+    const [reportAmount, setReportAmount] = useState("");
+    const [reportDate, setReportDate] = useState(todayInChile);
+    const [reportReference, setReportReference] = useState("");
+    const [reportExpenseId, setReportExpenseId] = useState("");
+    const [reporting, setReporting] = useState(false);
 
     const targetUnitId = user?.unitId;
     const paymentReturnExpenseId = searchParams.get("payment") === "return"
@@ -102,6 +108,11 @@ export default function ExpensesPage() {
                 }
 
                 setExpenses(mapped);
+                try {
+                    setStatement(await ResidentFinanceService.getStatement());
+                } catch {
+                    setStatement(null);
+                }
                 const unpaid = mapped.filter(expense => expense.status === "pending" || expense.status === "overdue");
                 setSelectedExpenseId(current => {
                     if (current && unpaid.some(expense => expense.id === current)) return current;
@@ -633,6 +644,115 @@ export default function ExpensesPage() {
                     </div>
                 )}
             </div>
+
+            {statement && (
+                <section className="mt-6 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <h2 className="text-lg font-bold" style={{ color: "var(--cc-ink)" }}>Cartola</h2>
+                    <p className="mt-1 text-sm" style={{ color: "var(--cc-ink-muted)" }}>
+                        Saldo {statement.balance < 0 ? `a favor $${Math.abs(statement.balance).toLocaleString("es-CL")}` : `$${Math.round(statement.balance).toLocaleString("es-CL")}`}
+                        {" · "}abonos ${Math.round(statement.totalPaid).toLocaleString("es-CL")}
+                    </p>
+                    <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">
+                        {statement.entries.length === 0 ? (
+                            <li style={{ color: "var(--cc-ink-muted)" }}>Todavía no hay cargos ni abonos.</li>
+                        ) : statement.entries.slice(-12).map(entry => (
+                            <li key={entry.id} className="flex items-baseline justify-between gap-3">
+                                <span>
+                                    <span className="font-mono text-xs" style={{ color: "var(--cc-ink-tertiary)" }}>{formatFinanceDate(entry.date)}</span>
+                                    {" "}{entry.label}
+                                    {entry.reference ? ` · ${entry.reference}` : ""}
+                                </span>
+                                <span className="font-mono" style={{ color: entry.amount < 0 ? "var(--cc-sage)" : "var(--cc-ink)" }}>
+                                    {entry.amount < 0 ? `−$${Math.abs(entry.amount).toLocaleString("es-CL")}` : `$${entry.amount.toLocaleString("es-CL")}`}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <form
+                        className="mt-4 space-y-2 border-t pt-4"
+                        style={{ borderColor: "var(--cc-line)" }}
+                        onSubmit={event => {
+                            event.preventDefault();
+                            const amount = Number(reportAmount.replace(/[^\d]/g, ""));
+                            if (!reportExpenseId || !Number.isFinite(amount) || amount <= 0 || reportReference.trim().length < 4) {
+                                toast({
+                                    title: "Faltan datos",
+                                    description: "Elige el mes, un monto y el número de comprobante.",
+                                    variant: "destructive",
+                                });
+                                return;
+                            }
+                            setReporting(true);
+                            void ResidentFinanceService.reportTransfer({
+                                amount,
+                                paidAt: reportDate,
+                                reference: reportReference.trim(),
+                                expenseId: reportExpenseId,
+                            }).then(result => {
+                                toast({
+                                    title: "Transferencia informada",
+                                    description: result.notified > 0
+                                        ? "Administración debe verificar el comprobante. El saldo no cambia hasta que la registre."
+                                        : "No hay un administrador en la comunidad para recibir el aviso.",
+                                    variant: "success",
+                                });
+                                setReportAmount("");
+                                setReportReference("");
+                            }).catch(error => {
+                                toast({
+                                    title: "No se informó",
+                                    description: error instanceof Error ? error.message : "Intenta nuevamente.",
+                                    variant: "destructive",
+                                });
+                            }).finally(() => setReporting(false));
+                        }}
+                    >
+                        <p className="text-sm font-semibold" style={{ color: "var(--cc-ink)" }}>Informar una transferencia</p>
+                        <p className="text-xs" style={{ color: "var(--cc-ink-muted)" }}>
+                            Elige el mes del cobro. El aviso no marca la cuota como pagada.
+                        </p>
+                        <select
+                            value={reportExpenseId}
+                            onChange={event => setReportExpenseId(event.target.value)}
+                            className="w-full rounded-lg border px-3 py-2 text-sm"
+                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                        >
+                            <option value="">Mes del cobro</option>
+                            {statement.entries.filter(entry => entry.kind === "gasto_comun").map(entry => (
+                                <option key={entry.id} value={entry.id}>{entry.label}</option>
+                            ))}
+                        </select>
+                        <div className="grid grid-cols-2 gap-2">
+                            <input
+                                value={reportAmount}
+                                onChange={event => setReportAmount(event.target.value)}
+                                inputMode="numeric"
+                                placeholder="Monto"
+                                className="rounded-lg border px-3 py-2 text-sm"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                            />
+                            <input
+                                type="date"
+                                value={reportDate}
+                                onChange={event => setReportDate(event.target.value)}
+                                className="rounded-lg border px-3 py-2 text-sm"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                            />
+                        </div>
+                        <input
+                            value={reportReference}
+                            onChange={event => setReportReference(event.target.value)}
+                            placeholder="N° de comprobante"
+                            className="w-full rounded-lg border px-3 py-2 text-sm"
+                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                        />
+                        <Button type="submit" variant="primary" block disabled={reporting}>
+                            {reporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar aviso a administración"}
+                        </Button>
+                    </form>
+                </section>
+            )}
         </ErrorBoundary>
     );
 }

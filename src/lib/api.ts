@@ -70,6 +70,7 @@ import {
     SupermarketGroupOrder,
     TimeBankOffer,
     Unit,
+    UnitStatement,
     User,
     WaterReading,
 } from './types';
@@ -2257,6 +2258,29 @@ export const ResidentFinanceService = {
             paid_at: typeof row.paid_at === "string" ? row.paid_at : undefined,
             units: { number: fallbackUnitNumber },
         }));
+    },
+
+    async getStatement(): Promise<UnitStatement> {
+        const data = await readApi<UnitStatement & { scope?: string }>(
+            '/api/finance/statement',
+            'No se pudo cargar la cartola.',
+        );
+        return {
+            unitLabel: data.unitLabel,
+            entries: data.entries || [],
+            balance: data.balance,
+            overdueAmount: data.overdueAmount,
+            totalCharged: data.totalCharged,
+            totalPaid: data.totalPaid,
+        };
+    },
+
+    async reportTransfer(input: { amount: number; paidAt: string; reference: string; expenseId: string }) {
+        return readApi<{ reported: true; notified: number }>(
+            '/api/finance/transfer-report',
+            'No se pudo informar la transferencia.',
+            financeWrite(input),
+        );
     },
 
     async getAgreements(): Promise<PaymentAgreement[]> {
