@@ -1,0 +1,10 @@
+DOCUMENTO SINTETICO DE PRUEBA — NO ES UNA FACTURA NI UN PAGO REAL
+
+Proveedor ficticio: Servicios QA Comunidad
+Numero de documento: QA-FIN-20261005-01
+Fecha de emision: 2026-10-05
+Concepto: QA FIN 20261005 mantencion de prueba
+Total CLP: 10000
+Categoria: Mantencion
+
+Este archivo permite verificar extraccion, revision y duplicados en una comunidad de prueba.
