@@ -182,7 +182,7 @@ async function navigate(driver, url) {
 async function bodyText(driver) {
   return normalize(await driver.executeScript(`
     const body = document.body ? document.body.innerText : '';
-    return (document.title || '') + '\n' + body;
+    return (document.title || '') + '\\n' + body;
   `).catch(() => ''));
 }
 
