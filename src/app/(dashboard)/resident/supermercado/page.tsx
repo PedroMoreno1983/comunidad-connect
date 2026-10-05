@@ -10,6 +10,7 @@ import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { comparableProduct, comparisonTerm } from '@/lib/supermarketEquivalence';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import type {
+  SavedShoppingList,
   SupermarketBasketCandidate,
   SupermarketCatalogProduct,
   SupermarketSearchCandidate,
@@ -53,6 +54,11 @@ function cartCandidate(product: SupermarketSelectedProduct): SupermarketSearchCa
   };
 }
 
+function listWhen(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', timeZone: 'America/Santiago' }).format(date);
+}
+
 function validForCart(store: string, product: { sku?: string; offerId?: string; productUrl?: string }) {
   return store === 'Lider'
     ? Boolean(product.sku && product.offerId)
@@ -69,6 +75,11 @@ export default function SupermarketPage() {
   const [hasMore, setHasMore] = useState(false);
   const [cart, setCart] = useState<SupermarketSelectedProduct[]>([]);
   const [listInput, setListInput] = useState('');
+  const [savedLists, setSavedLists] = useState<SavedShoppingList[]>([]);
+  const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [saveNote, setSaveNote] = useState('');
+  const savedSnapshot = useRef('');
+  const activeListIdRef = useRef<string | null>(null);
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState('');
   const [unresolved, setUnresolved] = useState<string[]>([]);
@@ -180,8 +191,46 @@ export default function SupermarketPage() {
     setCheckoutStore(primaryStore);
   };
 
-  const loadList = async (value: string) => {
-    if (!primaryStore) return;
+  useEffect(() => { activeListIdRef.current = activeListId; }, [activeListId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void SupermarketCatalogService.savedLists()
+      .then(lists => { if (!cancelled) setSavedLists(lists); })
+      .catch(() => { if (!cancelled) setSaveNote('No se pudieron leer tus listas guardadas.'); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!primaryStore || parseGroupShoppingList(listInput, true).length === 0) return;
+    const snapshot = `${activeListId ?? ''}|${primaryStore}|${listInput}`;
+    if (snapshot === savedSnapshot.current) return;
+    const timer = window.setTimeout(() => {
+      void SupermarketCatalogService.saveList({ id: activeListId, body: listInput, store: primaryStore })
+        .then(list => {
+          savedSnapshot.current = `${list.id}|${primaryStore}|${listInput}`;
+          setActiveListId(list.id);
+          setSavedLists(current => [list, ...current.filter(item => item.id !== list.id)].slice(0, 30));
+          setSaveNote('');
+        })
+        .catch(() => setSaveNote('No se pudo guardar la lista.'));
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [activeListId, listInput, primaryStore]);
+
+  useEffect(() => {
+    const persistNow = () => {
+      if (!primaryStore || parseGroupShoppingList(listInput, true).length === 0) return;
+      const snapshot = `${activeListIdRef.current ?? ''}|${primaryStore}|${listInput}`;
+      if (snapshot === savedSnapshot.current) return;
+      void SupermarketCatalogService.saveList({ id: activeListIdRef.current, body: listInput, store: primaryStore }, true);
+    };
+    window.addEventListener('pagehide', persistNow);
+    return () => window.removeEventListener('pagehide', persistNow);
+  }, [listInput, primaryStore]);
+
+  const loadList = async (value: string, storeName = primaryStore) => {
+    if (!storeName) return;
     const input = value.trim();
     if (!input || input.length > MAX_SHOPPING_LIST_CHARS) {
       setListError(`La lista admite hasta ${MAX_SHOPPING_LIST_CHARS.toLocaleString('es-CL')} caracteres.`);
@@ -200,18 +249,18 @@ export default function SupermarketPage() {
     setUnresolved([]);
     setCart([]);
     clearComparison();
-    setCheckoutStore(primaryStore);
+    setCheckoutStore(storeName);
     const found = new Map<string, SupermarketSelectedProduct>();
     const missing: string[] = [];
     const processed = new Set<string>();
     try {
       for (let offset = 0; offset < requested.length; offset += 20) {
         const batch = requested.slice(offset, offset + 20);
-        const results = await SupermarketCatalogService.resolveList(primaryStore, batch.map(item => `${item.quantity} ${item.term}`).join('\n'), controller.signal);
+        const results = await SupermarketCatalogService.resolveList(storeName, batch.map(item => `${item.quantity} ${item.term}`).join('\n'), controller.signal);
         if (controller.signal.aborted) return;
         for (const result of results) {
           processed.add(result.term);
-          if (!result.product || !validForCart(primaryStore, result.product)) {
+          if (!result.product || !validForCart(storeName, result.product)) {
             missing.push(result.term);
             continue;
           }
@@ -231,6 +280,36 @@ export default function SupermarketPage() {
       }
     } finally {
       if (!controller.signal.aborted) setListLoading(false);
+    }
+  };
+
+  const openSavedList = async (list: SavedShoppingList) => {
+    setActiveListId(list.id);
+    setListInput(list.body);
+    const store = list.store && SUPERMARKET_STORES.includes(list.store as typeof SUPERMARKET_STORES[number])
+      ? list.store
+      : primaryStore;
+    if (store && store !== primaryStore) changeStore(store);
+    if (store) await loadList(list.body, store);
+  };
+
+  const startNewList = () => {
+    setActiveListId(null);
+    setListInput('');
+    setCart([]);
+    setUnresolved([]);
+    setListError('');
+    clearComparison();
+    savedSnapshot.current = '';
+  };
+
+  const removeSavedList = async (id: string) => {
+    try {
+      await SupermarketCatalogService.deleteList(id);
+      setSavedLists(current => current.filter(item => item.id !== id));
+      if (activeListId === id) setActiveListId(null);
+    } catch (error) {
+      setSaveNote(error instanceof Error ? error.message : 'No se pudo borrar la lista.');
     }
   };
 
@@ -339,7 +418,31 @@ export default function SupermarketPage() {
             </label>
             <div className="mt-4 rounded-xl border p-4" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}>
               <h3 className="text-sm font-bold cc-text-primary">Carga una lista completa</h3>
-              <p className="mt-1 text-xs cc-text-secondary">Pega una lista o sube un TXT, CSV o XLSX. La búsqueda en {primaryStore} empieza al pegar o subir el archivo; revisa cada producto antes de comprar.</p>
+              <p className="mt-1 text-xs cc-text-secondary">Pega una lista o sube un TXT, CSV o XLSX. Se guarda sola para la próxima compra. La búsqueda en {primaryStore} empieza al pegar o subir el archivo; revisa cada producto antes de comprar.</p>
+              {savedLists.length > 0 ? (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold cc-text-primary">Listas guardadas</p>
+                    {listInput.trim() ? <button type="button" onClick={startNewList} className="text-xs font-semibold underline cc-text-secondary">Nueva lista</button> : null}
+                  </div>
+                  <ul className="mt-2 space-y-2">
+                    {savedLists.map(list => (
+                      <li key={list.id} className="flex items-center gap-2">
+                        <button type="button" onClick={() => void openSavedList(list)}
+                          className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-left"
+                          style={{ borderColor: activeListId === list.id ? 'var(--cc-copper)' : 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+                          <span className="block truncate text-xs font-semibold cc-text-primary">{list.title}</span>
+                          <span className="text-[11px] cc-text-tertiary">{[list.store, listWhen(list.updatedAt)].filter(Boolean).join(' · ')}</span>
+                        </button>
+                        <button type="button" aria-label={`Borrar lista ${list.title}`} onClick={() => void removeSavedList(list.id)} className="rounded-lg p-2 cc-text-tertiary">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {saveNote ? <p className="mt-2 text-xs cc-text-tertiary">{saveNote}</p> : null}
               <textarea value={listInput} onChange={event => setListInput(event.target.value)}
                 onPaste={event => {
                   const pasted = event.clipboardData.getData('text');

@@ -12,6 +12,7 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, MONTH_PATTERN, DATE_PATTERN } from './billingService';
+import { isCommitteeDiscount, signedChargeAmount, COMMITTEE_DISCOUNT_LABEL, COMMITTEE_DISCOUNT_NOTE } from './adjustments';
 import {
     buildAccountStatement,
     calculateLateInterest,
@@ -49,6 +50,7 @@ export interface UnitPaymentInput {
     method: string;
     reference?: string | null;
     notes?: string | null;
+    expenseId?: string | null;
 }
 
 async function assertUnitBelongsToCommunity(communityId: string, unitId: string) {
@@ -79,10 +81,12 @@ export async function addUnitCharge(
     if (!MONTH_PATTERN.test(input.month)) {
         throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
     }
-    if (!CHARGE_KINDS.has(input.kind)) {
+    const asDiscount = input.kind === 'committee' || isCommitteeDiscount(input);
+    const kind = asDiscount ? 'other' : input.kind;
+    if (!CHARGE_KINDS.has(kind)) {
         throw new BillingError('bad_kind', 'Tipo de cargo no válido.');
     }
-    if (!input.label.trim()) {
+    if (!input.label.trim() && !asDiscount) {
         throw new BillingError('bad_label', 'Escribe una descripción del cargo.');
     }
     const amount = Math.round(Number(input.amount));
@@ -95,6 +99,11 @@ export async function addUnitCharge(
 
     const unit = await assertUnitBelongsToCommunity(communityId, input.unitId);
     const admin = getSupabaseAdmin();
+    const discount = asDiscount;
+    const label = discount
+        ? (input.label.trim() || COMMITTEE_DISCOUNT_LABEL)
+        : input.label.trim();
+    const notes = discount ? COMMITTEE_DISCOUNT_NOTE : (input.notes || null);
 
     const { data, error } = await admin
         .from('unit_charges')
@@ -102,12 +111,13 @@ export async function addUnitCharge(
             community_id: communityId,
             unit_id: input.unitId,
             month: input.month,
-            kind: input.kind,
-            label: input.label.trim(),
+            kind: discount ? 'other' : kind,
+            label,
             amount,
             due_date: input.dueDate || null,
-            notes: input.notes || null,
+            notes,
             created_by: createdBy,
+            status: discount ? 'paid' : 'pending',
         })
         .select('id, unit_id, month, kind, label, amount, status, due_date, created_at')
         .single();
@@ -119,8 +129,10 @@ export async function addUnitCharge(
             user_id: String(unit.owner_id),
             type: 'warning',
             category: 'finance_charge',
-            title: `${CHARGE_KIND_LABELS[input.kind] || 'Nuevo cargo'} en tu unidad`,
-            body: `Se registró "${input.label.trim()}" por $${amount.toLocaleString('es-CL')} en tu unidad ${unitLabel(unit)}.`,
+            title: `${discount ? 'Descuento de comité' : (CHARGE_KIND_LABELS[input.kind] || 'Nuevo cargo')} en tu unidad`,
+            body: discount
+                ? `Se registró un descuento de comité de $${amount.toLocaleString('es-CL')} en tu unidad ${unitLabel(unit)}.`
+                : `Se registró "${input.label.trim()}" por $${amount.toLocaleString('es-CL')} en tu unidad ${unitLabel(unit)}.`,
             link: '/resident/finances',
             community_id: communityId,
         }).then(() => undefined, () => undefined);
@@ -184,6 +196,7 @@ export async function recordPayment(
             reference,
             notes: input.notes || null,
             recorded_by: recordedBy,
+            expense_id: input.expenseId || null,
         })
         .select('id, unit_id, amount, paid_at, method, reference, created_at')
         .single();
@@ -255,7 +268,7 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
             .select('id, month, amount, status, due_date, created_at')
             .eq('community_id', communityId).eq('unit_id', unitId),
         admin.from('unit_charges')
-            .select('id, month, amount, status, due_date, created_at')
+            .select('id, month, amount, status, due_date, created_at, label, notes')
             .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
         admin.from('unit_payments')
             .select('amount')
@@ -279,7 +292,7 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
         ...(chargesResult.data ?? []).map(row => ({
             table: 'unit_charges' as const,
             id: String(row.id),
-            amount: Math.round(Number(row.amount || 0)),
+            amount: isCommitteeDiscount(row) ? 0 : Math.round(Number(row.amount || 0)),
             status: String(row.status),
             sortKey: String(row.due_date || row.created_at || ''),
         })),
@@ -325,7 +338,7 @@ export async function getUnitStatement(
             .select('id, month, amount, due_date, created_at')
             .eq('community_id', communityId).eq('unit_id', unitId),
         admin.from('unit_charges')
-            .select('id, month, kind, label, amount, due_date, created_at')
+            .select('id, month, kind, label, amount, due_date, created_at, notes')
             .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
         admin.from('unit_payments')
             .select('id, amount, paid_at, method, reference, created_at')
@@ -349,7 +362,7 @@ export async function getUnitStatement(
             id: String(row.id),
             kind: String(row.kind) as LedgerCharge['kind'],
             label: String(row.label),
-            amount: Number(row.amount || 0),
+            amount: signedChargeAmount(row),
             month: String(row.month),
             dueDate: row.due_date ? String(row.due_date) : null,
             createdAt: String(row.created_at),

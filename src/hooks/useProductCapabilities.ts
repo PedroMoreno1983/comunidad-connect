@@ -6,6 +6,7 @@ import type { ProductCapabilities } from '@/lib/types';
 
 export const HIDDEN_PRODUCT_CAPABILITIES: ProductCapabilities = {
   onlinePayments: false,
+  paymentProvider: null,
   marketingReels: false,
   iotAutomation: false,
   externalMonitoring: false,

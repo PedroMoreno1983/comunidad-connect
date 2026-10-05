@@ -13,6 +13,9 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const COLUMNS = 'id,store,name,brand,sku,offer_id,sales_unit,price,image_url,product_url,last_seen_at';
+const MAX_LIST_CANDIDATES = 5000;
+const SOLID_MATCH_SCORE = 70;
+const LIVE_STORES = new Set<ScrapedItem['store']>(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus']);
 
 export async function POST(req: NextRequest) {
   const client = await getSupabaseUserClient();
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
         const filters = matchAnchors(canonicalCatalogTerm(item.term)).map(catalogNameOrFilter).join(',');
         // Rank every candidate, not only the newest 350. The desired brand or
         // package can be further down the same catalog that browsing displays.
-        for (let offset = 0; ; offset += 500) {
+        for (let offset = 0; rows.length < MAX_LIST_CANDIDATES; offset += 500) {
           let query = admin.from('supermarket_products').select(COLUMNS)
             .eq('store', store).eq('in_stock', true).gt('price', 0)
             .gte('last_seen_at', new Date(Date.now() - age).toISOString())
@@ -56,7 +59,11 @@ export async function POST(req: NextRequest) {
         return rows;
       };
       let rows = await fetchRows(FRESH_PRICE_AGE_MS);
-      if (!rows.length) rows = await fetchRows(STALE_PRICE_AGE_MS);
+      let usedStale = false;
+      if (!rows.length) {
+        rows = await fetchRows(STALE_PRICE_AGE_MS);
+        usedStale = true;
+      }
       const suitable = (name: string, sku?: string, offerId?: string) => (
         catalogSearchScore(item.term, name) >= 0
         && isProductSuitableForRequest(name, item.term, item.unit)
@@ -67,9 +74,12 @@ export async function POST(req: NextRequest) {
         .filter(entry => suitable(String(entry.row.name), String(entry.row.sku || ''), String(entry.row.offer_id || '')))
         .sort((a, b) => b.score - a.score || Number(a.row.price) - Number(b.row.price))[0];
       let best = pickBest(rows);
-      // Fresh but unrelated candidates must not suppress the older exact match.
-      if (!best && rows.length) best = pickBest(await fetchRows(STALE_PRICE_AGE_MS));
-      if (!best && (['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'] as const).includes(store as ScrapedItem['store'])) {
+      // A recent spice jar must not hide an older exact vegetable.
+      if ((!best || best.score < SOLID_MATCH_SCORE) && !usedStale) {
+        const older = pickBest(await fetchRows(STALE_PRICE_AGE_MS));
+        if (older && (!best || older.score > best.score)) best = older;
+      }
+      if ((!best || best.score < SOLID_MATCH_SCORE) && LIVE_STORES.has(store as ScrapedItem['store'])) {
         const live = (await searchAllRetailerProducts(store as ScrapedItem['store'], item.term).catch(error => {
           console.error('[supermarket list resolution] live search failed', error);
           return [];
@@ -77,28 +87,30 @@ export async function POST(req: NextRequest) {
           .filter(hit => hit.store === store && suitable(hit.name, hit.sku, hit.offerId))
           .sort((a, b) => catalogSearchScore(item.term, b.name) - catalogSearchScore(item.term, a.name) || a.price - b.price);
         const chosen = live[0];
-        if (!chosen) return { term: item.term, quantity: item.quantity };
-        after(async () => {
-          try { await rememberLiveProducts(store, item.term, live.slice(0, 8)); }
-          catch (error) { console.error('[supermarket list resolution] live persistence failed', error); }
-        });
-        return {
-          term: item.term,
-          quantity: item.quantity,
-          product: {
-            id: chosen.sku || `${store}:${chosen.name}`,
-            store,
-            name: chosen.name,
-            brand: chosen.brand || '',
-            sku: chosen.sku,
-            offerId: chosen.offerId,
-            salesUnit: chosen.salesUnit,
-            price: chosen.price,
-            imageUrl: chosen.imageUrl,
-            productUrl: chosen.productUrl,
-            fetchedAt: new Date().toISOString(),
-          },
-        };
+        const chosenScore = chosen ? catalogSearchScore(item.term, chosen.name) : -1;
+        if (chosen && (!best || chosenScore > best.score)) {
+          after(async () => {
+            try { await rememberLiveProducts(store, item.term, live.slice(0, 8)); }
+            catch (error) { console.error('[supermarket list resolution] live persistence failed', error); }
+          });
+          return {
+            term: item.term,
+            quantity: item.quantity,
+            product: {
+              id: chosen.sku || `${store}:${chosen.name}`,
+              store,
+              name: chosen.name,
+              brand: chosen.brand || '',
+              sku: chosen.sku,
+              offerId: chosen.offerId,
+              salesUnit: chosen.salesUnit,
+              price: chosen.price,
+              imageUrl: chosen.imageUrl,
+              productUrl: chosen.productUrl,
+              fetchedAt: new Date().toISOString(),
+            },
+          };
+        }
       }
       if (!best) return { term: item.term, quantity: item.quantity };
       const row = best.row;

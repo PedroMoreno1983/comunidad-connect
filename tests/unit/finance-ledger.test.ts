@@ -98,6 +98,20 @@ describe('buildAccountStatement', () => {
         expect(statement.entries[1].balance).toBe(0);
     });
 
+    it('trata el descuento de comité como abono y no como mora extra', () => {
+        const statement = buildAccountStatement(
+            [
+                charge('c1', '2026-05', 100_000, '2026-06-05'),
+                { id: 'd1', kind: 'other', label: 'Descuento de comité', amount: -20_000, month: '2026-05', dueDate: '2026-06-05', createdAt: '2026-06-05T00:00:00Z' },
+            ],
+            [],
+            '2026-07-10',
+        );
+        expect(statement.balance).toBe(80_000);
+        expect(statement.overdueAmount).toBe(80_000);
+        expect(statement.totalCharged).toBe(80_000);
+    });
+
     it('mezcla multas e intereses con el gasto común en una sola cartola', () => {
         const statement = buildAccountStatement(
             [

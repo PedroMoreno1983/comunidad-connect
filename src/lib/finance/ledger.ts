@@ -118,15 +118,19 @@ export function buildAccountStatement(
 
     const totalCharged = chargeEntries.reduce((sum, entry) => sum + entry.amount, 0);
     const totalPaid = payments.reduce((sum, payment) => sum + Math.round(payment.amount), 0);
+    const credits = chargeEntries
+        .filter(entry => entry.amount < 0)
+        .reduce((sum, entry) => sum + Math.abs(entry.amount), 0);
 
     // La mora se calcula contra el saldo, no cargo por cargo: los pagos se
     // imputan a la deuda más antigua primero (criterio habitual en copropiedad),
     // así un residente que pagó parcialmente no aparece moroso por el total.
+    // Un descuento de comité (monto negativo) se aplica como si fuera un pago.
     const overdueCharges = chargeEntries
-        .filter(entry => entry.date <= asOf)
+        .filter(entry => entry.amount > 0 && entry.date <= asOf)
         .sort((left, right) => left.date.localeCompare(right.date));
 
-    let unapplied = totalPaid;
+    let unapplied = totalPaid + credits;
     let overdueAmount = 0;
     let oldestOverdueMonth: string | null = null;
     for (const charge of overdueCharges) {

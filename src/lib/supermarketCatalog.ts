@@ -18,7 +18,7 @@ import {
   termsMissingAnyStore,
 } from '@/lib/supermarketCatalogGaps';
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
-import { matchAnchor, matchAnchors, productMatchScore } from '@/lib/supermarketText';
+import { foldedAccentVariants, matchAnchor, matchAnchors, productMatchScore } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type { SupermarketMeasurementUnit } from '@/lib/types';
 
@@ -105,9 +105,12 @@ async function ilikeTermRows(
   );
   const storesToScan = (missingStores ?? SUPERMARKET_STORES).filter(store => !presentStores.has(store));
   const fallbackRows = (await Promise.all(storesToScan.map(async store => {
-    const patterns = [...new Set([pattern, ...anchors.map(anchor => (
-      anchor.length <= 2 ? `${anchor}%` : `%${anchor}%`
-    ))])];
+    const likePattern = (value: string) => (value.length <= 2 ? `${value}%` : `%${value}%`);
+    const patterns = [...new Set([
+      pattern,
+      ...anchors.map(likePattern),
+      ...foldedAccentVariants(primary).map(likePattern),
+    ])];
     const pages = await Promise.all(patterns.map(async storePattern => {
       const { data: storeData, error: storeError } = await supabaseAdmin
         .from('supermarket_products')

@@ -13,13 +13,28 @@
  * misma alícuota es de $1.
  */
 
-export type ProrateMethod = 'share' | 'equal';
+export type ProrateMethod = 'share' | 'equal' | 'consumption';
+
+/** Id sintético: no existe en community_expenses, no se guarda como source_expense_id. */
+export const FIXED_QUOTA_EXPENSE_ID = 'fixed-quota';
+
+export function fixedQuotaExpense(amount: number, method: 'share' | 'equal'): ProrationExpense {
+    return {
+        id: FIXED_QUOTA_EXPENSE_ID,
+        category: 'other',
+        label: 'Cuota fija',
+        amount,
+        prorateMethod: method,
+    };
+}
 
 export interface ProrationUnit {
     id: string;
     label: string;
     /** Alícuota en tanto por mil. null cuando la unidad no la tiene definida. */
     sharePermille: number | null;
+    /** Consumo del periodo en m³, cuando el egreso se reparte por medidor. */
+    consumptionM3?: number | null;
 }
 
 export interface ProrationExpense {
@@ -114,6 +129,8 @@ export function prorateExpenses(
     const unitsWithoutShare = units.filter(unit => unit.sharePermille === null || unit.sharePermille <= 0);
     const shareTotal = units.reduce((sum, unit) => sum + (unit.sharePermille ?? 0), 0);
     const needsShare = expenses.some(expense => expense.prorateMethod === 'share');
+    const needsConsumption = expenses.some(expense => expense.prorateMethod === 'consumption');
+    const consumptionTotal = units.reduce((sum, unit) => sum + Math.max(0, unit.consumptionM3 ?? 0), 0);
     const fellBackToEqualSplit = needsShare && unitsWithoutShare.length > 0;
 
     if (fellBackToEqualSplit) {
@@ -132,6 +149,10 @@ export function prorateExpenses(
         );
     }
 
+    if (needsConsumption && consumptionTotal <= 0) {
+        warnings.push('El egreso por consumo no tiene m³ útiles: se reparte en partes iguales.');
+    }
+
     const useShare = needsShare && !fellBackToEqualSplit;
     const accumulator = new Map<string, ProratedItem[]>(units.map(unit => [unit.id, []]));
     let totalExpenses = 0;
@@ -141,17 +162,23 @@ export function prorateExpenses(
         if (amount <= 0) continue;
         totalExpenses += amount;
 
-        const weights = expense.prorateMethod === 'share' && useShare
-            ? units.map(unit => unit.sharePermille ?? 0)
-            : units.map(() => 1);
+        const weights = expense.prorateMethod === 'consumption' && consumptionTotal > 0
+            ? units.map(unit => Math.max(0, unit.consumptionM3 ?? 0))
+            : expense.prorateMethod === 'share' && useShare
+                ? units.map(unit => unit.sharePermille ?? 0)
+                : units.map(() => 1);
 
         const shares = distributeByWeights(amount, weights);
         shares.forEach((share, index) => {
             if (share === 0) return;
-            accumulator.get(units[index].id)!.push({
+            const unit = units[index];
+            const consumptionLabel = expense.prorateMethod === 'consumption' && (unit.consumptionM3 ?? 0) > 0
+                ? `${expense.label} (${unit.consumptionM3} m³)`
+                : expense.label;
+            accumulator.get(unit.id)!.push({
                 expenseId: expense.id,
                 category: expense.category,
-                label: expense.label,
+                label: consumptionLabel,
                 amount: share,
             });
         });

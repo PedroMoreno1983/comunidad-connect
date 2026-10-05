@@ -63,6 +63,7 @@ import {
     SupermarketCartHandoffItem,
     SupermarketCatalogResponse,
     SupermarketListResolution,
+    SavedShoppingList,
     SupermarketSearchResponse,
     SupermarketGroupComparison,
     SupermarketGroupCreateInput,
@@ -72,7 +73,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, JournalView, PaymentAgreement, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
@@ -2206,6 +2207,18 @@ export const AdminFinanceService = {
             financeWrite(input),
         );
     },
+
+    getFinancialStatements(input: { year: number; cutoffMonth: string; openingCash: number }) {
+        const params = new URLSearchParams({
+            year: String(input.year),
+            cutoffMonth: input.cutoffMonth,
+            openingCash: String(input.openingCash),
+        });
+        return readApi<FinancialStatements>(
+            `/api/admin/financial-statements?${params.toString()}`,
+            'No se pudieron cargar los estados financieros.',
+        );
+    },
 };
 
 export const ResidentFinanceService = {
@@ -2391,6 +2404,24 @@ export const SupermarketCatalogService = {
         const params = new URLSearchParams({ store, q: query, page: String(page) });
         const response = await fetch(`/api/supermarket/catalog?${params}`, { signal });
         return readJsonResponse<SupermarketCatalogResponse>(response);
+    },
+    async savedLists(): Promise<SavedShoppingList[]> {
+        const data = await readApi<{ lists: SavedShoppingList[] }>('/api/supermarket/lists', 'No se pudieron leer tus listas.');
+        return data.lists;
+    },
+    async saveList(input: { id?: string | null; body: string; store?: string | null }, keepalive = false): Promise<SavedShoppingList> {
+        const data = await readApi<{ list: SavedShoppingList }>('/api/supermarket/lists', 'No se pudo guardar la lista.', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+            keepalive,
+        });
+        return data.list;
+    },
+    async deleteList(id: string): Promise<void> {
+        await readApi<{ deleted: boolean }>(`/api/supermarket/lists?id=${encodeURIComponent(id)}`, 'No se pudo borrar la lista.', {
+            method: 'DELETE',
+        });
     },
     async compare(message: string, signal?: AbortSignal): Promise<SupermarketSearchResponse> {
         const response = await fetch('/api/supermarket', {

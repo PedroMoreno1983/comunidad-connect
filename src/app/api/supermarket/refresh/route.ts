@@ -50,6 +50,8 @@ const BASE_CATALOG_TERMS = [
   'pollo', 'carne molida', 'longaniza', 'atun', 'jamon', 'salchichas', 'pate', 'hamburguesa',
   // Verduras y frutas
   'tomate', 'cebolla', 'papa', 'limon', 'palta', 'manzana', 'platano', 'zanahoria',
+  'brocoli', 'lechuga', 'coliflor', 'apio', 'repollo', 'rucula', 'champinones', 'barquillo',
+  'pimenton', 'sandia', 'uva', 'kiwi', 'tomate cherry',
   // Panadería
   'pan molde', 'pan integral', 'tortillas', 'galletas',
   // Bebidas

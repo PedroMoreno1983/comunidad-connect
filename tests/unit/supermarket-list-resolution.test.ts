@@ -8,6 +8,7 @@ vi.mock('next/server', async importOriginal => ({
 const state = vi.hoisted(() => ({
   fresh: [] as Record<string, unknown>[], stale: [] as Record<string, unknown>[],
   filter: '', age: 0, liveFails: false,
+  live: [] as Array<Record<string, unknown>>,
 }));
 vi.mock('@/lib/server/agentIdentity', () => ({ getSupabaseUserClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: 'resident' } }, error: null }) },
@@ -15,7 +16,7 @@ vi.mock('@/lib/server/agentIdentity', () => ({ getSupabaseUserClient: async () =
 vi.mock('@/lib/supermarketCatalogLiveFill', () => ({ rememberLiveProducts: async () => undefined }));
 vi.mock('@/lib/supermarketLive', () => ({ searchAllRetailerProducts: async () => {
   if (state.liveFails) throw new Error('Retailer timeout');
-  return [];
+  return state.live;
 } }));
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({ getSupabaseAdmin: () => ({ from: () => {
   const query = {
@@ -38,7 +39,7 @@ const resolve = (list: string, store = 'Lider') => POST(new NextRequest('http://
 }));
 
 describe('shopping list catalog resolution', () => {
-  beforeEach(() => { state.fresh = []; state.stale = []; state.liveFails = false; });
+  beforeEach(() => { state.fresh = []; state.stale = []; state.live = []; state.liveFails = false; });
   it('finds an exact variant beyond the former 350 candidate limit', async () => {
     state.fresh = Array.from({ length: 600 }, (_, i) => product(String(i), 'Leche Frutilla 200 ml'));
     state.fresh.push(product('exact', 'Leche Entera Soprole 1 L'));
@@ -56,6 +57,18 @@ describe('shopping list catalog resolution', () => {
     state.fresh = [product('yogurt', 'Yoghurt Natural Soprole 1 L')];
     await resolve('yogur');
     expect(state.filter).toContain('yoghurt');
+  });
+  it('prefers an older fresh pepper over a newer spice jar', async () => {
+    state.fresh = [product('spice', 'Pimentón Paprika 100 g')];
+    state.stale = [product('fresh', 'Pimentón rojo 1 un')];
+    const response = await resolve('pimentón');
+    expect((await response.json()).resolved[0].product.id).toBe('fresh');
+  });
+  it('reads the store when the saved catalog only has a weak match', async () => {
+    state.fresh = [product('spice', 'Pimentón Paprika 100 g')];
+    state.live = [{ name: 'Pimentón rojo 1 un', sku: 'fresh-live', offerId: 'offer-fresh', price: 1790, store: 'Lider' }];
+    const response = await resolve('pimentón');
+    expect((await response.json()).resolved[0].product.id).toBe('fresh-live');
   });
   it('preserves resolved lines when another live search fails', async () => {
     state.fresh = [product('milk', 'Leche Entera Soprole 1 L')];

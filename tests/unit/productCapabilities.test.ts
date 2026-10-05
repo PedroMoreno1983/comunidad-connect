@@ -5,6 +5,7 @@ describe('resolveProductCapabilities', () => {
   it('exposes the operational IoT capability while hiding deferred commercial surfaces', () => {
     expect(resolveProductCapabilities({})).toEqual({
       onlinePayments: false,
+      paymentProvider: null,
       marketingReels: false,
       iotAutomation: true,
       externalMonitoring: false,
@@ -12,12 +13,23 @@ describe('resolveProductCapabilities', () => {
     });
   });
 
-  it('enables online payments only with both Haulmer credentials', () => {
+  it('enables online payments with Haulmer or Transbank credentials', () => {
     expect(resolveProductCapabilities({ HAULMER_ACCOUNT_ID: 'account' }).onlinePayments).toBe(false);
     expect(resolveProductCapabilities({
       HAULMER_ACCOUNT_ID: 'account',
       HAULMER_SECRET_KEY: 'secret',
     }).onlinePayments).toBe(true);
+    expect(resolveProductCapabilities({
+      TRANSBANK_COMMERCE_CODE: '597055555532',
+      TRANSBANK_API_KEY: 'secret',
+    }).paymentProvider).toBe('transbank');
+    expect(resolveProductCapabilities({
+      HAULMER_ACCOUNT_ID: 'account',
+      HAULMER_SECRET_KEY: 'secret',
+      TRANSBANK_COMMERCE_CODE: '597055555532',
+      TRANSBANK_API_KEY: 'secret',
+      PAYMENT_PROVIDER: 'transbank',
+    }).paymentProvider).toBe('transbank');
   });
 
   it('requires a complete professional reel pipeline', () => {

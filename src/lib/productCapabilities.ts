@@ -1,3 +1,4 @@
+import { isHaulmerConfigured, isTransbankConfigured, resolvePaymentProvider } from '@/lib/payments/providerEnv';
 import type { ProductCapabilities } from '@/lib/types';
 
 type Environment = Record<string, string | undefined>;
@@ -59,9 +60,11 @@ export function resolveProductCapabilities(environment: Environment): ProductCap
     && hasValue(environment, 'META_APP_SECRET')
   );
 
+  const paymentProvider = resolvePaymentProvider(environment);
+
   return {
-    onlinePayments: hasValue(environment, 'HAULMER_ACCOUNT_ID')
-      && hasValue(environment, 'HAULMER_SECRET_KEY'),
+    onlinePayments: isHaulmerConfigured(environment) || isTransbankConfigured(environment),
+    paymentProvider,
     marketingReels: hasValue(environment, 'ANTHROPIC_API_KEY')
       && rendererReady
       && professionalAudioReady

@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
             month: cleanText(body.month, 7),
             label: cleanText(body.label, 160),
             notes: cleanText(body.notes, 500) || null,
+            fundName: cleanText(body.fundName, 40) || null,
         });
         return NextResponse.json({ movement }, { status: 201 });
     } catch (error) {

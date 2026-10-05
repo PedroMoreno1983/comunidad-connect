@@ -7,8 +7,8 @@ import { AdminFinanceService } from "@/lib/api";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
-import type { JournalView } from "@/lib/types";
-import { todayInChile } from "@/lib/finance/chileDates";
+import type { FinancialStatements, JournalView } from "@/lib/types";
+import { currentMonthInChile, todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const today = todayInChile;
@@ -46,6 +46,11 @@ export default function ContabilidadPage() {
         { code: "5200", side: "debit", amount: "" },
         { code: "1100", side: "credit", amount: "" },
     ]);
+    const [cutoffMonth, setCutoffMonth] = useState(currentMonthInChile);
+    const [openingCash, setOpeningCash] = useState("0");
+    const [appliedOpeningCash, setAppliedOpeningCash] = useState(0);
+    const [statements, setStatements] = useState<FinancialStatements | null>(null);
+    const [statementsLoading, setStatementsLoading] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -63,6 +68,28 @@ export default function ContabilidadPage() {
     }, [toast]);
 
     useEffect(() => { void load(); }, [load]);
+
+    const loadStatements = useCallback(async () => {
+        setStatementsLoading(true);
+        try {
+            const year = Number(cutoffMonth.slice(0, 4));
+            setStatements(await AdminFinanceService.getFinancialStatements({
+                year,
+                cutoffMonth,
+                openingCash: appliedOpeningCash,
+            }));
+        } catch (error) {
+            toast({
+                title: "No se armaron los estados",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setStatementsLoading(false);
+        }
+    }, [appliedOpeningCash, cutoffMonth, toast]);
+
+    useEffect(() => { void loadStatements(); }, [loadStatements]);
 
     const accounts = journal?.accounts.length
         ? journal.accounts.map(account => ({ code: account.code, name: account.name }))
@@ -117,6 +144,7 @@ export default function ContabilidadPage() {
                     <DisplayHeading size={32}>Contabilidad</DisplayHeading>
                     <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
                         Cada asiento queda con el debe igual al haber. Los convenios y las remuneraciones escriben los suyos solos.
+                        Más abajo, el estado de resultado, el flujo de caja y la situación patrimonial se arman con la recaudación y los egresos.
                     </p>
                 </header>
 
@@ -187,6 +215,115 @@ export default function ContabilidadPage() {
                             </article>
                         );
                     })}
+                </section>
+
+                <section className="space-y-4 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Estados financieros</h2>
+                            <p className="mt-1 text-xs cc-text-tertiary">
+                                Se arman con cobros, pagos y egresos. El libro de 4 cuentas no se toca: el saldo Banco (1100) se muestra para comparar.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-end gap-2">
+                            <label className="text-xs cc-text-secondary">
+                                Corte
+                                <input type="month" value={cutoffMonth} onChange={event => setCutoffMonth(event.target.value)}
+                                    className="mt-1 block rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
+                            </label>
+                            <label className="text-xs cc-text-secondary">
+                                Caja inicial
+                                <input
+                                    value={openingCash}
+                                    onChange={event => setOpeningCash(event.target.value)}
+                                    onBlur={() => setAppliedOpeningCash(Number(openingCash.replace(/[^\d]/g, "")) || 0)}
+                                    inputMode="numeric"
+                                    className="mt-1 block rounded-lg border px-3 py-2 text-sm"
+                                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                                />
+                            </label>
+                        </div>
+                    </div>
+                    {statementsLoading || !statements ? (
+                        <p className="flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Armando estados…</p>
+                    ) : (
+                        <>
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                <article className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>
+                                    <p className="text-xs font-semibold uppercase tracking-wider cc-text-tertiary">Resultado del año</p>
+                                    <p className="mt-2 text-xl font-semibold cc-text-primary">{money(statements.income.result)}</p>
+                                    <p className="mt-1 text-xs cc-text-secondary">Ingresos {money(statements.income.totalIncome)} · Egresos {money(statements.income.totalExpenses)}</p>
+                                </article>
+                                <article className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>
+                                    <p className="text-xs font-semibold uppercase tracking-wider cc-text-tertiary">Caja al corte</p>
+                                    <p className="mt-2 text-xl font-semibold cc-text-primary">{money(statements.position.cash)}</p>
+                                    <p className="mt-1 text-xs cc-text-secondary">Libro banco 1100: {money(statements.position.journalBank)}</p>
+                                </article>
+                                <article className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>
+                                    <p className="text-xs font-semibold uppercase tracking-wider cc-text-tertiary">Por cobrar</p>
+                                    <p className="mt-2 text-xl font-semibold cc-text-primary">{money(statements.position.receivables)}</p>
+                                    <p className="mt-1 text-xs cc-text-secondary">{statements.position.unitsWithDebt} unidades con saldo</p>
+                                </article>
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <h3 className="mb-2 text-sm font-semibold cc-text-primary">Estado de resultado</h3>
+                                    <ul className="space-y-1 text-sm">
+                                        {statements.income.lines.map(line => (
+                                            <li key={line.label} className="flex justify-between gap-3 cc-text-secondary">
+                                                <span>{line.label}</span><span>{money(line.total)}</span>
+                                            </li>
+                                        ))}
+                                        {statements.income.expenseLines.map(line => (
+                                            <li key={line.category} className="flex justify-between gap-3 cc-text-secondary">
+                                                <span>Egreso {line.label}</span><span>−{money(line.total)}</span>
+                                            </li>
+                                        ))}
+                                        {statements.income.reserveTransfer > 0 && (
+                                            <li className="flex justify-between gap-3 cc-text-secondary">
+                                                <span>Traspaso al fondo de reserva</span><span>−{money(statements.income.reserveTransfer)}</span>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 className="mb-2 text-sm font-semibold cc-text-primary">Estado de situación</h3>
+                                    <ul className="space-y-1 text-sm cc-text-secondary">
+                                        <li className="flex justify-between gap-3"><span>Caja</span><span>{money(statements.position.cash)}</span></li>
+                                        <li className="flex justify-between gap-3"><span>Cuentas por cobrar</span><span>{money(statements.position.receivables)}</span></li>
+                                        <li className="flex justify-between gap-3"><span>Anticipos de unidades</span><span>{money(statements.position.advances)}</span></li>
+                                        <li className="flex justify-between gap-3"><span>Fondo de reserva</span><span>{money(statements.position.reserveFund)}</span></li>
+                                        <li className="flex justify-between gap-3 font-semibold cc-text-primary"><span>Excedente acumulado</span><span>{money(statements.position.accumulatedSurplus)}</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="mb-2 text-sm font-semibold cc-text-primary">Flujo de caja</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead style={{ background: "var(--cc-paper-warm)" }}>
+                                            <tr>
+                                                <th className="px-3 py-2 text-left font-semibold cc-text-secondary">Mes</th>
+                                                <th className="px-3 py-2 text-right font-semibold cc-text-secondary">Entra</th>
+                                                <th className="px-3 py-2 text-right font-semibold cc-text-secondary">Sale</th>
+                                                <th className="px-3 py-2 text-right font-semibold cc-text-secondary">Cierre</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y" style={{ borderColor: "var(--cc-line)" }}>
+                                            {statements.cashFlow.months.map(row => (
+                                                <tr key={row.month}>
+                                                    <td className="px-3 py-2">{row.month}</td>
+                                                    <td className="px-3 py-2 text-right">{money(row.inflow)}</td>
+                                                    <td className="px-3 py-2 text-right">{money(row.outflow)}</td>
+                                                    <td className="px-3 py-2 text-right font-medium">{money(row.closing)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </section>
             </div>
         </ErrorBoundary>

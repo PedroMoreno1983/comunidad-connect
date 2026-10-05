@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { isProductSuitableForRequest } from '@/lib/supermarketBasket';
 import {
   canonicalCatalogTerm,
+  foldedAccentVariants,
   matchAnchor,
   matchAnchors,
   needsBroadCatalogCandidates,
@@ -66,7 +67,7 @@ export async function fetchBatchSupermarketRows(
     const queries = termChunk.map(term => ({
       term: catalogQueryTerm(term),
       anchor: matchAnchor(term),
-      anchors: matchAnchors(term),
+      anchors: [...new Set([...matchAnchors(term), ...foldedAccentVariants(matchAnchor(term))])],
       intent: productIntent(term),
     }));
     const { data, error } = await supabaseAdmin.rpc('search_supermarket_products_batch_v2', {

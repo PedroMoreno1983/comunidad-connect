@@ -14,10 +14,15 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import {
     prorateExpenses,
+    fixedQuotaExpense,
+    FIXED_QUOTA_EXPENSE_ID,
     type ProrationExpense,
     type ProrationUnit,
     type ProrationResult,
 } from './prorration';
+import { applyWaterConsumption, waterPeriodFromBillingMonth, previousBillingMonth, type WaterReadingSnapshot } from './waterBilling';
+import { sendExpenseNotices } from './expenseNoticeEmail';
+import { recordOperationEvent } from '@/lib/operations/audit';
 
 export class BillingError extends Error {
     code: string;
@@ -39,11 +44,22 @@ export interface CommunityExpenseInput {
     label: string;
     amount: number;
     category?: string;
-    prorateMethod?: 'share' | 'equal';
+    prorateMethod?: 'share' | 'equal' | 'consumption';
     provider?: string | null;
     notes?: string | null;
     documentPath?: string | null;
     documentSha256?: string | null;
+}
+
+export interface BillingQuota {
+    amount: number;
+    method: 'share' | 'equal';
+}
+
+export interface BillingIssueOptions {
+    quota?: BillingQuota | null;
+    declaredCashBalance?: number | null;
+    notifyByEmail?: boolean;
 }
 
 export interface BillingPreview {
@@ -56,6 +72,7 @@ export interface BillingPreview {
     warnings: string[];
     units: ProrationResult['units'];
     issuedRun: IssuedRunSummary | null;
+    billingMode: 'proration' | 'fixed';
 }
 
 export interface IssuedRunSummary {
@@ -79,6 +96,8 @@ export interface BillingIssueResult {
     warnings: string[];
     /** Aporte al fondo de reserva generado por esta emisión. 0 si no aplica. */
     reserveContribution: number;
+    emailed: number;
+    emailFailed: number;
 }
 
 /** Lanza BillingError 409 si el mes ya tiene una emisión vigente. */
@@ -122,7 +141,11 @@ async function loadProrationInputs(communityId: string, month: string) {
         category: String(row.category || 'other'),
         label: String(row.label || 'Egreso'),
         amount: Number(row.amount || 0),
-        prorateMethod: row.prorate_method === 'equal' ? 'equal' : 'share',
+        prorateMethod: row.prorate_method === 'equal'
+            ? 'equal'
+            : row.prorate_method === 'consumption'
+                ? 'consumption'
+                : 'share',
     }));
 
     const unitRows = unitsResult.data ?? [];
@@ -134,7 +157,32 @@ async function loadProrationInputs(communityId: string, month: string) {
             : Number(row.share_permille),
     }));
 
-    return { expenses, units, unitRows };
+    if (!expenses.some(expense => expense.category === 'water')) {
+        return { expenses, units, unitRows, waterWarnings: [] as string[] };
+    }
+
+    const currentPeriod = waterPeriodFromBillingMonth(month);
+    const previousPeriod = waterPeriodFromBillingMonth(previousBillingMonth(month));
+    const { data: readingRows, error: readingError } = await admin.from('water_readings')
+        .select('unit_id, month, year, reading_value')
+        .eq('community_id', communityId)
+        .in('year', [...new Set([currentPeriod.year, previousPeriod.year])])
+        .in('month', [...new Set([currentPeriod.month, previousPeriod.month])]);
+    if (readingError) throw readingError;
+
+    const readings: WaterReadingSnapshot[] = (readingRows ?? []).map(row => ({
+        unitId: String(row.unit_id),
+        periodMonth: String(row.month),
+        year: Number(row.year),
+        value: Number(row.reading_value || 0),
+    }));
+    const water = applyWaterConsumption({
+        billingMonth: month,
+        expenses,
+        units,
+        readings,
+    });
+    return { expenses: water.expenses, units: water.units, unitRows, waterWarnings: water.warnings };
 }
 
 /** Egresos cargados del mes + total + si ya fue emitido. */
@@ -235,12 +283,45 @@ export async function deleteCommunityExpense(communityId: string, expenseId: str
     return { ok: true };
 }
 
+function parseQuota(quota: BillingQuota | null | undefined): BillingQuota | null {
+    if (!quota) return null;
+    const amount = Math.round(Number(quota.amount));
+    if (!Number.isFinite(amount) || amount <= 0) {
+        throw new BillingError('bad_quota', 'La cuota fija debe ser un monto mayor que cero.');
+    }
+    return { amount, method: quota.method === 'equal' ? 'equal' : 'share' };
+}
+
+function billableExpenses(
+    expenses: ProrationExpense[],
+    quota: BillingQuota | null,
+): { expenses: ProrationExpense[]; billingMode: 'proration' | 'fixed'; warnings: string[] } {
+    if (!quota) return { expenses, billingMode: 'proration', warnings: [] };
+    const water = expenses.filter(expense => expense.prorateMethod === 'consumption' || expense.category === 'water');
+    const warnings = [
+        water.length > 0
+            ? `Cobro por cuota fija de $${quota.amount.toLocaleString('es-CL')}. El agua se suma por consumo; el resto de egresos queda en la rendición.`
+            : `Cobro por cuota fija de $${quota.amount.toLocaleString('es-CL')}. Los egresos del mes quedan en la rendición, no se prorratean a las unidades.`,
+    ];
+    return {
+        expenses: [fixedQuotaExpense(quota.amount, quota.method), ...water],
+        billingMode: 'fixed',
+        warnings,
+    };
+}
+
 /** Previsualiza el reparto del gasto común del mes sin emitir nada. */
-export async function previewBilling(communityId: string, month: string): Promise<BillingPreview> {
+export async function previewBilling(
+    communityId: string,
+    month: string,
+    options: BillingIssueOptions = {},
+): Promise<BillingPreview> {
     if (!MONTH_PATTERN.test(month)) throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
 
-    const { expenses, units } = await loadProrationInputs(communityId, month);
-    const result = prorateExpenses(expenses, units);
+    const quota = parseQuota(options.quota);
+    const { expenses, units, waterWarnings } = await loadProrationInputs(communityId, month);
+    const billable = billableExpenses(expenses, quota);
+    const result = prorateExpenses(billable.expenses, units);
 
     const { data: issuedRun } = await getSupabaseAdmin()
         .from('billing_runs')
@@ -257,9 +338,10 @@ export async function previewBilling(communityId: string, month: string): Promis
         totalExpenses: result.totalExpenses,
         totalCharged: result.totalCharged,
         fellBackToEqualSplit: result.fellBackToEqualSplit,
-        warnings: result.warnings,
+        warnings: [...waterWarnings, ...billable.warnings, ...result.warnings],
         units: result.units,
         issuedRun: (issuedRun ?? null) as IssuedRunSummary | null,
+        billingMode: billable.billingMode,
     };
 }
 
@@ -272,19 +354,29 @@ export async function issueBilling(
     issuedBy: string | null,
     month: string,
     dueDate: string,
+    options: BillingIssueOptions = {},
 ): Promise<BillingIssueResult> {
     if (!MONTH_PATTERN.test(month)) throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
     if (!DATE_PATTERN.test(dueDate)) throw new BillingError('bad_due_date', 'Indica la fecha de vencimiento en formato AAAA-MM-DD.');
 
     const admin = getSupabaseAdmin();
+    const quota = parseQuota(options.quota);
+    const declaredCash = typeof options.declaredCashBalance === 'number' && Number.isFinite(options.declaredCashBalance)
+        ? Math.round(options.declaredCashBalance)
+        : null;
 
     await assertNotIssued(communityId, month);
 
-    const { expenses, units, unitRows } = await loadProrationInputs(communityId, month);
-    if (expenses.length === 0) throw new BillingError('no_expenses', 'No hay egresos cargados para ese mes.');
+    const { expenses, units, unitRows, waterWarnings } = await loadProrationInputs(communityId, month);
+    const billable = billableExpenses(expenses, quota);
+    if (billable.expenses.length === 0) {
+        throw new BillingError('no_expenses', quota
+            ? 'Indica el monto de la cuota fija.'
+            : 'No hay egresos cargados para ese mes.');
+    }
     if (units.length === 0) throw new BillingError('no_units', 'La comunidad no tiene unidades registradas.');
 
-    const result = prorateExpenses(expenses, units);
+    const result = prorateExpenses(billable.expenses, units);
 
     // Nunca emitir si el reparto no cuadra con el total de egresos: sería cobrar
     // de más o de menos sin poder explicar la diferencia.
@@ -355,7 +447,7 @@ export async function issueBilling(
         if (!expenseId) return [];
         return unit.items.map(item => ({
             expense_id: expenseId,
-            source_expense_id: item.expenseId,
+            source_expense_id: item.expenseId === FIXED_QUOTA_EXPENSE_ID ? null : item.expenseId,
             category: item.category,
             label: item.label,
             amount: item.amount,
@@ -426,7 +518,7 @@ export async function issueBilling(
         }
     }
 
-    return {
+    const issued: BillingIssueResult = {
         runId: run.id,
         month,
         issuedUnits: pending.length,
@@ -434,9 +526,43 @@ export async function issueBilling(
         totalCharged,
         notified,
         fellBackToEqualSplit: result.fellBackToEqualSplit,
-        warnings: result.warnings,
+        warnings: [...waterWarnings, ...billable.warnings, ...result.warnings],
         reserveContribution,
+        emailed: 0,
+        emailFailed: 0,
     };
+
+    if (declaredCash !== null) {
+        await recordOperationEvent({
+            communityId,
+            actorId: issuedBy,
+            actorRole: 'admin',
+            action: 'billing.cash_declared',
+            entityType: 'billing_run',
+            entityId: run.id,
+            summary: `Saldo de caja declarado en la emisión de ${month}: $${declaredCash.toLocaleString('es-CL')}`,
+            metadata: { month, cashBalance: declaredCash },
+        });
+    }
+
+    if (options.notifyByEmail) {
+        try {
+            const email = await sendExpenseNotices({
+                communityId,
+                month,
+                actorId: issuedBy,
+                actorRole: 'admin',
+                attachPdf: true,
+                cashBalance: declaredCash,
+            });
+            issued.emailed = email.sent;
+            issued.emailFailed = email.failed;
+        } catch (emailError) {
+            console.warn('[billingService] mass notice failed:', emailError);
+        }
+    }
+
+    return issued;
 }
 
 /**

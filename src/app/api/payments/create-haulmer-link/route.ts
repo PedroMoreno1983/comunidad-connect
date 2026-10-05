@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { HaulmerService } from '@/lib/services/haulmer';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { calculateHaulmerServiceFee } from '@/lib/payments/haulmerFees';
-import type { HaulmerFeeCalculation } from '@/lib/types';
+import { createProviderCheckout, resolvePaymentProvider } from '@/lib/payments/providers';
+import type { HaulmerFeeCalculation, PaymentProviderId } from '@/lib/types';
 
 const ALLOWED_ORIGINS = [
     PUBLIC_SITE_URL,
@@ -168,10 +168,12 @@ async function markPaymentAttempt(
     target: PaymentTarget,
     amount: number,
     token: string,
+    provider: PaymentProviderId,
+    appReturnUrl: string,
     feeCalculation?: HaulmerFeeCalculation | null,
 ) {
     const metadata = {
-        processor: 'haulmer_tuu',
+        processor: provider === 'transbank' ? 'transbank_webpay' : 'haulmer_tuu',
         payment_reference: target.reference,
         payment_token: token,
         amount,
@@ -182,6 +184,7 @@ async function markPaymentAttempt(
         service_fee_vat: feeCalculation?.vat ?? 0,
         service_fee_mode: feeCalculation?.feeMode ?? null,
         service_fee_range: feeCalculation?.range.label ?? null,
+        app_return_url: appReturnUrl,
         status: 'pending',
         created_at: new Date().toISOString(),
     };
@@ -270,39 +273,58 @@ export async function POST(req: NextRequest) {
         parsedReturnUrl.searchParams.set(target.type === 'expense' ? 'expenseId' : 'itemId', target.recordId);
         const safeReturnUrl = parsedReturnUrl.toString();
 
-        const feeCalculation = includeServiceFee ? calculateHaulmerServiceFee(target.amount) : null;
+        const provider = resolvePaymentProvider();
+        if (!provider) {
+            return NextResponse.json({
+                error: 'Los pagos en línea todavía no están habilitados para tu comunidad. Contacta a administración.',
+                code: 'PAYMENT_NOT_CONFIGURED',
+            }, { status: 503 });
+        }
+
+        const feeCalculation = provider === 'haulmer' && includeServiceFee
+            ? calculateHaulmerServiceFee(target.amount)
+            : null;
         const payableAmount = feeCalculation?.totalWithFee ?? target.amount;
 
         if (payableAmount <= 0 || payableAmount > 100_000_000) {
             return NextResponse.json({ error: 'Monto final invalido o fuera de rango.' }, { status: 400 });
         }
 
-        const response = await HaulmerService.createPaymentLink({
+        const providerReturnUrl = provider === 'transbank'
+            ? `${PUBLIC_SITE_URL}/api/payments/transbank/return`
+            : safeReturnUrl;
+
+        const checkout = await createProviderCheckout({
             amount: payableAmount,
             description: target.description,
             reference: target.reference,
+            returnUrl: providerReturnUrl,
             client: { name: clientName, email: clientEmail },
-            returnUrl: safeReturnUrl,
+            sessionId: `${target.type === 'expense' ? 'EXP' : 'MARKET'}:${target.recordId}`,
         });
 
-        await markPaymentAttempt(target, payableAmount, response.token, feeCalculation);
+        await markPaymentAttempt(target, payableAmount, checkout.token, provider, safeReturnUrl, feeCalculation);
 
         return NextResponse.json({
-            url: response.url,
-            reference: response.reference,
+            url: checkout.url,
+            token: checkout.token,
+            provider: checkout.provider,
+            reference: checkout.reference,
             amount: payableAmount,
             baseAmount: target.amount,
             serviceFee: feeCalculation?.totalFee ?? 0,
+            redirectMethod: checkout.redirectMethod,
+            tokenField: checkout.tokenField,
         });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Error generating Haulmer link';
-        console.error('[payments/create-haulmer-link] Haulmer Gateway Error:', error);
+        const message = error instanceof Error ? error.message : 'Error generating payment link';
+        console.error('[payments/checkout] Payment gateway error:', error);
 
         if (error instanceof PaymentRequestError) {
             return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
         }
 
-        if (message.includes('Haulmer/Tuu no esta configurado')) {
+        if (message.includes('no esta configurado') || message.includes('no está configurado') || message === 'PAYMENT_NOT_CONFIGURED') {
             return NextResponse.json({
                 error: 'Los pagos en línea todavía no están habilitados para tu comunidad. Contacta a administración.',
                 code: 'PAYMENT_NOT_CONFIGURED',

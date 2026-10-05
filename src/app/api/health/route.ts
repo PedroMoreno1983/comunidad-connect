@@ -35,7 +35,8 @@ export async function GET() {
         whatsapp: hasEnv('TWILIO_ACCOUNT_SID') && hasEnv('TWILIO_AUTH_TOKEN') && hasEnv('TWILIO_WHATSAPP_FROM'),
     };
 
-    const paymentsReady = hasEnv('HAULMER_ACCOUNT_ID') && hasEnv('HAULMER_SECRET_KEY');
+    const paymentsReady = (hasEnv('HAULMER_ACCOUNT_ID') && hasEnv('HAULMER_SECRET_KEY'))
+        || (hasEnv('TRANSBANK_COMMERCE_CODE') && hasEnv('TRANSBANK_API_KEY'));
     const paymentsRequired = isRequired('HAULMER_PAYMENTS_REQUIRED');
     const iotWebhookReady = true;
     const iotWebhookRequired = false;

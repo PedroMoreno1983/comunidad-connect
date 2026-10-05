@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from 'next/server';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { canonicalCatalogTerm, catalogNameOrFilter, catalogSearchScore, foldAccents, matchAnchor } from '@/lib/supermarketText';
+import { canonicalCatalogTerm, catalogNameOrFilter, catalogSearchScore, foldAccents, matchAnchors } from '@/lib/supermarketText';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { FRESH_PRICE_AGE_MS, STALE_PRICE_AGE_MS } from '@/lib/supermarketCatalogGaps';
 import { rememberLiveProducts } from '@/lib/supermarketCatalogLiveFill';
@@ -112,7 +112,9 @@ export async function GET(req: NextRequest) {
 
     const admin = getSupabaseAdmin();
     const canonical = canonicalCatalogTerm(query);
-    const anchor = query ? matchAnchor(canonical).replace(/[%_]/g, '') : '';
+    const nameFilter = query
+      ? matchAnchors(canonical).map(anchor => catalogNameOrFilter(anchor.replace(/[%_]/g, ''))).join(',')
+      : '';
     const search = async (maxAge: number, from: number, to: number) => {
       let request = admin.from('supermarket_products').select(COLUMNS)
         .eq('store', store)
@@ -122,7 +124,7 @@ export async function GET(req: NextRequest) {
       // Líder exige ambos identificadores para transferir el producto al carro.
       // La búsqueda histórica dejó duplicados sin ellos que no se pueden comprar.
       if (store === 'Lider') request = request.not('sku', 'is', null).not('offer_id', 'is', null);
-      if (anchor) request = request.or(catalogNameOrFilter(anchor));
+      if (nameFilter) request = request.or(nameFilter);
       return request.order('last_seen_at', { ascending: false }).range(from, to);
     };
 

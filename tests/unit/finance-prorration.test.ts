@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { prorateExpenses, type ProrationExpense, type ProrationUnit } from '@/lib/finance/prorration';
+import { prorateExpenses, fixedQuotaExpense, FIXED_QUOTA_EXPENSE_ID, type ProrationExpense, type ProrationUnit } from '@/lib/finance/prorration';
 
 function unit(id: string, sharePermille: number | null): ProrationUnit {
     return { id, label: `Depto ${id}`, sharePermille };
@@ -125,5 +125,21 @@ describe('prorateExpenses', () => {
         const first = prorateExpenses([expense(100, 'equal')], units);
         const second = prorateExpenses([expense(100, 'equal')], units);
         expect(first.units.map(u => u.total)).toEqual(second.units.map(u => u.total));
+    });
+
+    it('arma una cuota fija que cuadra al peso, por alícuota o en partes iguales', () => {
+        const share = prorateExpenses(
+            [fixedQuotaExpense(1_000_000, 'share')],
+            [unit('a', 500), unit('b', 500)],
+        );
+        expect(share.totalCharged).toBe(1_000_000);
+        expect(share.units.map(row => row.total)).toEqual([500_000, 500_000]);
+        expect(share.units[0].items[0].expenseId).toBe(FIXED_QUOTA_EXPENSE_ID);
+
+        const equal = prorateExpenses(
+            [fixedQuotaExpense(90, 'equal')],
+            [unit('a', 700), unit('b', 300)],
+        );
+        expect(equal.units.map(row => row.total)).toEqual([45, 45]);
     });
 });

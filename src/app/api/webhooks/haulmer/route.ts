@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { signHaulmerParams } from '@/lib/services/haulmer';
+import { todayInChile } from '@/lib/finance/chileDates';
+import { recordOnlineExpensePayment } from '@/lib/payments/recordOnlineExpensePayment';
 import crypto from 'crypto';
 
 type CallbackParams = Record<string, string>;
@@ -60,20 +62,43 @@ export async function GET() {
 async function processExpensePayment(recordId: string, params: CallbackParams, completed: boolean) {
     const { data: expense, error: readError } = await supabaseAdmin
         .from('expenses')
-        .select('id,status,amount,payment_metadata')
+        .select('id,status,amount,unit_id,community_id,payment_metadata')
         .eq('id', recordId)
         .maybeSingle();
 
     if (readError) throw readError;
     if (!expense) return { status: 'unknown_reference' };
-    if (expense.status === 'paid') return { status: 'idempotent' };
 
+    const communityId = expense.community_id ? String(expense.community_id) : '';
+    const unitId = expense.unit_id ? String(expense.unit_id) : '';
+    const expenseId = String(expense.id);
+    const expenseAmount = Math.round(Number(expense.amount || 0));
     const previousMetadata = expense.payment_metadata && typeof expense.payment_metadata === 'object'
         ? expense.payment_metadata as Record<string, unknown>
         : {};
     const metadata = { ...previousMetadata, ...buildPaymentMetadata(params) };
     const expectedAmount = Math.round(Number(previousMetadata.amount || expense.amount || 0));
     const amountMatches = expectedAmount > 0 && Math.abs(Number(metadata.amount || 0) - expectedAmount) <= 1;
+    const gatewayReference = String(params.x_gateway_reference || params.x_reference || '').trim();
+    const paymentReference = gatewayReference ? `haulmer:${gatewayReference}` : `haulmer:${recordId}`;
+
+    async function writeUnitPayment() {
+        if (!communityId || !unitId) return;
+        await recordOnlineExpensePayment({
+            communityId,
+            unitId,
+            expenseId,
+            amount: expenseAmount,
+            reference: paymentReference,
+            paidAt: todayInChile(),
+            processor: 'haulmer_tuu',
+        });
+    }
+
+    if (expense.status === 'paid') {
+        if (completed && amountMatches) await writeUnitPayment();
+        return { status: 'idempotent' };
+    }
 
     if (completed && !amountMatches) {
         console.warn(`[Haulmer] Monto no coincide para expense ${recordId}: pagado ${metadata.amount}, esperado ${expectedAmount}`);
@@ -95,6 +120,7 @@ async function processExpensePayment(recordId: string, params: CallbackParams, c
         .eq('id', recordId);
 
     if (error) throw error;
+    if (completed) await writeUnitPayment();
     return { status: completed ? 'processed' : 'recorded' };
 }
 

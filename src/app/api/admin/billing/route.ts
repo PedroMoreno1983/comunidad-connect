@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
         if (auth.error) return auth.error;
 
         const month = cleanText(req.nextUrl.searchParams.get('month'), 7);
-        const preview = await previewBilling(auth.communityId, month);
+        const quotaAmount = Number(req.nextUrl.searchParams.get('quotaAmount') || 0);
+        const quotaMethod = cleanText(req.nextUrl.searchParams.get('quotaMethod'), 10) === 'equal' ? 'equal' as const : 'share' as const;
+        const preview = await previewBilling(auth.communityId, month, {
+            quota: Number.isFinite(quotaAmount) && quotaAmount > 0 ? { amount: quotaAmount, method: quotaMethod } : null,
+        });
         return NextResponse.json(preview);
     } catch (error) {
         if (error instanceof BillingError) {
@@ -57,8 +61,19 @@ export async function POST(req: NextRequest) {
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const month = cleanText(body.month, 7);
         const dueDate = cleanText(body.dueDate, 10);
+        const quotaAmount = Number(body.quotaAmount || 0);
+        const declaredCash = body.declaredCashBalance === null || body.declaredCashBalance === undefined || body.declaredCashBalance === ''
+            ? null
+            : Number(body.declaredCashBalance);
+        const notifyByEmail = body.notifyByEmail !== false;
 
-        const result = await issueBilling(auth.communityId, auth.profile.id, month, dueDate);
+        const result = await issueBilling(auth.communityId, auth.profile.id, month, dueDate, {
+            quota: Number.isFinite(quotaAmount) && quotaAmount > 0
+                ? { amount: quotaAmount, method: cleanText(body.quotaMethod, 10) === 'equal' ? 'equal' : 'share' }
+                : null,
+            declaredCashBalance: declaredCash !== null && Number.isFinite(declaredCash) ? Math.round(declaredCash) : null,
+            notifyByEmail,
+        });
         return NextResponse.json({ ok: true, ...result }, { status: 201 });
     } catch (error) {
         if (error instanceof BillingError) {
