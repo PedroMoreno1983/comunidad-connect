@@ -10,6 +10,7 @@
  * y tools de CoCo) traduzcan los errores esperados de una sola forma.
  */
 
+import { allocateUnitPayments } from './paymentAllocation';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, MONTH_PATTERN, DATE_PATTERN } from './billingService';
 import { isCommitteeDiscount, signedChargeAmount, COMMITTEE_DISCOUNT_LABEL, COMMITTEE_DISCOUNT_NOTE } from './adjustments';
@@ -185,6 +186,13 @@ export async function recordPayment(
     const admin = getSupabaseAdmin();
     const reference = input.reference?.trim() || null;
 
+    if (input.expenseId) {
+        const { data: target, error: targetError } = await admin.from('expenses').select('id')
+            .eq('id', input.expenseId).eq('community_id', communityId).eq('unit_id', input.unitId).maybeSingle();
+        if (targetError) throw targetError;
+        if (!target) throw new BillingError('expense_not_found', 'El cobro elegido no pertenece a esta unidad.', 404);
+    }
+
     const { data, error } = await admin
         .from('unit_payments')
         .insert({
@@ -257,9 +265,8 @@ export async function deletePayment(communityId: string, paymentId: string) {
 /**
  * Ajusta el status de cuotas y cargos según lo efectivamente pagado.
  *
- * Los pagos se imputan a la deuda más antigua primero, que es el criterio
- * habitual en copropiedad y el que menos perjudica al residente (deja de estar
- * moroso por lo más viejo, que es lo que devenga interés).
+ * Los pagos vinculados respetan el cobro elegido. Solo los pagos sin destino
+ * y los descuentos se imputan a la deuda más antigua primero.
  */
 export async function reconcileUnitStatuses(communityId: string, unitId: string) {
     const admin = getSupabaseAdmin();
@@ -271,15 +278,12 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
             .select('id, month, amount, status, due_date, created_at, label, notes')
             .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
         admin.from('unit_payments')
-            .select('amount')
+            .select('amount, expense_id, charge_id')
             .eq('community_id', communityId).eq('unit_id', unitId),
     ]);
     if (expensesResult.error) throw expensesResult.error;
     if (chargesResult.error) throw chargesResult.error;
     if (paymentsResult.error) throw paymentsResult.error;
-
-    const totalPaid = (paymentsResult.data ?? [])
-        .reduce((sum, row) => sum + Math.round(Number(row.amount || 0)), 0);
 
     const debts = [
         ...(expensesResult.data ?? []).map(row => ({
@@ -292,18 +296,21 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
         ...(chargesResult.data ?? []).map(row => ({
             table: 'unit_charges' as const,
             id: String(row.id),
-            amount: isCommitteeDiscount(row) ? 0 : Math.round(Number(row.amount || 0)),
+            amount: signedChargeAmount(row),
             status: String(row.status),
             sortKey: String(row.due_date || row.created_at || ''),
         })),
     ].sort((left, right) => left.sortKey.localeCompare(right.sortKey));
 
-    let remaining = totalPaid;
+    const outstanding = allocateUnitPayments(debts.map(debt => ({
+        id: debt.id, kind: debt.table === 'expenses' ? 'expense' : 'charge', amount: debt.amount, date: debt.sortKey,
+    })), (paymentsResult.data ?? []).map(row => ({
+        amount: Number(row.amount), expenseId: row.expense_id, chargeId: row.charge_id,
+    })));
     const today = new Date().toISOString().slice(0, 10);
 
     for (const debt of debts) {
-        const covered = remaining >= debt.amount;
-        remaining = Math.max(0, remaining - debt.amount);
+        const covered = outstanding.get(`${debt.table === 'expenses' ? 'expense' : 'charge'}:${debt.id}`) === 0;
 
         if (debt.table === 'expenses') {
             // 'overdue' se conserva como señal de mora para la vista de cobranza:
@@ -312,14 +319,17 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
                 ? 'paid'
                 : (debts.find(d => d.id === debt.id)!.sortKey || today) < today ? 'overdue' : 'pending';
             if (next !== debt.status) {
-                await admin.from('expenses')
+                const { error } = await admin.from('expenses')
                     .update({ status: next, paid_at: covered ? new Date().toISOString() : null })
-                    .eq('id', debt.id);
+                    .eq('id', debt.id).eq('community_id', communityId).eq('unit_id', unitId);
+                if (error) throw error;
             }
         } else {
             const next = covered ? 'paid' : 'pending';
             if (next !== debt.status) {
-                await admin.from('unit_charges').update({ status: next }).eq('id', debt.id);
+                const { error } = await admin.from('unit_charges').update({ status: next })
+                    .eq('id', debt.id).eq('community_id', communityId).eq('unit_id', unitId);
+                if (error) throw error;
             }
         }
     }
@@ -341,7 +351,7 @@ export async function getUnitStatement(
             .select('id, month, kind, label, amount, due_date, created_at, notes')
             .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
         admin.from('unit_payments')
-            .select('id, amount, paid_at, method, reference, created_at')
+            .select('id, amount, paid_at, method, reference, created_at, expense_id, charge_id')
             .eq('community_id', communityId).eq('unit_id', unitId),
     ]);
     if (expensesResult.error) throw expensesResult.error;
@@ -371,6 +381,8 @@ export async function getUnitStatement(
 
     const payments: LedgerPayment[] = (paymentsResult.data ?? []).map(row => ({
         id: String(row.id),
+        expenseId: row.expense_id,
+        chargeId: row.charge_id,
         amount: Number(row.amount || 0),
         paidAt: String(row.paid_at),
         method: String(row.method),

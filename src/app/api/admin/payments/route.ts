@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
             method: cleanText(body.method, 20) || 'transfer',
             reference: cleanText(body.reference, 120) || null,
             notes: cleanText(body.notes, 500) || null,
+            expenseId: cleanText(body.expenseId, 60) || null,
         });
         return NextResponse.json({ payment }, { status: 201 });
     } catch (error) {

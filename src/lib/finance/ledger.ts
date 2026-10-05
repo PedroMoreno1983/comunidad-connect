@@ -11,6 +11,9 @@
  * pago lo baja. Saldo negativo = la unidad pagó de más (saldo a favor).
  */
 
+import type { FinancePaymentTarget } from '@/lib/types';
+import { allocateUnitPayments } from './paymentAllocation';
+
 export type LedgerEntryKind = 'gasto_comun' | 'fine' | 'interest' | 'extraordinary' | 'service' | 'other' | 'payment';
 
 export interface LedgerCharge {
@@ -25,7 +28,7 @@ export interface LedgerCharge {
     createdAt: string;
 }
 
-export interface LedgerPayment {
+export interface LedgerPayment extends FinancePaymentTarget {
     id: string;
     amount: number;
     paidAt: string;
@@ -118,27 +121,20 @@ export function buildAccountStatement(
 
     const totalCharged = chargeEntries.reduce((sum, entry) => sum + entry.amount, 0);
     const totalPaid = payments.reduce((sum, payment) => sum + Math.round(payment.amount), 0);
-    const credits = chargeEntries
-        .filter(entry => entry.amount < 0)
-        .reduce((sum, entry) => sum + Math.abs(entry.amount), 0);
-
-    // La mora se calcula contra el saldo, no cargo por cargo: los pagos se
-    // imputan a la deuda más antigua primero (criterio habitual en copropiedad),
-    // así un residente que pagó parcialmente no aparece moroso por el total.
-    // Un descuento de comité (monto negativo) se aplica como si fuera un pago.
+    const outstanding = allocateUnitPayments(charges.map(charge => ({
+        id: charge.id, kind: charge.kind === 'gasto_comun' ? 'expense' : 'charge',
+        amount: charge.amount, date: chargeDate(charge),
+    })), payments);
     const overdueCharges = chargeEntries
         .filter(entry => entry.amount > 0 && entry.date <= asOf)
         .sort((left, right) => left.date.localeCompare(right.date));
 
-    let unapplied = totalPaid + credits;
     let overdueAmount = 0;
     let oldestOverdueMonth: string | null = null;
     for (const charge of overdueCharges) {
-        const covered = Math.min(unapplied, charge.amount);
-        unapplied -= covered;
-        const outstanding = charge.amount - covered;
-        if (outstanding > 0) {
-            overdueAmount += outstanding;
+        const remaining = outstanding.get(`${charge.kind === 'gasto_comun' ? 'expense' : 'charge'}:${charge.id}`) || 0;
+        if (remaining > 0) {
+            overdueAmount += remaining;
             if (!oldestOverdueMonth) oldestOverdueMonth = charge.month;
         }
     }

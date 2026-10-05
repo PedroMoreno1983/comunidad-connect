@@ -42,3 +42,18 @@ Usar una comunidad de prueba confirmada por su administrador. No publicar cobros
 - Medir tiempos de respuesta y errores durante una operación mensual real.
 
 La comparación comercial con otras plataformas debe basarse en estos resultados y en el uso real, sin declarar paridad a partir del listado de funciones.
+
+## Segunda revisión: imputación de pagos
+
+La revisión encontró que el estado de cuenta y la actualización de cobros ignoraban `expense_id` y sumaban todos los pagos para cubrir la deuda más antigua. Se corrigió con una asignación compartida:
+
+- Un pago con destino explícito se reserva para ese cobro antes de distribuir los pagos sin destino.
+- Los abonos parciales conservan el mes elegido.
+- Un exceso en un mes elegido queda como crédito, sin reasignarlo automáticamente a otro mes.
+- Los descuentos con signo negativo se consideran al calcular los saldos.
+- El registro administrativo acepta `expenseId` y comprueba comunidad y unidad antes de insertar.
+- Los errores al actualizar los estados se propagan; las escrituras se restringen por comunidad y unidad.
+
+Validación automatizada: 83 pruebas financieras, incluidos casos del servicio de persistencia con datos aislados y del estado de cuenta. No se modificaron pagos de producción. La consulta de solo lectura encontró cero pagos registrados, por lo que no hubo datos previos que corregir.
+
+Validación de navegador: la cuenta residente muestra dos cobros pendientes y un enlace al aviso PDF. No aparece un formulario de transferencias ni una cartola de abonos. La ruta administrativa redirige a Inicio con la sesión disponible. El usuario confirmó que aún no dispone de una comunidad de prueba construida. Por tanto, siguen pendientes la emisión, aprobación, publicación, reporte de transferencia y revisión administrativa de extremo a extremo.
