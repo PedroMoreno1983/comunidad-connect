@@ -3039,3 +3039,15 @@ export interface AgentCollectionUnit {
     owner_id: string | null;
     resident_profile_id: string | null;
 }
+
+export interface FinancePaymentTarget {
+    expenseId?: string | null;
+    chargeId?: string | null;
+}
+
+export interface FinanceAllocationDebt {
+    id: string;
+    kind: 'expense' | 'charge';
+    amount: number;
+    date: string;
+}
