@@ -3050,4 +3050,12 @@ export interface FinanceAllocationDebt {
     kind: 'expense' | 'charge';
     amount: number;
     date: string;
+    settledAmount?: number;
+}
+
+export interface FinanceLegacyExpense {
+    id: string;
+    amount: number;
+    status: string;
+    payment_metadata?: unknown;
 }

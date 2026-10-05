@@ -57,3 +57,13 @@ La revisión encontró que el estado de cuenta y la actualización de cobros ign
 Validación automatizada: 83 pruebas financieras, incluidos casos del servicio de persistencia con datos aislados y del estado de cuenta. No se modificaron pagos de producción. La consulta de solo lectura encontró cero pagos registrados, por lo que no hubo datos previos que corregir.
 
 Validación de navegador: la cuenta residente muestra dos cobros pendientes y un enlace al aviso PDF. No aparece un formulario de transferencias ni una cartola de abonos. La ruta administrativa redirige a Inicio con la sesión disponible. El usuario confirmó que aún no dispone de una comunidad de prueba construida. Por tanto, siguen pendientes la emisión, aprobación, publicación, reporte de transferencia y revisión administrativa de extremo a extremo.
+
+## Tercera revisión: apertura histórica y prueba administradora
+
+El usuario inició sesión como administrador y confirmó que «Mi Edificio» es una comunidad de prueba en la que se pueden crear datos sintéticos y comprobar avisos.
+
+Se detectó una deuda inflada: cobranza mostraba $946.200 aunque $433.300 correspondían a tres cuotas antiguas marcadas pagadas sin movimientos en `unit_payments`. La corrección reconoce ajustes históricos de apertura separados de los ingresos bancarios, conserva sus importes en `payment_metadata.legacy_settled_amount` al reconciliar y marca estados modernos con `ledger_reconciled`. No se inventa una fecha de pago para una cuota histórica.
+
+Antes de registrar dinero nuevo se fijan los ajustes históricos, de modo que el abono no se consuma en una cuota ya liquidada. Una eliminación de un pago moderno puede reabrir su cobro: no lo convierte en un ajuste histórico. Pruebas financieras: 87 aprobadas, incluidos estos casos y prevención de doble conteo.
+
+Prueba de documento sintético: se extrajo concepto, monto ($10.000), proveedor y categoría; se revisó el reparto a partes iguales y se guardó. La base confirmó un egreso de $10.000 y la interfaz mostró cinco cuotas de $2.000, con suma exacta. El fixture es `tests/fixtures/finance-qa-receipt-20261005.txt`; no representa una factura ni un pago real.

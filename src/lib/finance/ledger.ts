@@ -26,6 +26,7 @@ export interface LedgerCharge {
     /** Fecha de vencimiento; se usa para ordenar y para detectar mora. */
     dueDate: string | null;
     createdAt: string;
+    settledAmount?: number;
 }
 
 export interface LedgerPayment extends FinancePaymentTarget {
@@ -53,6 +54,7 @@ export interface AccountStatement {
     entries: LedgerEntry[];
     totalCharged: number;
     totalPaid: number;
+    historicalSettled: number;
     /** Lo que la unidad debe hoy. Negativo = saldo a favor. */
     balance: number;
     /** Deuda cuyo vencimiento ya pasó, a la fecha de corte. */
@@ -98,7 +100,13 @@ export function buildAccountStatement(
         sortHint: 1,
     }));
 
-    const ordered = [...chargeEntries, ...paymentEntries].sort((left, right) => (
+    const historicalEntries = charges.filter(charge => (charge.settledAmount || 0) > 0).map(charge => ({
+        id: `historical:${charge.id}`, date: chargeDate(charge), kind: 'other' as LedgerEntryKind,
+        label: `Ajuste de apertura: ${charge.label} ya pagado (fecha de pago no registrada)`,
+        amount: -Math.round(charge.settledAmount || 0), month: charge.month, reference: null, sortHint: 1,
+    }));
+
+    const ordered = [...chargeEntries, ...paymentEntries, ...historicalEntries].sort((left, right) => (
         left.date.localeCompare(right.date)
         || left.sortHint - right.sortHint
         || left.id.localeCompare(right.id)
@@ -121,9 +129,10 @@ export function buildAccountStatement(
 
     const totalCharged = chargeEntries.reduce((sum, entry) => sum + entry.amount, 0);
     const totalPaid = payments.reduce((sum, payment) => sum + Math.round(payment.amount), 0);
+    const historicalSettled = charges.reduce((sum, charge) => sum + Math.round(charge.settledAmount || 0), 0);
     const outstanding = allocateUnitPayments(charges.map(charge => ({
         id: charge.id, kind: charge.kind === 'gasto_comun' ? 'expense' : 'charge',
-        amount: charge.amount, date: chargeDate(charge),
+        amount: charge.amount, date: chargeDate(charge), settledAmount: charge.settledAmount,
     })), payments);
     const overdueCharges = chargeEntries
         .filter(entry => entry.amount > 0 && entry.date <= asOf)
@@ -143,7 +152,8 @@ export function buildAccountStatement(
         entries,
         totalCharged,
         totalPaid,
-        balance: totalCharged - totalPaid,
+        historicalSettled,
+        balance: totalCharged - totalPaid - historicalSettled,
         overdueAmount,
         oldestOverdueMonth,
     };

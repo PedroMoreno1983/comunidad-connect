@@ -10,7 +10,7 @@
  * y tools de CoCo) traduzcan los errores esperados de una sola forma.
  */
 
-import { allocateUnitPayments } from './paymentAllocation';
+import { allocateUnitPayments, legacySettlements, paymentMetadata } from './paymentAllocation';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, MONTH_PATTERN, DATE_PATTERN } from './billingService';
 import { isCommitteeDiscount, signedChargeAmount, COMMITTEE_DISCOUNT_LABEL, COMMITTEE_DISCOUNT_NOTE } from './adjustments';
@@ -193,6 +193,9 @@ export async function recordPayment(
         if (!target) throw new BillingError('expense_not_found', 'El cobro elegido no pertenece a esta unidad.', 404);
     }
 
+    // Freeze historical settled balances before new money can cover them.
+    await reconcileUnitStatuses(communityId, input.unitId);
+
     const { data, error } = await admin
         .from('unit_payments')
         .insert({
@@ -272,7 +275,7 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
     const admin = getSupabaseAdmin();
     const [expensesResult, chargesResult, paymentsResult] = await Promise.all([
         admin.from('expenses')
-            .select('id, month, amount, status, due_date, created_at')
+            .select('id, month, amount, status, due_date, created_at, payment_metadata')
             .eq('community_id', communityId).eq('unit_id', unitId),
         admin.from('unit_charges')
             .select('id, month, amount, status, due_date, created_at, label, notes')
@@ -302,11 +305,16 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
         })),
     ].sort((left, right) => left.sortKey.localeCompare(right.sortKey));
 
-    const outstanding = allocateUnitPayments(debts.map(debt => ({
-        id: debt.id, kind: debt.table === 'expenses' ? 'expense' : 'charge', amount: debt.amount, date: debt.sortKey,
-    })), (paymentsResult.data ?? []).map(row => ({
+    const allocationDebts = debts.map(debt => ({
+        id: debt.id, kind: debt.table === 'expenses' ? 'expense' as const : 'charge' as const, amount: debt.amount, date: debt.sortKey,
+    }));
+    const allocationPayments = (paymentsResult.data ?? []).map(row => ({
         amount: Number(row.amount), expenseId: row.expense_id, chargeId: row.charge_id,
-    })));
+    }));
+    const settlements = legacySettlements(expensesResult.data ?? [], allocationDebts, allocationPayments);
+    const outstanding = allocateUnitPayments(allocationDebts.map(debt => ({ ...debt,
+        settledAmount: debt.kind === 'expense' ? settlements.get(debt.id) : 0,
+    })), allocationPayments);
     const today = new Date().toISOString().slice(0, 10);
 
     for (const debt of debts) {
@@ -318,9 +326,16 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
             const next = covered
                 ? 'paid'
                 : (debts.find(d => d.id === debt.id)!.sortKey || today) < today ? 'overdue' : 'pending';
-            if (next !== debt.status) {
+            const source = expensesResult.data?.find(row => String(row.id) === debt.id);
+            const metadata = paymentMetadata(source?.payment_metadata);
+            const historicalAmount = settlements.get(debt.id) || 0;
+            if (next !== debt.status || (covered && metadata.ledger_reconciled !== true)) {
                 const { error } = await admin.from('expenses')
-                    .update({ status: next, paid_at: covered ? new Date().toISOString() : null })
+                    .update({ status: next,
+                        ...(next !== debt.status ? { paid_at: covered ? new Date().toISOString() : null } : {}),
+                        payment_metadata: { ...metadata, ledger_reconciled: true,
+                            ...(historicalAmount > 0 ? { legacy_settled_amount: historicalAmount } : {}) },
+                    })
                     .eq('id', debt.id).eq('community_id', communityId).eq('unit_id', unitId);
                 if (error) throw error;
             }
@@ -345,7 +360,7 @@ export async function getUnitStatement(
 
     const [expensesResult, chargesResult, paymentsResult] = await Promise.all([
         admin.from('expenses')
-            .select('id, month, amount, due_date, created_at')
+            .select('id, month, amount, status, due_date, created_at, payment_metadata')
             .eq('community_id', communityId).eq('unit_id', unitId),
         admin.from('unit_charges')
             .select('id, month, kind, label, amount, due_date, created_at, notes')
@@ -390,7 +405,13 @@ export async function getUnitStatement(
         createdAt: String(row.created_at),
     }));
 
-    return { ...buildAccountStatement(charges, payments), unitLabel: unitLabel(unit) };
+    const settlements = legacySettlements(expensesResult.data ?? [], charges.map(charge => ({
+        id: charge.id, kind: charge.kind === 'gasto_comun' ? 'expense' : 'charge',
+        amount: charge.amount, date: charge.dueDate || charge.createdAt,
+    })), payments);
+    return { ...buildAccountStatement(charges.map(charge => ({ ...charge,
+        settledAmount: charge.kind === 'gasto_comun' ? settlements.get(charge.id) : 0,
+    })), payments), unitLabel: unitLabel(unit) };
 }
 
 /** Resumen de saldos de todas las unidades: la vista de cobranza del admin. */

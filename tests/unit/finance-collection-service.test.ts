@@ -19,6 +19,9 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({ getSupabaseAdmin: () => ({ from
         then: (resolve: (result: unknown) => unknown) => {
             if (value) {
                 state.updates.push({ table, filters, value });
+                if (!state.failUpdates) for (const row of state.rows[table] || []) {
+                    if (Object.entries(filters).every(([key, match]) => row[key] === match)) Object.assign(row, value);
+                }
                 return Promise.resolve({ error: state.failUpdates ? new Error('update failed') : null }).then(resolve);
             }
             return Promise.resolve({ data: (state.rows[table] || []).filter(row => Object.entries(filters).every(([key, match]) => row[key] === match)), error: null }).then(resolve);
@@ -80,5 +83,46 @@ describe('persisted payment allocation integration', () => {
             unitId: 'unit', expenseId: 'june', amount: 100000, paidAt: '2026-06-10', method: 'transfer',
         })).rejects.toThrow('no pertenece');
         expect(state.inserts).toHaveLength(0);
+    });
+    it('keeps historic paid expenses out of debt without inventing new cash income', async () => {
+        state.rows.expenses[0].status = 'paid';
+        state.rows.unit_payments = [];
+        const statement = await getUnitStatement('community', 'unit');
+        expect(statement.balance).toBe(100000);
+        expect(statement.totalPaid).toBe(0);
+        expect(statement.historicalSettled).toBe(100000);
+        expect(statement.entries.some(entry => entry.label.includes('fecha de pago no registrada'))).toBe(true);
+        await reconcileUnitStatuses('community', 'unit');
+        expect(state.rows.expenses[0].status).toBe('paid');
+        expect(state.rows.expenses[0].payment_metadata).toMatchObject({ ledger_reconciled: true, legacy_settled_amount: 100000 });
+        expect(state.rows.expenses[0].paid_at).toBeUndefined();
+    });
+    it('freezes opening settlements so a new unassigned payment covers unpaid months', async () => {
+        state.rows.expenses[0].status = 'paid';
+        state.rows.unit_payments = [];
+        await reconcileUnitStatuses('community', 'unit');
+        state.rows.unit_payments.push({ id: 'new', community_id: 'community', unit_id: 'unit', amount: 100000, expense_id: null, charge_id: null, paid_at: '2026-06-10', created_at: '2026-06-10' });
+        await reconcileUnitStatuses('community', 'unit');
+        const statement = await getUnitStatement('community', 'unit');
+        expect(statement.balance).toBe(0);
+        expect(statement.totalPaid).toBe(100000);
+        expect(statement.historicalSettled).toBe(100000);
+        expect(state.rows.expenses.map(row => row.status)).toEqual(['paid', 'paid']);
+    });
+    it('does not turn a deleted modern payment into an opening credit', async () => {
+        await reconcileUnitStatuses('community', 'unit');
+        state.rows.unit_payments = [];
+        await reconcileUnitStatuses('community', 'unit');
+        const statement = await getUnitStatement('community', 'unit');
+        expect(statement.balance).toBe(200000);
+        expect(statement.historicalSettled).toBe(0);
+        expect(state.rows.expenses[1].status).toBe('overdue');
+    });
+    it('does not double count historical flags already backed by registered payments', async () => {
+        state.rows.expenses[1].status = 'paid';
+        const statement = await getUnitStatement('community', 'unit');
+        expect(statement.balance).toBe(100000);
+        expect(statement.historicalSettled).toBe(0);
+        expect(statement.totalPaid).toBe(100000);
     });
 });
