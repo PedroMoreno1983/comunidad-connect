@@ -1,4 +1,5 @@
 import type { ServiceProvider } from "@/lib/types";
+import { getCategoryVisual } from "@/components/services/categoryVisuals";
 
 export function providerProfileHref(id: string, contact = false) {
     return contact ? `/services/provider/${id}?contact=1` : `/services/provider/${id}`;
@@ -27,6 +28,13 @@ export function availabilityCopy(availability: ServiceProvider["availability"]) 
     if (availability === "available") return { label: "Disponible hoy", color: "var(--cc-sage)" };
     if (availability === "busy") return { label: "Agenda ocupada", color: "var(--cc-amber)" };
     return { label: "Sin cupos", color: "var(--cc-rose)" };
+}
+
+/** Titular profesional armado con el oficio y la primera especialidad publicada. */
+export function providerHeadline(provider: ServiceProvider) {
+    const label = getCategoryVisual(provider.category).label;
+    const lead = (provider.specialties ?? []).find(item => item.trim().length > 0)?.trim();
+    return lead ? `${label} · ${lead}` : label;
 }
 
 export function providerChips(provider: ServiceProvider) {

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Review, ServiceProvider, ServiceProviderDatabaseRow } from "@/lib/types";
+import { realPhotoUrl } from "@/lib/utils/stockPhoto";
 
 function mapProvider(provider: ServiceProviderDatabaseRow): ServiceProvider {
     return {
@@ -12,7 +13,7 @@ function mapProvider(provider: ServiceProviderDatabaseRow): ServiceProvider {
         reviewCount: provider.review_count,
         contactPhone: provider.contact_phone,
         email: provider.email,
-        photo: provider.photo,
+        photo: realPhotoUrl(provider.photo),
         bio: provider.bio,
         yearsExperience: provider.years_experience,
         specialties: provider.specialties,
@@ -96,7 +97,7 @@ export const providerServerService = {
                 providerId: review.provider_id,
                 userId: review.user_id,
                 userName: profile?.name || "Residente",
-                userAvatar: profile?.avatar_url || undefined,
+                userAvatar: realPhotoUrl(profile?.avatar_url),
                 rating: review.rating,
                 comment: review.comment,
                 serviceType: review.service_type,
