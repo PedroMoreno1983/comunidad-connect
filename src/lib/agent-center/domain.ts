@@ -1,4 +1,5 @@
 import type { ServerAgentProfile } from '@/lib/server/agentIdentity';
+import type { AgentCollectionPlan } from '@/lib/types';
 
 export type AgentKey = 'finance' | 'maintenance' | 'concierge' | 'community';
 export type AutonomyLevel = 'manual' | 'semi_autonomous' | 'autonomous';
@@ -292,6 +293,7 @@ export type AgentTaskSummary = {
     createdAt: string;
     updatedAt: string;
     steps: AgentTaskStepSummary[];
+    collectionIssues?: AgentCollectionPlan['missingRecipients'];
 };
 
 /**
