@@ -1,13 +1,10 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    BadgeCheck,
     Briefcase,
     Calendar,
-    CheckCircle,
     Clock,
     MessageCircle,
     Star,
@@ -25,10 +22,12 @@ import {
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
-import { getInitials } from "@/lib/utils/avatar";
 import { getCategoryVisual } from "@/components/services/categoryVisuals";
+import { ProfileBanner, ProfileLegend, ProviderPortrait, ReviewerMark } from "@/components/services/ProviderGlyph";
+import { categoryInk, providerMarks } from "@/components/services/providerMarks";
 import {
     availabilityCopy,
+    providerHeadline,
     providerPrice,
     whatsappUrl,
 } from "@/components/services/providerPresentation";
@@ -62,14 +61,27 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
     const { toast } = useToast();
     const { user } = useAuth();
     const router = useRouter();
-    const visual = getCategoryVisual(provider.category);
     const price = providerPrice(provider);
     const availability = availabilityCopy(provider.availability);
+    const headline = providerHeadline(provider);
+    const marks = providerMarks(provider);
     const breakdown = ratingBreakdown(reviews);
     const messageHref = whatsappUrl(provider.contactPhone) || (provider.email ? `mailto:${provider.email}` : "");
     const aboveResidentNav = user?.role === "resident";
     const firstName = provider.name.split(" ")[0];
-    const responseTime = provider.responseTime?.trim() ?? "";
+    const responseTime = marks.responseLabel;
+    const specialties = (provider.specialties ?? []).filter(item => item.trim().length > 0);
+    const trajectory = [
+        marks.yearTotal > 0
+            ? { key: "years", title: `${provider.yearsExperience} años de experiencia`, note: headline }
+            : null,
+        marks.jobTotal > 0
+            ? { key: "jobs", title: `${provider.completedJobs} trabajos realizados`, note: "Cifra publicada en el perfil" }
+            : null,
+        ...(provider.certifications ?? [])
+            .filter(item => item.trim().length > 0)
+            .map(cert => ({ key: cert, title: cert, note: "Certificación publicada" })),
+    ].filter((item): item is { key: string; title: string; note: string } => Boolean(item));
 
     const handleRequestService = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -175,178 +187,182 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
         }
     };
 
-    const stats = [
-        provider.reviewCount > 0
-            ? { value: String(provider.rating), label: `${provider.reviewCount} reseña${provider.reviewCount === 1 ? "" : "s"}` }
-            : null,
-        provider.completedJobs > 0
-            ? { value: String(provider.completedJobs), label: "trabajos" }
-            : null,
-        provider.yearsExperience > 0
-            ? { value: String(provider.yearsExperience), label: "años" }
-            : null,
-        responseTime
-            ? { value: responseTime, label: "respuesta" }
-            : null,
+    const figures = [
+        provider.reviewCount > 0 ? { value: String(provider.rating), label: `${provider.reviewCount} reseña${provider.reviewCount === 1 ? "" : "s"}` } : null,
+        marks.jobTotal > 0 ? { value: String(provider.completedJobs), label: "trabajos" } : null,
+        marks.yearTotal > 0 ? { value: String(provider.yearsExperience), label: "años" } : null,
+        responseTime ? { value: responseTime, label: "respuesta" } : null,
     ].filter((stat): stat is { value: string; label: string } => Boolean(stat));
 
     return (
         <div className="pb-28 lg:pb-0">
             <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-w-0 space-y-8">
-                    <header className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                        {provider.photo ? (
-                            <img
-                                src={provider.photo}
-                                alt=""
-                                className="h-36 w-36 shrink-0 rounded-2xl object-cover sm:h-44 sm:w-44"
-                            />
-                        ) : (
-                            <div
-                                className="grid h-36 w-36 shrink-0 place-items-center rounded-2xl text-5xl text-white sm:h-44 sm:w-44"
-                                style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
-                            >
-                                {getInitials(provider.name)}
+                <div className="min-w-0 space-y-10">
+                    <header className="overflow-hidden rounded-3xl border" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }}>
+                        <div className="h-32 sm:h-40">
+                            <ProfileBanner ink={categoryInk(provider.category)} />
+                        </div>
+                        <div className="px-5 pb-6 sm:px-8">
+                            <div className="-mt-14">
+                                <div className="inline-block rounded-full bg-[var(--cc-paper-warm)] p-1">
+                                    <ProviderPortrait provider={provider} size="profile" />
+                                </div>
                             </div>
-                        )}
-                        <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1">
                                 <h1
                                     className="text-4xl leading-none tracking-[-0.03em] cc-text-primary sm:text-5xl"
                                     style={{ fontFamily: "var(--cc-font-display)", fontWeight: 520 }}
                                 >
                                     {provider.name}
                                 </h1>
-                                {provider.verified && (
-                                    <span className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color: "var(--cc-sage)" }}>
-                                        <BadgeCheck className="h-5 w-5" aria-hidden />
-                                        Verificado
+                                {provider.verified ? (
+                                    <span className="pb-1 text-sm italic" style={{ color: "var(--cc-sage)", fontFamily: "var(--cc-font-display)" }}>
+                                        perfil verificado
                                     </span>
-                                )}
+                                ) : null}
                             </div>
-                            <p className="mt-3 text-base cc-text-secondary">{visual.label}</p>
-                            {provider.reviewCount > 0 ? (
-                                <p className="mt-3 inline-flex items-center gap-1.5 text-sm">
-                                    <Star className="h-4 w-4" style={{ color: "var(--cc-amber)", fill: "var(--cc-amber)" }} />
-                                    <strong className="cc-text-primary">{provider.rating}</strong>
-                                    <span className="cc-text-tertiary">{provider.reviewCount} reseñas</span>
-                                </p>
-                            ) : (
-                                <p className="mt-3 text-sm cc-text-tertiary">Sin reseñas todavía</p>
-                            )}
-                            {stats.length > 0 && (
-                                <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                    {stats.map(stat => (
-                                        <div key={stat.label} className="rounded-xl border bg-white px-3 py-3" style={{ borderColor: "var(--cc-line)" }}>
-                                            <dt className="text-[11px] uppercase tracking-[0.12em] cc-text-tertiary">{stat.label}</dt>
+                            <p className="mt-3 max-w-xl text-lg italic cc-text-secondary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                {headline}
+                            </p>
+                            <p className="mt-3 inline-flex items-center gap-2 text-sm cc-text-secondary">
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ background: availability.color }} />
+                                {availability.label}
+                                {provider.reviewCount > 0 ? (
+                                    <span className="cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                        {provider.rating}
+                                        <span className="ml-1 text-xs cc-text-tertiary" style={{ fontFamily: "var(--cc-font-sans)" }}>
+                                            {provider.reviewCount} reseñas
+                                        </span>
+                                    </span>
+                                ) : (
+                                    <span className="text-xs cc-text-tertiary">Sin reseñas todavía</span>
+                                )}
+                            </p>
+                            {figures.length > 0 ? (
+                                <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-4">
+                                    {figures.map(figure => (
+                                        <div key={figure.label}>
                                             <dd
-                                                className="mt-1 truncate text-lg cc-text-primary"
+                                                className="text-3xl leading-none tracking-[-0.03em] cc-text-primary"
                                                 style={{ fontFamily: "var(--cc-font-display)", fontVariantNumeric: "lining-nums tabular-nums" }}
                                             >
-                                                {stat.value}
+                                                {figure.value}
                                             </dd>
+                                            <dt className="mt-1 text-xs italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>{figure.label}</dt>
                                         </div>
                                     ))}
                                 </dl>
-                            )}
+                            ) : null}
                         </div>
                     </header>
 
                     <section>
-                        <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Sobre mí</h2>
+                        <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Acerca de</h2>
                         {provider.bio ? (
                             <p className="mt-3 max-w-2xl text-[15px] leading-7 cc-text-secondary">{provider.bio}</p>
                         ) : (
-                            <p className="mt-3 rounded-2xl border border-dashed bg-white p-6 text-sm cc-text-tertiary" style={{ borderColor: "var(--cc-line-strong)" }}>
+                            <p className="mt-3 text-sm italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 {firstName} todavía no escribió una presentación.
                             </p>
                         )}
                     </section>
 
                     <section>
+                        <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Experiencia</h2>
+                        {trajectory.length > 0 ? (
+                            <ol className="mt-4 space-y-0 border-l" style={{ borderColor: "var(--cc-ink)" }}>
+                                {trajectory.map(item => (
+                                    <li key={item.key} className="relative pb-6 pl-6 last:pb-0">
+                                        <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full" style={{ background: marks.ink }} />
+                                        <p className="text-base cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{item.title}</p>
+                                        <p className="mt-1 text-sm italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>{item.note}</p>
+                                    </li>
+                                ))}
+                            </ol>
+                        ) : (
+                            <p className="mt-3 text-sm italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                Sin trayectoria publicada.
+                            </p>
+                        )}
+                    </section>
+
+                    {specialties.length > 0 ? (
+                        <section>
+                            <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Aptitudes</h2>
+                            <ul className="mt-3 flex flex-wrap gap-2">
+                                {specialties.map(specialty => (
+                                    <li
+                                        key={specialty}
+                                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm cc-text-primary"
+                                        style={{ borderColor: "var(--cc-ink)", background: "transparent" }}
+                                    >
+                                        {provider.verified ? (
+                                            <span aria-hidden className="text-xs" style={{ color: "var(--cc-sage)" }}>✓</span>
+                                        ) : null}
+                                        {specialty}
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    ) : null}
+
+                    <section>
                         <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Servicios y precios</h2>
-                        {price.hasRate || provider.specialties.length > 0 ? (
-                            <div className="mt-3 overflow-hidden rounded-2xl border bg-white" style={{ borderColor: "var(--cc-line)" }}>
+                        {price.hasRate || specialties.length > 0 ? (
+                            <div className="mt-3 overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}>
                                 <div className="flex items-baseline justify-between gap-4 border-b px-5 py-4" style={{ borderColor: "var(--cc-line)" }}>
                                     <div>
-                                        <p className="text-sm font-semibold cc-text-primary">{visual.label}</p>
-                                        <p className="mt-1 text-xs cc-text-tertiary">
+                                        <p className="text-sm cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{headline}</p>
+                                        <p className="mt-1 text-xs italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                             {price.hasRate ? "Tarifa por hora publicada" : "Sin tarifa por hora"}
                                         </p>
                                     </div>
                                     <p
-                                        className="text-2xl cc-text-primary"
+                                        className="text-3xl cc-text-primary"
                                         style={{ fontFamily: "var(--cc-font-display)", fontVariantNumeric: "lining-nums tabular-nums" }}
                                     >
-                                        {price.hasRate ? `desde ${price.headline}` : price.headline}
+                                        {price.headline}
                                         {price.hasRate ? <span className="ml-1 text-sm cc-text-tertiary">/ hora</span> : null}
                                     </p>
                                 </div>
-                                {provider.specialties.length > 0 ? (
-                                    <ul className="divide-y" style={{ borderColor: "var(--cc-line)" }}>
-                                        {provider.specialties.map(specialty => (
-                                            <li key={specialty} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                                {specialties.length > 0 ? (
+                                    <ul>
+                                        {specialties.map(specialty => (
+                                            <li key={specialty} className="flex items-center justify-between gap-3 border-t px-5 py-3 text-sm first:border-t-0" style={{ borderColor: "var(--cc-line)" }}>
                                                 <span className="cc-text-primary">{specialty}</span>
-                                                <span className="cc-text-tertiary">Precio al contactar</span>
+                                                <span className="italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>Precio al contactar</span>
                                             </li>
                                         ))}
                                     </ul>
                                 ) : null}
                             </div>
                         ) : (
-                            <p className="mt-3 rounded-2xl border border-dashed bg-white p-6 text-sm cc-text-tertiary" style={{ borderColor: "var(--cc-line-strong)" }}>
+                            <p className="mt-3 text-sm italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 Este perfil no publica servicios ni tarifas. El precio se acuerda al contactar.
                             </p>
                         )}
                     </section>
 
                     <section>
-                        <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Disponibilidad</h2>
-                        <div className="mt-3 rounded-2xl border bg-white p-5" style={{ borderColor: "var(--cc-line)" }}>
-                            <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: availability.color }}>
-                                <span className="h-2 w-2 rounded-full" style={{ background: availability.color }} />
+                        <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Actividad</h2>
+                        <ul className="mt-3 space-y-2 text-sm cc-text-secondary">
+                            <li className="flex items-center gap-2">
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ background: availability.color }} />
                                 {availability.label}
-                            </p>
-                            <p className="mt-3 max-w-xl text-sm leading-6 cc-text-secondary">
-                                No hay una grilla semanal publicada. Al reservar puedes proponer el día y la hora.
-                            </p>
-                        </div>
+                            </li>
+                            {responseTime ? <li>Suele responder en {responseTime}</li> : null}
+                            {provider.reviewCount > 0 ? (
+                                <li>{provider.reviewCount} reseña{provider.reviewCount === 1 ? "" : "s"} publicada{provider.reviewCount === 1 ? "" : "s"}</li>
+                            ) : null}
+                        </ul>
+                        <p className="mt-3 max-w-xl text-sm italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            No hay una grilla semanal publicada. Al reservar puedes proponer el día y la hora.
+                        </p>
                     </section>
-
-                    {provider.specialties.length > 0 && (
-                        <section>
-                            <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Especialidades</h2>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {provider.specialties.map(specialty => (
-                                    <span
-                                        key={specialty}
-                                        className="rounded-full border bg-white px-4 py-1.5 text-sm cc-text-secondary"
-                                        style={{ borderColor: "var(--cc-line)" }}
-                                    >
-                                        {specialty}
-                                    </span>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {provider.certifications.length > 0 && (
-                        <section>
-                            <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Certificaciones</h2>
-                            <ul className="mt-3 space-y-3">
-                                {provider.certifications.map(cert => (
-                                    <li key={cert} className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3" style={{ borderColor: "var(--cc-line)" }}>
-                                        <CheckCircle className="h-5 w-5 shrink-0" style={{ color: "var(--cc-sage)" }} />
-                                        <span className="text-sm font-medium cc-text-primary">{cert}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                    )}
 
                     <section>
                         <div className="flex items-end justify-between gap-3">
-                            <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Reseñas</h2>
+                            <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Recomendaciones</h2>
                             <button
                                 type="button"
                                 onClick={() => setIsReviewDialogOpen(true)}
@@ -359,86 +375,58 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
 
                         {reviews.length > 0 ? (
                             <>
-                                <div className="mt-4 flex flex-col gap-6 rounded-2xl border bg-white p-5 sm:flex-row sm:items-center" style={{ borderColor: "var(--cc-line)" }}>
-                                    <div className="text-center sm:w-36">
+                                <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-end">
+                                    <div>
                                         <p
-                                            className="text-5xl cc-text-primary"
+                                            className="text-6xl leading-none cc-text-primary"
                                             style={{ fontFamily: "var(--cc-font-display)", fontVariantNumeric: "lining-nums tabular-nums" }}
                                         >
                                             {provider.rating}
                                         </p>
-                                        <div className="mt-2 flex justify-center gap-0.5">
-                                            {Array.from({ length: 5 }).map((_, i) => (
-                                                <Star
-                                                    key={i}
-                                                    className="h-4 w-4"
-                                                    style={{
-                                                        color: "var(--cc-amber)",
-                                                        fill: i < Math.round(provider.rating) ? "var(--cc-amber)" : "transparent",
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                        <p className="mt-2 text-xs cc-text-tertiary">{reviews.length} reseña{reviews.length === 1 ? "" : "s"}</p>
+                                        <p className="mt-2 text-xs italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                            {reviews.length} reseña{reviews.length === 1 ? "" : "s"}
+                                        </p>
                                     </div>
                                     <div className="flex-1 space-y-2">
                                         {breakdown.map(row => (
                                             <div key={row.star} className="flex items-center gap-3 text-xs cc-text-secondary">
-                                                <span className="w-3 text-right font-semibold">{row.star}</span>
-                                                <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: "var(--cc-ivory-soft)" }}>
-                                                    <div className="h-full rounded-full" style={{ width: `${row.pct}%`, background: "var(--cc-amber)" }} />
+                                                <span className="w-3 text-right" style={{ fontFamily: "var(--cc-font-mono)" }}>{row.star}</span>
+                                                <div className="h-px flex-1" style={{ background: "var(--cc-line-strong)" }}>
+                                                    <div className="h-px" style={{ width: `${row.pct}%`, background: "var(--cc-ink)" }} />
                                                 </div>
-                                                <span className="w-8 tabular-nums cc-text-tertiary">{row.count}</span>
+                                                <span className="w-8" style={{ fontFamily: "var(--cc-font-mono)" }}>{row.count}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="mt-4 space-y-3">
+                                <div className="mt-6 space-y-6">
                                     {reviews.map(review => (
-                                        <article key={review.id} className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--cc-line)" }}>
-                                            <div className="flex items-start gap-3">
-                                                {review.userAvatar ? (
-                                                    <img src={review.userAvatar} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
-                                                ) : (
-                                                    <div
-                                                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm text-white"
-                                                        style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
-                                                    >
-                                                        {review.userName.charAt(0)}
-                                                    </div>
-                                                )}
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="text-sm font-semibold cc-text-primary">{review.userName}</h3>
-                                                        <span className="inline-flex items-center gap-0.5">
-                                                            {Array.from({ length: 5 }).map((_, i) => (
-                                                                <Star
-                                                                    key={i}
-                                                                    className="h-3.5 w-3.5"
-                                                                    style={{
-                                                                        color: "var(--cc-amber)",
-                                                                        fill: i < review.rating ? "var(--cc-amber)" : "transparent",
-                                                                    }}
-                                                                />
-                                                            ))}
-                                                        </span>
-                                                    </div>
-                                                    <p className="mt-0.5 text-xs cc-text-tertiary">
-                                                        {new Date(review.createdAt).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })}
-                                                    </p>
-                                                    <p className="mt-2 text-sm leading-6 cc-text-secondary">{review.comment}</p>
-                                                </div>
+                                        <article key={review.id} className="flex items-start gap-3">
+                                            <ReviewerMark name={review.userName} photo={review.userAvatar} />
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-sm cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{review.userName}</h3>
+                                                <p className="mt-0.5 text-xs cc-text-tertiary">
+                                                    {review.serviceType ? `${getCategoryVisual(review.serviceType).label} · ` : ""}
+                                                    {new Date(review.createdAt).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })}
+                                                    {" · "}
+                                                    {review.rating}
+                                                </p>
+                                                <p className="mt-2 text-base italic leading-7 cc-text-secondary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                                    “{review.comment}”
+                                                </p>
                                             </div>
                                         </article>
                                     ))}
                                 </div>
                             </>
                         ) : (
-                            <p className="mt-3 rounded-2xl border border-dashed bg-white p-8 text-center text-sm cc-text-tertiary" style={{ borderColor: "var(--cc-line-strong)" }}>
-                                Aún no hay reseñas. Si {firstName} trabajó en tu unidad, puedes contar cómo fue.
+                            <p className="mt-3 text-sm italic cc-text-tertiary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                Aún no hay recomendaciones. Si {firstName} trabajó en tu unidad, puedes contar cómo fue.
                             </p>
                         )}
                     </section>
+
+                    <ProfileLegend provider={provider} />
                 </div>
 
                 <aside className="hidden lg:block lg:sticky lg:top-24">
@@ -615,7 +603,7 @@ function BookingCard({
     onContact: () => void;
 }) {
     return (
-        <section className="rounded-2xl border bg-white p-5 shadow-[0_1px_2px_rgba(26,22,17,0.04),0_16px_40px_-24px_rgba(26,22,17,0.45)]" style={{ borderColor: "var(--cc-line)" }}>
+        <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }}>
             {showDesde ? <p className="text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Desde</p> : null}
             <p
                 className="mt-1 text-4xl leading-none tracking-[-0.03em] cc-text-primary"

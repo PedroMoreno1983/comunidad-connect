@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
+import { realPhotoUrl } from '@/lib/utils/stockPhoto';
 
 const VALID_CATEGORIES = ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'] as const;
 type ProviderCategory = typeof VALID_CATEGORIES[number];
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
             reviewCount: provider.review_count,
             contactPhone: provider.contact_phone,
             email: provider.email,
-            photo: provider.photo,
+            photo: realPhotoUrl(provider.photo),
             bio: provider.bio,
             yearsExperience: provider.years_experience,
             specialties: provider.specialties,

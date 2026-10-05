@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { ServiceProvider, ServiceProviderDatabaseRow, Review } from '@/lib/types';
+import { realPhotoUrl } from '@/lib/utils/stockPhoto';
 
 const getSupabase = () => supabase;
 
@@ -12,7 +13,7 @@ function mapProvider(p: ServiceProviderDatabaseRow): ServiceProvider {
         reviewCount: p.review_count,
         contactPhone: p.contact_phone,
         email: p.email,
-        photo: p.photo,
+        photo: realPhotoUrl(p.photo),
         bio: p.bio,
         yearsExperience: p.years_experience,
         specialties: p.specialties,
@@ -82,7 +83,7 @@ export const providersService = {
             reviewCount: p.review_count,
             contactPhone: p.contact_phone,
             email: p.email,
-            photo: p.photo,
+            photo: realPhotoUrl(p.photo),
             bio: p.bio,
             yearsExperience: p.years_experience,
             specialties: p.specialties,
@@ -166,7 +167,7 @@ export const providersService = {
             reviewCount: p.review_count,
             contactPhone: p.contact_phone,
             email: p.email,
-            photo: p.photo,
+            photo: realPhotoUrl(p.photo),
             bio: p.bio,
             yearsExperience: p.years_experience,
             specialties: p.specialties,
@@ -242,7 +243,7 @@ export const reviewsService = {
                 providerId: review.provider_id,
                 userId: review.user_id,
                 userName: profile?.name || 'Residente',
-                userAvatar: profile?.avatar_url || undefined,
+                userAvatar: realPhotoUrl(profile?.avatar_url),
                 rating: review.rating,
                 comment: review.comment,
                 serviceType: review.service_type,
@@ -280,7 +281,7 @@ export const reviewsService = {
             providerId: data.provider_id,
             userId: data.user_id,
             userName: data.profiles?.name || 'Usuario',
-            userAvatar: data.profiles?.avatar_url,
+            userAvatar: realPhotoUrl(data.profiles?.avatar_url),
             rating: data.rating,
             comment: data.comment,
             serviceType: data.service_type,
