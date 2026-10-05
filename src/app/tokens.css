@@ -66,10 +66,13 @@
   --cc-danger:        var(--cc-rose);
   --cc-danger-tint:   var(--cc-rose-tint);
 
-  /* ─── Type families ─────────────────────────────────────── */
-  --cc-font-display:  'Instrument Serif', 'Times New Roman', serif;
-  --cc-font-sans:     'Geist', ui-sans-serif, system-ui, sans-serif;
-  --cc-font-mono:     'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* ─── Type families ───────────────────────────────────────
+     Fraunces (soft optical serif) for titles and big figures.
+     Source Sans 3 for body and UI. IBM Plex Mono for codes.
+     The --font-* variables are set by next/font on <html>. */
+  --cc-font-display:  var(--font-fraunces), "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
+  --cc-font-sans:     var(--font-source-sans), "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --cc-font-mono:     var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* ─── Radii ─────────────────────────────────────────────── */
   --cc-radius-sm:     6px;
@@ -89,8 +92,10 @@
   --cc-duration-fast: 140ms;
   --cc-duration-normal: 220ms;
   --cc-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --cc-leading-normal: 1.5;
-  --cc-tracking-tight: 0;
+  --cc-leading-normal: 1.65;
+  --cc-leading-display: 1.04;
+  --cc-tracking-tight: -0.02em;
+  --cc-tracking-display: -0.03em;
 
   /* ─── Motion ────────────────────────────────────────────── */
   --cc-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
@@ -266,12 +271,14 @@ html, body {
   background: var(--cc-ivory);
   color: var(--cc-ink);
   font-family: var(--cc-font-sans);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "kern" 1, "liga" 1, "lnum" 1, "tnum" 1;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 /* mono numbers everywhere we mark them */
-.font-mono { font-feature-settings: 'tnum' 1, 'zero' 1; letter-spacing: -0.01em; }
+.font-mono { font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1, "zero" 1; letter-spacing: -0.01em; }
 
 /* uppercase eyebrow */
 .cc-eyebrow {

@@ -84,11 +84,14 @@ export function StatCard({
 
       {/* Value */}
       <div
+        className="cc-figure"
         style={{
+          fontFamily: 'var(--cc-font-display)',
           fontSize: '32px',
-          fontWeight: 600,
-          letterSpacing: '0',
-          lineHeight: 1,
+          fontWeight: 500,
+          letterSpacing: '-0.03em',
+          lineHeight: 0.96,
+          fontVariantNumeric: 'lining-nums tabular-nums',
           marginBottom: '6px',
         }}
       >

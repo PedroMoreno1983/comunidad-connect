@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 @import "./tokens.css";
@@ -7,12 +6,49 @@
   body {
     background: var(--cc-ivory);
     color: var(--cc-ink);
+    font-family: var(--cc-font-sans);
+    font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "kern" 1, "liga" 1, "lnum" 1, "tnum" 1;
+    line-height: var(--cc-leading-normal);
   }
 
-  h1, h2, h3 {
+  h1, h2, h3, h4,
+  .font-display,
+  .cc-figure {
     font-family: var(--cc-font-display);
-    letter-spacing: 0;
-    font-weight: 400;
+    font-optical-sizing: auto;
+    font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "kern" 1, "lnum" 1, "tnum" 1;
+  }
+
+  h1, .font-display, .cc-figure {
+    font-weight: 500;
+    letter-spacing: var(--cc-tracking-display);
+    line-height: var(--cc-leading-display);
+    font-variation-settings: "SOFT" 40, "WONK" 1;
+  }
+
+  h2 {
+    font-weight: 500;
+    letter-spacing: var(--cc-tracking-tight);
+    line-height: 1.12;
+    font-variation-settings: "SOFT" 24, "WONK" 0;
+  }
+
+  h3, h4 {
+    font-weight: 560;
+    letter-spacing: -0.015em;
+    line-height: 1.22;
+    font-variation-settings: "SOFT" 12, "WONK" 0;
+  }
+
+  /* Large type reads as a display figure even when it is not a heading. */
+  :where(.text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl, .text-8xl, .text-9xl) {
+    font-family: var(--cc-font-display);
+    font-optical-sizing: auto;
+    font-variant-numeric: lining-nums tabular-nums;
+    letter-spacing: var(--cc-tracking-display);
+    line-height: var(--cc-leading-display);
   }
 }
 
@@ -130,8 +166,22 @@
 @utility bg-info-fg           { background-color: var(--cc-info-fg); }
 @utility bg-tertiary          { background-color: var(--cc-text-tertiary); }
 
-/* Font display */
-@utility font-display { font-family: var(--cc-font-display); }
+/* Font display and hero figures */
+@utility font-display {
+  font-family: var(--cc-font-display);
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-variation-settings: "SOFT" 40, "WONK" 1;
+}
+@utility cc-figure {
+  font-family: var(--cc-font-display);
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "lnum" 1, "tnum" 1;
+  font-variation-settings: "SOFT" 50, "WONK" 1;
+  letter-spacing: var(--cc-tracking-display);
+  line-height: 0.96;
+}
 
 .cc-wordmark {
   font-family: var(--cc-font-display);
@@ -160,6 +210,8 @@ body {
   background: var(--cc-bg-canvas);
   color: var(--cc-text-primary);
   font-family: var(--cc-font-sans);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "kern" 1, "liga" 1, "lnum" 1, "tnum" 1;
   line-height: var(--cc-leading-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -171,9 +223,10 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-h1, h2 {
+h1, h2, h3, h4 {
   font-family: var(--cc-font-display);
-  letter-spacing: var(--cc-tracking-tight);
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 /* ============================================
@@ -516,8 +569,9 @@ h1, h2 {
 
 h1,
 h2,
-.font-display {
-  letter-spacing: 0 !important;
+.font-display,
+.cc-figure {
+  letter-spacing: var(--cc-tracking-display);
 }
 
 .rounded-\[3rem\],
