@@ -1,5 +1,5 @@
 import { AGENT_PLAYBOOKS, type AgentAction, type AgentProfile, type PlaybookKey } from '@/lib/agent-center/domain';
-import { stableNotificationId } from '@/lib/agent-center/utils';
+import { readCollectionExpenses, resolveCollectionRecipients, storeCollectionNotifications, verifyCollectionNotifications } from '@/lib/agent-center/collection';
 import {
     completeAgentTask,
     createAgentTask,
@@ -32,90 +32,47 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string) {
         { key: 'detect_expenses', title: 'Detectar gastos impagos' },
         { key: 'resolve_recipients', title: 'Resolver unidades y residentes' },
         { key: 'notify_residents', title: 'Notificar residentes vinculados' },
-        { key: 'verify_delivery', title: 'Verificar entrega y registrar evento' },
+        { key: 'verify_delivery', title: 'Verificar registro en la app y auditoria' },
     ]);
-    const admin = getSupabaseAdmin();
     const communityId = profile.community_id!;
 
     try {
-        const expenses = await runVerifiedTaskStep(taskId, 0, async () => {
-            const { data, error } = await admin
-                .from('expenses')
-                .select('id, unit_id, month, amount, status, due_date')
-                .eq('community_id', communityId)
-                .in('status', ['pending', 'overdue'])
-                .order('due_date', { ascending: true })
-                .limit(100);
-            if (error) throw error;
-            return data || [];
-        }, { output: rows => ({ pendingExpenses: rows.length }) });
-
-        const resolution = await runVerifiedTaskStep(taskId, 1, async () => {
-            const unitIds = Array.from(new Set(expenses.map(row => String(row.unit_id || '')).filter(Boolean)));
-            const { data: units, error } = unitIds.length
-                ? await admin.from('units').select('id, number, unit_number, owner_id, resident_profile_id').in('id', unitIds)
-                : { data: [], error: null };
-            if (error) throw error;
-            const unitById = new Map((units || []).map(unit => [String(unit.id), unit]));
-            const notifications = expenses.flatMap(row => {
-                const unit = unitById.get(String(row.unit_id));
-                const recipientId = String(unit?.owner_id || unit?.resident_profile_id || '');
-                if (!recipientId) return [];
-                const unitLabel = String(unit?.unit_number || unit?.number || row.unit_id);
-                return [{
-                    id: stableNotificationId('finance_collection', communityId, recipientId, String(row.id || row.month || row.due_date || row.amount || 'pending')),
-                    user_id: recipientId,
-                    type: row.status === 'overdue' ? 'alert' : 'warning',
-                    category: 'finance_collection',
-                    title: 'Gasto comun pendiente',
-                    body: `Tu unidad ${unitLabel} registra un gasto comun pendiente de $${Number(row.amount || 0).toLocaleString('es-CL')} (${row.month || 'periodo actual'}).`,
-                    link: '/resident/finances',
-                    community_id: communityId,
-                }];
-            });
-            return { notifications, missingResidents: Math.max(0, expenses.length - notifications.length) };
-        }, { output: result => ({ notifications: result.notifications.length, missingResidents: result.missingResidents }) });
-
-        const notificationIds = await runVerifiedTaskStep(taskId, 2, async () => {
-            if (resolution.notifications.length === 0) return [];
-            const { data, error } = await admin
-                .from('notifications')
-                .upsert(resolution.notifications, { onConflict: 'id' })
-                .select('id');
-            if (error) throw error;
-            return (data || []).map(row => String(row.id));
-        }, {
-            verify: ids => ids.length === resolution.notifications.length,
-            output: ids => ({ notificationIds: ids }),
-        });
+        const expenses = await runVerifiedTaskStep(taskId, 0,
+            () => readCollectionExpenses(communityId), { output: rows => ({ pendingExpenses: rows.length }) });
+        const resolution = await runVerifiedTaskStep(taskId, 1,
+            () => resolveCollectionRecipients(communityId, expenses),
+            { output: plan => ({ notifications: plan.notifications.length, missingRecipients: plan.missingRecipients }) });
+        const notificationIds = await runVerifiedTaskStep(taskId, 2,
+            () => storeCollectionNotifications(resolution),
+            { verify: ids => ids.length === resolution.notifications.length, output: ids => ({ notificationIds: ids }) });
 
         await runVerifiedTaskStep(taskId, 3, async () => {
-            const { count, error } = notificationIds.length
-                ? await admin.from('notifications').select('id', { count: 'exact', head: true }).in('id', notificationIds)
-                : { count: 0, error: null };
-            if (error) throw error;
-            if ((count || 0) !== notificationIds.length) throw new Error('No fue posible verificar todas las notificaciones.');
-            await recordOperationEvent({
+            const count = await verifyCollectionNotifications(communityId, notificationIds);
+            const audit = await recordOperationEvent({
                 communityId,
                 actorId: profile.id,
                 actorRole: profile.role,
                 action: 'agent.task.finance_collection_review',
                 entityType: 'agent_task',
                 entityId: taskId,
-                severity: resolution.missingResidents === 0 ? 'success' : 'warning',
-                status: resolution.missingResidents === 0 ? 'success' : 'pending',
-                summary: `Tarea de cobranza: ${expenses.length} cobro(s), ${notificationIds.length} notificacion(es) verificadas`,
-                metadata: { taskId, pendingExpenses: expenses.length, notifications: notificationIds.length, missingResidents: resolution.missingResidents },
+                severity: resolution.missingRecipients.length === 0 ? 'success' : 'warning',
+                status: resolution.missingRecipients.length === 0 ? 'success' : 'pending',
+                summary: `Tarea de cobranza: ${expenses.length} cobro(s), ${notificationIds.length} notificacion(es) registradas en la app`,
+                metadata: { taskId, pendingExpenses: expenses.length, notifications: notificationIds.length, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app' },
             });
-            return { verifiedNotifications: count || 0 };
-        }, { verify: result => result.verifiedNotifications === notificationIds.length, output: result => result });
+            if (!audit.ok) throw new Error('No fue posible guardar la auditoria de cobranza.');
+            return { verifiedNotifications: count, auditRecorded: true };
+        }, { verify: result => result.auditRecorded && result.verifiedNotifications === notificationIds.length, output: result => result });
 
-        const result = { pendingExpenses: expenses.length, notifications: notificationIds.length, missingResidents: resolution.missingResidents, taskId };
-        await completeAgentTask(taskId, result);
+        const result = { pendingExpenses: expenses.length, notifications: notificationIds.length, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app', taskId };
+        const waitingHuman = resolution.missingRecipients.length > 0;
+        if (waitingHuman) await waitAgentTaskForHuman(taskId, 3, result);
+        else await completeAgentTask(taskId, result);
         return {
-            entityType: 'agent_task', entityId: taskId, title: 'Cobranza verificada',
-            message: `Complete una tarea de ${expenses.length} cobro(s) y verifique ${notificationIds.length} notificacion(es) privadas.`,
-            data: result,
+            entityType: 'agent_task', entityId: taskId, title: waitingHuman ? 'Cobranza pendiente de revision' : 'Cobranza registrada en la app',
+            message: `Revise ${expenses.length} cobro(s) y registre ${notificationIds.length} notificacion(es) en la app. ${waitingHuman ? `${resolution.missingRecipients.length} cobro(s) requieren vincular un destinatario; la tarea queda pendiente.` : 'La tarea esta completa.'} No se enviaron correos ni WhatsApp; no se confirma lectura.`,
+            targetHref: waitingHuman ? '/admin/units' : definition.targetHref,
+            data: { ...result, taskStatus: waitingHuman ? 'waiting_human' : 'completed' },
         };
     } catch (error) {
         await failAgentTask(taskId, error);

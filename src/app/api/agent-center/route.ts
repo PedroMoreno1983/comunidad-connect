@@ -1,3 +1,4 @@
+import { readCollectionExpenses, resolveCollectionRecipients } from '@/lib/agent-center/collection';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
@@ -869,44 +870,12 @@ async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile)
     if (action.toolName !== 'run_playbook' || action.args.playbookKey !== 'finance_collection_review' || !profile.community_id) {
         return action;
     }
-    try {
-        const admin = getSupabaseAdmin();
-        const { data: expenses, error: expensesError } = await admin
-            .from('expenses')
-            .select('unit_id, amount')
-            .eq('community_id', profile.community_id)
-            .in('status', ['pending', 'overdue'])
-            .limit(100);
-        if (expensesError || !expenses?.length) return action;
-
-        const unitIds = Array.from(new Set(expenses.map(row => String(row.unit_id || '')).filter(Boolean)));
-        const { data: units, error: unitsError } = unitIds.length
-            ? await admin.from('units').select('id, owner_id, resident_profile_id').in('id', unitIds)
-            : { data: [], error: null };
-        // Without this check a failed lookup was indistinguishable from "no unit
-        // has a resident", and the preview told the admin to go fix a roster that
-        // was already correct. Better to show no preview than a false one.
-        if (unitsError) {
-            console.error('[agent-center] Could not resolve unit recipients for the collection preview:', unitsError);
-            return action;
-        }
-        const recipientByUnit = new Map((units || []).map(unit => [String(unit.id), String(unit.owner_id || unit.resident_profile_id || '')]));
-        const recipients = new Set(expenses.map(row => recipientByUnit.get(String(row.unit_id))).filter(Boolean));
-        const total = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-        const totalLabel = `$${total.toLocaleString('es-CL')}`;
-
-        const preview = recipients.size > 0
-            ? `Se notificara a ${recipients.size} residente(s) por un total aproximado de ${totalLabel} en gastos pendientes.`
-            : `Hay ${totalLabel} en gastos pendientes, pero ninguna de las unidades afectadas tiene un residente u owner vinculado para notificar -- revisa la asignacion de unidades antes de aprobar.`;
-
-        return {
-            ...action,
-            summary: `${action.summary} ${preview}`,
-        };
-    } catch (error) {
-        console.error('[agent-center] Failed to build finance_collection_review preview', error);
-        return action;
-    }
+    const expenses = await readCollectionExpenses(profile.community_id);
+    const plan = await resolveCollectionRecipients(profile.community_id, expenses);
+    return {
+        ...action,
+        summary: `Revisar ${expenses.length} cobro(s). Registrar ${plan.notifications.length} aviso(s) en la app para ${plan.recipientCount} residente(s). ${plan.missingRecipients.length} cobro(s) sin destinatario quedaran pendientes. Los avisos remiten al saldo actualizado; no envian correo ni WhatsApp.`,
+    };
 }
 
 function isToolName(value: unknown): value is ToolName {

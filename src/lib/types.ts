@@ -3006,3 +3006,36 @@ export interface BankTransactionInput {
     /** Stable identity for one row of an uploaded bank statement. Manual entries omit it. */
     importKey?: string;
 }
+export interface AgentCollectionExpense {
+    id: string;
+    unit_id: string | null;
+    month: string | null;
+    amount: number;
+    status: string;
+    due_date: string | null;
+}
+
+export interface AgentCollectionNotification {
+    id: string;
+    user_id: string;
+    type: string;
+    category: string;
+    title: string;
+    body: string;
+    link: string;
+    community_id: string;
+}
+
+export interface AgentCollectionPlan {
+    notifications: AgentCollectionNotification[];
+    missingRecipients: { expenseId: string; unitId: string | null; unitLabel: string; reason: string }[];
+    recipientCount: number;
+}
+
+export interface AgentCollectionUnit {
+    id: string;
+    number: string | null;
+    unit_number: string | null;
+    owner_id: string | null;
+    resident_profile_id: string | null;
+}

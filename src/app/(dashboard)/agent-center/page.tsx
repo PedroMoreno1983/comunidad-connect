@@ -665,6 +665,14 @@ export default function AgentCenterPage() {
                     ))}
                   </div>
                   {task.lastError && <p className="mt-2.5 text-[12px] leading-snug" style={{ color: "var(--cc-rose)" }}>{task.lastError}</p>}
+                    {!!task.collectionIssues?.length && (
+                      <details className="mt-3 text-[12px] cc-text-secondary">
+                        <summary className="cursor-pointer font-medium">{task.collectionIssues.length} cobro(s) sin destinatario: revisar unidades</summary>
+                        <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+                          {task.collectionIssues.map((issue) => <li key={issue.expenseId}>Unidad {issue.unitLabel}: {issue.reason}</li>)}
+                        </ul>
+                      </details>
+                    )}
                   {task.targetHref && (
                     <Link href={task.targetHref} className="mt-3 inline-block text-[12px] font-medium" style={{ color: "var(--cc-copper)" }}>Abrir modulo →</Link>
                   )}

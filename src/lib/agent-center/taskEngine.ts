@@ -141,7 +141,7 @@ export async function getRecentAgentTasks(profile: AgentProfile): Promise<AgentT
     if (!profile.community_id) return [];
     const { data, error } = await getSupabaseAdmin()
         .from('agent_tasks')
-        .select('id, agent_key, playbook_key, goal, status, current_step, retry_count, last_error, context, created_at, updated_at, agent_task_steps(id, position, step_key, title, status, attempts, error)')
+        .select('id, agent_key, playbook_key, goal, status, current_step, retry_count, last_error, context, result, created_at, updated_at, agent_task_steps(id, position, step_key, title, status, attempts, error)')
         .eq('community_id', profile.community_id)
         .in('status', ['planned', 'running', 'waiting_human', 'failed', 'escalated'])
         .order('updated_at', { ascending: false })
@@ -151,6 +151,13 @@ export async function getRecentAgentTasks(profile: AgentProfile): Promise<AgentT
     return (data || []).map(row => {
         const context = row.context && typeof row.context === 'object' ? row.context as Record<string, unknown> : {};
         const steps = Array.isArray(row.agent_task_steps) ? row.agent_task_steps : [];
+        const result = row.result && typeof row.result === 'object' ? row.result as Record<string, unknown> : {};
+        const collectionIssues = Array.isArray(result.missingRecipients) ? result.missingRecipients.flatMap(value => {
+            if (!value || typeof value !== 'object') return [];
+            const issue = value as Record<string, unknown>;
+            if (typeof issue.expenseId !== 'string' || typeof issue.unitLabel !== 'string' || typeof issue.reason !== 'string') return [];
+            return [{ expenseId: issue.expenseId, unitId: typeof issue.unitId === 'string' ? issue.unitId : null, unitLabel: issue.unitLabel, reason: issue.reason }];
+        }) : [];
         return {
             id: String(row.id),
             agentKey: row.agent_key as AgentTaskSummary['agentKey'],
@@ -160,7 +167,8 @@ export async function getRecentAgentTasks(profile: AgentProfile): Promise<AgentT
             currentStep: Number(row.current_step || 0),
             retryCount: Number(row.retry_count || 0),
             lastError: typeof row.last_error === 'string' ? row.last_error : null,
-            targetHref: typeof context.targetHref === 'string' ? context.targetHref : null,
+            targetHref: collectionIssues.length ? '/admin/units' : typeof context.targetHref === 'string' ? context.targetHref : null,
+            collectionIssues,
             createdAt: String(row.created_at),
             updatedAt: String(row.updated_at),
             steps: steps
