@@ -11,7 +11,7 @@ type BrandProps = {
 
 /**
  * Convive Connect wordmark.
- * Uses the display serif (Fraunces) with "Connect" italicized in copper.
+ * Uses the display serif with "Connect" italicized in copper.
  */
 export function Brand({ size = 22, className = "", withMark = false, tone = "default" }: BrandProps) {
   const isInverse = tone === "inverse";

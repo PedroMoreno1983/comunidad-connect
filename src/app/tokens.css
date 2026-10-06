@@ -67,11 +67,11 @@
   --cc-danger-tint:   var(--cc-rose-tint);
 
   /* ─── Type families ───────────────────────────────────────
-     Fraunces (soft optical serif) for titles and big figures.
-     Source Sans 3 for body and UI. IBM Plex Mono for codes.
+     Source Serif 4 for titles and big figures.
+     DM Sans for body and UI. IBM Plex Mono for codes.
      The --font-* variables are set by next/font on <html>. */
-  --cc-font-display:  var(--font-fraunces), "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
-  --cc-font-sans:     var(--font-source-sans), "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --cc-font-display:  var(--font-source-serif), "Source Serif 4", "Iowan Old Style", Palatino, Georgia, serif;
+  --cc-font-sans:     var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --cc-font-mono:     var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* ─── Radii ─────────────────────────────────────────────── */

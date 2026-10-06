@@ -25,21 +25,18 @@
     font-weight: 500;
     letter-spacing: var(--cc-tracking-display);
     line-height: var(--cc-leading-display);
-    font-variation-settings: "SOFT" 40, "WONK" 1;
   }
 
   h2 {
     font-weight: 500;
     letter-spacing: var(--cc-tracking-tight);
     line-height: 1.12;
-    font-variation-settings: "SOFT" 24, "WONK" 0;
   }
 
   h3, h4 {
     font-weight: 560;
     letter-spacing: -0.015em;
     line-height: 1.22;
-    font-variation-settings: "SOFT" 12, "WONK" 0;
   }
 
   /* Large type reads as a display figure even when it is not a heading. */
@@ -171,14 +168,12 @@
   font-family: var(--cc-font-display);
   font-optical-sizing: auto;
   font-variant-numeric: lining-nums tabular-nums;
-  font-variation-settings: "SOFT" 40, "WONK" 1;
 }
 @utility cc-figure {
   font-family: var(--cc-font-display);
   font-optical-sizing: auto;
   font-variant-numeric: lining-nums tabular-nums;
   font-feature-settings: "lnum" 1, "tnum" 1;
-  font-variation-settings: "SOFT" 50, "WONK" 1;
   letter-spacing: var(--cc-tracking-display);
   line-height: 0.96;
 }

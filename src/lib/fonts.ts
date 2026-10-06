@@ -1,26 +1,26 @@
-import { Fraunces, IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
+import { DM_Sans, IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
 
 /**
  * Editorial pair inspired by Giorgia Lupi's data stories:
- * a soft optical serif for titles and hero figures, a humanist
- * sans for reading and UI, and a tabular mono for codes.
+ * Source Serif 4 for titles and hero figures, DM Sans for reading
+ * and UI, and a tabular mono for codes. Selected in a visual comparison.
  *
  * next/font self-hosts the Google Fonts files and exposes each
  * family as a CSS variable on the root layout.
  */
-export const fraunces = Fraunces({
+export const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
   display: "swap",
   style: ["normal", "italic"],
-  axes: ["SOFT", "WONK", "opsz"],
-  variable: "--font-fraunces",
+  axes: ["opsz"],
+  variable: "--font-source-serif",
 });
 
-export const sourceSans = Source_Sans_3({
+export const dmSans = DM_Sans({
   subsets: ["latin"],
   display: "swap",
   style: ["normal", "italic"],
-  variable: "--font-source-sans",
+  variable: "--font-dm-sans",
 });
 
 export const plexMono = IBM_Plex_Mono({
@@ -32,7 +32,7 @@ export const plexMono = IBM_Plex_Mono({
 });
 
 export const editorialFontClassName = [
-  fraunces.variable,
-  sourceSans.variable,
+  sourceSerif.variable,
+  dmSans.variable,
   plexMono.variable,
 ].join(" ");
