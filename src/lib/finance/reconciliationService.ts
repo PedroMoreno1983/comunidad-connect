@@ -348,7 +348,8 @@ export async function recordSuggestedDeposit(communityId: string, recordedBy: st
     }
 
     const targetId = expenseId || suggestion.expenseId;
-    if (suggestion.openCharges.length && !suggestion.openCharges.some(charge => charge.id === targetId)) {
+    if ((targetId && !suggestion.openCharges.some(charge => charge.id === targetId))
+        || (suggestion.openCharges.length > 0 && !targetId)) {
         throw new BillingError('choose_period', 'Elige el mes al que corresponde este abono.', 409);
     }
     const payment = await recordPayment(communityId, recordedBy, {

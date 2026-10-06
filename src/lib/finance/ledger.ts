@@ -89,16 +89,20 @@ export function buildAccountStatement(
         sortHint: 0,
     }));
 
-    const paymentEntries = payments.map(payment => ({
+    const chargeById = new Map(charges.map(charge => [charge.id, charge]));
+    const paymentEntries = payments.map(payment => {
+        const target = chargeById.get(payment.expenseId || payment.chargeId || '');
+        return ({
         id: payment.id,
         date: payment.paidAt,
         kind: 'payment' as LedgerEntryKind,
-        label: 'Pago recibido',
+        label: target ? `Pago recibido · ${target.label}` : 'Pago recibido',
         amount: -Math.round(payment.amount),
-        month: null as string | null,
+        month: target?.month ?? null,
         reference: payment.reference,
         sortHint: 1,
-    }));
+        });
+    });
 
     const historicalEntries = charges.filter(charge => (charge.settledAmount || 0) > 0).map(charge => ({
         id: `historical:${charge.id}`, date: chargeDate(charge), kind: 'other' as LedgerEntryKind,

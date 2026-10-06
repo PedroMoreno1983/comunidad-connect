@@ -81,6 +81,7 @@ describe('persisted payment allocation integration', () => {
         const statement = await getUnitStatement('community', 'unit');
         expect(statement.balance).toBe(100000);
         expect(statement.oldestOverdueMonth).toBe('2026-05');
+        expect(statement.entries.find(entry => entry.kind === 'payment')).toMatchObject({ month: '2026-06', label: 'Pago recibido · Gasto común 2026-06' });
     });
     it('propagates persistence failures rather than reporting success', async () => {
         state.failUpdates = true;
