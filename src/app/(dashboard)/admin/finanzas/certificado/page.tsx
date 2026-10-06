@@ -117,6 +117,10 @@ function CertificateContent() {
                         <h2 className="mb-3 text-sm font-semibold cc-text-primary">Detalle de la deuda por periodo</h2>
                         <table className="w-full border-collapse text-sm">
                             <thead>
+                                {certificate.availableCredit > 0 && <tr>
+                                    <td className="border px-3 py-2" colSpan={2} style={{ borderColor: "var(--cc-line)" }}>Crédito disponible sin imputar a otro periodo</td>
+                                    <td className="border px-3 py-2 text-right" style={{ borderColor: "var(--cc-line)" }}>−{money(certificate.availableCredit)}</td>
+                                </tr>}
                                 <tr style={{ background: "var(--cc-paper-warm)" }}>
                                     <th className="border px-3 py-2 text-left font-semibold cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>Periodo</th>
                                     <th className="border px-3 py-2 text-left font-semibold cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>Concepto</th>

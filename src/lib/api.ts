@@ -526,10 +526,11 @@ export const CommunityCollaborationService = {
     },
 
     async resolveParticipationRequest(id: string, status: 'accepted' | 'rejected') {
-        const { error } = await supabase.from('community_participation_requests').update({
+        const { data, error } = await supabase.from('community_participation_requests').update({
             status, resolved_at: new Date().toISOString(),
-        }).eq('id', id);
+        }).eq('id', id).eq('status', 'pending').select('id').maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error('No tienes permiso o la solicitud ya fue resuelta.');
     },
 
     async reviewInitiative(table: 'time_bank_offers' | 'collective_purchase_campaigns' | 'community_projects', id: string, input: {
@@ -1001,6 +1002,7 @@ function mapMaintenanceTask(row: DbRow): MaintenanceTask {
 function mapMaintenanceServiceRow(row: DbRow): MaintenanceServiceRow {
     return {
         id: textValue(row.id),
+        user_id: nullableText(row.user_id),
         service_type: nullableText(row.service_type),
         category: nullableText(row.category),
         description: nullableText(row.description),
@@ -1152,22 +1154,23 @@ export const MaintenanceService = {
         description: string;
         scheduledDate?: string;
     }) {
-        const { error } = await supabase.from("service_requests").insert({
-            requester_id: payload.requesterId,
-            unit_id: payload.unitId || "administracion",
-            service_type: payload.serviceType,
-            description: `[${payload.title}] ${payload.description}`,
-            status: "pending",
-            scheduled_date: payload.scheduledDate || null,
-            scheduled_time: null,
+        const response = await fetch('/api/service-requests', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ internal: true, description: `[${payload.serviceType}: ${payload.title}] ${payload.description}`,
+                preferred_date: payload.scheduledDate || null }),
         });
-
-        if (error) throw error;
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo crear la tarea.');
+        return data.request;
     },
 
-    async closeService(id: string) {
-        const { error } = await supabase.from("service_requests").update({ status: "completed" }).eq("id", id);
-        if (error) throw error;
+    async advanceService(id: string, status: ServiceRequestQueueItem['status']) {
+        const response = await fetch(`/api/service-requests/${id}/status`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo actualizar la solicitud.');
+        return data.request;
     },
 
     async completeTask(taskId: string) {
@@ -2277,6 +2280,8 @@ export const ResidentFinanceService = {
             totalCharged: data.totalCharged,
             totalPaid: data.totalPaid,
             expenseBalances: data.expenseBalances || [],
+            chargeBalances: data.chargeBalances || [],
+            availableCredit: data.availableCredit || 0,
         };
     },
 

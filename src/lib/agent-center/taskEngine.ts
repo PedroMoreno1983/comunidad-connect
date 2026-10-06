@@ -101,7 +101,7 @@ export async function runVerifiedTaskStep<T>(
         } catch (error) {
             finalError = errorMessage(error);
             await updateStep(taskId, position, { status: 'failed', error: finalError });
-            if (attempt < 2) await updateTask(taskId, { status: 'failed', retry_count: attempt, last_error: finalError });
+            if (attempt < 2) await updateTask(taskId, { status: 'running', retry_count: attempt, last_error: finalError });
         }
     }
 
@@ -110,6 +110,11 @@ export async function runVerifiedTaskStep<T>(
 }
 
 export async function completeAgentTask(taskId: string, result: Record<string, unknown>) {
+    const { data: steps, error } = await getSupabaseAdmin().from('agent_task_steps')
+        .select('status').eq('task_id', taskId);
+    if (error) throw error;
+    if (!steps?.length || steps.some(step => step.status !== 'completed' && step.status !== 'skipped'))
+        throw new Error('No se puede completar una tarea con pasos pendientes o fallidos.');
     await updateTask(taskId, {
         status: 'completed',
         result,
@@ -143,7 +148,7 @@ export async function getRecentAgentTasks(profile: AgentProfile): Promise<AgentT
         .from('agent_tasks')
         .select('id, agent_key, playbook_key, goal, status, current_step, retry_count, last_error, context, result, created_at, updated_at, agent_task_steps(id, position, step_key, title, status, attempts, error)')
         .eq('community_id', profile.community_id)
-        .in('status', ['planned', 'running', 'waiting_human', 'failed', 'escalated'])
+        .in('status', ['planned', 'running', 'waiting_human', 'failed', 'escalated', 'completed'])
         .order('updated_at', { ascending: false })
         .limit(8);
     if (error) throw error;

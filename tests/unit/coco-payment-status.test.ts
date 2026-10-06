@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeResidentPaymentStatus } from '@/lib/coco/paymentStatus';
+import { summarizeAccountPaymentStatus, summarizeResidentPaymentStatus } from '@/lib/coco/paymentStatus';
+import { buildAccountStatement } from '@/lib/finance/ledger';
 import { TOOL_DEFINITIONS } from '@/lib/coco/tools';
 
 /**
@@ -31,6 +32,17 @@ const ANDREA_ROWS = [
 ];
 
 describe('summarizeResidentPaymentStatus', () => {
+    it('uses the full statement across more than 24 periods and respects the selected payment destination', () => {
+        const statement = buildAccountStatement(Array.from({ length: 30 }, (_, index) => ({
+            id: `c${index}`, kind: 'gasto_comun', amount: 2000, month: `${2023 + Math.floor(index / 12)}-${String(index % 12 + 1).padStart(2, '0')}`,
+            label: `Cobro ${index}`, dueDate: null, createdAt: '2026-01-01',
+        })), [{ id: 'payment', amount: 1000, expenseId: 'c29', paidAt: '2026-10-05', method: 'transfer', reference: null, createdAt: '2026-10-05' }]);
+        const summary = summarizeAccountPaymentStatus(statement);
+        expect(summary.pending_amount).toBe(59000);
+        expect(summary.pending_count).toBe(30);
+        expect(summary.account_balance).toBe(statement.balance);
+        expect(summarizeAccountPaymentStatus(statement, '2025-06').pending_amount).toBe(1000);
+    });
     it('uses allocated balances and excludes fully settled pending records', () => {
         const summary = summarizeResidentPaymentStatus([
             { month: '2026-05', amount: 148600, outstandingAmount: 148600, status: 'overdue' },

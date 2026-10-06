@@ -117,6 +117,12 @@ export function parseGroupShoppingList(value: string, preservePackageSize = fals
     } else if (leadingQuantity) {
       quantity = Number(leadingQuantity[1]);
       rawTerm = leadingQuantity[2];
+      // Bare "6 huevos" describes the contents, not six boxes of six eggs.
+      // Explicit "6 paquetes de huevos" continues to mean six packages.
+      if (preservePackageSize && quantity > 1 && /^huevos?$/i.test(rawTerm.trim())) {
+        rawTerm = `${rawTerm} ${quantity} un`;
+        quantity = 1;
+      }
     } else if (trailingQuantity) {
       quantity = Number(trailingQuantity[2]);
       rawTerm = trailingQuantity[1];

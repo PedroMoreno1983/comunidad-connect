@@ -42,6 +42,7 @@ export function canonicalCatalogTerm(value: string): string {
         .replace(/\byoghurts?\b/g, 'yogur')
         .replace(/\byogurths?\b/g, 'yogur')
         .replace(/\byogurts?\b/g, 'yogur')
+        .replace(/\b(\d+)\s+(?:rollos?|unidades?|uds?)\b/g, '$1 un')
         .replace(/\bleces\b/g, 'leche')
         .replace(/\bayuyitas?\b/g, 'hallulla')
         .replace(/\bpampitas?\b/g, 'pita')

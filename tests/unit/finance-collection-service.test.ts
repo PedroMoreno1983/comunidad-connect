@@ -12,10 +12,15 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({ getSupabaseAdmin: () => ({ from
     let value: Record<string, unknown> | undefined;
     let inserted: Record<string, unknown> | undefined;
     let deleting = false;
+    let cursor: string | undefined;
+    let pageSize = Infinity;
     const query = {
         select: () => query,
         eq: (key: string, match: unknown) => { filters[key] = match; return query; },
         neq: () => query,
+        order: () => query,
+        limit: (size: number) => { pageSize = size; return query; },
+        gt: (_key: string, value: string) => { cursor = value; return query; },
         update: (payload: Record<string, unknown>) => { value = payload; return query; },
         insert: (payload: Record<string, unknown>) => { state.inserts.push(payload); inserted = payload; return query; },
         single: async () => {
@@ -39,13 +44,27 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({ getSupabaseAdmin: () => ({ from
                 }
                 return Promise.resolve({ error: state.failUpdates ? new Error('update failed') : null }).then(resolve);
             }
-            return Promise.resolve({ data: (state.rows[table] || []).filter(row => Object.entries(filters).every(([key, match]) => row[key] === match)), error: null }).then(resolve);
+            return Promise.resolve({ data: (state.rows[table] || []).filter(row => Object.entries(filters).every(([key, match]) => row[key] === match) && (!cursor || String(row.id) > cursor)).sort((a,b) => String(a.id).localeCompare(String(b.id))).slice(0,pageSize), error: null }).then(resolve);
         },
     };
     return query;
 } }) }));
 
-import { getUnitStatement, recordPayment, reconcileUnitStatuses } from '@/lib/finance/collectionService';
+import { getDebtCertificate, getUnitStatement, readFinancePages, recordPayment, reconcileUnitStatuses } from '@/lib/finance/collectionService';
+
+describe('financial history pagination', () => {
+    it('reads beyond 1000 movements even when the server uses a lower page limit', async () => {
+        const history = Array.from({ length: 1005 }, (_, index) => ({ id: String(index).padStart(6, '0') }));
+        const result = await readFinancePages(async cursor => ({
+            data: history.filter(row => !cursor || row.id > cursor).slice(0, 73), error: null,
+        }));
+        expect(result).toEqual(history);
+    });
+    it('fails rather than reporting a partial financial history', async () => {
+        await expect(readFinancePages(async cursor => cursor ? { data: null, error: new Error('later page failed') }
+            : { data: [{ id: '1' }], error: null })).rejects.toThrow('later page failed');
+    });
+});
 
 describe('persisted payment allocation integration', () => {
     beforeEach(() => {
@@ -82,6 +101,13 @@ describe('persisted payment allocation integration', () => {
         expect(statement.balance).toBe(100000);
         expect(statement.oldestOverdueMonth).toBe('2026-05');
         expect(statement.entries.find(entry => entry.kind === 'payment')).toMatchObject({ month: '2026-06', label: 'Pago recibido · Gasto común 2026-06' });
+    });
+    it('certifies the remaining monthly debt after the chosen partial payment', async () => {
+        state.rows.unit_payments[0].amount = 40000;
+        const certificate = await getDebtCertificate('community', 'unit', 'QA');
+        expect(certificate.balance).toBe(160000);
+        expect(certificate.pendingByMonth.map(period => period.total)).toEqual([100000, 60000]);
+        expect(certificate.pendingByMonth.reduce((sum, period) => sum + period.total, 0) - certificate.availableCredit).toBe(certificate.balance);
     });
     it('propagates persistence failures rather than reporting success', async () => {
         state.failUpdates = true;

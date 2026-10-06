@@ -14,7 +14,8 @@ import {
     issueBilling,
 } from '@/lib/finance/billingService';
 import { maybeCreateCoCoCase } from './caseService';
-import { summarizeResidentPaymentStatus } from './paymentStatus';
+import { summarizeAccountPaymentStatus } from './paymentStatus';
+import { getUnitStatement } from '@/lib/finance/collectionService';
 import { rememberFact } from './user-memory';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import {
@@ -761,27 +762,15 @@ export async function executeTool(
             }
 
             case 'get_payment_status': {
+                if (!userCtx.community_id) return forbidden('No pude determinar tu comunidad.');
                 const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar tu unidad.');
                 const monthFilter = (input.month || '').trim() || null;
                 if (monthFilter && !/^\d{4}-\d{2}$/.test(monthFilter)) {
                     return { error: 'El periodo debe usar el formato YYYY-MM.' };
                 }
-                // Misma fuente que HomeService.getResidentSummary y ExpensesService.getExpenses:
-                // tabla expenses de la unidad. Sin mes, todos los pending/overdue (no el mes en curso).
-                let query = supabaseAdmin
-                    .from('expenses')
-                    .select('amount,status,due_date,paid_at,month,items:expense_items(label,amount)')
-                    .eq('unit_id', unitId)
-                    .eq('community_id', userCtx.community_id);
-                if (monthFilter) {
-                    query = query.eq('month', monthFilter);
-                } else {
-                    query = query.in('status', ['pending', 'overdue']);
-                }
-                const { data, error } = await query.order('month', { ascending: false }).limit(24);
-                if (error) return { error: 'No se pudo consultar el estado de pago.' };
-                return summarizeResidentPaymentStatus(data || [], monthFilter);
+                const statement = await getUnitStatement(userCtx.community_id, unitId);
+                return summarizeAccountPaymentStatus(statement, monthFilter);
             }
 
             case 'get_water_consumption': {

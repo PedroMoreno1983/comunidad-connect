@@ -5,8 +5,9 @@ import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordAiEvent } from '@/lib/ai/telemetry';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
-const VALID_STATUSES = ['pending', 'accepted', 'completed', 'cancelled'] as const;
-type ServiceRequestStatus = typeof VALID_STATUSES[number];
+import type { ServiceRequestStatus } from '@/lib/types';
+import { serviceRequestTransitionError, validServiceSchedule } from '@/lib/services/requestLifecycle';
+const VALID_STATUSES = ['pending', 'accepted', 'awaiting_confirmation', 'completed', 'cancelled'] as const;
 
 async function getSupabaseUserClient() {
     const cookieStore = await cookies();
@@ -26,6 +27,8 @@ function statusLabel(status: ServiceRequestStatus) {
     switch (status) {
         case 'accepted':
             return 'aceptada';
+        case 'awaiting_confirmation':
+            return 'realizada; confirma su finalización';
         case 'completed':
             return 'completada';
         case 'cancelled':
@@ -44,7 +47,7 @@ export async function PATCH(
 
     try {
         const body = await req.json();
-        let status = body.status as ServiceRequestStatus;
+        const status = body.status as ServiceRequestStatus;
         const preferredDate = typeof body.preferred_date === 'string' ? body.preferred_date.trim() : '';
         const preferredTime = typeof body.preferred_time === 'string' ? body.preferred_time.trim() : '';
         const wantsReschedule = Boolean(preferredDate || preferredTime);
@@ -97,26 +100,15 @@ export async function PATCH(
         const isStaff = ['admin', 'concierge'].includes(actorProfile.role);
         const isProviderOwner = provider?.user_id === actorProfile.id;
         const isRequester = request.user_id === actorProfile.id;
-        const openForRequester = ['pending', 'accepted'].includes(request.status);
-
-        if (!isStaff && !isProviderOwner) {
-            if (!isRequester) {
-                return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
-            }
-            if (!openForRequester) {
-                return NextResponse.json({ error: 'Esta solicitud ya no se puede modificar' }, { status: 400 });
-            }
-            if (status === 'cancelled') {
-                // residente puede cancelar pendiente o aceptada
-            } else if (wantsReschedule) {
-                // reagendar deja la solicitud pendiente para que el proveedor confirme
-                status = 'pending';
-            } else {
-                return NextResponse.json({ error: 'Solo puedes cancelar o reagendar tu solicitud' }, { status: 403 });
-            }
+        const transitionError = serviceRequestTransitionError({
+            current: request.status, next: status, requester: isRequester,
+            manager: isStaff || isProviderOwner, reschedule: wantsReschedule,
+        });
+        if (transitionError) return NextResponse.json({ error: transitionError }, { status: 409 });
+        if (wantsReschedule && !validServiceSchedule(preferredDate, preferredTime)) {
+            return NextResponse.json({ error: 'Indica una fecha y hora válidas.' }, { status: 400 });
         }
-
-        if (provider && provider.community_id !== actorProfile.community_id) {
+        if (provider?.community_id && provider.community_id !== request.community_id) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
 
@@ -130,6 +122,8 @@ export async function PATCH(
             .from('service_requests')
             .update(patch)
             .eq('id', id)
+            .eq('community_id', actorProfile.community_id)
+            .eq('status', request.status)
             .select('id, provider_id, user_id, preferred_date, preferred_time, description, status, created_at')
             .single();
 
@@ -143,33 +137,7 @@ export async function PATCH(
                 error: updateError,
             });
             console.error('[service request status] update failed', updateError);
-            return NextResponse.json({ error: 'No se pudo actualizar la solicitud.' }, { status: 500 });
-        }
-
-        if (updatedRequest.user_id && updatedRequest.user_id !== actorProfile.id) {
-            await supabaseAdmin.from('notifications').insert({
-                user_id: updatedRequest.user_id,
-                type: status === 'completed' ? 'success' : status === 'cancelled' ? 'warning' : 'info',
-                category: 'service_request',
-                title: `Tu solicitud fue ${statusLabel(status)}`,
-                body: provider?.name
-                    ? `${provider.name}: ${updatedRequest.description.slice(0, 160)}`
-                    : updatedRequest.description.slice(0, 180),
-                link: '/services/my-requests',
-                community_id: request.community_id || actorProfile.community_id,
-            });
-        }
-
-        if (provider?.user_id && provider.user_id !== actorProfile.id && provider.user_id !== updatedRequest.user_id) {
-            await supabaseAdmin.from('notifications').insert({
-                user_id: provider.user_id,
-                type: 'info',
-                category: 'service_request',
-                title: `Solicitud ${statusLabel(status)}`,
-                body: updatedRequest.description.slice(0, 180),
-                link: '/services/provider-dashboard',
-                community_id: request.community_id || actorProfile.community_id,
-            });
+            return NextResponse.json({ error: 'La solicitud cambió. Actualiza la página antes de reintentar.' }, { status: 409 });
         }
 
         recordAiEvent({

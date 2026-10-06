@@ -389,6 +389,20 @@ export default function AgentCenterPage() {
     }
   }
 
+  async function resumeTask(task: AgentTaskSummary) {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/agent-center/tasks/${task.id}/resume`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'No se pudo retomar la tarea.');
+      setTasks(data.tasks || []);
+      setMessages(current => [...current, { id: nowId(), role: 'agent', content: String(data.result.message), status: 'executed' }]);
+    } catch (error) {
+      setMessages(current => [...current, { id: nowId(), role: 'agent', content: error instanceof Error ? error.message : 'No se pudo retomar.', status: 'error' }]);
+    } finally { setLoading(false); }
+  }
+
   async function replanTask(task: AgentTaskSummary) {
     const playbook = playbooks.find((item) => item.key === task.playbookKey);
     if (!playbook || loading) return;
@@ -676,7 +690,14 @@ export default function AgentCenterPage() {
                   {task.targetHref && (
                     <Link href={task.targetHref} className="mt-3 inline-block text-[12px] font-medium" style={{ color: "var(--cc-copper)" }}>Abrir modulo →</Link>
                   )}
-                  {task.status === "escalated" && task.playbookKey && (
+                  {['finance_collection_review', 'maintenance_ticket_triage'].includes(task.playbookKey || '') &&
+                      ['waiting_human', 'failed', 'escalated', 'running'].includes(task.status) && (
+                        <button type="button" disabled={loading} onClick={() => resumeTask(task)}
+                          className="ml-3 mt-3 text-[12px] font-medium disabled:opacity-50" style={{ color: 'var(--cc-copper)' }}>
+                          Retomar y verificar
+                        </button>
+                      )}
+                    {task.status === "escalated" && task.playbookKey && (
                     <button type="button" disabled={loading} onClick={() => replanTask(task)} className="ml-3 mt-3 text-[12px] font-medium disabled:opacity-50" style={{ color: "var(--cc-rose)" }}>
                       Replanificar con aprobacion
                     </button>

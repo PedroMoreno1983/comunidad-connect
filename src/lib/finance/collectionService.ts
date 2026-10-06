@@ -11,6 +11,7 @@
  */
 
 import { allocateUnitPayments, legacySettlements, paymentMetadata } from './paymentAllocation';
+import type { FinancePageReader } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, MONTH_PATTERN, DATE_PATTERN } from './billingService';
 import { isCommitteeDiscount, signedChargeAmount, COMMITTEE_DISCOUNT_LABEL, COMMITTEE_DISCOUNT_NOTE } from './adjustments';
@@ -25,6 +26,20 @@ import {
 
 export const CHARGE_KINDS = new Set(['fine', 'interest', 'extraordinary', 'service', 'other']);
 export const PAYMENT_METHODS = new Set(['transfer', 'cash', 'check', 'card', 'online', 'other']);
+
+export async function readFinancePages<T extends { id: string }>(read: FinancePageReader<T>): Promise<T[]> {
+    const rows: T[] = [];
+    let cursor: string | undefined;
+    for (;;) {
+        const { data, error } = await read(cursor);
+        if (error) throw error;
+        if (!data?.length) return rows;
+        rows.push(...data);
+        const next = String(data[data.length - 1].id);
+        if (cursor && next <= cursor) throw new Error('La lectura financiera no avanzó.');
+        cursor = next;
+    }
+}
 
 const CHARGE_KIND_LABELS: Record<string, string> = {
     fine: 'Multa',
@@ -365,23 +380,29 @@ export async function getUnitStatement(
     const unit = await assertUnitBelongsToCommunity(communityId, unitId);
     const admin = getSupabaseAdmin();
 
-    const [expensesResult, chargesResult, paymentsResult] = await Promise.all([
-        admin.from('expenses')
-            .select('id, month, amount, status, due_date, created_at, payment_metadata')
-            .eq('community_id', communityId).eq('unit_id', unitId),
-        admin.from('unit_charges')
-            .select('id, month, kind, label, amount, due_date, created_at, notes')
-            .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled'),
-        admin.from('unit_payments')
-            .select('id, amount, paid_at, method, reference, created_at, expense_id, charge_id')
-            .eq('community_id', communityId).eq('unit_id', unitId),
+    const [expenses, extraCharges, paymentsData] = await Promise.all([
+        readFinancePages(cursor => {
+            let query = admin.from('expenses').select('id, month, amount, status, due_date, created_at, payment_metadata')
+                .eq('community_id', communityId).eq('unit_id', unitId).order('id').limit(200);
+            if (cursor) query = query.gt('id', cursor);
+            return query;
+        }),
+        readFinancePages(cursor => {
+            let query = admin.from('unit_charges').select('id, month, kind, label, amount, due_date, created_at, notes')
+                .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'cancelled').order('id').limit(200);
+            if (cursor) query = query.gt('id', cursor);
+            return query;
+        }),
+        readFinancePages(cursor => {
+            let query = admin.from('unit_payments').select('id, amount, paid_at, method, reference, created_at, expense_id, charge_id')
+                .eq('community_id', communityId).eq('unit_id', unitId).order('id').limit(200);
+            if (cursor) query = query.gt('id', cursor);
+            return query;
+        }),
     ]);
-    if (expensesResult.error) throw expensesResult.error;
-    if (chargesResult.error) throw chargesResult.error;
-    if (paymentsResult.error) throw paymentsResult.error;
 
     const charges: LedgerCharge[] = [
-        ...(expensesResult.data ?? []).map(row => ({
+        ...expenses.map(row => ({
             id: String(row.id),
             kind: 'gasto_comun' as const,
             label: `Gasto común ${row.month}`,
@@ -390,7 +411,7 @@ export async function getUnitStatement(
             dueDate: row.due_date ? String(row.due_date) : null,
             createdAt: String(row.created_at),
         })),
-        ...(chargesResult.data ?? []).map(row => ({
+        ...extraCharges.map(row => ({
             id: String(row.id),
             kind: String(row.kind) as LedgerCharge['kind'],
             label: String(row.label),
@@ -401,7 +422,7 @@ export async function getUnitStatement(
         })),
     ];
 
-    const payments: LedgerPayment[] = (paymentsResult.data ?? []).map(row => ({
+    const payments: LedgerPayment[] = paymentsData.map(row => ({
         id: String(row.id),
         expenseId: row.expense_id,
         chargeId: row.charge_id,
@@ -412,7 +433,7 @@ export async function getUnitStatement(
         createdAt: String(row.created_at),
     }));
 
-    const settlements = legacySettlements(expensesResult.data ?? [], charges.map(charge => ({
+    const settlements = legacySettlements(expenses, charges.map(charge => ({
         id: charge.id, kind: charge.kind === 'gasto_comun' ? 'expense' : 'charge',
         amount: charge.amount, date: charge.dueDate || charge.createdAt,
     })), payments);
@@ -464,6 +485,7 @@ export interface DebtCertificate {
     oldestOverdueMonth: string | null;
     /** Deuda pendiente agrupada por periodo, que es como se lee un certificado. */
     pendingByMonth: Array<{ month: string; concepts: Array<{ label: string; amount: number }>; total: number }>;
+    availableCredit: number;
     isUpToDate: boolean;
 }
 
@@ -482,30 +504,21 @@ export async function getDebtCertificate(
     const admin = getSupabaseAdmin();
     const unit = await assertUnitBelongsToCommunity(communityId, unitId);
 
-    const [statement, communityResult, ownerResult, expensesResult, chargesResult] = await Promise.all([
+    const [statement, communityResult, ownerResult] = await Promise.all([
         getUnitStatement(communityId, unitId),
         admin.from('communities').select('name, address').eq('id', communityId).maybeSingle(),
         unit.owner_id
-            ? admin.from('profiles').select('name, full_name').eq('id', unit.owner_id).maybeSingle()
+            ? admin.from('profiles').select('name, full_name').eq('id', unit.owner_id).eq('community_id', communityId).maybeSingle()
             : Promise.resolve({ data: null }),
-        admin.from('expenses')
-            .select('month, amount, status')
-            .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'paid'),
-        admin.from('unit_charges')
-            .select('month, label, amount, status')
-            .eq('community_id', communityId).eq('unit_id', unitId).eq('status', 'pending'),
     ]);
+    if (communityResult.error) throw communityResult.error;
+    if ('error' in ownerResult && ownerResult.error) throw ownerResult.error;
 
     const byMonth = new Map<string, Array<{ label: string; amount: number }>>();
-    for (const row of expensesResult.data ?? []) {
-        const month = String(row.month);
+    for (const row of statement.chargeBalances.filter(charge => charge.outstandingAmount > 0)) {
+        const month = row.month;
         if (!byMonth.has(month)) byMonth.set(month, []);
-        byMonth.get(month)!.push({ label: 'Gasto común', amount: Math.round(Number(row.amount || 0)) });
-    }
-    for (const row of chargesResult.data ?? []) {
-        const month = String(row.month);
-        if (!byMonth.has(month)) byMonth.set(month, []);
-        byMonth.get(month)!.push({ label: String(row.label), amount: Math.round(Number(row.amount || 0)) });
+        byMonth.get(month)!.push({ label: row.label, amount: row.outstandingAmount });
     }
 
     const pendingByMonth = [...byMonth.entries()]
@@ -533,6 +546,7 @@ export async function getDebtCertificate(
         overdueAmount: statement.overdueAmount,
         oldestOverdueMonth: statement.oldestOverdueMonth,
         pendingByMonth,
+        availableCredit: statement.availableCredit,
         // Un saldo a favor también es estar al día: no se certifica deuda si no
         // la hay, aunque el número sea negativo.
         isUpToDate: statement.balance <= 0,
@@ -579,10 +593,13 @@ export async function applyLateInterest(
     if (error) throw error;
 
     const applied: Array<{ unitId: string; expenseId: string; amount: number; monthsLate: number }> = [];
+    const statements = new Map<string, AccountStatement>();
 
     for (const expense of overdue ?? []) {
         const monthsLate = monthsBetween(String(expense.month), month);
-        const interest = calculateLateInterest(Number(expense.amount || 0), rate, monthsLate);
+        if (!statements.has(expense.unit_id)) statements.set(expense.unit_id, await getUnitStatement(communityId, expense.unit_id));
+        const remaining = statements.get(expense.unit_id)!.expenseBalances.find(row => row.expenseId === expense.id)?.outstandingAmount || 0;
+        const interest = calculateLateInterest(remaining, rate, monthsLate);
         if (interest <= 0) continue;
 
         const { error: insertError } = await admin.from('unit_charges').insert({

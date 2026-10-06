@@ -25,10 +25,10 @@ function requireAdmin(profile: AgentProfile) {
     if (!profile.community_id) throw new Error('El administrador no tiene una comunidad asignada.');
 }
 
-async function runFinanceCollectionTask(profile: AgentProfile, goal: string) {
+async function runFinanceCollectionTask(profile: AgentProfile, goal: string, existingTaskId?: string) {
     requireAdmin(profile);
     const definition = playbook('finance_collection_review');
-    const taskId = await createAgentTask(profile, definition, goal, [
+    const taskId = existingTaskId || await createAgentTask(profile, definition, goal, [
         { key: 'detect_expenses', title: 'Detectar gastos impagos' },
         { key: 'resolve_recipients', title: 'Resolver unidades y residentes' },
         { key: 'notify_residents', title: 'Notificar residentes vinculados' },
@@ -44,7 +44,7 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string) {
             { output: plan => ({ notifications: plan.notifications.length, missingRecipients: plan.missingRecipients }) });
         const notificationIds = await runVerifiedTaskStep(taskId, 2,
             () => storeCollectionNotifications(resolution),
-            { verify: ids => ids.length === resolution.notifications.length, output: ids => ({ notificationIds: ids }) });
+            { verify: ids => ids.length === resolution.notifications.length + (resolution.adminNotifications?.length || 0), output: ids => ({ notificationIds: ids }) });
 
         await runVerifiedTaskStep(taskId, 3, async () => {
             const count = await verifyCollectionNotifications(communityId, notificationIds);
@@ -57,20 +57,20 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string) {
                 entityId: taskId,
                 severity: resolution.missingRecipients.length === 0 ? 'success' : 'warning',
                 status: resolution.missingRecipients.length === 0 ? 'success' : 'pending',
-                summary: `Tarea de cobranza: ${expenses.length} cobro(s), ${notificationIds.length} notificacion(es) registradas en la app`,
-                metadata: { taskId, pendingExpenses: expenses.length, notifications: notificationIds.length, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app' },
+                summary: `Tarea de cobranza: ${expenses.length} cobro(s), ${resolution.notifications.length} notificacion(es) para residentes registradas en la app`,
+                metadata: { taskId, pendingExpenses: expenses.length, notifications: resolution.notifications.length, adminNotifications: resolution.adminNotifications?.length || 0, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app' },
             });
             if (!audit.ok) throw new Error('No fue posible guardar la auditoria de cobranza.');
             return { verifiedNotifications: count, auditRecorded: true };
         }, { verify: result => result.auditRecorded && result.verifiedNotifications === notificationIds.length, output: result => result });
 
-        const result = { pendingExpenses: expenses.length, notifications: notificationIds.length, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app', taskId };
+        const result = { pendingExpenses: expenses.length, notifications: resolution.notifications.length, adminNotifications: resolution.adminNotifications?.length || 0, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app', taskId };
         const waitingHuman = resolution.missingRecipients.length > 0;
         if (waitingHuman) await waitAgentTaskForHuman(taskId, 3, result);
         else await completeAgentTask(taskId, result);
         return {
             entityType: 'agent_task', entityId: taskId, title: waitingHuman ? 'Cobranza pendiente de revision' : 'Cobranza registrada en la app',
-            message: `Revise ${expenses.length} cobro(s) y registre ${notificationIds.length} notificacion(es) en la app. ${waitingHuman ? `${resolution.missingRecipients.length} cobro(s) requieren vincular un destinatario; la tarea queda pendiente.` : 'La tarea esta completa.'} No se enviaron correos ni WhatsApp; no se confirma lectura.`,
+            message: `Revise ${expenses.length} cobro(s) y registre ${resolution.notifications.length} notificacion(es) para residentes en la app. ${waitingHuman ? `${resolution.missingRecipients.length} cobro(s) requieren vincular un destinatario; la tarea queda pendiente.` : 'La tarea esta completa.'} No se enviaron correos ni WhatsApp; no se confirma lectura.`,
             targetHref: waitingHuman ? '/admin/units' : definition.targetHref,
             data: { ...result, taskStatus: waitingHuman ? 'waiting_human' : 'completed' },
         };
@@ -80,10 +80,52 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string) {
     }
 }
 
-async function runMaintenanceTriageTask(profile: AgentProfile, goal: string) {
+export async function readOpenMaintenanceRequests(communityId: string) {
+    const rows: Array<Pick<import('@/lib/types').ServiceRequestQueueItem, 'id' | 'description' | 'status' | 'preferred_date' | 'provider_id' | 'created_at'>> = [];
+    let cursor: string | undefined;
+    for (;;) {
+        let query = getSupabaseAdmin().from('service_requests')
+            .select('id, description, status, preferred_date, provider_id, created_at')
+            .eq('community_id', communityId).in('status', ['pending', 'accepted', 'awaiting_confirmation'])
+            .order('id').limit(200);
+        if (cursor) query = query.gt('id', cursor);
+        const { data, error } = await query;
+        if (error) throw error;
+        if (!data?.length) return { data: rows, error: null };
+        rows.push(...data);
+        const next = String(data[data.length - 1].id);
+        if (cursor && next <= cursor) throw new Error('La lectura de mantenimiento no avanzó.');
+        cursor = next;
+    }
+}
+
+export async function resumeOperationalTask(profile: AgentProfile, taskId: string) {
+    requireAdmin(profile);
+    const admin = getSupabaseAdmin();
+    const { data: task, error } = await admin.from('agent_tasks').select('id, playbook_key, goal, status, updated_at')
+        .eq('id', taskId).eq('community_id', profile.community_id).maybeSingle();
+    if (error) throw error;
+    if (!task || !['finance_collection_review', 'maintenance_ticket_triage'].includes(task.playbook_key))
+        throw new Error('Esta tarea no admite reanudación automática.');
+    const stale = task.status === 'running' && Date.parse(task.updated_at) < Date.now() - 5 * 60 * 1000;
+    if (!stale && !['waiting_human', 'failed', 'escalated'].includes(task.status))
+        throw new Error('La tarea ya está en ejecución o finalizada.');
+    const { data: claim, error: claimError } = await admin.from('agent_tasks')
+        .update({ status: 'running', last_error: null, updated_at: new Date().toISOString() })
+        .eq('id', task.id).eq('community_id', profile.community_id).eq('status', task.status)
+        .eq('updated_at', task.updated_at).select('id').maybeSingle();
+    if (claimError) throw claimError;
+    if (!claim) throw new Error('Otro proceso ya retomó esta tarea.');
+    // Re-read current debts, recipients and tickets. Stable notification IDs preserve prior delivery/read state.
+    return task.playbook_key === 'finance_collection_review'
+        ? runFinanceCollectionTask(profile, task.goal, task.id)
+        : runMaintenanceTriageTask(profile, task.goal, task.id);
+}
+
+async function runMaintenanceTriageTask(profile: AgentProfile, goal: string, existingTaskId?: string) {
     requireAdmin(profile);
     const definition = playbook('maintenance_ticket_triage');
-    const taskId = await createAgentTask(profile, definition, goal, [
+    const taskId = existingTaskId || await createAgentTask(profile, definition, goal, [
         { key: 'inspect_tickets', title: 'Inspeccionar tickets y proveedores' },
         { key: 'analyze_risks', title: 'Analizar asignacion y vencimientos' },
         { key: 'verify_report', title: 'Verificar y registrar el diagnostico' },
@@ -94,8 +136,7 @@ async function runMaintenanceTriageTask(profile: AgentProfile, goal: string) {
     try {
         const inspection = await runVerifiedTaskStep(taskId, 0, async () => {
             const [{ data: requests, error }, { count: providerCount, error: providerError }] = await Promise.all([
-                admin.from('service_requests').select('id, description, status, preferred_date, provider_id, created_at')
-                    .eq('community_id', communityId).in('status', ['pending', 'accepted', 'in-progress']).order('created_at').limit(25),
+                readOpenMaintenanceRequests(communityId),
                 admin.from('service_providers').select('id', { count: 'exact', head: true })
                     .eq('community_id', communityId).eq('verified', true),
             ]);
@@ -120,7 +161,7 @@ async function runMaintenanceTriageTask(profile: AgentProfile, goal: string) {
         }, { output: result => result });
 
         await runVerifiedTaskStep(taskId, 2, async () => {
-            await recordOperationEvent({
+            const audit = await recordOperationEvent({
                 communityId,
                 actorId: profile.id,
                 actorRole: profile.role,
@@ -132,6 +173,7 @@ async function runMaintenanceTriageTask(profile: AgentProfile, goal: string) {
                 summary: analysis.warnings.length ? 'Tarea de mantencion detecto brechas' : 'Tarea de mantencion verificada sin brechas',
                 metadata: { taskId, openRequests: inspection.requests.length, verifiedProviders: inspection.providerCount, ...analysis },
             });
+            if (!audit.ok) throw new Error('No fue posible guardar el diagnóstico de mantenimiento.');
             return { reportRecorded: true };
         }, { verify: result => result.reportRecorded, output: result => result });
 

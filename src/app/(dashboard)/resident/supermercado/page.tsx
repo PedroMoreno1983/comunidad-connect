@@ -256,7 +256,7 @@ export default function SupermarketPage() {
     try {
       for (let offset = 0; offset < requested.length; offset += 20) {
         const batch = requested.slice(offset, offset + 20);
-        const results = await SupermarketCatalogService.resolveList(storeName, batch.map(item => `${item.quantity} ${item.term}`).join('\n'), controller.signal);
+        const results = await SupermarketCatalogService.resolveList(storeName, batch.map(item => `${item.quantity} paquetes ${item.term}`).join('\n'), controller.signal);
         if (controller.signal.aborted) return;
         for (const result of results) {
           processed.add(result.term);

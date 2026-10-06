@@ -70,17 +70,31 @@ export async function resolveCollectionRecipients(communityId: string, expenses:
         });
     }
     plan.recipientCount = new Set(plan.notifications.map(row => row.user_id)).size;
+    if (plan.missingRecipients.length) {
+        const { data: administrators, error } = await admin.from('profiles').select('id')
+            .eq('community_id', communityId).eq('role', 'admin');
+        if (error) throw error;
+        plan.adminNotifications = (administrators || []).map(profile => ({
+            id: stableNotificationId('finance_collection_unresolved', communityId, String(profile.id),
+                [...plan.missingRecipients.map(issue => issue.expenseId)].sort().join(',')),
+            user_id: String(profile.id), type: 'warning', category: 'finance_collection',
+            title: 'Cobranza: unidades sin destinatario',
+            body: `${plan.missingRecipients.length} cobro(s) necesitan vincular un residente o propietario. Revisa las unidades y retoma la tarea de cobranza en Agent Center.`,
+            link: '/admin/units', community_id: communityId,
+        }));
+    }
     return plan;
 }
 
 export async function storeCollectionNotifications(plan: AgentCollectionPlan): Promise<string[]> {
     const admin = getSupabaseAdmin();
-    for (const rows of collectionBatches(plan.notifications)) {
+    const allNotifications = [...plan.notifications, ...(plan.adminNotifications || [])];
+    for (const rows of collectionBatches(allNotifications)) {
         // A retry preserves the existing notification, including its read state.
         const { error } = await admin.from('notifications').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
         if (error) throw error;
     }
-    return plan.notifications.map(row => row.id);
+    return allNotifications.map(row => row.id);
 }
 
 export async function verifyCollectionNotifications(communityId: string, ids: string[]): Promise<number> {

@@ -109,4 +109,22 @@ describe('collection scope and notification integrity', () => {
         state.tables.notifications = [{ id: 'notification', community_id: 'community-b' }];
         await expect(verifyCollectionNotifications(community, ['notification'])).rejects.toThrow('verificar');
     });
+
+    it('alerts only local administrators about unresolved recipients without claiming resident delivery', async () => {
+        seedExpenses(1);
+        state.tables.units[0].resident_profile_id = null;
+        state.tables.units[0].owner_id = null;
+        state.tables.profiles.push({ id: 'admin-a', community_id: community, role: 'admin' },
+            { id: 'admin-b', community_id: 'community-b', role: 'admin' });
+        const plan = await resolveCollectionRecipients(community, await readCollectionExpenses(community));
+        expect(plan.notifications).toHaveLength(0);
+        expect(plan.recipientCount).toBe(0);
+        expect(plan.adminNotifications?.map(row => row.user_id)).toEqual(['admin-a']);
+        const ids = await storeCollectionNotifications(plan);
+        expect(await verifyCollectionNotifications(community, ids)).toBe(1);
+        state.tables.notifications[0].read = true;
+        await storeCollectionNotifications(plan);
+        expect(state.tables.notifications).toHaveLength(1);
+        expect(state.tables.notifications[0].read).toBe(true);
+    });
 });

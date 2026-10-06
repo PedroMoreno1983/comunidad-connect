@@ -411,8 +411,8 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
     {
         key: 'maintenance_ticket_triage',
         agentKey: 'maintenance',
-        name: 'Ordenar tickets',
-        description: 'Ordena tickets abiertos, revisa proveedores verificados y deja el seguimiento listo.',
+        name: 'Diagnosticar mantenimiento',
+        description: 'Revisa todos los tickets abiertos y detecta falta de proveedor y fechas vencidas. La asignación se realiza en Mantenimiento.',
         targetHref: '/admin/mantenimiento',
         requiresAdmin: true,
         steps: ['Detectar tickets abiertos', 'Revisar proveedores verificados', 'Priorizar seguimiento', 'Registrar bitacora'],

@@ -202,7 +202,7 @@ export function MaintenanceDashboard() {
     const overdueCount = tasks.filter((t: MaintenanceTask) => t.status === 'overdue').length;
     const pendingCount = tasks.filter((t: MaintenanceTask) => t.status === 'pending').length;
     const criticalAssets = assets.filter((a: BuildingAsset) => a.healthStatus === 'critical').length;
-    const activeServiceRequests = serviceRequests.filter(item => item.status === 'pending' || item.status === 'accepted');
+    const activeServiceRequests = serviceRequests.filter(item => ['pending','accepted','awaiting_confirmation'].includes(item.status));
     const pendingServiceRequests = serviceRequests.filter(item => item.status === 'pending').length;
     const openCocoCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress').length;
     const emergencyCocoCases = cocoCases.filter(item => item.urgency === 'emergencia' || item.urgency === 'alta').length;
@@ -397,16 +397,16 @@ export function MaintenanceDashboard() {
                                                     Aceptar
                                                 </button>
                                             )}
-                                            {!isDone && (
+                                            {item.status === 'accepted' && (
                                                 <button
-                                                    onClick={() => handleUpdateServiceStatus(item.id, 'completed')}
+                                                    onClick={() => handleUpdateServiceStatus(item.id, 'awaiting_confirmation')}
                                                     disabled={serviceUpdatingId === item.id}
                                                     className="rounded-xl bg-[var(--cc-sage)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
                                                 >
-                                                    Completar
+                                                    Informar finalización
                                                 </button>
                                             )}
-                                            {!isDone && (
+                                            {['pending', 'accepted'].includes(item.status) && (
                                                 <button
                                                     onClick={() => handleUpdateServiceStatus(item.id, 'cancelled')}
                                                     disabled={serviceUpdatingId === item.id}

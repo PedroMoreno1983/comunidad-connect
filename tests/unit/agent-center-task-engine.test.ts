@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ updates: [] as Array<Record<string, unknown>> }));
+const state = vi.hoisted(() => ({ updates: [] as Array<Record<string, unknown>>, steps: [{ status: 'completed' }] }));
 
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({
     getSupabaseAdmin: () => ({
         from: () => ({
+            select: () => ({ eq: async () => ({ data: state.steps, error: null }) }),
             update: (payload: Record<string, unknown>) => {
                 state.updates.push(payload);
                 const query = {
@@ -17,11 +18,12 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
     }),
 }));
 
-import { runVerifiedTaskStep } from '../../src/lib/agent-center/taskEngine';
+import { completeAgentTask, runVerifiedTaskStep } from '../../src/lib/agent-center/taskEngine';
 
 describe('Agent Center persistent task engine', () => {
     beforeEach(() => {
         state.updates.length = 0;
+        state.steps = [{ status: 'completed' }];
     });
 
     it('retries a failed step and completes after verification', async () => {
@@ -45,5 +47,14 @@ describe('Agent Center persistent task engine', () => {
         })).rejects.toThrow('escalada');
 
         expect(state.updates).toContainEqual(expect.objectContaining({ status: 'escalated', last_error: 'persistent failure' }));
+    });
+
+    it('never marks a task completed while a step is failed or waiting', async () => {
+        state.steps = [{ status: 'completed' }, { status: 'waiting_human' }];
+        await expect(completeAgentTask('task-id', {})).rejects.toThrow('pasos pendientes');
+        expect(state.updates).toHaveLength(0);
+        state.steps = [{ status: 'completed' }, { status: 'skipped' }];
+        await completeAgentTask('task-id', {});
+        expect(state.updates).toContainEqual(expect.objectContaining({ status: 'completed' }));
     });
 });
