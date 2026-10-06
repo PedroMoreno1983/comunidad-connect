@@ -35,7 +35,7 @@ export function Eyebrow({
 }
 
 /**
- * Display heading helper — Fraunces with an optional italic accent.
+ * Display heading helper with an optional italic accent.
  *
  *   <DisplayHeading>Buenos días, <em>Martina</em>.</DisplayHeading>
  *
