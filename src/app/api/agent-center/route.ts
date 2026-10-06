@@ -243,6 +243,12 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
     const wantsOperationalSnapshot = looksReadOnlyRequest(message) && /\b(resumen|estado|indicadores|cuantos|cuantas|total|morosos|deudas|tickets|reservas|residentes)\b/i.test(normalizeText(message));
 
+    // El contenido del comunicado puede mencionar residentes, pagos o emergencias.
+    // Esas palabras no cambian la accion explicita solicitada al inicio.
+    if (/^(?:coco[,\s:]+)?(?:(?:quiero|necesito)\s+)?(?:crea|crear|publica|publicar|envia|enviar)\s+(?:(?:un|una|el|la)\s+)?(?:comunicado|aviso|anuncio)\b/.test(normalizeText(message))) {
+        return buildAnnouncementAction(message);
+    }
+
     if (isIndividualDebtQuery(message)) {
         return buildIndividualDebtAction(message, profile);
     }

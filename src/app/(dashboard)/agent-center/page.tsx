@@ -747,8 +747,8 @@ export default function AgentCenterPage() {
       <div className="mt-6 flex flex-wrap items-center gap-3 text-[13px] cc-text-tertiary">
         <CheckCircle2 className="h-4 w-4" style={{ color: "var(--cc-sage)" }} />
         <span>
-          Hoy CoCo ya dejó resueltas <strong className="font-medium cc-text-secondary">{summary.executedRuns} tareas</strong> y te ahorró cerca de{" "}
-          <strong className="font-medium cc-text-secondary">{Math.round((summary.estimatedMinutesSaved / 60) * 10) / 10} horas</strong>.
+          En el historial hay <strong className="font-medium cc-text-secondary">{summary.executedRuns} ejecuciones</strong>. Ahorro de tiempo estimado:{" "}
+          <strong className="font-medium cc-text-secondary">{Math.round((summary.estimatedMinutesSaved / 60) * 10) / 10} horas</strong> (8 minutos por ejecución; no medido).
         </span>
         <button
           type="button"

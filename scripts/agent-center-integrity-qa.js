@@ -23,12 +23,12 @@ const twilioContentTemplate = read('src/lib/server/twilioContentTemplate.ts');
 
 const checks = [
   ['Department number extraction is supported', intentSafety.includes('extractUnitNumber')],
-  ['Anthropic tool-calling is the primary reasoning planner', route.includes('planAgentAction(message, profile)') && planner.includes("tool_choice: { type: 'tool'")],
-  ['Agent Center exposes Claude model metadata in the API and UI', route.includes('getAgentPlannerModel()') && page.includes('Claude activo')],
+  ['Anthropic tool-calling is the primary reasoning planner', route.includes('planAgentAction(message, profile, history)') && planner.includes("tool_choice: { type: 'tool'")],
+  ['Agent Center exposes planner model metadata in the API', route.includes('getAgentPlannerModel()') && route.includes("provider: 'anthropic'")],
   ['Finance Agent can send audited WhatsApp when residents opted in', unitFinanceActions.includes('sendWhatsAppNotificationForUser') && unitFinanceActions.includes('agent-center.send_unit_payment_reminder') && unitFinanceActions.includes('agent-center.create_unit_expense')],
   ['WhatsApp outbound endpoint uses the shared audited sender', whatsappNotifyRoute.includes('sendWhatsAppNotificationForUser') && whatsappNotify.includes("action: 'whatsapp.notification.send'")],
   ['Finance reminders use an approved-template ContentSid instead of free-form Body', unitFinanceActions.includes("templateKey: 'payment_reminder'") && whatsappNotify.includes("params.set('ContentSid'") && whatsappNotify.includes("params.set('ContentVariables'")],
-  ['Platform-only setup can create and submit the utility template', whatsappStatusRoute.includes('ensurePaymentReminderTemplate') && twilioContentTemplate.includes('ApprovalRequests/whatsapp') && twilioContentTemplate.includes("category: 'UTILITY'")],
+  ['Platform-only setup can create and submit the utility template', whatsappStatusRoute.includes('requirePlatformCreator') && whatsappStatusRoute.includes('ensureAllTemplates') && twilioContentTemplate.includes("ensureTemplate('payment_reminder')") && twilioContentTemplate.includes('ApprovalRequests/whatsapp') && twilioContentTemplate.includes("category: 'UTILITY'")],
   ['Twilio delivery callbacks are signed and update audited final status', whatsappNotify.includes("params.set('StatusCallback'") && whatsappStatusCallback.includes('verifyTwilioSignature') && whatsappStatusCallback.includes('deliveryStatus')],
   ['Agent Center planning does not fall back to Gemini', !route.includes('GEMINI_SYSTEM_PROMPT') && !route.includes('callGeminiInference') && !route.includes('geminiResult')],
   ['Operational prompts reach Claude instead of a canned menu reply', !route.includes('Hola. Puedo ayudarte con acciones concretas') && route.includes('Esperando instrucci')],
