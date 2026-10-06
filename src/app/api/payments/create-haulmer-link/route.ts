@@ -6,6 +6,7 @@ import { PUBLIC_SITE_URL } from '@/lib/config';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { calculateHaulmerServiceFee } from '@/lib/payments/haulmerFees';
 import { createProviderCheckout, resolvePaymentProvider } from '@/lib/payments/providers';
+import { getUnitStatement } from '@/lib/finance/collectionService';
 import type { HaulmerFeeCalculation, PaymentProviderId } from '@/lib/types';
 
 const ALLOWED_ORIGINS = [
@@ -96,7 +97,8 @@ async function resolvePaymentTarget(
             throw new PaymentRequestError('Este gasto comun ya figura pagado.', 409, 'EXPENSE_ALREADY_PAID');
         }
 
-        const expenseAmount = Math.round(Number(expense.amount || 0));
+        const statement = await getUnitStatement(profile.community_id, profile.unit_id);
+        const expenseAmount = statement.expenseBalances.find(item => item.expenseId === expense.id)?.outstandingAmount ?? 0;
         const contributionAmount = parseMoney(body.extraContribution);
         if (expenseAmount <= 0) {
             throw new PaymentRequestError('El cobro no tiene un monto valido.', 409, 'INVALID_EXPENSE_AMOUNT');

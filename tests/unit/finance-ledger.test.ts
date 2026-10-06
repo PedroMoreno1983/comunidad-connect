@@ -13,6 +13,17 @@ function payment(id: string, paidAt: string, amount: number, reference: string |
 }
 
 describe('buildAccountStatement', () => {
+    it('exposes the remaining balance of the chosen month without changing original charges', () => {
+        const charges = [charge('may', '2026-05', 148600, '2026-06-05'), charge('jul', '2026-07', 75000, '2026-08-05'), charge('oct', '2026-10', 2000, '2026-11-05')];
+        const statement = buildAccountStatement(charges, [{ ...payment('partial', '2026-10-05', 1000), expenseId: 'oct' }], '2026-10-06');
+        expect(statement.balance).toBe(224600);
+        expect(statement.expenseBalances).toEqual([
+            { expenseId: 'may', amount: 148600, outstandingAmount: 148600 },
+            { expenseId: 'jul', amount: 75000, outstandingAmount: 75000 },
+            { expenseId: 'oct', amount: 2000, outstandingAmount: 1000 },
+        ]);
+        expect(statement.entries.find(entry => entry.id === 'oct')?.amount).toBe(2000);
+    });
     it('arrastra la deuda impaga de un mes al siguiente', () => {
         const statement = buildAccountStatement(
             [charge('c1', '2026-05', 100_000, '2026-06-05'), charge('c2', '2026-06', 120_000, '2026-07-05')],
