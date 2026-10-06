@@ -214,7 +214,9 @@ describe('puente coco_action end-to-end (checklist de QA del PR #68)', () => {
         const data = await response.json();
         expect(data.status).toBe('awaiting_confirmation');
         expect(data.action.toolName).toBe('create_announcement');
-        expect(data.action.args.content).toBe(message);
+        expect(data.action.args.content).not.toMatch(/^(Publica|Crea|Publicar) /);
+        expect(data.action.args.content).toContain('residentes');
+        expect(data.action.args.title).not.toMatch(/^:/);
         expect(mocks.inserts.some(insert => insert.table === 'announcements')).toBe(false);
     });
 

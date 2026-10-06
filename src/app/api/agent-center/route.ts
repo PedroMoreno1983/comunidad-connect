@@ -214,16 +214,19 @@ function activitySummaryForStatus(action: AgentAction, status: 'preview' | 'exec
 
 function buildAnnouncementAction(message: string): AgentAction {
     const lower = message.toLowerCase();
-    const title = cleanText(
+    const content = cleanText(
         message
             .replace(/^(?:crea|crear|publica|publicar|envia|enviar|env[ií]ale)\s+(?:un|una|el|la)?\s*(?:comunicado|aviso|anuncio)(?:\s+(?:de|sobre|acerca de|por|para))?\s*/i, '')
+            .replace(/^\s*[:\-–—]\s*/, '')
             .replace(/\s+/g, ' '),
-        90
-    ) || 'Comunicado de administracion';
+        1200
+    );
+    const firstSentence = cleanText(content.split(/[.!?]\s/)[0], 90);
+    const title = firstSentence.length >= 5 ? firstSentence : cleanText(content, 90) || 'Comunicado de administracion';
     return {
         agentKey: 'community',
         toolName: 'create_announcement',
-        args: { title, content: message, priority: lower.includes('urgente') ? 'alert' : 'info' },
+        args: { title, content, priority: lower.includes('urgente') ? 'alert' : 'info' },
         requiresConfirmation: true,
         title: `Publicar comunicado: ${title}`,
         summary: 'Accion disponible solo para administracion o conserjeria.',

@@ -338,7 +338,6 @@ Reglas: consulta al menos una fuente; puedes cruzar varias; nunca inventes datos
         const response = await anthropic.messages.create({
             model: MODEL,
             max_tokens: 1600,
-            temperature: 0,
             system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
             messages,
             tools: READ_TOOLS,

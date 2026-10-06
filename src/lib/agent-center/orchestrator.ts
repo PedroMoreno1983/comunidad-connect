@@ -159,7 +159,6 @@ export async function planAgentMission(message: string, profile: AgentProfile): 
     const response = await anthropic.messages.create({
         model: MODEL,
         max_tokens: 1600,
-        temperature: 0,
         system: MISSION_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userPrompt }],
         tools: [MISSION_TOOL],
