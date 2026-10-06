@@ -154,7 +154,6 @@ export async function planAgentAction(
     const response = await anthropic.messages.create({
         model: MODEL,
         max_tokens: 1100,
-        temperature: 0,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userPrompt }],
         tools: [PLANNER_TOOL],
