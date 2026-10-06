@@ -205,6 +205,19 @@ describe('puente coco_action end-to-end (checklist de QA del PR #68)', () => {
         };
     });
 
+    it.each([
+        'Publica comunicado: QA. No requiere acciones ni pagos de los residentes.',
+        'Crea un comunicado para informar a residentes sobre cobranza y emergencias.',
+        'Publicar un aviso de mantenimiento para los residentes.',
+    ])('preserva el comunicado aunque su contenido mencione otros modulos: %s', async message => {
+        const response = await POST(post({ message }));
+        const data = await response.json();
+        expect(data.status).toBe('awaiting_confirmation');
+        expect(data.action.toolName).toBe('create_announcement');
+        expect(data.action.args.content).toBe(message);
+        expect(mocks.inserts.some(insert => insert.table === 'announcements')).toBe(false);
+    });
+
     // ── Paso 1 del checklist ────────────────────────────────────────────────
     it('un mensaje que el router no reconoce y CoCo si, produce una TARJETA de aprobacion (no solo texto)', async () => {
         mocks.askCoCo.mockResolvedValue({
