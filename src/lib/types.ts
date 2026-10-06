@@ -645,6 +645,12 @@ export interface AdminDashboardSummary {
   activeRequests: AdminDashboardListItem[];
 }
 
+export interface ProviderCardProps {
+  provider: ServiceProvider;
+  showCategory?: boolean;
+  compact?: boolean;
+}
+
 export interface ServiceProvider {
   id: string;
   name: string;

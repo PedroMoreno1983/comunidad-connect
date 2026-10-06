@@ -137,7 +137,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
             </section>
 
             {filteredProviders.length > 0 ? (
-                <section className="space-y-4">
+                <section className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] items-stretch gap-5">
                     {filteredProviders.map(provider => (
                         <ProviderCard key={provider.id} provider={provider} showCategory />
                     ))}
