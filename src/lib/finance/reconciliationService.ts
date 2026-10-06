@@ -8,14 +8,15 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import type { BankTransactionInput } from '@/lib/types';
+import type { BankTransactionInput, DepositUnitCandidate, FinanceAllocationDebt, FinancePageLoader } from '@/lib/types';
 import { planBankImport, type BankIdentityRow } from './bankImportIdentity';
 import { BillingError, DATE_PATTERN } from './billingService';
+import { deletePayment, recordPayment } from './collectionService';
+import { suggestDeposits, suggestUnitMatches } from './depositMatch';
+import { allocateUnitPayments, legacySettlements } from './paymentAllocation';
+import { signedChargeAmount } from './adjustments';
 import {
-    suggestMatches,
     summarize,
-    type BankMovement,
-    type RecordedPayment,
 } from './reconciliation';
 
 function unitLabel(row: { number?: unknown; tower?: unknown }) {
@@ -24,28 +25,45 @@ function unitLabel(row: { number?: unknown; tower?: unknown }) {
     return tower && tower !== 'A' ? `${tower}-${number}` : number;
 }
 
+async function readAll<T>(load: FinancePageLoader<T>) {
+    const data: T[] = [];
+    for (let offset = 0; ; offset += 500) {
+        const page = await load(offset, offset + 499);
+        if (page.error) throw page.error;
+        data.push(...(page.data ?? []));
+        if ((page.data?.length ?? 0) < 500) return { data, error: null };
+    }
+}
+
 /** Movimientos de la cartola + pagos sin conciliar + sugerencias + resumen. */
 export async function getReconciliation(communityId: string) {
     const admin = getSupabaseAdmin();
 
-    const [txnResult, paymentsResult, unitsResult] = await Promise.all([
-        admin.from('bank_transactions')
+    const [txnResult, paymentsResult, unitsResult, expensesResult, chargesResult] = await Promise.all([
+        readAll((start, end) => admin.from('bank_transactions')
             .select('id, txn_date, amount, description, reference, status, matched_payment_id, created_at')
             .eq('community_id', communityId)
-            .order('txn_date', { ascending: false }),
-        admin.from('unit_payments')
-            .select('id, unit_id, amount, paid_at, method, reference')
+            .order('id').range(start, end)),
+        readAll((start, end) => admin.from('unit_payments')
+            .select('id, unit_id, amount, paid_at, method, reference, expense_id, charge_id')
             .eq('community_id', communityId)
-            .order('paid_at', { ascending: false }),
-        admin.from('units')
+            .order('id').range(start, end)),
+        readAll((start, end) => admin.from('units')
             .select('id, number, tower')
-            .eq('community_id', communityId),
+            .eq('community_id', communityId).order('id').range(start, end)),
+        readAll((start, end) => admin.from('expenses')
+            .select('id, unit_id, month, amount, status, due_date, created_at, payment_metadata')
+            .eq('community_id', communityId).order('id').range(start, end)),
+        readAll((start, end) => admin.from('unit_charges').select('id, unit_id, amount, kind, label, notes, due_date, created_at')
+            .eq('community_id', communityId).neq('status', 'cancelled').order('id').range(start, end)),
     ]);
     if (txnResult.error) throw txnResult.error;
     if (paymentsResult.error) throw paymentsResult.error;
     if (unitsResult.error) throw unitsResult.error;
+    if (expensesResult.error) throw expensesResult.error;
+    if (chargesResult.error) throw chargesResult.error;
 
-    const transactions = txnResult.data ?? [];
+    const transactions = [...txnResult.data].sort((a, b) => String(b.txn_date).localeCompare(String(a.txn_date)) || String(a.id).localeCompare(String(b.id)));
     const unitById = new Map((unitsResult.data ?? []).map(u => [String(u.id), unitLabel(u)]));
 
     // Pagos ya conciliados con algún movimiento: no se ofrecen de nuevo.
@@ -68,14 +86,32 @@ export async function getReconciliation(communityId: string) {
 
     const unmatchedPayments = allPayments.filter(p => !p.matched);
 
-    // Sugerencias solo entre movimientos pendientes de ingreso y pagos libres.
-    const pendingInflows: BankMovement[] = transactions
-        .filter(t => t.status === 'pending' && Number(t.amount) > 0)
-        .map(t => ({ id: String(t.id), amount: Number(t.amount), date: String(t.txn_date), reference: t.reference }));
-    const freePayments: RecordedPayment[] = unmatchedPayments
-        .map(p => ({ id: p.id, amount: p.amount, paidAt: p.paidAt, reference: p.reference }));
-
-    const suggestions = suggestMatches(pendingInflows, freePayments);
+    const units: DepositUnitCandidate[] = (unitsResult.data ?? []).map(unit => ({
+        id: String(unit.id),
+        number: String(unit.number ?? ''),
+        tower: String(unit.tower ?? ''),
+    }));
+    const movements = transactions.filter(txn => txn.status === 'pending' && Number(txn.amount) > 0).map(txn => ({
+        id: String(txn.id), amount: Math.round(Number(txn.amount)), date: String(txn.txn_date),
+        description: String(txn.description || ''), reference: txn.reference ? String(txn.reference) : null,
+    }));
+    const suggestions = suggestUnitMatches(movements, unmatchedPayments, units);
+    const openCharges = units.flatMap(unit => {
+        const expenses = (expensesResult.data ?? []).filter(row => row.unit_id === unit.id);
+        const charges = (chargesResult.data ?? []).filter(row => row.unit_id === unit.id);
+        const payments = (paymentsResult.data ?? []).filter(row => row.unit_id === unit.id).map(row => ({
+            amount: Number(row.amount), expenseId: row.expense_id, chargeId: row.charge_id,
+        }));
+        const debts: FinanceAllocationDebt[] = [
+            ...expenses.map(row => ({ id: String(row.id), kind: 'expense' as const, amount: Number(row.amount), date: String(row.due_date || row.created_at) })),
+            ...charges.map(row => ({ id: String(row.id), kind: 'charge' as const, amount: signedChargeAmount(row), date: String(row.due_date || row.created_at) })),
+        ];
+        const settlements = legacySettlements(expenses, debts, payments);
+        const remaining = allocateUnitPayments(debts.map(debt => ({ ...debt, settledAmount: debt.kind === 'expense' ? settlements.get(debt.id) : 0 })), payments);
+        return expenses.map(row => ({ id: String(row.id), unitId: unit.id, month: String(row.month), amount: remaining.get(`expense:${row.id}`) || 0 })).filter(row => row.amount > 0);
+    });
+    const depositSuggestions = suggestDeposits(movements, units, openCharges, unmatchedPayments,
+        new Set(suggestions.map(item => item.transactionId)), new Set(suggestions.map(item => item.paymentId)));
 
     return {
         transactions: transactions.map(t => ({
@@ -89,6 +125,7 @@ export async function getReconciliation(communityId: string) {
         })),
         unmatchedPayments,
         suggestions,
+        depositSuggestions,
         summary: summarize(transactions.map(t => ({ amount: Number(t.amount || 0), status: String(t.status) }))),
     };
 }
@@ -213,9 +250,11 @@ export async function matchTransaction(communityId: string, transactionId: strin
             .select('id, amount, status')
             .eq('id', transactionId).eq('community_id', communityId).maybeSingle(),
         admin.from('unit_payments')
-            .select('id')
+            .select('id, amount')
             .eq('id', paymentId).eq('community_id', communityId).maybeSingle(),
     ]);
+    if (txnResult.error) throw txnResult.error;
+    if (paymentResult.error) throw paymentResult.error;
     if (!txnResult.data) throw new BillingError('txn_not_found', 'Movimiento no encontrado.', 404);
     if (!paymentResult.data) throw new BillingError('payment_not_found', 'Pago no encontrado.', 404);
     if (txnResult.data.status === 'matched') {
@@ -225,11 +264,16 @@ export async function matchTransaction(communityId: string, transactionId: strin
         throw new BillingError('not_an_inflow', 'Solo los ingresos se concilian contra pagos.', 400);
     }
 
-    const { error } = await admin
+    if (Math.round(Number(txnResult.data.amount)) !== Math.round(Number(paymentResult.data.amount))) {
+        throw new BillingError('amount_mismatch', 'El monto del movimiento y del pago debe coincidir.', 409);
+    }
+    const { data: matched, error } = await admin
         .from('bank_transactions')
         .update({ status: 'matched', matched_payment_id: paymentId })
         .eq('id', transactionId)
-        .eq('community_id', communityId);
+        .eq('community_id', communityId)
+        .eq('status', 'pending')
+        .select('id');
     if (error) {
         // El índice único sobre matched_payment_id impide conciliar el mismo pago
         // con dos movimientos distintos.
@@ -238,6 +282,7 @@ export async function matchTransaction(communityId: string, transactionId: strin
         }
         throw error;
     }
+    if (!matched?.length) throw new BillingError('already_changed', 'El movimiento cambió. Actualiza la cartola.', 409);
     return { ok: true };
 }
 
@@ -287,6 +332,47 @@ export async function autoReconcile(communityId: string) {
         }
     }
     return { applied, suggested: suggestions.length };
+}
+
+/**
+ * Registra el abono en la unidad que nombra la glosa y lo concilia.
+ * El monto y el mes salen del movimiento y de la propuesta vigente, no del
+ * cliente. Si el cruce con la cartola falla, el pago se revierte.
+ */
+export async function recordSuggestedDeposit(communityId: string, recordedBy: string | null, transactionId: string, expenseId?: string) {
+    const snapshot = await getReconciliation(communityId);
+    const suggestion = snapshot.depositSuggestions.find(item => item.transactionId === transactionId && item.kind === 'record');
+    const txn = snapshot.transactions.find(item => item.id === transactionId);
+    if (!suggestion || !txn || txn.status !== 'pending' || txn.amount <= 0) {
+        throw new BillingError('no_suggestion', 'Ese abono ya no tiene una unidad propuesta. Revisa la glosa o elige el pago a mano.', 409);
+    }
+
+    const targetId = expenseId || suggestion.expenseId;
+    if (suggestion.openCharges.length && !suggestion.openCharges.some(charge => charge.id === targetId)) {
+        throw new BillingError('choose_period', 'Elige el mes al que corresponde este abono.', 409);
+    }
+    const payment = await recordPayment(communityId, recordedBy, {
+        unitId: suggestion.unitId,
+        amount: txn.amount,
+        paidAt: txn.txnDate,
+        method: 'transfer',
+        reference: `cartola-${transactionId}`,
+        notes: [txn.description, txn.reference].filter(Boolean).join(" · ") || null,
+        expenseId: targetId,
+    }, { notify: false });
+
+    try {
+        await matchTransaction(communityId, transactionId, String(payment.id));
+    } catch (error) {
+        await deletePayment(communityId, String(payment.id));
+        throw error;
+    }
+    return {
+        ok: true,
+        paymentId: String(payment.id),
+        unitLabel: suggestion.unitLabel,
+        month: suggestion.openCharges.find(charge => charge.id === targetId)?.month ?? null,
+    };
 }
 
 /** Elimina un movimiento de la cartola (no un pago). */

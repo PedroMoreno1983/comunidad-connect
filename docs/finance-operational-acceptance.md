@@ -67,3 +67,22 @@ Se detectó una deuda inflada: cobranza mostraba $946.200 aunque $433.300 corres
 Antes de registrar dinero nuevo se fijan los ajustes históricos, de modo que el abono no se consuma en una cuota ya liquidada. Una eliminación de un pago moderno puede reabrir su cobro: no lo convierte en un ajuste histórico. Pruebas financieras: 87 aprobadas, incluidos estos casos y prevención de doble conteo.
 
 Prueba de documento sintético: se extrajo concepto, monto ($10.000), proveedor y categoría; se revisó el reparto a partes iguales y se guardó. La base confirmó un egreso de $10.000 y la interfaz mostró cinco cuotas de $2.000, con suma exacta. El fixture es `tests/fixtures/finance-qa-receipt-20261005.txt`; no representa una factura ni un pago real.
+
+La recarga del mismo documento no creó otro egreso (consulta: una fila, total $10.000). Se emitieron cinco cuotas por $2.000, con correo desactivado: la base confirmó un único `billing_run_id` y total $10.000. Cobranza mostró $522.900, de los cuales $512.900 vencidos, antes de la unidad adicional de prueba creada por Cursor.
+
+## Continuación del trabajo de Cursor: conciliación por glosa
+
+Se conservaron el reporte de transferencia y la elección de mes publicados en `301e158e`. Se completó el cambio pendiente de conciliación:
+
+- Una unidad identificada en la glosa restringe también los cruces por fecha y monto; las torres ambiguas quedan para revisión manual.
+- Los pagos usados por una sugerencia quedan reservados para no ofrecerlos ni registrarlos de nuevo.
+- Se mantienen las reglas de fecha/referencia al cruzar un pago existente; el monto por sí solo no justifica cruzar meses distintos.
+- Los cobros propuestos usan el saldo restante calculado con abonos, ajustes históricos y descuentos. Se leen todas las páginas de datos.
+- Solo un saldo coincidente único preselecciona el mes. En otro caso administración debe elegirlo; nunca se decide automáticamente el mes más antiguo.
+- El servidor comprueba nuevamente la propuesta y el mes. Conserva glosa y operación en notas y utiliza `cartola-{transactionId}` como referencia estable.
+- La confirmación exige monto igual y actualiza solo movimientos todavía pendientes. Un reintento no crea otro pago; si el cruce falla se elimina el pago recién creado. No se envía un aviso prematuro de pago.
+- Si falla la asignación después de insertar un pago, se compensa la inserción y se vuelve a reconciliar. Son escrituras compensadas, no una transacción atómica: una caída del servidor entre operaciones requiere revisar el pago sin conciliar.
+
+El script local `scripts/_glosa-setup.js` crea usuarios y guarda credenciales en un archivo temporal; se excluye del commit. Se preservaron los datos de prueba 9091 creados por Cursor. No se ejecutó nuevamente el script ni se leyeron sus credenciales.
+
+Pruebas: reglas de unidad y torre, saldo parcial, mes ajeno, reintento, carrera al confirmar, reversión después de error de asignación y lectura de 1.100 pagos. La prueba del reporte con sesión residente y del ciclo completo de Agent Center sigue pendiente; no se declara paridad comercial completa.

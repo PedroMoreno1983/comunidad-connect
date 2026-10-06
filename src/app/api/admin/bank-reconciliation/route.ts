@@ -10,6 +10,7 @@ import {
     unmatchTransaction,
     setTransactionIgnored,
     autoReconcile,
+    recordSuggestedDeposit,
     deleteBankTransaction,
 } from '@/lib/finance/reconciliationService';
 import type { BankTransactionInput } from '@/lib/types';
@@ -77,6 +78,8 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json(await setTransactionIgnored(auth.communityId, cleanText(body.transactionId, 60), false));
             case 'auto':
                 return NextResponse.json(await autoReconcile(auth.communityId));
+            case 'record':
+                return NextResponse.json(await recordSuggestedDeposit(auth.communityId, auth.profile.id, cleanText(body.transactionId, 60), cleanText(body.expenseId, 60)));
             default:
                 return NextResponse.json({ error: 'Acción no reconocida.' }, { status: 400 });
         }

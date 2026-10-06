@@ -1995,11 +1995,36 @@ export interface ReconciliationSuggestion {
     referenceMatch: boolean;
 }
 
+/**
+ * La glosa nombra una unidad. Si ya hay un pago de ese monto, se propone
+ * cruzarlo. Si no, se propone registrarlo en el cobro abierto. Confirmar es
+ * lo que mueve el saldo.
+ */
+export interface DepositSuggestion {
+    kind: 'match' | 'record';
+    transactionId: string;
+    unitId: string;
+    unitLabel: string;
+    paymentId: string | null;
+    expenseId: string | null;
+    month: string | null;
+    amountMatchesCharge: boolean;
+    openCharges: DepositOpenCharge[];
+}
+
+export interface DepositUnitCandidate { id: string; number: string; tower: string }
+export interface DepositOpenCharge { id: string; unitId: string; month: string; amount: number }
+export interface DepositMovement { id: string; amount: number; description: string; reference?: string | null; date?: string }
+export interface DepositPaymentCandidate { id: string; unitId: string; amount: number; paidAt?: string; reference?: string | null }
+export interface FinancePaymentOptions { notify?: boolean }
+export type FinancePageLoader<T> = (start: number, end: number) => PromiseLike<{ data: T[] | null; error: unknown }>;
+
 /** Todo lo que la pantalla de conciliacion necesita. Antes `Data`. */
 export interface ReconciliationData {
     transactions: BankTransaction[];
     unmatchedPayments: UnitPayment[];
     suggestions: ReconciliationSuggestion[];
+    depositSuggestions: DepositSuggestion[];
     summary: {
         totalTransactions: number;
         matched: number;
