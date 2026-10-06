@@ -65,6 +65,12 @@ describe('reconciliation persistence and allocation', () => {
         expect(payment.remove).toHaveBeenCalledWith('community', 'new');
         expect(state.rows.bank_transactions[0].status).toBe('pending');
     });
+    it('does not accept a closed period when the unit has no open charges', async () => {
+        state.rows.expenses[0].status = 'paid';
+        state.rows.unit_payments = [];
+        await expect(recordSuggestedDeposit('community', 'admin', 'txn', 'oct')).rejects.toThrow('Elige el mes');
+        expect(payment.record).not.toHaveBeenCalled();
+    });
     it('rejects a manual match with a different amount', async () => {
         await expect(matchTransaction('community', 'txn', 'partial')).rejects.toThrow('monto');
     });

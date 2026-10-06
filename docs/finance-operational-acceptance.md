@@ -86,3 +86,9 @@ Se conservaron el reporte de transferencia y la elección de mes publicados en `
 El script local `scripts/_glosa-setup.js` crea usuarios y guarda credenciales en un archivo temporal; se excluye del commit. Se preservaron los datos de prueba 9091 creados por Cursor. No se ejecutó nuevamente el script ni se leyeron sus credenciales.
 
 Pruebas: reglas de unidad y torre, saldo parcial, mes ajeno, reintento, carrera al confirmar, reversión después de error de asignación y lectura de 1.100 pagos. La prueba del reporte con sesión residente y del ciclo completo de Agent Center sigue pendiente; no se declara paridad comercial completa.
+
+Prueba de navegador en producción: `tests/fixtures/finance-qa-bank-20261005.csv` mostró una vista previa de un movimiento de $1.000 para 1204. Antes de confirmar, exigió elegir mes porque había tres cobros abiertos. Se eligió octubre; quedó conciliado y la base confirmó un pago de $1.000 vinculado a la cuota de $2.000 de octubre, todavía pendiente. El saldo de 1204 quedó en $224.600 y su deuda anterior vencida permaneció en $223.600. Reimportar el mismo CSV dejó un solo movimiento, conciliado; SQL confirmó esos recuentos. Se conservan los registros sintéticos identificados como QA; no se transfirió dinero real.
+
+La cartola muestra el mes elegido en el concepto del pago. También se rechaza un mes cerrado enviado manualmente cuando la propuesta es crédito sin cobro abierto.
+
+El CI detectó nuevos avisos de dependencias durante esta publicación. Se fijaron Capacitor Android/iOS/Core en 8.5.2 y source-map-js en 1.2.2; Mammoth usa argparse 2.0.1 mediante override para retirar sprintf-js. `npm audit --omit=dev` devolvió cero vulnerabilidades y `mammoth --help` funciona. Se prueba además extracción real de un DOCX sintético. No se debilitó el control de auditoría.
