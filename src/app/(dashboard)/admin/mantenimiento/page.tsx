@@ -102,7 +102,6 @@ export default function MantenimientoAdminPage() {
     }
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadData();
         // Mantencion recarga cuando cambia el usuario activo.
     }, []);

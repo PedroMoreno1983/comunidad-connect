@@ -349,7 +349,6 @@ export function MaintenanceDashboard() {
                         <div className="divide-y divide-subtle">
                             {serviceRequests.map(item => {
                                 const provider = item.service_providers;
-                                const isDone = item.status === 'completed' || item.status === 'cancelled';
                                 const statusClass =
                                     item.status === 'completed'
                                         ? 'bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]'
