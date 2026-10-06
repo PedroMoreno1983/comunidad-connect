@@ -1962,6 +1962,12 @@ export interface StatementEntry {
 }
 
 /** Cartola de una unidad: sus movimientos y el saldo que dejan. */
+export interface ExpenseBalance {
+    expenseId: string;
+    amount: number;
+    outstandingAmount: number;
+}
+
 export interface UnitStatement {
     unitLabel: string;
     entries: StatementEntry[];
@@ -1969,6 +1975,7 @@ export interface UnitStatement {
     overdueAmount: number;
     totalCharged: number;
     totalPaid: number;
+    expenseBalances: ExpenseBalance[];
 }
 
 /** Movimiento del banco a conciliar. Antes `Txn` en conciliacion/page. */
@@ -2614,6 +2621,7 @@ export interface ExpenseItemDatabaseRow {
  * efectivamente pagado, que puede diferir del emitido.
  */
 export interface UnitExpenseView extends Omit<ExpenseRecord, 'paidAt'> {
+    outstandingAmount?: number;
     /** `null` es "no pagado" y llega asi desde la base; no es lo mismo que ausente. */
     paidAt?: string | null;
     paymentAmount?: number | null;

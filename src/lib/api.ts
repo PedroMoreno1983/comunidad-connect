@@ -708,7 +708,7 @@ export const HomeService = {
 
         let expensesQuery = supabase
             .from('expenses')
-            .select('amount')
+            .select('id, amount')
             .in('status', ['pending', 'overdue']);
 
         if (user.unitId) {
@@ -733,18 +733,22 @@ export const HomeService = {
             announcementsQuery = announcementsQuery.eq('community_id', user.communityId);
         }
 
-        const [expensesResult, bookingsResult, announcementResult] = await Promise.all([
+        const [expensesResult, bookingsResult, announcementResult, statement] = await Promise.all([
             expensesQuery,
             bookingsQuery,
             announcementsQuery,
+            ResidentFinanceService.getStatement(),
         ]);
 
         if (expensesResult.error) throw expensesResult.error;
         if (bookingsResult.error) throw bookingsResult.error;
         if (announcementResult.error) throw announcementResult.error;
 
-        const expenses = (expensesResult.data || []) as Array<{ amount: number | string | null }>;
-        const pendingExpensesAmount = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        const balances = new Map(statement.expenseBalances.map(item => [item.expenseId, item.outstandingAmount]));
+        const expenseRows = (expensesResult.data || []) as Pick<ExpenseDatabaseRow, 'id' | 'amount'>[];
+        if (expenseRows.some(item => !balances.has(item.id))) throw new Error('No se pudo verificar el saldo de todos los cobros.');
+        const expenses = expenseRows.filter(item => (balances.get(item.id) ?? 0) > 0);
+        const pendingExpensesAmount = expenses.reduce((sum, item) => sum + (balances.get(item.id) || 0), 0);
         const announcement = announcementResult.data as Record<string, unknown> | null;
 
         return {
@@ -2272,6 +2276,7 @@ export const ResidentFinanceService = {
             overdueAmount: data.overdueAmount,
             totalCharged: data.totalCharged,
             totalPaid: data.totalPaid,
+            expenseBalances: data.expenseBalances || [],
         };
     },
 

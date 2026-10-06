@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 export default function HomePage() {
     const { user } = useAuth();
     const router = useRouter();
+    const [summaryStatus, setSummaryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [statsData, setStatsData] = useState<ResidentHomeSummary>({
         pendingExpensesCount: 0,
         pendingExpensesAmount: 0,
@@ -40,10 +41,13 @@ export default function HomePage() {
         if (!user || user.role !== "resident") return;
 
         const fetchData = async () => {
+            setSummaryStatus('loading');
             try {
                 setStatsData(await HomeService.getResidentSummary(user));
+                setSummaryStatus('ready');
             } catch (err) {
                 console.error("Error fetching resident home data:", err);
+                setSummaryStatus('error');
             }
         };
 
@@ -51,6 +55,9 @@ export default function HomePage() {
     }, [user]);
 
     if (!user || user.role !== "resident") return null;
+    if (summaryStatus !== 'ready') {
+        return <div className="mx-auto max-w-md px-5 py-20" role={summaryStatus === 'error' ? 'alert' : 'status'}>{summaryStatus === 'error' ? 'No pudimos verificar tu resumen. Vuelve a cargar la página para consultar tu saldo.' : 'Cargando tu resumen…'}</div>;
+    }
 
     const firstName = user.name ? user.name.split(" ")[0] : "vecino";
     const initials = user.name

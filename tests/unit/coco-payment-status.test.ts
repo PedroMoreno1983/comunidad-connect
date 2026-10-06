@@ -31,6 +31,17 @@ const ANDREA_ROWS = [
 ];
 
 describe('summarizeResidentPaymentStatus', () => {
+    it('uses allocated balances and excludes fully settled pending records', () => {
+        const summary = summarizeResidentPaymentStatus([
+            { month: '2026-05', amount: 148600, outstandingAmount: 148600, status: 'overdue' },
+            { month: '2026-07', amount: 75000, outstandingAmount: 75000, status: 'overdue' },
+            { month: '2026-10', amount: 2000, outstandingAmount: 1000, status: 'pending' },
+            { month: '2026-09', amount: 5000, outstandingAmount: 0, status: 'pending' },
+        ]);
+        expect(summary.pending_amount).toBe(224600);
+        expect(summary.pending_count).toBe(3);
+        expect(summary.latest_unpaid?.amount).toBe(1000);
+    });
     it('matches the home hero: all pending payments, not only the current month', () => {
         const summary = summarizeResidentPaymentStatus(ANDREA_ROWS, null);
 

@@ -11,7 +11,7 @@
  * pago lo baja. Saldo negativo = la unidad pagó de más (saldo a favor).
  */
 
-import type { FinancePaymentTarget } from '@/lib/types';
+import type { ExpenseBalance, FinancePaymentTarget } from '@/lib/types';
 import { allocateUnitPayments } from './paymentAllocation';
 
 export type LedgerEntryKind = 'gasto_comun' | 'fine' | 'interest' | 'extraordinary' | 'service' | 'other' | 'payment';
@@ -51,6 +51,7 @@ export interface LedgerEntry {
 }
 
 export interface AccountStatement {
+    expenseBalances: ExpenseBalance[];
     entries: LedgerEntry[];
     totalCharged: number;
     totalPaid: number;
@@ -153,6 +154,11 @@ export function buildAccountStatement(
     }
 
     return {
+        expenseBalances: charges.filter(charge => charge.kind === 'gasto_comun').map(charge => ({
+            expenseId: charge.id,
+            amount: Math.round(charge.amount),
+            outstandingAmount: outstanding.get(`expense:${charge.id}`) || 0,
+        })),
         entries,
         totalCharged,
         totalPaid,

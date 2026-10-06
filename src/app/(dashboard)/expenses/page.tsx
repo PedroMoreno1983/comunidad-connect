@@ -48,6 +48,7 @@ export default function ExpensesPage() {
     const searchParams = useSearchParams();
     const [expenses, setExpenses] = useState<UnitExpenseView[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [isPaying, setIsPaying] = useState<string | null>(null);
     const [step, setStep] = useState<"review" | "success">("review");
     const [contributionType, setContributionType] = useState<string>("none");
@@ -76,6 +77,7 @@ export default function ExpensesPage() {
 
             try {
                 setIsLoading(true);
+                setLoadError(false);
                 let mapped = ((await ExpensesService.getExpenses(targetUnitId) || [])).map(mapExpenseRow);
 
                 if (paymentReturnExpenseId) {
@@ -107,13 +109,13 @@ export default function ExpensesPage() {
                     router.replace("/expenses");
                 }
 
+                const account = await ResidentFinanceService.getStatement();
+                const balances = new Map(account.expenseBalances.map(item => [item.expenseId, item.outstandingAmount]));
+                if (mapped.some(expense => !balances.has(expense.id))) throw new Error('No se pudo verificar el saldo de todos los cobros.');
+                mapped = mapped.map(expense => ({ ...expense, outstandingAmount: balances.get(expense.id) ?? 0 }));
                 setExpenses(mapped);
-                try {
-                    setStatement(await ResidentFinanceService.getStatement());
-                } catch {
-                    setStatement(null);
-                }
-                const unpaid = mapped.filter(expense => expense.status === "pending" || expense.status === "overdue");
+                setStatement(account);
+                const unpaid = mapped.filter(expense => (expense.status === "pending" || expense.status === "overdue") && (expense.outstandingAmount ?? 0) > 0);
                 setSelectedExpenseId(current => {
                     if (current && unpaid.some(expense => expense.id === current)) return current;
                     const oldest = [...unpaid].sort((a, b) => a.month.localeCompare(b.month))[0];
@@ -121,6 +123,7 @@ export default function ExpensesPage() {
                 });
             } catch (error: unknown) {
                 console.error("Error fetching expenses:", error);
+                setLoadError(true);
                 setExpenses([]);
             } finally {
                 setIsLoading(false);
@@ -134,7 +137,7 @@ export default function ExpensesPage() {
 
     const paymentSummary = summarizeResidentPaymentStatus(expenses);
     const pendingExpenses = expenses
-        .filter(expense => expense.status === "pending" || expense.status === "overdue")
+        .filter(expense => (expense.status === "pending" || expense.status === "overdue") && (expense.outstandingAmount ?? 0) > 0)
         .sort((a, b) => a.month.localeCompare(b.month) || a.dueDate.localeCompare(b.dueDate));
     const activeExpense = pendingExpenses.find(expense => expense.id === selectedExpenseId) || pendingExpenses[0];
 
@@ -181,12 +184,7 @@ export default function ExpensesPage() {
             return;
         }
         
-        // Determine breakdown list from real billing items only.
-        const breakdownList = activeExpense?.breakdown && activeExpense.breakdown.length > 0
-            ? activeExpense.breakdown
-            : [];
-
-        const baseAmount = activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0);
+        const baseAmount = activeExpense.outstandingAmount ?? 0;
 
         const extraContribution = getContributionAmount(contributionType, baseAmount);
         const paymentBaseAmount = baseAmount + extraContribution;
@@ -235,6 +233,10 @@ export default function ExpensesPage() {
         }
     };
 
+    if (loadError) {
+        return <div className="mx-auto max-w-md px-5 py-20" role="alert">No pudimos verificar tu saldo. Vuelve a cargar la página para consultar tus cobros y abonos.</div>;
+    }
+
     if (isLoading) {
         return (
             <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-5 py-20 lg:max-w-2xl">
@@ -250,7 +252,7 @@ export default function ExpensesPage() {
         : [];
 
     const baseAmount = activeExpense
-        ? (activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0))
+        ? (activeExpense.outstandingAmount ?? 0)
         : 0;
 
     const extraContribution = getContributionAmount(contributionType, baseAmount);
@@ -388,7 +390,7 @@ export default function ExpensesPage() {
                                                         {expense.status === "overdue" ? "Vencido" : "Pendiente"} · vence {formatFinanceDate(expense.dueDate)}
                                                     </div>
                                                 </div>
-                                                <div className="font-mono text-sm">${expense.amount.toLocaleString("es-CL")}</div>
+                                                <div className="font-mono text-sm">${(expense.outstandingAmount ?? 0).toLocaleString("es-CL")}</div>
                                             </button>
                                         );
                                     })}
@@ -408,6 +410,12 @@ export default function ExpensesPage() {
                                     <div className="font-mono text-[13px]">${row.amount.toLocaleString("es-CL")}</div>
                                 </div>
                             ))}
+                            {activeExpense && activeExpense.amount > baseAmount && (
+                                <div className="flex justify-between items-center py-3 text-sm" style={{ borderBottom: "1px solid var(--cc-line)" }}>
+                                    <span>Abonos y ajustes aplicados</span>
+                                    <span className="font-mono">−${(activeExpense.amount - baseAmount).toLocaleString("es-CL")}</span>
+                                </div>
+                            )}
                             {activeExpense && documentLinks.length > 0 && <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)" }}>
                                 <p className="mb-2 text-xs font-semibold cc-text-secondary">Respaldos de este cobro</p>
                                 {documentLinks.map(document => <a key={document.id} href={`/api/finance-documents/${document.id}`}

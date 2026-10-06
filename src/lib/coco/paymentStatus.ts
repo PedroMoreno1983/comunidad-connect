@@ -1,10 +1,9 @@
 /**
  * Resumen de gastos comunes para CoCo.
  *
- * Home (HomeService.getResidentSummary) suma todos los expenses de la unidad
- * con status pending/overdue, sin filtrar por mes.
- * /expenses (ExpensesService.getExpenses) lista todos los cobros y muestra
- * como "Total a pagar" el primer no pagado, ordenado por month desc.
+ * Incluye todos los periodos pendientes. Cuando el caller entrega los saldos
+ * de la cartola en outstandingAmount, descuenta los abonos del periodo elegido
+ * y excluye los cobros totalmente cubiertos sin cambiar su importe original.
  *
  * get_payment_status debe devolver ese mismo recorte. Filtrar por el mes en
  * curso (el default anterior) dejaba fuera cuotas de meses previos — exactamente
@@ -15,6 +14,7 @@ export const UNPAID_EXPENSE_STATUSES = ['pending', 'overdue'] as const;
 
 export type PaymentStatusExpenseRow = {
     amount?: number | string | null;
+    outstandingAmount?: number;
     status?: string | null;
     due_date?: string | null;
     paid_at?: string | null;
@@ -42,7 +42,7 @@ export type PaymentStatusSummary = {
 };
 
 function amountOf(row: PaymentStatusExpenseRow) {
-    return Number(row.amount || 0);
+    return row.outstandingAmount ?? Number(row.amount || 0);
 }
 
 function isUnpaid(status: string | null | undefined) {
@@ -76,7 +76,7 @@ export function summarizeResidentPaymentStatus(
 ): PaymentStatusSummary {
     const items = rows.map(toPaymentStatusItem);
     const outstanding = items
-        .filter(item => isUnpaid(item.status))
+        .filter(item => isUnpaid(item.status) && item.amount > 0)
         .sort((a, b) => b.month.localeCompare(a.month) || String(b.due_date).localeCompare(String(a.due_date)));
     const pending_amount = outstanding.reduce((sum, item) => sum + item.amount, 0);
     const pending_count = outstanding.length;
