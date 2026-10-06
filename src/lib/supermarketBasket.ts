@@ -117,6 +117,12 @@ function productMeasurementInBaseUnits(name: string): { dimension: 'mass' | 'vol
 }
 
 export function matchesRequestedPackageSize(name: string, requestedTerm: string): boolean {
+  const count = (value: string) => foldAccents(value).match(/\b(\d+)\s*(?:un(?:idades?)?|uds?|rollos?)\b/);
+  const requestedCount = count(requestedTerm);
+  if (requestedCount) {
+    const actualCount = count(name);
+    if (!actualCount || Number(actualCount[1]) !== Number(requestedCount[1])) return false;
+  }
   const requested = productMeasurementInBaseUnits(requestedTerm);
   if (!requested) return true;
   const actual = productMeasurementInBaseUnits(name);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     Briefcase,
@@ -56,6 +56,7 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
     const [isRequestSaving, setIsRequestSaving] = useState(false);
     const [isReviewSaving, setIsReviewSaving] = useState(false);
+    const submission = useRef<[string, string] | null>(null);
     const [requestForm, setRequestForm] = useState({ date: "", time: "", description: "" });
     const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
     const { toast } = useToast();
@@ -90,10 +91,13 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
         try {
             setIsRequestSaving(true);
 
+            const signature = JSON.stringify([provider.id, requestForm]);
+            if (submission.current?.[0] !== signature) submission.current = [signature, crypto.randomUUID()];
             const response = await fetch("/api/service-requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    id: submission.current[1],
                     provider_id: provider.id,
                     preferred_date: requestForm.date,
                     preferred_time: requestForm.time,
@@ -120,6 +124,7 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                 description: "Tu solicitud fue enviada. Puedes ver el estado en Mis solicitudes.",
                 variant: "success",
             });
+            submission.current = null;
             setIsRequestDialogOpen(false);
             setRequestForm({ date: "", time: "", description: "" });
             router.push("/services/my-requests");

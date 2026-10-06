@@ -107,3 +107,21 @@ export function summarizeResidentPaymentStatus(
         resumen,
     };
 }
+
+/** Same allocation as the cartola, including charges and credit; no truncated totals. */
+export function summarizeAccountPaymentStatus(
+    statement: Pick<import('@/lib/types').UnitStatement, 'chargeBalances' | 'balance' | 'availableCredit'>,
+    monthFilter: string | null = null,
+) {
+    const rows = statement.chargeBalances.filter(charge => !monthFilter || charge.month === monthFilter).map(charge => ({
+        month: charge.month, amount: charge.amount, outstandingAmount: charge.outstandingAmount,
+        status: charge.outstandingAmount > 0 ? 'pending' : 'paid', due_date: charge.dueDate,
+        items: [{ label: charge.label, amount: charge.amount }],
+    }));
+    const summary = summarizeResidentPaymentStatus(rows, monthFilter);
+    return { ...summary, account_balance: statement.balance, available_credit: statement.availableCredit,
+        resumen: statement.availableCredit > 0
+            ? `${summary.resumen} Saldo neto de la cuenta: $${statement.balance.toLocaleString('es-CL')}; crédito disponible sin imputar a otro periodo: $${statement.availableCredit.toLocaleString('es-CL')}.`
+            : summary.resumen,
+    };
+}

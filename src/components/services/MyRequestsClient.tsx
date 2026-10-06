@@ -21,31 +21,14 @@ import { serviceRequestsService } from "@/lib/services/providersService";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 
-type RequestStatus = "pending" | "accepted" | "completed" | "cancelled";
-type StatusFilter = "all" | "active" | RequestStatus;
-
-interface ServiceRequestRow {
-    id: string;
-    provider_id: string;
-    preferred_date: string;
-    preferred_time: string;
-    description: string;
-    status: RequestStatus;
-    created_at: string;
-    updated_at?: string;
-    service_providers?: {
-        name: string;
-        category: string;
-        contact_phone?: string | null;
-    } | null;
-}
-
+import type { ServiceRequestStatus as RequestStatus, ServiceRequestFilter as StatusFilter, ResidentServiceRequestRow as ServiceRequestRow } from "@/lib/types";
 
 const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "Todas" },
     { key: "active", label: "Activas" },
     { key: "pending", label: "Pendientes" },
     { key: "accepted", label: "En camino" },
+    { key: "awaiting_confirmation", label: "Por confirmar" },
     { key: "completed", label: "Completadas" },
     { key: "cancelled", label: "Canceladas" },
 ];
@@ -74,6 +57,10 @@ function getStatusConfig(status: RequestStatus) {
                 style: { color: "var(--cc-copper)", background: "var(--cc-copper-tint)", borderColor: "var(--cc-copper)" },
                 nextStep: "El técnico ya aceptó. Mantén el teléfono disponible.",
             };
+        case "awaiting_confirmation":
+            return { label: "Por confirmar", icon: CheckCircle2,
+                style: { color: "var(--cc-copper)", background: "var(--cc-copper-tint)", borderColor: "var(--cc-copper)" },
+                nextStep: "El técnico indica que terminó. Confirma que recibiste el servicio para cerrar la solicitud." };
         case "completed":
             return {
                 label: "Completada",
@@ -143,6 +130,16 @@ export function MyRequestsClient() {
         setRequests(data as ServiceRequestRow[]);
     }
 
+    async function handleConfirm(id: string) {
+        setBusyId(id); setActionError(null);
+        try {
+            await serviceRequestsService.updateStatus(id, 'completed');
+            await refreshRequests();
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : 'No se pudo confirmar.');
+        } finally { setBusyId(null); }
+    }
+
     async function handleCancel(id: string) {
         if (!window.confirm("¿Cancelar esta solicitud?")) return;
         setActionError(null);
@@ -178,7 +175,7 @@ export function MyRequestsClient() {
     }
 
     const stats = useMemo(() => {
-        const active = requests.filter(item => item.status === "pending" || item.status === "accepted").length;
+        const active = requests.filter(item => ["pending", "accepted", "awaiting_confirmation"].includes(item.status)).length;
         const completed = requests.filter(item => item.status === "completed").length;
         const cancelled = requests.filter(item => item.status === "cancelled").length;
 
@@ -191,7 +188,7 @@ export function MyRequestsClient() {
         return requests.filter(request => {
             const matchesStatus =
                 statusFilter === "all"
-                || (statusFilter === "active" && (request.status === "pending" || request.status === "accepted"))
+                || (statusFilter === "active" && (["pending", "accepted", "awaiting_confirmation"].includes(request.status)))
                 || request.status === statusFilter;
 
             const searchable = [
@@ -363,6 +360,14 @@ export function MyRequestsClient() {
                                         >
                                             Ver perfil
                                         </Link>
+                                        {request.status === "awaiting_confirmation" && (
+                                            <button type="button" disabled={busyId === request.id}
+                                                onClick={() => handleConfirm(request.id)}
+                                                className="rounded-full px-4 py-2.5 text-sm font-bold disabled:opacity-40"
+                                                style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
+                                                Confirmar servicio recibido
+                                            </button>
+                                        )}
                                         {(request.status === "pending" || request.status === "accepted") && (
                                             <>
                                                 <button

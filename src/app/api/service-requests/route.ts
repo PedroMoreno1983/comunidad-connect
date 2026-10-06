@@ -18,6 +18,9 @@ async function getSupabaseUserClient() {
     );
 }
 
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { validServiceSchedule } from '@/lib/services/requestLifecycle';
+
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
@@ -32,12 +35,16 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
+        const requestId = cleanText(body.id, 80);
+        if (requestId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId))
+            return NextResponse.json({ error: 'Identificador de solicitud inválido' }, { status: 400 });
         const providerId = cleanText(body.provider_id, 80);
-        const preferredDate = cleanText(body.preferred_date, 20);
-        const preferredTime = cleanText(body.preferred_time, 20);
+        const internal = body.internal === true;
+        const preferredDate = cleanText(body.preferred_date, 20) || (internal ? chileTodayISO() : '');
+        const preferredTime = cleanText(body.preferred_time, 20) || (internal ? '09:00' : '');
         const description = cleanText(body.description, 1200);
 
-        if (!providerId || !preferredDate || !preferredTime || !description) {
+        if ((!providerId && !internal) || !validServiceSchedule(preferredDate, preferredTime) || !description) {
             return NextResponse.json({ error: 'Faltan datos para crear la solicitud' }, { status: 400 });
         }
 
@@ -47,30 +54,47 @@ export async function POST(req: NextRequest) {
                 .select('id, name, email, role, community_id')
                 .eq('id', user.id)
                 .single(),
-            supabaseAdmin
+            providerId ? supabaseAdmin
                 .from('service_providers')
                 .select('id, name, user_id, community_id')
                 .eq('id', providerId)
-                .single(),
+                .single() : Promise.resolve({ data: null, error: null }),
         ]);
 
-        if (profileError || !profile) {
+        if (profileError || !profile?.community_id) {
             return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         }
 
 
-        if (providerError || !provider) {
+        if (internal && profile.role !== 'admin') return NextResponse.json({ error: 'Solo administración puede crear tareas internas.' }, { status: 403 });
+
+        if (providerError || (!internal && !provider)) {
             return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });
         }
 
-        if (provider.community_id && provider.community_id !== profile.community_id) {
+        if (provider?.community_id && provider.community_id !== profile.community_id) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
+
+        const existingRequest = async () => {
+            if (!requestId) return null;
+            const { data, error } = await supabaseAdmin.from('service_requests')
+                .select('id, provider_id, user_id, preferred_date, preferred_time, description, status, created_at')
+                .eq('id', requestId).eq('user_id', profile.id).eq('community_id', profile.community_id).maybeSingle();
+            if (error) throw error;
+            if (data && (data.provider_id !== (providerId || null) || data.preferred_date !== preferredDate ||
+                data.preferred_time !== preferredTime || data.description !== description))
+                throw new Error('El identificador ya pertenece a otra solicitud.');
+            return data;
+        };
+        const previous = await existingRequest();
+        if (previous) return NextResponse.json({ request: previous, replayed: true });
 
         const { data: request, error: requestError } = await supabaseAdmin
             .from('service_requests')
             .insert({
-                provider_id: provider.id,
+                ...(requestId ? { id: requestId } : {}),
+                provider_id: provider?.id || null,
                 user_id: profile.id,
                 preferred_date: preferredDate,
                 preferred_time: preferredTime,
@@ -81,32 +105,14 @@ export async function POST(req: NextRequest) {
             .select('id, provider_id, user_id, preferred_date, preferred_time, description, status, created_at')
             .single();
 
+        if (requestError?.code === '23505' && requestId) {
+            const existing = await existingRequest();
+            if (existing) return NextResponse.json({ request: existing, replayed: true });
+        }
         if (requestError || !request) {
             console.error('[service requests] insert failed', requestError);
             return NextResponse.json({ error: 'No se pudo crear la solicitud.' }, { status: 500 });
         }
-
-        if (provider.user_id && provider.user_id !== profile.id) {
-            await supabaseAdmin.from('notifications').insert({
-                user_id: provider.user_id,
-                type: 'info',
-                category: 'service_request',
-                title: 'Nueva solicitud de servicio',
-                body: `${profile.name || 'Un residente'} solicito a ${provider.name}: ${description.slice(0, 180)}`,
-                link: '/services/provider-dashboard',
-                community_id: profile.community_id,
-            });
-        }
-
-        await supabaseAdmin.from('notifications').insert({
-            user_id: profile.id,
-            type: 'success',
-            category: 'service_request',
-            title: 'Solicitud enviada',
-            body: `Tu solicitud a ${provider.name} quedo registrada.`,
-            link: '/services/my-requests',
-            community_id: profile.community_id,
-        });
 
         await recordOperationEvent({
             communityId: profile.community_id,
@@ -117,9 +123,9 @@ export async function POST(req: NextRequest) {
             entityId: request.id,
             severity: 'success',
             status: 'pending',
-            summary: `Solicitud enviada a ${provider.name}`,
+            summary: `Solicitud enviada a ${provider?.name || 'Administración'}`,
             metadata: {
-                providerId: provider.id,
+                providerId: provider?.id || null,
                 preferredDate,
                 preferredTime,
                 descriptionLength: description.length,

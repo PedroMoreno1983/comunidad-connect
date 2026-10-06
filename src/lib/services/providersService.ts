@@ -326,22 +326,15 @@ export const serviceRequestsService = {
         preferredTime: string;
         description: string;
     }) {
-        const supabase = getSupabase();
-        const { data, error } = await supabase
-            .from('service_requests')
-            .insert({
-                provider_id: request.providerId,
-                user_id: request.userId,
-                preferred_date: request.preferredDate,
-                preferred_time: request.preferredTime,
-                description: request.description,
-                status: 'pending',
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
+        const response = await fetch('/api/service-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider_id: request.providerId, preferred_date: request.preferredDate,
+                preferred_time: request.preferredTime, description: request.description }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'No se pudo registrar la solicitud.');
+        return payload.request;
     },
 
     async getByUser(userId: string) {
@@ -393,7 +386,7 @@ export const serviceRequestsService = {
         }));
     },
 
-    async updateStatus(requestId: string, status: 'pending' | 'accepted' | 'completed' | 'cancelled') {
+    async updateStatus(requestId: string, status: import('@/lib/types').ServiceRequestStatus) {
         const response = await fetch(`/api/service-requests/${requestId}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },

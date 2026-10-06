@@ -46,6 +46,7 @@ function money(value: number) {
 function statusLabel(status?: string | null) {
     if (status === "completed" || status === "resolved" || status === "closed") return "Resuelto";
     if (status === "in-progress" || status === "in_progress" || status === "accepted") return "En curso";
+    if (status === "awaiting_confirmation") return "Por confirmar";
     if (status === "cancelled") return "Cancelado";
     return "Pendiente";
 }
@@ -150,14 +151,14 @@ export default function MantenimientoAdminPage() {
         loadData();
     }
 
-    async function closeService(id: string) {
-        const nextServices = services.map(item => item.id === id ? { ...item, status: "completed" } : item);
-        setServices(nextServices);
+    async function advanceService(item: MaintenanceServiceRow) {
+        const nextStatus = item.status === 'pending' ? 'accepted'
+            : item.status === 'accepted' ? 'awaiting_confirmation' : 'completed';
         try {
-            await MaintenanceService.closeService(id);
+            await MaintenanceService.advanceService(item.id, nextStatus);
+            await loadData();
         } catch (error) {
-            console.error("[Maintenance] close service failed:", error);
-            toast({ title: "No se pudo cerrar", description: "Revisa la conexion e intenta nuevamente.", variant: "destructive" });
+            toast({ title: 'No se pudo actualizar', description: error instanceof Error ? error.message : 'Intenta nuevamente.', variant: 'destructive' });
         }
     }
 
@@ -304,7 +305,7 @@ export default function MantenimientoAdminPage() {
                                         </div>
                                         <h3 className="font-semibold cc-text-primary">{item.description || "Solicitud técnica"}</h3>
                                     </div>
-                                    <button onClick={() => closeService(item.id)} className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold text-white disabled:opacity-40" style={{ background: "var(--cc-ink)" }} disabled={item.status === "completed"}>
+                                    <button onClick={() => advanceService(item)} className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold text-white disabled:opacity-40" style={{ background: "var(--cc-ink)" }} disabled={["completed", "cancelled"].includes(item.status || "") || (item.status === "awaiting_confirmation" && item.user_id !== user?.id)}>
                                         <CheckCircle2 className="h-4 w-4" />
                                         Cerrar
                                     </button>

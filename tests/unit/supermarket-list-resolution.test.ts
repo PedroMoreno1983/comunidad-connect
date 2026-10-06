@@ -87,4 +87,19 @@ describe('shopping list catalog resolution', () => {
     expect(resolved[0].product.id).toBe('milk');
     expect(resolved[1].product).toBeUndefined();
   });
+  it('finds four rolls labelled as 4 Un, without substituting a 12-roll package', async () => {
+    state.fresh = [product('wrong', 'Papel Higiénico Doble Hoja 12 Un Lider'),
+      product('right', 'Papel Higiénico Superior Doble Hoja 25 M 4 Un Lider')];
+    const response = await resolve('1 papel higiénico 4 rollos');
+    expect((await response.json()).resolved[0].product.id).toBe('right');
+  });
+  it('interprets six eggs as one six-egg package and preserves explicit package quantities', async () => {
+    state.fresh = [product('eggs', 'Huevos Tradicionales Grande Blanco 6 Un Lider')];
+    const single = (await (await resolve('6 huevos')).json()).resolved[0];
+    expect(single.quantity).toBe(1);
+    expect(single.product.id).toBe('eggs');
+    const packs = (await (await resolve('6 paquetes de huevos')).json()).resolved[0];
+    expect(packs.quantity).toBe(6);
+    expect(packs.product.id).toBe('eggs');
+  });
 });

@@ -1035,6 +1035,7 @@ export interface MaintenanceLog {
 
 export interface MaintenanceServiceRow {
   id: string;
+  user_id?: string | null;
   service_type?: string | null;
   category?: string | null;
   description?: string | null;
@@ -1098,13 +1099,31 @@ export interface ServiceRequestQueueItem {
   preferred_date: string | null;
   preferred_time: string | null;
   description: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  status: ServiceRequestStatus;
   created_at: string;
   service_providers?: {
     name: string;
     category: string;
     contact_phone?: string | null;
   } | null;
+}
+
+export type ServiceRequestStatus = 'pending' | 'accepted' | 'awaiting_confirmation' | 'completed' | 'cancelled';
+export type ServiceRequestFilter = 'all' | 'active' | ServiceRequestStatus;
+export interface ResidentServiceRequestRow extends Omit<ServiceRequestQueueItem, 'preferred_date' | 'preferred_time'> {
+    preferred_date: string;
+    preferred_time: string;
+    updated_at?: string;
+}
+export interface ProviderServiceRequestRow extends ResidentServiceRequestRow {
+    profiles?: { name?: string | null; email?: string | null } | null;
+}
+export interface ServiceRequestTransitionInput {
+    current: ServiceRequestStatus;
+    next: ServiceRequestStatus;
+    requester: boolean;
+    manager: boolean;
+    reschedule: boolean;
 }
 
 export interface MaintenanceAdminOverview {
@@ -1874,6 +1893,7 @@ export interface SupermarketSealsResponse {
 
 /** Certificado de deuda de una unidad. Antes `Certificate` en certificado/page. */
 export interface DebtCertificate {
+    availableCredit: number;
     community: { name: string; address: string | null };
     unit: { label: string; ownerName: string | null };
     issuedAt: string;
@@ -1968,6 +1988,16 @@ export interface ExpenseBalance {
     outstandingAmount: number;
 }
 
+export interface StatementChargeBalance {
+    id: string;
+    kind: string;
+    label: string;
+    month: string;
+    dueDate: string | null;
+    amount: number;
+    outstandingAmount: number;
+}
+
 export interface UnitStatement {
     unitLabel: string;
     entries: StatementEntry[];
@@ -1976,6 +2006,8 @@ export interface UnitStatement {
     totalCharged: number;
     totalPaid: number;
     expenseBalances: ExpenseBalance[];
+    chargeBalances: StatementChargeBalance[];
+    availableCredit: number;
 }
 
 /** Movimiento del banco a conciliar. Antes `Txn` en conciliacion/page. */
@@ -3068,6 +3100,7 @@ export interface AgentCollectionNotification {
 
 export interface AgentCollectionPlan {
     notifications: AgentCollectionNotification[];
+    adminNotifications?: AgentCollectionNotification[];
     missingRecipients: { expenseId: string; unitId: string | null; unitLabel: string; reason: string }[];
     recipientCount: number;
 }
@@ -3084,6 +3117,8 @@ export interface FinancePaymentTarget {
     expenseId?: string | null;
     chargeId?: string | null;
 }
+
+export type FinancePageReader<T> = (cursor?: string) => PromiseLike<{ data: T[] | null; error: unknown }>;
 
 export interface FinanceAllocationDebt {
     id: string;

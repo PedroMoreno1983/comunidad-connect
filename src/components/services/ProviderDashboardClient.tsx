@@ -25,28 +25,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { getInitials } from "@/lib/utils/avatar";
 
-type RequestStatus = "pending" | "accepted" | "completed" | "cancelled";
-type StatusFilter = "all" | "active" | RequestStatus;
-
-interface ProviderRequestRow {
-    id: string;
-    provider_id: string;
-    user_id: string;
-    preferred_date: string;
-    preferred_time: string;
-    description: string;
-    status: RequestStatus;
-    created_at: string;
-    updated_at?: string;
-    profiles?: {
-        name?: string | null;
-        email?: string | null;
-    } | null;
-}
+import type { ServiceRequestStatus as RequestStatus, ServiceRequestFilter as StatusFilter, ProviderServiceRequestRow as ProviderRequestRow } from "@/lib/types";
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
     pending: "Pendiente",
     accepted: "Aceptada",
+    awaiting_confirmation: "Por confirmar por residente",
     completed: "Completada",
     cancelled: "Cancelada",
 };
@@ -54,6 +38,7 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
 const STATUS_VARIANTS: Record<RequestStatus, "warning" | "info" | "success" | "danger"> = {
     pending: "warning",
     accepted: "info",
+    awaiting_confirmation: "info",
     completed: "success",
     cancelled: "danger",
 };
@@ -62,6 +47,7 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: "active", label: "Activas" },
     { key: "pending", label: "Pendientes" },
     { key: "accepted", label: "Aceptadas" },
+    { key: "awaiting_confirmation", label: "Por confirmar" },
     { key: "completed", label: "Completadas" },
     { key: "cancelled", label: "Canceladas" },
     { key: "all", label: "Todas" },
@@ -152,7 +138,7 @@ export function ProviderDashboardClient() {
     }, [loadRequests, selectedProvider?.id]);
 
     const stats = useMemo(() => ({
-        active: requests.filter(item => item.status === "pending" || item.status === "accepted").length,
+        active: requests.filter(item => ["pending", "accepted", "awaiting_confirmation"].includes(item.status)).length,
         pending: requests.filter(item => item.status === "pending").length,
         completed: requests.filter(item => item.status === "completed").length,
         cancelled: requests.filter(item => item.status === "cancelled").length,
@@ -165,7 +151,7 @@ export function ProviderDashboardClient() {
         return requests.filter(request => {
             const matchesStatus =
                 statusFilter === "all"
-                || (statusFilter === "active" && (request.status === "pending" || request.status === "accepted"))
+                || (statusFilter === "active" && (["pending", "accepted", "awaiting_confirmation"].includes(request.status)))
                 || request.status === statusFilter;
 
             const searchable = [
@@ -396,18 +382,18 @@ export function ProviderDashboardClient() {
                                     </div>
 
                                     <div className="flex flex-wrap gap-2 lg:max-w-[260px] lg:justify-end">
-                                        {request.status !== "accepted" && request.status !== "completed" && request.status !== "cancelled" && (
+                                        {request.status === "pending" && (
                                             <Button size="sm" disabled={isSaving} onClick={() => updateStatus(request, "accepted")}>
                                                 Aceptar
                                             </Button>
                                         )}
-                                        {request.status !== "completed" && request.status !== "cancelled" && (
-                                            <Button variant="outline" size="sm" disabled={isSaving} onClick={() => updateStatus(request, "completed")}>
+                                        {request.status === "accepted" && (
+                                            <Button variant="outline" size="sm" disabled={isSaving} onClick={() => updateStatus(request, "awaiting_confirmation")}>
                                                 <CheckCircle2 className="h-4 w-4" />
-                                                Completar
+                                                Informar finalización
                                             </Button>
                                         )}
-                                        {request.status !== "cancelled" && request.status !== "completed" && (
+                                        {["pending", "accepted"].includes(request.status) && (
                                             <Button variant="danger" size="sm" disabled={isSaving} onClick={() => updateStatus(request, "cancelled")}>
                                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                                                 Cancelar
