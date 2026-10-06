@@ -5,18 +5,33 @@ const state = vi.hoisted(() => ({
     updates: [] as { table: string; filters: Record<string, unknown>; value: Record<string, unknown> }[],
     inserts: [] as Record<string, unknown>[],
     failUpdates: false,
+    failAfterInsert: false,
 }));
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({ getSupabaseAdmin: () => ({ from: (table: string) => {
     const filters: Record<string, unknown> = {};
     let value: Record<string, unknown> | undefined;
+    let inserted: Record<string, unknown> | undefined;
+    let deleting = false;
     const query = {
         select: () => query,
         eq: (key: string, match: unknown) => { filters[key] = match; return query; },
         neq: () => query,
         update: (payload: Record<string, unknown>) => { value = payload; return query; },
-        insert: (payload: Record<string, unknown>) => { state.inserts.push(payload); return query; },
+        insert: (payload: Record<string, unknown>) => { state.inserts.push(payload); inserted = payload; return query; },
+        single: async () => {
+            const row = { ...inserted, id: 'new-payment' };
+            (state.rows[table] ??= []).push(row);
+            if (state.failAfterInsert) state.failUpdates = true;
+            return { data: row, error: null };
+        },
+        delete: () => { deleting = true; return query; },
         maybeSingle: async () => ({ data: (state.rows[table] || []).find(row => Object.entries(filters).every(([key, match]) => row[key] === match)) || null, error: null }),
         then: (resolve: (result: unknown) => unknown) => {
+            if (deleting) {
+                state.rows[table] = (state.rows[table] || []).filter(row => !Object.entries(filters).every(([key, match]) => row[key] === match));
+                state.failUpdates = false;
+                return Promise.resolve({ error: null }).then(resolve);
+            }
             if (value) {
                 state.updates.push({ table, filters, value });
                 if (!state.failUpdates) for (const row of state.rows[table] || []) {
@@ -46,6 +61,7 @@ describe('persisted payment allocation integration', () => {
         state.updates = [];
         state.inserts = [];
         state.failUpdates = false;
+        state.failAfterInsert = false;
     });
 
     it('marks only the chosen month paid and scopes the update to the unit and community', async () => {
@@ -76,6 +92,16 @@ describe('persisted payment allocation integration', () => {
             unitId: 'unit', expenseId: 'june', amount: 100000, paidAt: '2026-06-10', method: 'transfer',
         })).rejects.toThrow('no pertenece');
         expect(state.inserts).toHaveLength(0);
+    });
+    it('removes the new cash entry when allocation fails after insertion', async () => {
+        state.rows.unit_payments = [];
+        state.failAfterInsert = true;
+        await expect(recordPayment('community', 'admin', {
+            unitId: 'unit', expenseId: 'june', amount: 100000, paidAt: '2026-06-10', method: 'transfer', reference: 'rollback-test',
+        })).rejects.toThrow('update failed');
+        expect(state.rows.unit_payments).toEqual([]);
+        expect(state.rows.expenses[1].status).toBe('overdue');
+        expect(state.inserts.some(row => row.category === 'finance_payment')).toBe(false);
     });
     it('rejects a payment targeting another community before inserting', async () => {
         state.rows.expenses[1].community_id = 'other-community';

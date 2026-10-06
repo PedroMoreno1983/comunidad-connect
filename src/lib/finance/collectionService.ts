@@ -170,6 +170,7 @@ export async function recordPayment(
     communityId: string,
     recordedBy: string | null,
     input: UnitPaymentInput,
+    options: import('@/lib/types').FinancePaymentOptions = {},
 ) {
     const amount = Math.round(Number(input.amount));
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -227,9 +228,15 @@ export async function recordPayment(
     // Con el pago nuevo el saldo puede haber quedado en cero: en ese caso se
     // marcan como pagadas las cuotas y cargos pendientes de la unidad, para que
     // la vista de morosidad no siga mostrándola en rojo.
-    await reconcileUnitStatuses(communityId, input.unitId);
+    try {
+        await reconcileUnitStatuses(communityId, input.unitId);
+    } catch (error) {
+        // Do not leave a new cash entry behind when its allocation fails.
+        await deletePayment(communityId, String(data.id));
+        throw error;
+    }
 
-    if (unit.owner_id) {
+    if (unit.owner_id && options.notify !== false) {
         await admin.from('notifications').insert({
             user_id: String(unit.owner_id),
             type: 'success',

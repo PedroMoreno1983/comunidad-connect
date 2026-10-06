@@ -7,7 +7,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import type { BankStatementPreviewRow, ReconciliationData, ReconciliationSuggestion } from "@/lib/types";
+import type { BankStatementPreviewRow, DepositSuggestion, ReconciliationData, ReconciliationSuggestion } from "@/lib/types";
 import { todayInChile } from "@/lib/finance/chileDates";
 
 
@@ -19,6 +19,7 @@ export default function ConciliacionPage() {
     const [data, setData] = useState<ReconciliationData | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
+    const [depositPeriods, setDepositPeriods] = useState<Record<string, string>>({});
     const [form, setForm] = useState({ txnDate: today(), amount: "", description: "", reference: "" });
     const manualImportKey = useRef<string | null>(null);
     const [statementRows, setStatementRows] = useState<BankStatementPreviewRow[]>([]);
@@ -44,6 +45,12 @@ export default function ConciliacionPage() {
     const suggestionByTxn = useMemo(() => {
         const map = new Map<string, ReconciliationSuggestion>();
         for (const suggestion of data?.suggestions ?? []) map.set(suggestion.transactionId, suggestion);
+        return map;
+    }, [data]);
+
+    const depositByTxn = useMemo(() => {
+        const map = new Map<string, DepositSuggestion>();
+        for (const suggestion of data?.depositSuggestions ?? []) map.set(suggestion.transactionId, suggestion);
         return map;
     }, [data]);
 
@@ -156,7 +163,7 @@ export default function ConciliacionPage() {
                             <Eyebrow>Recaudación</Eyebrow>
                             <DisplayHeading size={32} className="mt-2">Conciliación bancaria</DisplayHeading>
                             <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
-                                Cruza los movimientos de la cartola del banco con los pagos que registraste. Detecta depósitos sin imputar y confirma que la caja cuadra.
+                                Cruza la cartola con los pagos registrados. Si la glosa nombra una unidad, se propone ese departamento y su cobro abierto. El saldo no cambia hasta que confirmes.
                             </p>
                         </div>
                         <Button variant="outline" onClick={autoReconcile} disabled={busy || loading}>
@@ -214,7 +221,7 @@ export default function ConciliacionPage() {
                                 <input placeholder="N° operación" value={form.reference} onChange={e => { manualImportKey.current = null; setForm({ ...form, reference: e.target.value }); }} className="h-10 rounded-lg border px-3 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                                 <Button type="submit" disabled={busy}><Plus className="mr-1.5 h-4 w-4" /> Agregar</Button>
                             </form>
-                            <p className="mt-2 text-xs cc-text-tertiary">Monto positivo para ingresos (abonos), negativo para egresos. La conciliación cruza los ingresos contra tus pagos registrados.</p>
+                            <p className="mt-2 text-xs cc-text-tertiary">Monto positivo para ingresos (abonos), negativo para egresos. Un abono cuya glosa dice el departamento queda propuesto para confirmar.</p>
                         </section>
 
                         <section className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
@@ -227,7 +234,9 @@ export default function ConciliacionPage() {
                                 <div className="divide-y" style={{ borderColor: "var(--cc-line)" }}>
                                     {data.transactions.map(txn => {
                                         const suggestion = suggestionByTxn.get(txn.id);
+                                        const deposit = depositByTxn.get(txn.id);
                                         const isInflow = txn.amount > 0;
+                                        const matchPaymentId = suggestion?.paymentId ?? (deposit?.kind === "match" ? deposit.paymentId : null);
                                         return (
                                             <div key={txn.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                                                 <div className="min-w-0">
@@ -241,6 +250,17 @@ export default function ConciliacionPage() {
                                                             Sugerencia: pago de {data.unmatchedPayments.find(p => p.id === suggestion.paymentId)?.unitLabel ?? "unidad"}{suggestion.referenceMatch ? " (referencia coincide)" : ` (${suggestion.dayGap} día(s) de diferencia)`}
                                                         </p>
                                                     )}
+                                                    {deposit && txn.status === "pending" && (
+                                                        <p className="mt-1 text-xs" style={{ color: "var(--cc-success-fg)" }}>
+                                                            {deposit.kind === "match"
+                                                                ? `La glosa indica la unidad ${deposit.unitLabel} y ya hay un pago de ese monto sin conciliar.`
+                                                                : deposit.month
+                                                                    ? `La glosa indica la unidad ${deposit.unitLabel}, gasto común ${deposit.month}${deposit.amountMatchesCharge ? ", y el monto coincide" : ""}. Confirma para registrarlo.`
+                                                                    : deposit.openCharges.length
+                                                                        ? `La glosa indica la unidad ${deposit.unitLabel}. Elige el mes que informó el residente.`
+                                                                        : `La glosa indica la unidad ${deposit.unitLabel}. No tiene un cobro abierto: quedaría como crédito sin mes.`}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-none items-center gap-2">
                                                     {txn.status === "matched" ? (
@@ -251,10 +271,26 @@ export default function ConciliacionPage() {
                                                         <Button variant="ghost" size="sm" onClick={() => post({ action: "unignore", transactionId: txn.id })} disabled={busy}>Reactivar</Button>
                                                     ) : isInflow ? (
                                                         <>
-                                                            {suggestion && (
-                                                                <Button size="sm" onClick={() => post({ action: "match", transactionId: txn.id, paymentId: suggestion.paymentId }, "Conciliado")} disabled={busy}>
+                                                            {matchPaymentId && (
+                                                                <Button size="sm" onClick={() => post({ action: "match", transactionId: txn.id, paymentId: matchPaymentId }, "Conciliado")} disabled={busy}>
                                                                     <Check className="mr-1.5 h-4 w-4" /> Conciliar
                                                                 </Button>
+                                                            )}
+                                                            {deposit?.kind === "record" && (
+                                                                <>
+                                                                {deposit.openCharges.length > 0 && <select
+                                                                    aria-label={`Mes del abono ${deposit.unitLabel}`}
+                                                                    value={depositPeriods[txn.id] ?? deposit.expenseId ?? ""}
+                                                                    onChange={event => setDepositPeriods(current => ({ ...current, [txn.id]: event.target.value }))}
+                                                                    disabled={busy} className="h-9 rounded-lg border px-2 text-xs"
+                                                                >
+                                                                    <option value="">Elegir mes…</option>
+                                                                    {deposit.openCharges.map(charge => <option key={charge.id} value={charge.id}>{charge.month} · saldo {money(charge.amount)}</option>)}
+                                                                </select>}
+                                                                <Button size="sm" onClick={() => post({ action: "record", transactionId: txn.id, expenseId: depositPeriods[txn.id] ?? deposit.expenseId }, "Pago registrado y conciliado")} disabled={busy || (deposit.openCharges.length > 0 && !(depositPeriods[txn.id] ?? deposit.expenseId))}>
+                                                                    <Check className="mr-1.5 h-4 w-4" /> Registrar en {deposit.unitLabel}
+                                                                </Button>
+                                                                </>
                                                             )}
                                                             <select
                                                                 defaultValue=""
