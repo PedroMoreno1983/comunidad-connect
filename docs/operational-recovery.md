@@ -19,6 +19,14 @@ El ensayo aislado **no acredita una recuperación completa de Supabase**, sus cu
 
 Referencias oficiales: [Backups de Supabase](https://supabase.com/docs/guides/platform/backups), [Restaurar un proyecto](https://supabase.com/docs/guides/platform/clone-project).
 
+## Verificación publicada del 7 de octubre de 2026
+
+- `qa:operational-lifecycle` pasó contra `https://conviveconnect.com`: 34 comprobaciones, incluidas la limpieza de comunidades y cuentas sintéticas. Cartola y certificado devolvieron $60.000 para un cobro de $100.000 con un abono de $40.000. Se probaron roles reales de dos comunidades, entrega de avisos, confirmación de servicios, reanudación de cobranza y mantenimiento y aceptación de participación.
+- En la sesión residente, una lista de ocho líneas encontró los ocho productos. Papel higiénico de cuatro rollos coincidió con el envase de cuatro unidades. Seis huevos produjo una caja de seis, no seis cajas. Volver a pulsar la tienda seleccionada conservó el carro completo.
+- Evidencia local: `artifacts/operational-lifecycle/resultado.json` y `supermercado-publicado.jpg`. Estos archivos de ejecución no se incluyen en Git.
+- La restauración probada fue PostgreSQL aislado; sigue pendiente ensayar la recuperación completa del servicio gestionado, con Auth y Storage.
+- El navegador remoto abrió Líder en tamaño real y conservó la misma sesión tras recargar. Líder pidió ubicación o despacho; no se introdujeron datos personales ni se completó una compra. La carga final y sus cantidades siguen pendientes de ese paso humano. Evidencia: `artifacts/operational-lifecycle/remoto-publicado.jpg`.
+
 ## Criterios de cierre
 
 - Una tarea de cobranza con cobros sin destinatario queda pendiente y avisa al administrador. Se vincula un perfil de la misma comunidad y se pulsa **Retomar y verificar**; no se asigna una deuda a otro vecino para cerrar la prueba.
