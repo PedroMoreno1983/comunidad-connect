@@ -116,5 +116,3 @@ main().catch(async error => {
   await fs.writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest, null, 2)).catch(() => {});
   console.error(error.message); process.exitCode = 1;
 });
-
-

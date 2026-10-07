@@ -98,6 +98,3 @@ async function main() {
   report.passed=true;report.completedAt=new Date().toISOString();console.log(JSON.stringify(report));
 }
 try {await main();}catch(error){report.error=error.message;console.error(error.message);process.exitCode=1;}finally{if(db)await db.close();await fs.writeFile(path.join(backup,'pglite-restore-report.json'),JSON.stringify(report,null,2));}
-
-
-
