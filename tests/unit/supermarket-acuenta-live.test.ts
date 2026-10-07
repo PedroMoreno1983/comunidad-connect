@@ -4,7 +4,7 @@ import { searchAllRetailerProducts, parseACuentaProducts } from "@/lib/supermark
 
 describe("aCuenta live scraper", () => {
     it("el parser extrae productos de HTML embebido escapado", () => {
-        const html = String.raw`{\"product\":{\"name\":\"Arroz Grano Largo 1kg\",\"price\":1290,\"photosUrl\":[\"https:\/\/cdn.acuenta.cl\/x.jpg\"],\"sku\":\"12345\",\"ean\":[\"7800001234567\"],\"slug\":\"arroz-grano-largo\",\"brand\":\"aCuenta\",\"stock\":12}}`;
+        const html = String.raw`{\"product\":{\"name\":\"Arroz Grano Largo 1kg\",\"price\":1290,\"photosUrl\":[\"https:\/\/cdn.acuenta.cl\/x.jpg\"],\"sku\":\"12345\",\"ean\":[\"7800001234567\"],\"slug\":\"arroz-grano-largo\",\"brand\":\"aCuenta\",\"stock\":12,\"promotion\":null,\"taxes\":[]}}`;
         const items = parseACuentaProducts(html, "arroz");
         console.log("parser sintético:", JSON.stringify(items));
         expect(items.length).toBe(1);
