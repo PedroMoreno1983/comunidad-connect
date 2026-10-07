@@ -588,12 +588,19 @@ function parseLiderProductsFromNextData(html: string, query: string): ScrapedIte
     if (usItemId && offerId && name && price > 0 && !seen.has(usItemId)) {
       seen.add(usItemId);
       const brandRecord = asRecord(record.brand);
+      // priceInfo.wasPrice es el precio regular antes de oferta (ej: linePrice
+      // $1.850 / wasPrice $2.550 / savingsAmt 700). Sin él las ofertas de Lider
+      // llegaban invisibles al catálogo: 0 de 10k filas con list_price.
+      const priceInfo = asRecord(record.priceInfo);
+      const wasPrice = parseChileanPrice(asString(priceInfo?.wasPrice) || '');
       items.push({
         name,
         brand: asString(brandRecord?.name) || asString(record.brand),
         quantity: 1,
         price,
         store: 'Lider',
+        isOffer: wasPrice > price,
+        originalPrice: wasPrice > price ? wasPrice : undefined,
         query,
         productUrl: canonical
           ? (canonical.startsWith('http') ? canonical : `https://super.lider.cl${canonical}`)
@@ -840,10 +847,28 @@ export function parseTottusProducts(payload: string, query: string): ScrapedItem
 /**
  * Parser de aCuenta: la página de búsqueda embebe el catálogo como JSON
  * escapado dentro de __NEXT_DATA__ (mismo enfoque que scripts/scrape_supermarkets.py).
- * Grupos: 1 name, 2 price, 3 photos, 4 sku, 5 ean, 6 slug, 7 brand, 8 stock.
+ * Grupos: 1 name, 2 price, 3 photos, 4 sku, 5 ean, 6 slug, 7 brand, 8 stock, 9 promotion.
  * (Sin grupos nombrados ni flag dotAll: el proyecto compila a ES2017.)
+ *
+ * OJO: en aCuenta `price` es el precio REGULAR y la oferta vive en
+ * `promotion.conditions[].price` (specialPrice). Verificado 2026-10-07:
+ * Detergente Ariel 2,7kg con price 12.590 y promoción activa a 6.990.
  */
-const ACUENTA_PRODUCT_RE = /\\"product\\":\{\\"name\\":\\"([\s\S]*?)\\",\\"price\\":(\d+),\\"photosUrl\\":\[([\s\S]*?)\],[\s\S]*?\\"sku\\":\\"(\d+)\\"[\s\S]*?\\"ean\\":\[([\s\S]*?)\][\s\S]*?\\"slug\\":\\"([\s\S]*?)\\"[\s\S]*?\\"brand\\":\\"([\s\S]*?)\\"[\s\S]*?\\"stock\\":(\d+)/gi;
+const ACUENTA_PRODUCT_RE = /\\"product\\":\{\\"name\\":\\"([\s\S]*?)\\",\\"price\\":(\d+),\\"photosUrl\\":\[([\s\S]*?)\],[\s\S]*?\\"sku\\":\\"(\d+)\\"[\s\S]*?\\"ean\\":\[([\s\S]*?)\][\s\S]*?\\"slug\\":\\"([\s\S]*?)\\"[\s\S]*?\\"brand\\":\\"([\s\S]*?)\\"[\s\S]*?\\"stock\\":(\d+)[\s\S]*?\\"promotion\\":(\{[\s\S]*?\\"__typename\\":\\"Promotion\\"\}|null)[\s\S]*?\\"taxes\\":/gi;
+
+/** Precio promocional activo de aCuenta, si es realmente más barato que el regular. */
+function acuentaPromotionPrice(rawPromotion: string, regularPrice: number): number | undefined {
+  if (!rawPromotion || rawPromotion === 'null') return undefined;
+  if (!rawPromotion.includes('\\"isActive\\":true')) return undefined;
+  // conditions[] puede traer umbrales por cantidad (2x$): solo se toma la
+  // condición sin mínimo (quantity 0 o 1) y solo si baja el precio.
+  const condition = rawPromotion.match(/\\"quantity\\":(\d+),\\"price\\":(\d+)/);
+  if (!condition) return undefined;
+  const minQuantity = Number(condition[1]);
+  const promoPrice = Number(condition[2]);
+  if (minQuantity > 1 || promoPrice <= 0 || promoPrice >= regularPrice) return undefined;
+  return promoPrice;
+}
 
 /** Decodifica texto con escapes JSON embebidos (equivalente a decode_next_text en Python). */
 function decodeNextEscapedText(value: string): string {
@@ -860,15 +885,18 @@ export function parseACuentaProducts(html: string, query: string): ScrapedItem[]
   let match: RegExpExecArray | null;
   ACUENTA_PRODUCT_RE.lastIndex = 0;
   while ((match = ACUENTA_PRODUCT_RE.exec(html)) !== null) {
-    const [, rawName, rawPrice, rawPhotos, sku, rawEan, rawSlug, rawBrand, rawStock] = match;
+    const [, rawName, rawPrice, rawPhotos, sku, rawEan, rawSlug, rawBrand, rawStock, rawPromotion] = match;
     if (sku && seen.has(sku)) continue;
     if (sku) seen.add(sku);
 
     const name = decodeNextEscapedText(rawName || '');
-    const price = Number(rawPrice || 0);
+    const regularPrice = Number(rawPrice || 0);
     const stock = Number(rawStock || 0);
     // Sin stock no aporta a la canasta: la fila quedaría usable pero incomprable.
-    if (!name || price <= 0 || stock <= 0) continue;
+    if (!name || regularPrice <= 0 || stock <= 0) continue;
+
+    const promoPrice = acuentaPromotionPrice(rawPromotion || '', regularPrice);
+    const price = promoPrice ?? regularPrice;
 
     const photo = (rawPhotos || '').match(/\\"(https?[^"]+?)\\"/);
     const ean = (rawEan || '').match(/\\"(\d{8,14})\\"/);
@@ -880,6 +908,8 @@ export function parseACuentaProducts(html: string, query: string): ScrapedItem[]
       quantity: 1,
       price,
       store: 'aCuenta',
+      isOffer: promoPrice !== undefined,
+      originalPrice: promoPrice !== undefined ? regularPrice : undefined,
       query,
       productUrl: slug ? `https://www.acuenta.cl/p/${slug}` : undefined,
       imageUrl: photo ? decodeNextEscapedText(photo[1]) : undefined,
