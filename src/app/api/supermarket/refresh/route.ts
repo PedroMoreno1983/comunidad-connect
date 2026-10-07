@@ -19,9 +19,9 @@ const TERM_DELAY_MS = 800;
 /** Presupuesto de tiempo: se deja de abrir términos nuevos antes del límite. */
 const TIME_BUDGET_MS = 45_000;
 /** Tiendas a trackear en sourceStatus. */
-const TRACKED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'] as const;
+const TRACKED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta'] as const;
 /** Tiendas que efectivamente se scrapean por término. */
-const REFRESH_STORES: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'];
+const REFRESH_STORES: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta'];
 
 /**
  * Rotación diaria de términos: el catálogo completo no cabe en una sola

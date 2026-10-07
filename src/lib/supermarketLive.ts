@@ -1,3 +1,5 @@
+import { request as httpsRequest } from 'node:https';
+
 import type { CartItem } from '@/lib/agentBrain';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { buildSelectionReason, canonicalCatalogTerm, productMatchScore, storeSearchUrl } from '@/lib/supermarketText';
@@ -7,7 +9,7 @@ export interface ScrapedItem {
   brand: string;
   quantity: number;
   price: number;
-  store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel' | 'Tottus';
+  store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel' | 'Tottus' | 'aCuenta';
   isOffer?: boolean;
   originalPrice?: number;
   /** The search query that produced this item. */
@@ -835,7 +837,94 @@ export function parseTottusProducts(payload: string, query: string): ScrapedItem
   });
 }
 
-async function fetchWithTimeout(url: string): Promise<string> {
+/**
+ * Parser de aCuenta: la página de búsqueda embebe el catálogo como JSON
+ * escapado dentro de __NEXT_DATA__ (mismo enfoque que scripts/scrape_supermarkets.py).
+ * Grupos: 1 name, 2 price, 3 photos, 4 sku, 5 ean, 6 slug, 7 brand, 8 stock.
+ * (Sin grupos nombrados ni flag dotAll: el proyecto compila a ES2017.)
+ */
+const ACUENTA_PRODUCT_RE = /\\"product\\":\{\\"name\\":\\"([\s\S]*?)\\",\\"price\\":(\d+),\\"photosUrl\\":\[([\s\S]*?)\],[\s\S]*?\\"sku\\":\\"(\d+)\\"[\s\S]*?\\"ean\\":\[([\s\S]*?)\][\s\S]*?\\"slug\\":\\"([\s\S]*?)\\"[\s\S]*?\\"brand\\":\\"([\s\S]*?)\\"[\s\S]*?\\"stock\\":(\d+)/gi;
+
+/** Decodifica texto con escapes JSON embebidos (equivalente a decode_next_text en Python). */
+function decodeNextEscapedText(value: string): string {
+  try {
+    return JSON.parse(`"${value}"`) as string;
+  } catch {
+    return value.replace(/\\"/g, '"').replace(/\\u0026/gi, '&');
+  }
+}
+
+export function parseACuentaProducts(html: string, query: string): ScrapedItem[] {
+  const items: ScrapedItem[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  ACUENTA_PRODUCT_RE.lastIndex = 0;
+  while ((match = ACUENTA_PRODUCT_RE.exec(html)) !== null) {
+    const [, rawName, rawPrice, rawPhotos, sku, rawEan, rawSlug, rawBrand, rawStock] = match;
+    if (sku && seen.has(sku)) continue;
+    if (sku) seen.add(sku);
+
+    const name = decodeNextEscapedText(rawName || '');
+    const price = Number(rawPrice || 0);
+    const stock = Number(rawStock || 0);
+    // Sin stock no aporta a la canasta: la fila quedaría usable pero incomprable.
+    if (!name || price <= 0 || stock <= 0) continue;
+
+    const photo = (rawPhotos || '').match(/\\"(https?[^"]+?)\\"/);
+    const ean = (rawEan || '').match(/\\"(\d{8,14})\\"/);
+    const slug = decodeNextEscapedText(rawSlug || '');
+
+    items.push({
+      name,
+      brand: decodeNextEscapedText(rawBrand || ''),
+      quantity: 1,
+      price,
+      store: 'aCuenta',
+      query,
+      productUrl: slug ? `https://www.acuenta.cl/p/${slug}` : undefined,
+      imageUrl: photo ? decodeNextEscapedText(photo[1]) : undefined,
+      sku: sku || undefined,
+      ean: ean?.[1],
+    });
+  }
+  return items;
+}
+
+async function fetchWithTimeout(url: string, options: { insecureTls?: boolean } = {}): Promise<string> {
+  // acuenta.cl no entrega la cadena completa de certificados TLS: el fetch de
+  // Node falla con UNABLE_TO_VERIFY_LEAF_SIGNATURE (navegadores, curl y Python
+  // la resuelven por AIA/cache). Para ESA tienda se usa node:https sin verificar
+  // la cadena — son datos públicos de catálogo, sin credenciales de por medio.
+  if (options.insecureTls) {
+    return new Promise((resolve, reject) => {
+      const req = httpsRequest(url, {
+        headers: SEARCH_HEADERS,
+        rejectUnauthorized: false,
+        timeout: REQUEST_TIMEOUT_MS,
+      }, (response) => {
+        const status = response.statusCode ?? 0;
+        if (status >= 300 && status < 400 && response.headers.location) {
+          response.resume();
+          resolve(fetchWithTimeout(
+            new URL(response.headers.location, url).toString(),
+            options,
+          ));
+          return;
+        }
+        if (status < 200 || status >= 300) {
+          response.resume();
+          reject(new Error(`HTTP ${status}`));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      });
+      req.on('timeout', () => req.destroy(new Error(`Timeout tras ${REQUEST_TIMEOUT_MS}ms`)));
+      req.on('error', reject);
+      req.end();
+    });
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -854,14 +943,14 @@ async function fetchWithTimeout(url: string): Promise<string> {
   }
 }
 
-async function fetchRetailerHtml(url: string, store: ScrapedItem['store']): Promise<string> {
+async function fetchRetailerHtml(url: string, store: ScrapedItem['store'], options: { insecureTls?: boolean } = {}): Promise<string> {
   if (checkCircuitBreaker(store)) {
     throw new Error(`Circuit breaker abierto para ${store}. Reintentando en ${CIRCUIT_BREAKER_RESET_MS / 1000}s.`);
   }
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const result = await fetchWithTimeout(url);
+      const result = await fetchWithTimeout(url, options);
       recordSuccess(store);
       return result;
     } catch (error) {
@@ -941,6 +1030,15 @@ export async function searchAllRetailerProducts(
         )
       )));
       return uniqueScrapedItems(payloads.flatMap(payload => parseTottusProducts(payload, query)));
+    }
+    if (store === 'aCuenta') {
+      // aCuenta devuelve todo el resultado en una página (JSON embebido); sin paginación útil.
+      const html = await fetchRetailerHtml(
+        `https://www.acuenta.cl/search?name=${encodeURIComponent(query)}`,
+        store,
+        { insecureTls: true },
+      );
+      return uniqueScrapedItems(parseACuentaProducts(html, query));
     }
   } catch (error) {
     console.warn(`[supermarket] Error buscando en ${store} para "${query}":`, error);

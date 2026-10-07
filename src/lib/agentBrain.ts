@@ -34,7 +34,7 @@ export interface CartItem {
     brand: string;
     quantity: number;
     price: number;
-    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel' | 'Tottus';
+    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel' | 'Tottus' | 'aCuenta';
     isOffer?: boolean;
     originalPrice?: number;
     requestedTerm?: string;
