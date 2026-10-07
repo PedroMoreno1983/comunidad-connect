@@ -14,6 +14,7 @@ const communityIds = [randomUUID(),randomUUID()];
 const users = [];
 const checks = [];
 const report = { generatedAt:new Date().toISOString(),baseUrl,passed:false,checks };
+mkdirSync('artifacts/operational-lifecycle',{recursive:true});
 function check(value, message) { assert(value,message); checks.push(message); }
 async function data(query) { const result = await query; if (result.error) throw new Error(result.error.message); return result.data; }
 async function api(user, path, body) {
@@ -22,6 +23,10 @@ async function api(user, path, body) {
 }
 async function patch(user, id, status) {
     const response = await fetch(`${baseUrl}/api/service-requests/${id}/status`, {method:'PATCH',headers:{'Content-Type':'application/json',Cookie:user.cookie},body:JSON.stringify({status})});
+    return {status:response.status,body:await response.json()};
+}
+async function get(user, path) {
+    const response = await fetch(`${baseUrl}${path}`, {headers:{Cookie:user.cookie}});
     return {status:response.status,body:await response.json()};
 }
 async function seedTask(user, key, keys) {
@@ -71,6 +76,11 @@ async function main() {
         const expense = await data(admin.from('expenses').insert({community_id:manager.community,unit_id:unit.id,month:'2026-10',amount:100000,due_date:'2026-10-05',status:'overdue'}).select('id').single());
         await data(admin.from('expenses').insert({community_id:manager.community,unit_id:unlinked.id,month:'2026-10',amount:2000,due_date:'2026-10-05',status:'overdue'}));
         await data(admin.from('unit_payments').insert({community_id:manager.community,unit_id:unit.id,expense_id:expense.id,amount:40000,paid_at:'2026-10-06',recorded_by:manager.id}));
+        const statement = await get(resident,`/api/finance/statement?unitId=${unlinked.id}`);
+        check(statement.status===200 && statement.body.balance===60000,'Cartola descuenta el abono y restringe al residente a su unidad.');
+        const certificate = await get(resident,`/api/admin/debt-certificate?unitId=${unlinked.id}`);
+        check(certificate.status===200 && certificate.body.balance===60000,'Certificado y cartola coinciden después del abono parcial.');
+        check(certificate.body.pendingByMonth.reduce((sum,row)=>sum+row.total,0)-(certificate.body.availableCredit || 0)===certificate.body.balance,'El detalle del certificado suma el saldo neto certificado.');
         for (const table of ['expenses','unit_payments','service_requests','notifications']) {
             const rows = await data(foreignManager.client.from(table).select('id').eq('community_id',manager.community));
             check(rows.length===0,`Aislamiento: admin de otra comunidad no lee ${table}.`);
@@ -115,9 +125,9 @@ async function main() {
         report.passed = true;
     } finally {
         const failures = [];
-        for (const user of users) { const result = await admin.auth.admin.deleteUser(user.id); if(result.error) failures.push(result.error.message); }
         const deleted = await admin.from('communities').delete().in('id',communityIds);
         if (deleted.error) failures.push(deleted.error.message);
+        for (const user of users) { const result = await admin.auth.admin.deleteUser(user.id); if(result.error) failures.push(result.error.message); }
         const remaining = await admin.from('communities').select('id').in('id',communityIds);
         if (remaining.error || remaining.data?.length) failures.push('Quedaron comunidades sintéticas pendientes de limpieza.');
         if (failures.length) { report.passed=false; throw new Error(`Limpieza QA: ${failures.join('; ')}`); }
