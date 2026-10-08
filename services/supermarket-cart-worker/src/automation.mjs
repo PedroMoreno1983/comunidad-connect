@@ -338,7 +338,9 @@ async function processManagedItem(driver, session, hooks, item) {
     const resumed = await hooks.waitForUser(detail);
     if (!resumed) hooks.assertOpen();
     const after = await cartSignature(driver, session.config);
-    if (result.before && after && after !== result.before) {
+    // Only an attempted add can have written the cart. A CAPTCHA or delivery
+    // choice also changes the header signature, but still needs the add step.
+    if (result.kind === 'unconfirmed' && result.before && after && after !== result.before) {
       return { added: false, detail: 'La página cambió después de tu intervención; falta comprobar producto y cantidad en el carro.' };
     }
     if (attempt < 2) await sleep(500);
