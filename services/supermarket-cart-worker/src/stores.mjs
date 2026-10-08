@@ -34,7 +34,10 @@ export const STORE_CONFIGS = Object.freeze({
     cartApi: 'lider-orchestra',
     cartApiUrl: 'https://super.lider.cl/',
     cartApiHosts: ['super.lider.cl'],
-    addSelectors: ['button[data-automation-id="atc"]', '[data-testid="add-to-cart-section"] button', 'button[data-automation-id="add-to-cart"]', 'button[aria-label*="Agregar al carro" i]', '[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])'],
+    // The add-to-cart-section also contains quantity decrease/increase buttons
+    // once an item is present. Never treat those as an add action.
+    addSelectors: ['button[data-automation-id="atc"]'],
+    inCartSelectors: ['[data-testid="add-to-cart-section"] button[aria-label^="Reducir las unidades"]'],
     plusSelectors: ['button[aria-label*="Aumentar" i]', 'button[aria-label="Agregar otro"]', 'button[data-testid*="increment"]'],
     quantitySelectors: ['input[aria-label*="Cantidad" i]', '[data-testid*="quantity"] input'],
     cartSelectors: ['button[data-automation-id="cart-button-header"]', 'button[aria-label*="carro" i]', '[data-testid*="cart"]'],

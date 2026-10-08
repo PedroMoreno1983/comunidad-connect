@@ -327,6 +327,10 @@ async function processManagedItem(driver, session, hooks, item) {
     if (result.kind === 'unavailable') {
       return { added: false, detail: 'Producto sin stock; vuelve a Convive para elegir un reemplazo.' };
     }
+    if (result.kind === 'manual' && session.store === 'Lider'
+        && await firstVisible(driver, session.config.inCartSelectors || [])) {
+      return { added: false, detail: 'La ficha ya muestra una cantidad. Verificando el producto en el carro.' };
+    }
 
     const detail = result.kind === 'blocked'
       ? 'La tienda pide una verificación humana. Complétala en el navegador y continúa.'
