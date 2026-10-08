@@ -1,4 +1,6 @@
 import { request as httpsRequest } from 'node:https';
+import { rootCertificates } from 'node:tls';
+import { ACUENTA_INTERMEDIATE_CA } from './acuentaCertificate';
 
 import type { CartItem } from '@/lib/agentBrain';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
@@ -920,16 +922,17 @@ export function parseACuentaProducts(html: string, query: string): ScrapedItem[]
   return items;
 }
 
-async function fetchWithTimeout(url: string, options: { insecureTls?: boolean } = {}): Promise<string> {
-  // acuenta.cl no entrega la cadena completa de certificados TLS: el fetch de
-  // Node falla con UNABLE_TO_VERIFY_LEAF_SIGNATURE (navegadores, curl y Python
-  // la resuelven por AIA/cache). Para ESA tienda se usa node:https sin verificar
-  // la cadena — son datos públicos de catálogo, sin credenciales de por medio.
-  if (options.insecureTls) {
+async function fetchWithTimeout(url: string, options: { acuentaTls?: boolean } = {}, redirects = 0): Promise<string> {
+  // Supply the missing GlobalSign intermediate while keeping hostname and chain verification.
+  if (options.acuentaTls) {
+    if (new URL(url).protocol !== 'https:' || redirects > 5) {
+      throw new Error('Invalid retailer HTTPS redirect');
+    }
     return new Promise((resolve, reject) => {
       const req = httpsRequest(url, {
         headers: SEARCH_HEADERS,
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
+        ca: [...rootCertificates, ACUENTA_INTERMEDIATE_CA],
         timeout: REQUEST_TIMEOUT_MS,
       }, (response) => {
         const status = response.statusCode ?? 0;
@@ -938,6 +941,7 @@ async function fetchWithTimeout(url: string, options: { insecureTls?: boolean } 
           resolve(fetchWithTimeout(
             new URL(response.headers.location, url).toString(),
             options,
+            redirects + 1,
           ));
           return;
         }
@@ -947,6 +951,7 @@ async function fetchWithTimeout(url: string, options: { insecureTls?: boolean } 
           return;
         }
         const chunks: Buffer[] = [];
+        response.on('error', reject);
         response.on('data', (chunk: Buffer) => chunks.push(chunk));
         response.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
       });
@@ -973,7 +978,7 @@ async function fetchWithTimeout(url: string, options: { insecureTls?: boolean } 
   }
 }
 
-async function fetchRetailerHtml(url: string, store: ScrapedItem['store'], options: { insecureTls?: boolean } = {}): Promise<string> {
+async function fetchRetailerHtml(url: string, store: ScrapedItem['store'], options: { acuentaTls?: boolean } = {}): Promise<string> {
   if (checkCircuitBreaker(store)) {
     throw new Error(`Circuit breaker abierto para ${store}. Reintentando en ${CIRCUIT_BREAKER_RESET_MS / 1000}s.`);
   }
@@ -1066,7 +1071,7 @@ export async function searchAllRetailerProducts(
       const html = await fetchRetailerHtml(
         `https://www.acuenta.cl/search?name=${encodeURIComponent(query)}`,
         store,
-        { insecureTls: true },
+        { acuentaTls: true },
       );
       return uniqueScrapedItems(parseACuentaProducts(html, query));
     }
