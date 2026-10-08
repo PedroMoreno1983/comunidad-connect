@@ -74,3 +74,11 @@ La tabla `supermarket_price_history` ocupa aproximadamente 1.99 GB y tiene 6,488
 
 El tamaño resultante estimado de la base es de unos 350 MB; debe medirse después de aplicar la retención. Un `DELETE` por sí solo no reduce el archivo físico. La compactación requiere un paso adicional, como `VACUUM FULL`, que bloquea la tabla mientras trabaja. Aplicar únicamente después de confirmar la eliminación del historial antiguo y coordinar esa operación. Ninguna limpieza se ejecuta al correr los scripts de respaldo o ensayo.
 
+### Limpieza aplicada con autorización el 7 de octubre de 2026
+
+Se retiraron 5,929,451 observaciones anteriores al corte de siete días y se ejecutó `VACUUM (FULL, ANALYZE)` únicamente sobre `supermarket_price_history`. La base bajó de 2,185,546,899 a **337,366,163 bytes**, por debajo de los 500 MB. El historial conserva 562,116 observaciones y ocupa 144,326,656 bytes. Permanecieron iguales los 101,397 productos, 13 gastos, suma de gastos de $958,200, 14 perfiles y 71 cuentas Auth. El informe privado `price-history-maintenance.json` registra los valores antes y después.
+
+`.github/workflows/supermarket-price-retention.yml` aplica diariamente la misma retención mediante el rol de servicio, usando las credenciales ya existentes de carga del catálogo. El fallo del proceso se refleja en GitHub Actions. Solo elimina observaciones por `observed_at`; no borra productos ni compras. PostgreSQL reutiliza el espacio liberado mediante su mantenimiento automático; ante un aumento sostenido, medir de nuevo y ejecutar la compactación con una copia verificada y autorización.
+
+El tamaño físico actual y el promedio de facturación son métricas diferentes. Supabase actualiza sus métricas periódicamente y una advertencia de uso puede persistir mientras baja el promedio del periodo. No se contrató un plan pagado.
+
