@@ -68,6 +68,18 @@ Importa datos reales en una instancia local PGlite con pgvector, restaura índic
 
 El ensayo no sustituye una recuperación del servicio gestionado: no ejecuta las APIs alojadas de Auth/Storage, webhooks, secretos, configuración OAuth ni integraciones externas. Los módulos de plataforma que dependen de procesos gestionados deben configurarse y validarse por separado en una recuperación real.
 
+### Ensayo de los servicios locales
+
+Con Docker Desktop funcionando, ejecutar `node scripts/supabase-service-recovery.js '<directorio privado del respaldo>'`. Usa imágenes oficiales de PostgreSQL, Auth, PostgREST y Storage, una red interna y claves locales nuevas, conservadas fuera de Git. Restaura los datos reales del respaldo, reconstruye restricciones y permisos y comprueba conteos y sumas. Genera una sesión local mediante enlace de acceso para un usuario restaurado, comprueba su aislamiento por REST, recupera los objetos de Storage y compara sus descargas firmadas con los hashes originales. No envía correos ni modifica producción.
+
+El informe privado queda en `service-recovery/service-recovery-report.json`; solo `passed: true` acredita la ejecución. Los contenedores se detienen al terminar, sin eliminar los volúmenes. `--verify-existing` como segundo argumento omite la importación y repite las comprobaciones sobre una restauración local ya completada.
+
+Este ensayo de servicios no acredita el proveedor OAuth, SMTP, la clave de cifrado de MFA/Vault ni la conectividad con integraciones externas. Esas configuraciones requieren recuperación y verificación independientes antes de sustituir un proyecto de producción.
+
+Ensayo aprobado el 8 de octubre de 2026, con PostgreSQL `17.6.1.063`, Auth `v2.196.0`, PostgREST `v14.17` y Storage `v1.80.2`: 71 cuentas Auth, 14 perfiles, 13 gastos, suma de gastos de $958,200, 101,353 productos, 6,488,594 observaciones de precios y 69 metadatos de objetos coinciden con el respaldo. Una cuenta restaurada inició una sesión local y leyó cuatro gastos de su comunidad por REST, sin filas de otras comunidades. Los 69 objetos se cargaron y sus descargas firmadas coincidieron en SHA-256; el documento financiero privado rechazó la descarga pública sin autorización. Los contenedores terminaron detenidos y producción no se modificó.
+
+La versión `v1.74.0` de Storage fijada en el ejemplo de instalación consultado no soportaba los índices de versionado presentes en este respaldo y produjo `42P10` al cargar un objeto. Se usó la versión oficial compatible `v1.80.2`, sin añadir índices artificiales al esquema restaurado. En una recuperación real, verificar primero la compatibilidad de las versiones de servicios con las migraciones del respaldo.
+
 Ensayo completado el 7 de octubre de 2026: `passed: true`; 71 cuentas Auth, 14 perfiles, 6 comunidades, 8 unidades, 13 gastos, 15 tareas, 101,353 productos y 6,488,594 observaciones de precios coinciden con el origen. Se restauraron 236 políticas públicas y 1,479 restricciones. Las sumas de gastos ($958,200) y pagos ($1,000) coinciden. Un residente real del respaldo vio dos gastos propios y cero gastos ajenos. Se verificaron los 69 archivos de Storage. Estos números acreditan esta copia concreta, no futuras ejecuciones.
 
 ## Espacio de la base: revisión del 7 de octubre de 2026
