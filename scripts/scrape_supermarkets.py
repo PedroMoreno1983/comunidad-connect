@@ -274,49 +274,61 @@ def collect_lider_products(value: Any) -> list[dict[str, Any]]:
 
 
 def scrape_lider(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
-    slug = normalize(query).replace(" ", "-")
-    url = f"https://super.lider.cl/v/{slug}"
+    # /v/<slug> still serves JSON-LD prices, but they can disagree with the
+    # current search and product pages. Read the same search data the buyer sees.
+    url = f"https://super.lider.cl/search?q={quote_plus(query)}"
     try:
         page = fetch(url)
-        products: list[Product] = []
-        for match in re.finditer(
-            r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-            page,
-            flags=re.I | re.S,
-        ):
-            try:
-                json_ld = json.loads(html.unescape(match.group(1)))
-            except json.JSONDecodeError:
-                continue
-            for product in collect_lider_products(json_ld):
-                offer = product.get("offers", {})
-                price = as_int(offer.get("price") if isinstance(offer, dict) else None)
-                name = str(product.get("name") or "")
-                if not name or price <= 0:
-                    continue
-                product_url = html.unescape(str(product.get("url") or "").strip()).split("?", 1)[0]
-                sku_match = re.search(r"/([0-9]{14})/?$", product_url)
-                if not sku_match:
-                    continue
-                sku = sku_match.group(1)
-                products.append(Product(
-                    store="Lider",
-                    query=query,
-                    name=name,
-                    price=price,
-                    list_price=None,
-                    in_stock="InStock" in str(offer.get("availability") if isinstance(offer, dict) else ""),
-                    brand=None,
-                    sku=sku,
-                    ean=sku,
-                    product_url=product_url,
-                    image_url=str(product.get("image") or "") or None,
-                    scraped_at=utc_now(),
-                ))
-        relevant = limit_relevant(products, query, limit)
-        return relevant, SourceStatus("Lider", query, "ok", count=len(relevant))
+        products = parse_lider_search_products(page, query)
+        relevant = [product for score, _, product in sorted(
+            ((score_name(f"{product.name} {product.brand or ''}", query), index, product)
+             for index, product in enumerate(products)),
+            key=lambda row: (-row[0], row[1]),
+        ) if score >= 0][:limit]
+        return relevant, SourceStatus("Lider", query, "ok" if products else "error", count=len(relevant))
     except (HTTPError, URLError, TimeoutError) as error:
         return [], SourceStatus("Lider", query, "error", str(error))
+
+
+def parse_lider_search_products(page: str, query: str) -> list[Product]:
+    match = re.search(r'<script[^>]*id=["\']?__NEXT_DATA__["\']?[^>]*>(.*?)</script>', page, re.I | re.S)
+    if not match:
+        return []
+    try:
+        root = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+
+    products: dict[str, Product] = {}
+    def walk(value: Any) -> None:
+        if isinstance(value, list):
+            for child in value:
+                walk(child)
+            return
+        if not isinstance(value, dict):
+            return
+        sku = str(value.get("usItemId") or "")
+        canonical = str(value.get("canonicalUrl") or "")
+        name = str(value.get("name") or "")
+        price_info = value.get("priceInfo")
+        current = price_info.get("currentPrice") if isinstance(price_info, dict) else None
+        price = as_int(current.get("price") if isinstance(current, dict) else value.get("price"))
+        if re.fullmatch(r"\d{14}", sku) and canonical.startswith("/ip/") and name and price > 0:
+            brand = value.get("brand")
+            image = value.get("image")
+            products[sku] = Product(
+                store="Lider", query=query, name=name, price=price,
+                list_price=None, in_stock=value.get("canAddToCart") is not False,
+                brand=brand.get("name") if isinstance(brand, dict) else brand if isinstance(brand, str) else None,
+                sku=sku, ean=sku, product_url=f"https://super.lider.cl{canonical}",
+                image_url=image if isinstance(image, str) and image.startswith("https://") else None,
+                scraped_at=utc_now(),
+            )
+            return
+        for child in value.values():
+            walk(child)
+    walk(root)
+    return list(products.values())
 
 
 def decode_next_text(value: str) -> str:
