@@ -54,6 +54,10 @@ node scripts/supabase-manual-backup.js --resume '<directorio privado>'
 
 Los respaldos contienen datos personales, hashes de autenticación y documentos financieros. No subirlos a Git ni compartirlos públicamente. Limitar el acceso al directorio y conservar una segunda copia privada en otro dispositivo. Una copia local no protege contra la pérdida de este computador.
 
+Para comprobar la copia de origen sin transferir datos, ejecutar `node scripts/copy-verified-backup.js '<directorio privado del respaldo>'`. Para copiar, agregar como segundo argumento una carpeta privada existente en otro dispositivo o una carpeta de red autorizada. El script rechaza el mismo disco, no sobrescribe una copia anterior y verifica SHA-256 antes y después. No incluye las bases temporales ni los SQL sin comprimir del ensayo. Un fallo deja una copia incompleta, sin informe `copy-verification.json` aprobado; no usarla como respaldo válido.
+
+El 8 de octubre se verificaron 76 archivos y 220,459,396 bytes de origen. La copia externa continúa pendiente hasta contar con un destino privado indicado por el usuario.
+
 ## Ensayo aislado de restauración
 
 ```powershell
