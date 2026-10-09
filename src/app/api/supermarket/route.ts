@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { isProductSuitableForRequest, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { isProductSuitableForRequest, needsProduceQuantityReview, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
 import {
@@ -66,12 +66,14 @@ export async function POST(req: NextRequest) {
         const selectedStore = selected.store;
         const safeSelectedItems = requestedItems.flatMap((requested: RequestedItem) => {
           const selectedItem = selected.items.find(item => item.requestedTerm === requested.term);
-          if (selectedItem && isProductSuitableForRequest(selectedItem.name, requested.term, requested.unit)) {
+          if (selectedItem && isProductSuitableForRequest(selectedItem.name, requested.term, requested.unit)
+            && !needsProduceQuantityReview(selectedItem.name, requested.term, requested.quantity, requested.unit)) {
             return [selectedItem];
           }
           const recovered = (comparison.alternativesByTerm?.[requested.term] || []).find(item => (
             item.store === selectedStore
             && isProductSuitableForRequest(item.name, requested.term, requested.unit)
+            && !needsProduceQuantityReview(item.name, requested.term, requested.quantity, requested.unit)
           ));
           return recovered ? [recovered] : [];
         });
@@ -92,6 +94,10 @@ export async function POST(req: NextRequest) {
         const liveByTerm = new Map<string, SupermarketShoppingItem>(
           liveItems
             .filter(item => item.store === selectedStore)
+            .filter(item => {
+              const requested = requestedItems.find((entry: RequestedItem) => entry.term === (item.requestedTerm || item.query));
+              return requested && !needsProduceQuantityReview(item.name, requested.term, requested.quantity, requested.unit);
+            })
             .map(item => {
             const term = item.requestedTerm || item.query || '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
