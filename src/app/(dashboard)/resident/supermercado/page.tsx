@@ -9,6 +9,7 @@ import { SupermarketCatalogService } from '@/lib/api';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { comparableProduct, comparisonTerm } from '@/lib/supermarketEquivalence';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { reviewSearchSuggestions } from '@/lib/supermarketText';
 import { extractShoppingListFromCsv } from '@/lib/supermarketSpreadsheet';
 import type {
   SavedShoppingList,
@@ -84,6 +85,7 @@ export default function SupermarketPage() {
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState('');
   const [unresolved, setUnresolved] = useState<string[]>([]);
+  const [pendingReviewTerm, setPendingReviewTerm] = useState<string | null>(null);
   const listRequest = useRef<AbortController | null>(null);
   const [comparisonStores, setComparisonStores] = useState<string[]>([]);
   const [comparison, setComparison] = useState<SupermarketSearchResponse | null>(null);
@@ -158,6 +160,7 @@ export default function SupermarketPage() {
     listRequest.current?.abort();
     setListLoading(false);
     setUnresolved([]);
+    setPendingReviewTerm(null);
     setListError('');
     setQuery('');
     setProducts([]);
@@ -188,7 +191,9 @@ export default function SupermarketPage() {
         : [...current, { ...product, quantity: 1, requestedTerm: comparisonTerm }];
     });
     clearComparison();
-    if (query.trim()) setUnresolved(current => current.filter(term => term !== parseGroupShoppingList(query.trim(), true)[0]?.term));
+    const resolvedTerm = pendingReviewTerm ?? parseGroupShoppingList(query.trim(), true)[0]?.term;
+    if (resolvedTerm) setUnresolved(current => current.filter(term => term !== resolvedTerm));
+    setPendingReviewTerm(null);
     setCheckoutStore(primaryStore);
   };
 
@@ -248,6 +253,7 @@ export default function SupermarketPage() {
     setListLoading(true);
     setListError('');
     setUnresolved([]);
+    setPendingReviewTerm(null);
     setCart([]);
     clearComparison();
     setCheckoutStore(storeName);
@@ -470,7 +476,8 @@ export default function SupermarketPage() {
               </div>
               {listError ? <p role="alert" className="mt-2 text-xs text-red-700">{listError}</p> : null}
               {unresolved.length > 0 ? <div className="mt-3 text-xs text-amber-800"><p className="font-bold">Revisa {unresolved.length} productos sin coincidencia segura:</p>
-                <ul className="mt-1 space-y-1">{unresolved.map(term => <li key={term} className="flex items-center gap-2"><button type="button" className="underline" onClick={() => changeQuery(term)}>{term} · buscar en catálogo</button><button type="button" aria-label={`Quitar ${term} de pendientes`} onClick={() => setUnresolved(current => current.filter(value => value !== term))}>Quitar</button></li>)}</ul>
+                <ul className="mt-1 space-y-1">{unresolved.map(term => <li key={term} className="flex flex-wrap items-center gap-2"><button type="button" className="underline" onClick={() => { setPendingReviewTerm(term); changeQuery(term); }}>{term} · buscar en catálogo</button>{reviewSearchSuggestions(term).map(suggestion => <button key={suggestion} type="button" className="underline" onClick={() => { setPendingReviewTerm(term); changeQuery(suggestion); }}>Buscar {suggestion}</button>)}</li>)}</ul>
+                <p className="mt-2">Elige una presentación para resolver el pendiente. Para quitarlo de la compra, edita la lista y vuelve a cargarla.</p>
               </div> : null}
             </div>
             {catalogError ? <p role="alert" className="mt-4 text-sm text-red-700">{catalogError}</p> : null}
