@@ -18,7 +18,7 @@ de búsqueda en vivo.
 | Santa Isabel | Categorías principales descubiertas desde el menú público; páginas hasta vacío/repetición | Completa |
 | Unimarc | 15 categorías principales; `__NEXT_DATA__` SSR y total `resource` | Completa |
 | Jumbo | 13 categorías; PLP `?page=N` vía Playwright (no depende del botón visible de paginación) + JSON `bff.jumbo.cl/catalog/plp` | Completa |
-| Lider | Desafío interactivo de verificación humana | Bloqueada hasta contar con feed/API autorizado |
+| Lider | Listing Verbolia paginado (catálogo y stock); las ofertas (`list_price` = `priceInfo.wasPrice`) se cosechan de los departamentos `/browse/` del app Next.js, en secuencia y con pausa anti-412 | Completa |
 | aCuenta | Pasillos de despensa fijos primero; productos desde referencias RSC (`CatalogProductModel` no tiene que ser la última key) | Completa |
 
 “Completa” significa que el proceso recorre toda la paginación publicada por la
