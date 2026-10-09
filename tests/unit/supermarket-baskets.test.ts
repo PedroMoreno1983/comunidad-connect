@@ -131,6 +131,7 @@ describe('buildBasketComparison', () => {
 
   it('does not turn four individual potatoes into four two-kilo bags', () => {
     expect(needsProduceQuantityReview('Papas pequeñas malla 2 Kg', 'papas', 4, undefined)).toBe(true);
+    expect(needsProduceQuantityReview('Papas granel 500 g', 'papas', 4, undefined)).toBe(true);
     expect(needsProduceQuantityReview('Papa granel 1 un', 'papas', 4, undefined)).toBe(false);
     const result = buildBasketComparison(['papas'], {
       papas: [row('Unimarc', 'Papas pequeñas malla 2 Kg', 2890)],
