@@ -31,6 +31,15 @@ describe('catalog list package sizes', () => {
     ]);
   });
 
+  it('preserves fractional weights and Chilean names from published lists', () => {
+    expect(parseGroupShoppingList('1,6 kg carne para parrilla\ncarne 1,5 kg\naguacate')).toEqual([
+      { term: 'carne para parrilla', quantity: 1600, unit: 'g' },
+      { term: 'carne', quantity: 1500, unit: 'g' },
+      { term: 'aguacate', quantity: 1, unit: undefined },
+    ]);
+    expect(canonicalCatalogTerm('aguacate')).toBe('palta');
+  });
+
   it('matches spelled sizes and decimals to the catalog name', () => {
     expect(matchesRequestedPackageSize('Arroz Grado 1 1 kilo', 'arroz 1 kg')).toBe(true);
     expect(matchesRequestedPackageSize('Leche Entera 1 litro', 'leche 1 l')).toBe(true);
@@ -230,6 +239,14 @@ describe('lista semanal desordenada (Pedro)', () => {
       'carne molida de pollo',
       'g',
     )).toBe(true);
+  });
+
+  it('no completa una lista real con papas procesadas o aceitunas con ají', () => {
+    expect(isProductSuitableForRequest('Papas Souflé Malla 2 kg', 'papas', undefined)).toBe(false);
+    expect(isProductSuitableForRequest('Aceitunas Verdes Rellenas de Ají Jalapeño 85 g', 'ají verde', undefined)).toBe(false);
+    expect(isProductSuitableForRequest('Ají Verde 200 g', 'ají verde', undefined)).toBe(true);
+    expect(productMatchScore('papas', 'Papas Souflé Malla 2 kg')).toBe(-1);
+    expect(productMatchScore('ají verde', 'Aceitunas Verdes Rellenas de Ají Jalapeño 85 g')).toBe(-1);
   });
 
   it('el ancla de búsqueda deja de ser el typo y arrastra palabras distintivas', () => {
