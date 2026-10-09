@@ -1,5 +1,5 @@
 import { buildResilientPurchasePlan } from '@/lib/supermarketPurchasePlan';
-import { foldAccents, matchAnchor, productMatchScore, significantWords } from '@/lib/supermarketText';
+import { foldAccents, matchAnchor, productIntent, productMatchScore, significantWords } from '@/lib/supermarketText';
 import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
 
 
@@ -220,6 +220,19 @@ export function isProductSuitableForRequest(
   return true;
 }
 
+/** A count of fresh produce cannot safely be converted into kilos of a bag. */
+export function needsProduceQuantityReview(
+  name: string,
+  requestedTerm: string,
+  requestedQuantity: number,
+  requestedUnit: SupermarketMeasurementUnit | undefined,
+): boolean {
+  if (requestedQuantity <= 1 || requestedUnit || productIntent(requestedTerm) !== 'fresh_produce') return false;
+  if (/\b\d+(?:[.,]\d+)?\s*(?:kg|g|gr|un|unidad|unidades)\b/.test(foldAccents(requestedTerm))) return false;
+  return productMeasurementInBaseUnits(name)?.dimension === 'mass'
+    && !/\b\d+\s*(?:un|unidad|unidades)\b/.test(foldAccents(name));
+}
+
 export function isProductMeasurementCompatible(
   name: string,
   requestedUnit: SupermarketMeasurementUnit | undefined,
@@ -396,6 +409,8 @@ export function buildBasketComparison(
           asString(row.name),
           term,
           requestedUnits[term],
+        ) && !needsProduceQuantityReview(
+          asString(row.name), term, requestedQuantities[term] || 1, requestedUnits[term],
         ))
         .map(row => buildSupermarketCandidate(
           row,

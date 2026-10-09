@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { rememberLiveProducts } from '@/lib/supermarketCatalogLiveFill';
 import { searchAllRetailerProducts, type ScrapedItem } from '@/lib/supermarketLive';
 import { canonicalCatalogTerm, catalogNameOrFilter, catalogProductSearchText, catalogSearchScore, matchAnchor, matchAnchors } from '@/lib/supermarketText';
-import { isProductSuitableForRequest, matchesRequestedPackageSize, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { isProductSuitableForRequest, matchesRequestedPackageSize, needsProduceQuantityReview, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { parseGroupShoppingList, MAX_SHOPPING_LIST_CHARS } from '@/lib/supermarketGroupDomain';
 import { FRESH_PRICE_AGE_MS, STALE_PRICE_AGE_MS } from '@/lib/supermarketCatalogGaps';
 import type { SupermarketCatalogProduct, SupermarketListResolution } from '@/lib/types';
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       const suitable = (name: string, brand: string, sku?: string, offerId?: string) => (
         catalogSearchScore(item.term, catalogProductSearchText(name, brand)) >= 0
         && isProductSuitableForRequest(name, item.term, item.unit)
+        && !needsProduceQuantityReview(name, item.term, item.quantity, item.unit)
         && matchesRequestedPackageSize(name, item.term)
         && (store !== 'Lider' || Boolean(sku && offerId))
       );

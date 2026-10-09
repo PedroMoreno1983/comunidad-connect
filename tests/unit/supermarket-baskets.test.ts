@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBasketComparison,
+  needsProduceQuantityReview,
   HIDDEN_SUPERMARKET_STORES,
   SUPERMARKET_STORES,
 } from '@/lib/supermarketBasket';
@@ -126,6 +127,16 @@ describe('buildBasketComparison', () => {
       suppliedQuantity: 8,
       lineTotal: 10040,
     });
+  });
+
+  it('does not turn four individual potatoes into four two-kilo bags', () => {
+    expect(needsProduceQuantityReview('Papas pequeñas malla 2 Kg', 'papas', 4, undefined)).toBe(true);
+    expect(needsProduceQuantityReview('Papa granel 1 un', 'papas', 4, undefined)).toBe(false);
+    const result = buildBasketComparison(['papas'], {
+      papas: [row('Unimarc', 'Papas pequeñas malla 2 Kg', 2890)],
+    }, { papas: 4 });
+    expect(result.recommended).toBeNull();
+    expect(result.comparisons.find(basket => basket.store === 'Unimarc')?.missingTerms).toEqual(['papas']);
   });
 
   it('prefers the relevant product over a cheaper secondary mention', () => {
