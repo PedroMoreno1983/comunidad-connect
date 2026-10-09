@@ -1,5 +1,5 @@
 import { buildResilientPurchasePlan } from '@/lib/supermarketPurchasePlan';
-import { foldAccents, matchAnchor, significantWords } from '@/lib/supermarketText';
+import { foldAccents, matchAnchor, productMatchScore, significantWords } from '@/lib/supermarketText';
 import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
 
 
@@ -62,7 +62,7 @@ function inferredCountPackUnits(name: string, requestedTerm: string): number {
   // "12 huevos" means twelve units, not twelve trays. Keep this inference
   // narrow when the product name does not explicitly declare a pack, so
   // "2 arroz" still means two products, not units inside a package.
-  if (!/\bhuevos?\b/.test(normalizedTerm)) return 1;
+  if (!/\b(?:huevos?|marraquetas?)\b/.test(normalizedTerm)) return 1;
   if (/\bdocena\b/.test(normalizedName)) return 12;
   const match = normalizedName.match(/\b(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/);
   return match ? Math.max(1, Number(match[1])) : 1;
@@ -144,6 +144,10 @@ export function isProductSuitableForRequest(
   const normalizedTerm = foldAccents(requestedTerm);
   const measurement = productMeasurementInBaseUnits(name);
   const family = matchAnchor(requestedTerm);
+
+  // Database search can return every word separately, including a different
+  // food that merely mentions the requested ingredient in its description.
+  if (productMatchScore(requestedTerm, name) < 0) return false;
 
   if (family === 'coca' && /\b(sprite|fanta)\b/.test(normalizedName)) return false;
   if (

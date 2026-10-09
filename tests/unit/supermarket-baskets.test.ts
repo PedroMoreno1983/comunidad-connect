@@ -115,6 +115,19 @@ describe('buildBasketComparison', () => {
     });
   });
 
+  it('counts individual marraquetas in the pack instead of buying eight packs', () => {
+    const result = buildBasketComparison(['marraquetas'], {
+      marraquetas: [row('Santa Isabel', 'Pan Marraqueta 480 g 4 un', 5020)],
+    }, { marraquetas: 8 });
+
+    expect(result.recommended?.items[0]).toMatchObject({
+      quantity: 2,
+      packUnits: 4,
+      suppliedQuantity: 8,
+      lineTotal: 10040,
+    });
+  });
+
   it('prefers the relevant product over a cheaper secondary mention', () => {
     const result = buildBasketComparison(['pechuga de pollo'], {
       'pechuga de pollo': [

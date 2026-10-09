@@ -3,6 +3,7 @@
 // listas variadas a /api/supermarket (la primera a través de la UI real del comparador).
 // Uso: node scripts/supermarket-many-lists-qa.js  (requiere dev server y .env.local)
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const { chromium } = require('@playwright/test');
 const { createClient } = require('@supabase/supabase-js');
 const { loadEnvFile } = require('./load-env');
@@ -16,7 +17,7 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const EXPECTED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'];
 
-const LISTS = [
+const DEFAULT_LISTS = [
   { name: 'Abarrotes básicos', lines: ['arroz', 'fideos', 'aceite', 'sal', 'azúcar'] },
   { name: 'Cantidades y formatos', lines: ['2 arroz', 'leche x 6', 'huevos x12', 'pan 2'] },
   { name: 'Unidades explícitas', lines: ['1 kg de arroz', '2 litros de leche', '500g de fideos', '1 kilo de tomates'] },
@@ -53,6 +54,10 @@ const LISTS = [
     'quinoa', 'leche de almendras',
   ] },
 ];
+
+const LISTS = process.env.QA_LISTS_FILE
+  ? JSON.parse(fs.readFileSync(process.env.QA_LISTS_FILE, 'utf8'))
+  : DEFAULT_LISTS;
 
 // Permite correr un subconjunto: LIST_INDICES="14,15" node scripts/supermarket-many-lists-qa.js
 const ACTIVE_LISTS = process.env.LIST_INDICES
@@ -186,6 +191,16 @@ async function main() {
             complete: !!b.complete,
           }));
           result.recommendedStore = payload.recommendedStore || null;
+          if (process.env.QA_DETAIL === '1') {
+            result.recommendedItems = baskets.find(b => b.store === result.recommendedStore)?.items?.map(item => ({
+              requestedTerm: item.requestedTerm,
+              name: item.name,
+              requestedQuantity: item.requestedQuantity,
+              requestedUnit: item.requestedUnit,
+              quantity: item.quantity,
+              lineTotal: item.lineTotal,
+            })) || [];
+          }
           result.missingTerms = payload.missingTerms || [];
           result.degradedStores = payload.degradedStores || [];
           result.mode = payload.mode;
