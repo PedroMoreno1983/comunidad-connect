@@ -9,6 +9,7 @@ import { SupermarketCatalogService } from '@/lib/api';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { comparableProduct, comparisonTerm } from '@/lib/supermarketEquivalence';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS, parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { extractShoppingListFromCsv } from '@/lib/supermarketSpreadsheet';
 import type {
   SavedShoppingList,
   SupermarketBasketCandidate,
@@ -321,16 +322,8 @@ export default function SupermarketPage() {
     }
     try {
       const raw = /\.xlsx$/i.test(file.name) ? await SupermarketCatalogService.extractList(file) : await file.text();
-      const value = /\.csv$/i.test(file.name)
-        ? (() => {
-          const rows = raw.split(/\r?\n/).map(row => row.split(/[;\t]/).map(cell => cell.trim()));
-          const quantityColumn = /^(cantidad|cant\.?|unidades|qty)$/i.test(rows[0]?.[1] || '');
-          return rows.map(cells => {
-            if (/^(producto|nombre|item|art[ií]culo)$/i.test(cells[0] || '')) return '';
-            return quantityColumn && /^\d{1,3}$/.test(cells[1] || '') ? `${cells[1]} ${cells[0]}` : cells[0];
-          }).filter(Boolean).join('\n');
-        })()
-        : raw;
+      const value = /\.csv$/i.test(file.name) ? extractShoppingListFromCsv(raw) : raw;
+      if (!value.trim()) throw new Error(`El archivo no contiene productos legibles o supera los ${MAX_SHOPPING_LIST_ITEMS} productos permitidos.`);
       setListInput(value);
       await loadList(value);
     } catch (error) {
@@ -416,6 +409,23 @@ export default function SupermarketPage() {
                 placeholder="Busca pan pita, leche, arroz…" aria-label={`Buscar productos en ${primaryStore}`}
                 className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none cc-text-primary" />
             </label>
+            {query.trim().length >= 2 && products.length > 0 ? (
+              <div className="mt-2 rounded-xl border p-2" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+                <p className="px-2 pb-1 text-xs font-semibold cc-text-secondary">Opciones del catálogo · elige la marca y el envase</p>
+                <ul className="space-y-1">
+                  {products.slice(0, 4).map(product => (
+                    <li key={product.id}>
+                      <button type="button" disabled={!validForCart(primaryStore, product)} onClick={() => addProduct(product)}
+                        className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm cc-text-primary hover:bg-black/5 disabled:opacity-50"
+                        aria-label={`Agregar ${product.name}, ${money(product.price)}`}>
+                        <span className="min-w-0 truncate">{product.name} <span className="cc-text-tertiary">· {product.brand || primaryStore}</span></span>
+                        <span className="shrink-0 font-semibold">{money(product.price)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="mt-4 rounded-xl border p-4" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}>
               <h3 className="text-sm font-bold cc-text-primary">Carga una lista completa</h3>
               <p className="mt-1 text-xs cc-text-secondary">Pega una lista o sube un TXT, CSV o XLSX. Se guarda sola para la próxima compra. La búsqueda en {primaryStore} empieza al pegar o subir el archivo; revisa cada producto antes de comprar.</p>

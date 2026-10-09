@@ -6,6 +6,13 @@ export type GroupSettlementBasketItem = { requestedTerm: string; lineTotal: numb
 export const MAX_SHOPPING_LIST_CHARS = 12_000;
 export const MAX_SHOPPING_LIST_ITEMS = 200;
 
+/** Parenthetical aliases help a person read a list but can make every word mandatory in catalog matching. */
+export function stripOptionalProductClarifications(value: string): string {
+  return value.replace(/\s*\(([^)]+)\)/g, (whole, note: string) => (
+    /\d|\b(sin|con|descremad[ao]|enter[ao]|light|integral|gluten|az[uú]car|lactosa|sal|bajo|alta?|lata|bolsa|pack|caja)\b/i.test(note)
+      ? whole : ''
+  ));
+}
 
 function collapseDuplicatedList(value: string): string {
   const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -17,7 +24,7 @@ function collapseDuplicatedList(value: string): string {
 }
 
 function normalizeTerm(value: string): string {
-  return value
+  return stripOptionalProductClarifications(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
