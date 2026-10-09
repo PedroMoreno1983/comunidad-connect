@@ -1195,7 +1195,7 @@ export default function SupermarketPage() {
               {!selectedBasket.complete && selectedBasket.missingTerms.length > 0 && (
                 <div className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
                   <p className="text-sm font-bold cc-text-primary">
-                    Esta canasta no compite como completa: faltan {selectedBasket.missingTerms.length} productos.
+                    Esta canasta no compite como completa: revisa {selectedBasket.missingTerms.length} productos o cantidades sin coincidencia segura.
                   </p>
                   <ul className="mt-2 space-y-2">
                     {selectedBasket.missingTerms.map(term => {
