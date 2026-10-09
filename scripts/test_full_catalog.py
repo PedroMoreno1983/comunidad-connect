@@ -17,6 +17,7 @@ from full_catalog import (
     acuenta_categories_from_html,
     acuenta_category_looks_promotional,
     crawl_acuenta,
+    crawl_lider,
     extract_santa_render_data,
     extract_next_flight_stream,
     jumbo_category_page_url,
@@ -24,11 +25,13 @@ from full_catalog import (
     jumbo_page_count_from_links,
     jumbo_pagination_target,
     jumbo_payload_candidates,
+    lider_department_browse_urls,
     parse_acuenta_categories,
     parse_acuenta_category_page,
     parse_irurzun_products,
     parse_jumbo_html,
     parse_jumbo_payload,
+    parse_lider_browse_page,
     parse_lider_page,
     parse_santa_render_data,
     parse_tottus_categories,
@@ -42,16 +45,18 @@ from scrape_supermarkets import scrape_lider
 
 class FullCatalogParserTests(unittest.TestCase):
     def test_lider_price_refresh_keeps_cart_sku_from_product_url(self) -> None:
-        catalog = {
-            "@type": "ItemList",
-            "itemListElement": [{"item": {
-                "@type": "Product",
+        # The live price refresh reads the buyer-facing Next.js search data.
+        # Keep the cart SKU and canonical product URL from that source.
+        catalog = {"props": {"pageProps": {"initialData": {"searchResult": {
+            "itemStacks": [{"items": [{
+                "usItemId": "00780257527115",
+                "canonicalUrl": "/ip/leche/leche-natural/00780257527115",
                 "name": "Leche natural 1 L",
-                "url": "https://super.lider.cl/ip/leche/leche-natural/00780257527115?channable=abc",
-                "offers": {"price": "1000", "availability": "https://schema.org/InStock"},
-            }}],
-        }
-        page = f'<script type="application/ld+json">{json.dumps(catalog)}</script>'
+                "priceInfo": {"currentPrice": {"price": 1000}},
+                "canAddToCart": True,
+            }]}],
+        }}}}}
+        page = f'<script id="__NEXT_DATA__">{json.dumps(catalog)}</script>'
         with patch("scrape_supermarkets.fetch", return_value=page):
             products, status = scrape_lider("leche", 5)
         self.assertEqual(status.status, "ok")
@@ -495,6 +500,131 @@ class FullCatalogParserTests(unittest.TestCase):
             products[0].product_url,
             "https://super.lider.cl/ip/arroz/arroz-grado-2/00780000000001",
         )
+
+    def test_lider_offer_needs_same_current_price_in_both_listings(self) -> None:
+        catalog = {"@type": "ItemList", "itemListElement": [{"item": {
+            "@type": "Product", "name": "Arroz 1 kg",
+            "url": "https://super.lider.cl/ip/arroz/00780000000001",
+            "offers": {"price": 1090, "availability": "https://schema.org/InStock"},
+        }}]}
+        page = (f'<h1>Catálogo <span>(96)</span></h1>'
+                f'<script type="application/ld+json">{json.dumps(catalog)}</script>'
+                '<span class="pagination__link">2</span>')
+        with patch("full_catalog.fetch_text", return_value=page), patch(
+            "full_catalog.harvest_lider_offer_prices",
+            return_value={"00780000000001": (1090, 1590)},
+        ):
+            self.assertEqual(list(crawl_lider(max_pages=1))[0].list_price, 1590)
+        with patch("full_catalog.fetch_text", return_value=page), patch(
+            "full_catalog.harvest_lider_offer_prices",
+            return_value={"00780000000001": (1190, 1590)},
+        ):
+            self.assertIsNone(list(crawl_lider(max_pages=1))[0].list_price)
+
+    @staticmethod
+    def _lider_next_data_html(search_result: dict) -> str:
+        payload = {
+            "props": {
+                "pageProps": {
+                    "initialData": {"searchResult": search_result},
+                }
+            }
+        }
+        return (
+            '<html><body><script id="__NEXT_DATA__" type="application/json">'
+            + json.dumps(payload)
+            + "</script></body></html>"
+        )
+
+    def test_lider_browse_page_parses_offers_and_pagination(self) -> None:
+        page_html = self._lider_next_data_html(
+            {
+                "paginationV2": {"maxPage": 23, "pageProperties": None},
+                "itemStacks": [
+                    {
+                        "items": [
+                            {
+                                "usItemId": "00780000000001",
+                                "name": "Arroz Grado 2 Bolsa 1 kg",
+                                "price": 1090,
+                                "priceInfo": {"linePrice": "$1.090", "wasPrice": "$1.590"},
+                            },
+                            {
+                                "usItemId": "00780000000002",
+                                "name": "Fideos Tallarines 400 g",
+                                "price": 990,
+                                "priceInfo": {"linePrice": "$990", "wasPrice": ""},
+                            },
+                            {"name": "Sin sku", "price": 500},
+                        ]
+                    }
+                ],
+            }
+        )
+        rows, max_page = parse_lider_browse_page(page_html)
+        self.assertEqual(max_page, 23)
+        self.assertEqual(
+            rows,
+            [
+                ("00780000000001", 1090, 1590),
+                ("00780000000002", 990, 0),
+            ],
+        )
+
+    def test_lider_browse_page_without_next_data_returns_empty(self) -> None:
+        self.assertEqual(parse_lider_browse_page("<html></html>"), ([], 0))
+        self.assertEqual(
+            parse_lider_browse_page('<script id="__NEXT_DATA__">no-json</script>'),
+            ([], 0),
+        )
+
+    def test_lider_department_browse_urls_filters_supermarket(self) -> None:
+        departments = [
+            {
+                "name": "Despensa",
+                "cta": {"clickThrough": {"value": "/content/despensa/46589040"}},
+            },
+            {
+                "name": "Vestuario",
+                "cta": {"clickThrough": {"value": "/content/vestuario/27137193"}},
+            },
+            {
+                "name": "Mascotas",
+                "cta": {"clickThrough": {"value": "/content/mascotas/12345678"}},
+            },
+            {"name": "Despensa", "cta": {"clickThrough": {"value": "/content/despensa/46589040"}}},
+            {"name": "Roto", "cta": {"clickThrough": {"value": "/otro/formato"}}},
+        ]
+        payload = {
+            "props": {
+                "pageProps": {
+                    "bootstrapData": {
+                        "header": {
+                            "data": {
+                                "contentLayout": {
+                                    "modules": [{"configs": {"departments": departments}}]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        page_html = (
+            '<script id="__NEXT_DATA__" type="application/json">'
+            + json.dumps(payload)
+            + "</script>"
+        )
+        self.assertEqual(
+            lider_department_browse_urls(page_html),
+            [
+                "https://super.lider.cl/browse/despensa/46589040",
+                "https://super.lider.cl/browse/mascotas/12345678",
+            ],
+        )
+
+    def test_lider_department_browse_urls_without_next_data(self) -> None:
+        self.assertEqual(lider_department_browse_urls("<html></html>"), [])
 
     def test_unique_products_prefers_sku_identity(self) -> None:
         render_data = {

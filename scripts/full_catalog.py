@@ -7,10 +7,11 @@ import html
 import json
 import math
 import re
+import sys
 import time
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from http.client import IncompleteRead
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -50,6 +51,40 @@ UNIMARC_CATEGORIES = (
 )
 LIDER_CATALOG_URL = "https://super.lider.cl/v/precios-en-oferta-sin-sello"
 LIDER_PAGE_SIZE = 48
+# Las páginas Verbolia (/v/...) no traen precio de lista: las ofertas de Lider
+# se cosechan del app Next.js (/browse/...), que expone priceInfo.wasPrice.
+LIDER_BROWSE_BASE = "https://super.lider.cl"
+# Cualquier búsqueda SSR sirve para leer la taxonomía de departamentos.
+LIDER_TAXONOMY_URL = f"{LIDER_BROWSE_BASE}/search?query=arroz"
+LIDER_NEXT_DATA_RE = re.compile(
+    r'<script[^>]*id=["\']?__NEXT_DATA__["\']?[^>]*>([\s\S]*?)</script>',
+    re.IGNORECASE,
+)
+# Válvula de seguridad: ningún departamento debiera superar este tope de páginas.
+LIDER_BROWSE_PAGE_CAP = 60
+# Departamentos del supermercado (el resto es marketplace: Vestuario, Tecno, etc.).
+LIDER_SUPERMARKET_DEPARTMENTS = (
+    "Bebidas y Snacks",
+    "Carnes y Pescados",
+    "Chocolates",
+    "Colaciones",
+    "Congelados",
+    "Desayunos y Dulces",
+    "Despensa",
+    "Frutas y Verduras",
+    "Hogar",
+    "La Boti",
+    "Limpieza y Aseo",
+    "Lácteos, Fiambrería y Huevos",
+    "Marcas Americanas",
+    "Marcas Propias",
+    "Mascotas",
+    "Mundo Bebé y Juguetería",
+    "Panadería y Pastelería",
+    "Perfumería y Salud",
+    "Platos Preparados",
+    "Salud y Estilos De Vida",
+)
 JUMBO_CATEGORIES = (
     "frutas-y-verduras",
     "lacteos-huevos-y-congelados",
@@ -870,6 +905,159 @@ def parse_lider_page(
     return products, total or len(products), page_count
 
 
+def lider_department_browse_urls(page_html: str) -> list[str]:
+    """URLs /browse/<slug>/<id> de los departamentos de supermercado.
+
+    Se leen del bootstrapData.header de cualquier página SSR de super.lider.cl
+    (el cta apunta a /content/<slug>/<id> y la página navegable es /browse/...).
+    """
+    match = LIDER_NEXT_DATA_RE.search(page_html)
+    if not match:
+        return []
+    try:
+        root = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+
+    urls: list[str] = []
+    seen: set[str] = set()
+
+    def visit(node: Any) -> None:
+        if isinstance(node, dict):
+            departments = node.get("departments")
+            if isinstance(departments, list):
+                for department in departments:
+                    if not isinstance(department, dict):
+                        continue
+                    if str(department.get("name") or "") not in LIDER_SUPERMARKET_DEPARTMENTS:
+                        continue
+                    cta = department.get("cta")
+                    click = cta.get("clickThrough") if isinstance(cta, dict) else None
+                    value = str(click.get("value") or "") if isinstance(click, dict) else ""
+                    slug_id = re.match(r"^/content/(.+/\d+)$", value)
+                    if slug_id:
+                        url = f"{LIDER_BROWSE_BASE}/browse/{slug_id.group(1)}"
+                        if url not in seen:
+                            seen.add(url)
+                            urls.append(url)
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+
+    visit(root)
+    return urls
+
+
+def parse_lider_browse_page(page_html: str) -> tuple[list[tuple[str, int, int]], int]:
+    """Extrae (sku, price, was_price) y maxPage de una página /browse/ de Lider.
+
+    Los items viven en props.pageProps.initialData.searchResult.itemStacks[].items[]
+    y cada uno trae usItemId (== SKU de la URL Verbolia), price y priceInfo.wasPrice.
+    """
+    match = LIDER_NEXT_DATA_RE.search(page_html)
+    if not match:
+        return [], 0
+    try:
+        root = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return [], 0
+    search_result = (
+        (root.get("props") or {})
+        .get("pageProps", {})
+        .get("initialData", {})
+        .get("searchResult")
+        or {}
+    )
+    max_page = parse_price((search_result.get("paginationV2") or {}).get("maxPage"))
+    rows: list[tuple[str, int, int]] = []
+    for stack in search_result.get("itemStacks") or []:
+        if not isinstance(stack, dict):
+            continue
+        for item in stack.get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            sku = str(item.get("usItemId") or "").strip()
+            price = parse_price(item.get("price"))
+            was_price = parse_price((item.get("priceInfo") or {}).get("wasPrice"))
+            if sku and price > 0:
+                rows.append((sku, price, was_price))
+    return rows, max_page
+
+
+def harvest_lider_offer_prices(
+    delay_seconds: float = 0.5, max_pages: int | None = None
+) -> dict[str, tuple[int, int]]:
+    """Cosecha sku -> (precio actual, precio regular) de ofertas de Lider.
+
+    Recorre los departamentos del supermercado en el app Next.js (/browse/...).
+    El app tiene anti-bot (HTTP 412): se avanza en secuencia y con pausa entre
+    páginas; si un departamento se bloquea a mitad de camino se conserva lo
+    cosechado y se sigue con el siguiente. Ante un fallo global devuelve {} —
+    el catálogo sigue sin list_price, como antes de este cambio, en vez de
+    romper el crawleo completo.
+    """
+    try:
+        roots = lider_department_browse_urls(fetch_text(LIDER_TAXONOMY_URL))
+        if not roots:
+            raise RuntimeError("la taxonomía no entregó departamentos de supermercado")
+
+        offers: dict[str, tuple[int, int]] = {}
+        total_items = 0
+        for root_url in roots:
+            try:
+                first_html = fetch_text(root_url)
+            except RuntimeError as exc:
+                print(f"[lider] cosecha: {root_url} falló ({exc})", file=sys.stderr)
+                continue
+            _, max_page = parse_lider_browse_page(first_html)
+            max_page = min(max_page, LIDER_BROWSE_PAGE_CAP, max_pages or LIDER_BROWSE_PAGE_CAP)
+            seen_signatures: set[tuple[str, ...]] = set()
+            for page_number in range(1, max_page + 1):
+                if page_number > 1:
+                    time.sleep(delay_seconds)
+                    try:
+                        page_html = fetch_text(f"{root_url}?page={page_number}")
+                    except RuntimeError as exc:
+                        print(
+                            f"[lider] cosecha: {root_url} página {page_number} falló "
+                            f"({exc}); se conserva lo cosechado del departamento",
+                            file=sys.stderr,
+                        )
+                        break
+                else:
+                    page_html = first_html
+                page_rows, _ = parse_lider_browse_page(page_html)
+                if not page_rows:
+                    break
+                signature = tuple(sku for sku, _, _ in page_rows)
+                if signature in seen_signatures:
+                    break
+                seen_signatures.add(signature)
+                total_items += len(page_rows)
+                for sku, price, was_price in page_rows:
+                    if was_price > price > 0:
+                        offers[sku] = (price, was_price)
+        if total_items < 500:
+            print(
+                f"[lider] cosecha de ofertas descartada: solo {total_items} items leídos",
+                file=sys.stderr,
+            )
+            return {}
+        print(
+            f"[lider] ofertas cosechadas: {len(offers)} SKU en oferta de {total_items} items",
+            file=sys.stderr,
+        )
+        return offers
+    except Exception as exc:  # noqa: BLE001 - degradación graceful intencional
+        print(
+            f"[lider] cosecha de ofertas falló ({exc}); el catálogo seguirá sin list_price",
+            file=sys.stderr,
+        )
+        return {}
+
+
 def santa_categories(home_data: dict[str, Any]) -> list[str]:
     items = home_data.get("menu", {}).get("acf", {}).get("items") or []
     excluded = {"marcas-exclusivas", "productos-importados", "libres-de", "mypes"}
@@ -1170,6 +1358,20 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
 
 
 def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
+    # Las páginas Verbolia no traen precio de lista: se cosecha antes el mapa
+    # sku -> wasPrice desde el app Next.js (/browse/...) y se aplica al vuelo.
+    offer_prices = harvest_lider_offer_prices(max_pages=max_pages)
+
+    def with_offer(product: Product) -> Product:
+        if not product.sku:
+            return product
+        offer = offer_prices.get(product.sku)
+        # list_price debe ser >= price (constraint del catálogo) y solo aplica
+        # si el precio regular supera al precio actual del listado Verbolia.
+        if offer and offer[0] == product.price and offer[1] > product.price:
+            return replace(product, list_price=offer[1])
+        return product
+
     def listing_url(page_number: int) -> str:
         return (
             f"{LIDER_CATALOG_URL}?sortingorder=ascending"
@@ -1180,7 +1382,7 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
     first_products, _, page_count = parse_lider_page(first_html, "catalogo")
     if not first_products or page_count <= 1:
         raise RuntimeError("Lider did not publish a paginated JSON-LD product catalog")
-    yield from first_products
+    yield from (with_offer(product) for product in first_products)
 
     final_page = min(page_count, max_pages) if max_pages is not None else page_count
     first_signature = tuple(product_key(product) for product in first_products)
@@ -1196,7 +1398,7 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
                 "Lider repeated a catalog page; refusing to report an incomplete crawl"
             )
         seen_pages.add(signature)
-        yield from products
+        yield from (with_offer(product) for product in products)
 
 
 def crawl_acuenta(max_pages: int | None = None) -> Iterator[Product]:
