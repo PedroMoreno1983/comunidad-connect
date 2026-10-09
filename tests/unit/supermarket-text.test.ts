@@ -4,6 +4,7 @@ import {
     foldAccents,
     catalogBrowseScore,
     catalogSearchScore,
+    catalogProductSearchText,
     catalogNameOrFilter,
     foldedAccentVariants,
     matchAnchor,
@@ -95,6 +96,13 @@ describe('supermarketText matchAnchor', () => {
         expect(termMatchesProductName('té', 'Té Ceylán Mildred Tea Caja 20 un.')).toBe(true);
         expect(termMatchesProductName('té', 'Aceite Vegetal 1 L')).toBe(false);
         expect(termMatchesProductName('té', 'Tomates en trocitos 380 g')).toBe(false);
+    });
+
+    it('encuentra marcas almacenadas fuera del nombre del producto', () => {
+        const name = 'Leche Entera Natural Caja 1 l, 1 L';
+        expect(catalogSearchScore('leche entera colun', name)).toBeLessThan(0);
+        expect(catalogSearchScore('leche entera colun', catalogProductSearchText(name, 'Colun'))).toBeGreaterThan(0);
+        expect(catalogNameOrFilter('colun')).toContain('brand.ilike."%colun%"');
     });
 
     it('tomate cherry también es el tomate cóctel de las otras cadenas', () => {

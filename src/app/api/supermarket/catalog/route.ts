@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from 'next/server';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { canonicalCatalogTerm, catalogNameOrFilter, catalogSearchScore, foldAccents, matchAnchors } from '@/lib/supermarketText';
+import { canonicalCatalogTerm, catalogNameOrFilter, catalogProductSearchText, catalogSearchScore, foldAccents, matchAnchors } from '@/lib/supermarketText';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { FRESH_PRICE_AGE_MS, STALE_PRICE_AGE_MS } from '@/lib/supermarketCatalogGaps';
 import { rememberLiveProducts } from '@/lib/supermarketCatalogLiveFill';
@@ -155,10 +155,11 @@ export async function GET(req: NextRequest) {
     let data = await fetchMatches(FRESH_PRICE_AGE_MS);
     if (!data.length) data = await fetchMatches(STALE_PRICE_AGE_MS);
 
-    const storedMatches = (data ?? []).filter(row => !query || catalogMatchScore(query, String(row.name)) >= 0);
+    const searchText = (row: Record<string, unknown>) => catalogProductSearchText(String(row.name), String(row.brand || ''));
+    const storedMatches = (data ?? []).filter(row => !query || catalogMatchScore(query, searchText(row)) >= 0);
     // El páprika y el sabor sandía puntúan bajo. No cuentan como catálogo
     // suficiente: si no hay una ficha firme, se lee la tienda.
-    const solidMatches = storedMatches.filter(row => !query || catalogMatchScore(query, String(row.name)) >= 70);
+    const solidMatches = storedMatches.filter(row => !query || catalogMatchScore(query, searchText(row)) >= 70);
     const catalogAlreadyChecked = solidMatches.length === 0 && queryFilledRecently(data ?? [], query);
     if (query && page === 0 && isLiveStore(store) && solidMatches.length < LIVE_FILL_BELOW && !queryFilledRecently(solidMatches, query) && !catalogAlreadyChecked) {
       try {
@@ -166,7 +167,7 @@ export async function GET(req: NextRequest) {
           .filter(item => item.store === store
             && item.price > 0
             && (store !== 'Lider' || Boolean(item.sku && item.offerId))
-            && catalogMatchScore(query, item.name) >= 0);
+            && catalogMatchScore(query, catalogProductSearchText(item.name, item.brand || '')) >= 0);
         data = mergeCatalogRows(data ?? [], live.map(liveRow));
         after(async () => {
           try { await rememberLiveProducts(store, query, live); }
@@ -179,7 +180,7 @@ export async function GET(req: NextRequest) {
 
     const scored = (data ?? []).map(row => ({
       product: productFromRow(row),
-      score: query ? catalogMatchScore(query, String(row.name)) : 0,
+      score: query ? catalogMatchScore(query, searchText(row)) : 0,
     })).filter(entry => !query || entry.score >= 0)
       .sort((left, right) => right.score - left.score
         || left.product.name.length - right.product.name.length
