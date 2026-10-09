@@ -94,6 +94,21 @@ async function main() {
     assert(handoff.items[0].sku && handoff.items[0].offerId, 'Selected Lider product lost its cart identifiers');
     assert.match(handoff.items[0].name, /pan pita/i);
     assert(await page.getByText('Irurzun').count() === 0, 'Irurzun appeared after comparison');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Lider' }).click();
+    await page.getByRole('textbox', { name: 'Lista completa de compras' }).fill('pasta larga\n4 papas');
+    await page.getByRole('button', { name: 'Cargar lista escrita' }).click();
+    await page.getByText(/Revisa 2 productos sin coincidencia segura/).waitFor({ timeout: 90_000 });
+    assert.equal(await page.getByRole('button', { name: /Quitar pasta larga de pendientes/ }).count(), 0,
+      'An unresolved product can be silently removed without editing the list');
+    await page.getByRole('button', { name: 'Buscar espagueti' }).click();
+    assert.equal(await page.getByRole('searchbox', { name: 'Buscar productos en Lider' }).inputValue(), 'espagueti');
+    const spaghetti = page.locator('article').filter({ hasText: /espagueti/i }).first();
+    await spaghetti.getByRole('button', { name: 'Agregar' }).click();
+    await page.getByText(/Revisa 1 productos sin coincidencia segura/).waitFor();
+    assert(await page.getByText(/papas · buscar en catálogo/).count() > 0,
+      'The ambiguous potato quantity was cleared without a product choice');
     await page.screenshot({ path: 'test-results/supermarket-store-first.png', fullPage: true });
     console.log('Store-first supermarket QA passed: store, photo, price, cart, selected comparison, no Irurzun.');
   } finally {

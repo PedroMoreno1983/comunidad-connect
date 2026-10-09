@@ -59,6 +59,16 @@ export function canonicalCatalogTerm(value: string): string {
     return normalized;
 }
 
+/** Browsing prompts for broad list terms; these never auto-select a product. */
+export function reviewSearchSuggestions(value: string): string[] {
+    const term = canonicalCatalogTerm(value);
+    if (term === 'pasta larga') return ['espagueti', 'tallarines'];
+    if (term === 'pasta corta') return ['espirales', 'corbatitas'];
+    if (term === 'carne para parrilla') return ['asado carnicero', 'asado de tira'];
+    if (term === 'papas') return ['papas granel', 'papas malla'];
+    return [];
+}
+
 /** Palabras significativas del término: 3+ letras, sin conectores, sin acentos. */
 export function significantWords(term: string): string[] {
     return canonicalCatalogTerm(term)
