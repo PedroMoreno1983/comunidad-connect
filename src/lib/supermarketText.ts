@@ -342,6 +342,10 @@ export function catalogSearchScore(term: string, productName: string): number {
     return fallback >= 0 ? 1 : -1;
 }
 
+export function catalogProductSearchText(name: string, brand: string): string {
+    return brand ? `${name} ${brand}` : name;
+}
+
 /**
  * Palabra ancla para el ILIKE de Postgres: primera palabra significativa con
  * stem aplicado. Sin stem, "jaleas" jamás calza con el producto "Jalea Soprole"
@@ -408,7 +412,7 @@ export function catalogNameOrFilter(anchor: string): string {
                 `name.ilike."% ${needle}"`,
                 `name.ilike."% ${needle} %"`,
             ]
-            : [`name.ilike."%${needle}%"`]
+            : [`name.ilike."%${needle}%"`, `brand.ilike."%${needle}%"`]
     ));
     return [...new Set(clauses)].join(',');
 }

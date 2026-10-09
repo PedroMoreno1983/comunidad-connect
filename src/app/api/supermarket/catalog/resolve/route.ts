@@ -3,7 +3,7 @@ import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { rememberLiveProducts } from '@/lib/supermarketCatalogLiveFill';
 import { searchAllRetailerProducts, type ScrapedItem } from '@/lib/supermarketLive';
-import { canonicalCatalogTerm, catalogNameOrFilter, catalogSearchScore, matchAnchor, matchAnchors } from '@/lib/supermarketText';
+import { canonicalCatalogTerm, catalogNameOrFilter, catalogProductSearchText, catalogSearchScore, matchAnchor, matchAnchors } from '@/lib/supermarketText';
 import { isProductSuitableForRequest, matchesRequestedPackageSize, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { parseGroupShoppingList, MAX_SHOPPING_LIST_CHARS } from '@/lib/supermarketGroupDomain';
 import { FRESH_PRICE_AGE_MS, STALE_PRICE_AGE_MS } from '@/lib/supermarketCatalogGaps';
@@ -64,14 +64,14 @@ export async function POST(req: NextRequest) {
         rows = await fetchRows(STALE_PRICE_AGE_MS);
         usedStale = true;
       }
-      const suitable = (name: string, sku?: string, offerId?: string) => (
-        catalogSearchScore(item.term, name) >= 0
+      const suitable = (name: string, brand: string, sku?: string, offerId?: string) => (
+        catalogSearchScore(item.term, catalogProductSearchText(name, brand)) >= 0
         && isProductSuitableForRequest(name, item.term, item.unit)
         && matchesRequestedPackageSize(name, item.term)
         && (store !== 'Lider' || Boolean(sku && offerId))
       );
-      const pickBest = (candidates: Record<string, unknown>[]) => candidates.map(row => ({ row, score: catalogSearchScore(item.term, String(row.name || '')) }))
-        .filter(entry => suitable(String(entry.row.name), String(entry.row.sku || ''), String(entry.row.offer_id || '')))
+      const pickBest = (candidates: Record<string, unknown>[]) => candidates.map(row => ({ row, score: catalogSearchScore(item.term, catalogProductSearchText(String(row.name || ''), String(row.brand || ''))) }))
+        .filter(entry => suitable(String(entry.row.name), String(entry.row.brand || ''), String(entry.row.sku || ''), String(entry.row.offer_id || '')))
         .sort((a, b) => b.score - a.score || Number(a.row.price) - Number(b.row.price))[0];
       let best = pickBest(rows);
       // A recent spice jar must not hide an older exact vegetable.
@@ -84,10 +84,10 @@ export async function POST(req: NextRequest) {
           console.error('[supermarket list resolution] live search failed', error);
           return [];
         }))
-          .filter(hit => hit.store === store && suitable(hit.name, hit.sku, hit.offerId))
-          .sort((a, b) => catalogSearchScore(item.term, b.name) - catalogSearchScore(item.term, a.name) || a.price - b.price);
+          .filter(hit => hit.store === store && suitable(hit.name, hit.brand || '', hit.sku, hit.offerId))
+          .sort((a, b) => catalogSearchScore(item.term, catalogProductSearchText(b.name, b.brand || '')) - catalogSearchScore(item.term, catalogProductSearchText(a.name, a.brand || '')) || a.price - b.price);
         const chosen = live[0];
-        const chosenScore = chosen ? catalogSearchScore(item.term, chosen.name) : -1;
+        const chosenScore = chosen ? catalogSearchScore(item.term, catalogProductSearchText(chosen.name, chosen.brand || '')) : -1;
         if (chosen && (!best || chosenScore > best.score)) {
           after(async () => {
             try { await rememberLiveProducts(store, item.term, live.slice(0, 8)); }
