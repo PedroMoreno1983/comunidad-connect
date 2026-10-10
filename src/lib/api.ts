@@ -1,4 +1,32 @@
 import { supabase } from './supabase';
+import type { FinanceCommitteeReview, FinanceCommitteeResidentOption } from './types';
+
+export const FinanceCommitteeService = {
+    async getAdmin(month: string): Promise<{ reviewers: FinanceCommitteeResidentOption[]; review: FinanceCommitteeReview | null }> {
+        const response = await fetch(`/api/admin/billing-review?month=${encodeURIComponent(month)}`, { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo cargar la revisión.');
+        return data;
+    },
+    async request(input: { month: string; dueDate: string; reviewerId: string; quotaAmount?: number; quotaMethod: 'share' | 'equal' }): Promise<{ review: FinanceCommitteeReview; warnings: string[] }> {
+        const response = await fetch('/api/admin/billing-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo solicitar la revisión.');
+        return data;
+    },
+    async getAssigned(): Promise<FinanceCommitteeReview[]> {
+        const response = await fetch('/api/finance/committee-review', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudieron cargar las revisiones.');
+        return data.reviews;
+    },
+    async decide(reviewId: string, decision: 'approved' | 'rejected', note: string): Promise<{ review: FinanceCommitteeReview; warnings: string[] }> {
+        const response = await fetch('/api/finance/committee-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewId, decision, note }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo guardar la decisión.');
+        return data;
+    },
+};
 import { formatWhatsAppPhone } from './whatsapp';
 import { periodCollectionStats, resolveBillingPeriod } from '@/lib/finance/periodCollection';
 import {

@@ -1,6 +1,7 @@
 "use client";
 
 import { ExpensesService, ResidentFinanceService } from "@/lib/api";
+import Link from "next/link";
 import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Loader2, Download } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
@@ -332,6 +333,7 @@ export default function ExpensesPage() {
                     </button>
                 </div>
 
+                <Link href="/expenses/committee-review" className="mb-4 block rounded-xl border p-3 text-sm font-semibold cc-text-primary" style={{ borderColor: 'var(--cc-line)' }}>Revisión del comité →</Link>
                 <PaymentAgreementCard />
 
                 {step === "review" && (

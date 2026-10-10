@@ -7,6 +7,7 @@ import {
     AlertTriangle, ArrowLeft, Calculator, CheckCircle2, Copy, Loader2, Mail, Plus, Send, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { CommitteeReviewPanel } from "@/components/finance/CommitteeReviewPanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
@@ -573,6 +574,11 @@ export default function EgresosPage() {
                         </ul>
                     )}
                 </section>
+
+                {preview && preview.units.length > 0 && preview.totalCharged > 0 && <CommitteeReviewPanel
+                    month={month} dueDate={dueDate}
+                    quotaAmount={billingMode === 'fixed' ? Number(quotaAmount.replace(/[^\d]/g, '')) || undefined : undefined}
+                    quotaMethod={quotaMethod} issued={Boolean(issuedRun)} />}
 
                 {preview && preview.units.length > 0 && preview.totalCharged > 0 && (
                     <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
