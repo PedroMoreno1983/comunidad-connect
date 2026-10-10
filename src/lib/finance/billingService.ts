@@ -102,13 +102,14 @@ export interface BillingIssueResult {
 
 /** Lanza BillingError 409 si el mes ya tiene una emisión vigente. */
 async function assertNotIssued(communityId: string, month: string): Promise<void> {
-    const { data } = await getSupabaseAdmin()
+    const { data, error } = await getSupabaseAdmin()
         .from('billing_runs')
         .select('id')
         .eq('community_id', communityId)
         .eq('month', month)
         .eq('status', 'issued')
         .maybeSingle();
+    if (error) throw error;
     if (data) {
         throw new BillingError(
             'already_issued',
@@ -390,11 +391,12 @@ export async function issueBilling(
 
     // Un cobro preexistente para esa unidad y mes (por ejemplo creado a mano
     // desde el Agent Center) se respeta: se omite y se informa, sin duplicar.
-    const { data: existing } = await admin
+    const { data: existing, error: existingError } = await admin
         .from('expenses')
         .select('unit_id')
         .eq('community_id', communityId)
         .eq('month', month);
+    if (existingError) throw existingError;
     const alreadyCharged = new Set((existing ?? []).map(row => String(row.unit_id)));
     if (alreadyCharged.size > 0) {
         throw new BillingError('existing_charges', 'Ya existen cobros para algunas unidades de este mes. Revisa y resuelve esos cobros antes de emitir el gasto común completo.', 409);
@@ -478,10 +480,14 @@ export async function issueBilling(
         }];
     });
     let notified = 0;
+    const deliveryWarnings: string[] = [];
     if (notifications.length > 0) {
         const { data: insertedNotifications, error: notificationError } = await admin
             .from('notifications').insert(notifications).select('id');
-        if (notificationError) console.warn('[billingService] notifications insert failed:', notificationError);
+        if (notificationError) {
+            console.warn('[billingService] notifications insert failed:', notificationError);
+            deliveryWarnings.push('Los cobros se emitieron, pero no se pudieron crear los avisos en la app. Revisa la notificación a residentes.');
+        }
         else notified = insertedNotifications?.length ?? 0;
     }
 
@@ -514,6 +520,7 @@ export async function issueBilling(
             if (fundError) {
                 console.warn('[billingService] reserve fund contribution failed:', fundError);
                 reserveContribution = 0;
+                deliveryWarnings.push('El aporte al fondo de reserva no quedó registrado. Revisa el fondo antes de cerrar el mes.');
             }
         }
     }
@@ -526,7 +533,7 @@ export async function issueBilling(
         totalCharged,
         notified,
         fellBackToEqualSplit: result.fellBackToEqualSplit,
-        warnings: [...waterWarnings, ...billable.warnings, ...result.warnings],
+        warnings: [...waterWarnings, ...billable.warnings, ...result.warnings, ...deliveryWarnings],
         reserveContribution,
         emailed: 0,
         emailFailed: 0,
@@ -557,8 +564,12 @@ export async function issueBilling(
             });
             issued.emailed = email.sent;
             issued.emailFailed = email.failed;
+            if (email.failed > 0) {
+                issued.warnings.push(`${email.failed} correo(s) no se pudieron enviar. Revisa los destinatarios y reintenta los avisos.`);
+            }
         } catch (emailError) {
             console.warn('[billingService] mass notice failed:', emailError);
+            issued.warnings.push('Los cobros se emitieron, pero falló el envío masivo de correos. Revisa los destinatarios antes de reintentar los avisos.');
         }
     }
 
