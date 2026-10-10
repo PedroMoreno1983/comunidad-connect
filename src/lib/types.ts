@@ -2207,6 +2207,52 @@ export interface BillingPreview {
     billingMode?: "proration" | "fixed";
 }
 
+export interface FinanceCommitteeReviewSnapshot {
+    totalExpenses: number;
+    totalCharged: number;
+    unitCount: number;
+    warnings: string[];
+    sourceExpenses: Array<{ id: string; label: string; category: string; amount: number; hasDocument: boolean; documentFingerprint: string | null }>;
+    units: Array<{
+        unitId: string;
+        label: string;
+        sharePermille: number | null;
+        total: number;
+        items: Array<{ expenseId: string; category: string; label: string; amount: number }>;
+    }>;
+}
+
+export interface FinanceCommitteeReview {
+    id: string;
+    communityId: string;
+    month: string;
+    reviewerId: string;
+    reviewerName: string;
+    requestedBy: string;
+    status: 'pending' | 'approved' | 'rejected';
+    dueDate: string;
+    quotaAmount: number | null;
+    quotaMethod: 'share' | 'equal' | null;
+    requestedAt: string;
+    reviewedAt: string | null;
+    reviewNote: string | null;
+    snapshot: FinanceCommitteeReviewSnapshot;
+}
+
+export interface FinanceCommitteeResidentOption {
+    id: string;
+    name: string;
+    email: string;
+}
+
+export interface CommitteeReviewPanelProps {
+    month: string;
+    dueDate: string;
+    quotaAmount?: number;
+    quotaMethod: 'share' | 'equal';
+    issued: boolean;
+}
+
 /** Totales del condominio que el art. 31 de la Ley 21.442 exige en el aviso de cobro. */
 export interface BillNoticeCommunitySummary {
     monthIncome: number;

@@ -23,6 +23,7 @@ import {
 import { applyWaterConsumption, waterPeriodFromBillingMonth, previousBillingMonth, type WaterReadingSnapshot } from './waterBilling';
 import { sendExpenseNotices } from './expenseNoticeEmail';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { committeeReviewDigest, sourceExpenseSnapshot } from './committeeReviewDigest';
 
 export class BillingError extends Error {
     code: string;
@@ -389,6 +390,29 @@ export async function issueBilling(
         );
     }
 
+    const { data: latestReview, error: reviewError } = await admin
+        .from('finance_committee_reviews')
+        .select('id, status, snapshot_digest')
+        .eq('community_id', communityId)
+        .eq('month', month)
+        .order('requested_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (reviewError) throw reviewError;
+    if (latestReview) {
+        if (latestReview.status !== 'approved') {
+            throw new BillingError('committee_review_pending', 'La revisión del comité está pendiente o fue rechazada. Solicita una nueva aprobación antes de emitir.', 409);
+        }
+        const { data: sourceRows, error: sourceError } = await admin.from('community_expenses')
+            .select('id, label, category, amount, document_url, document_sha256').eq('community_id', communityId).eq('month', month);
+        if (sourceError) throw sourceError;
+        const sources = sourceExpenseSnapshot(sourceRows ?? []);
+        if (latestReview.snapshot_digest !== committeeReviewDigest(month, dueDate, quota, result, sources)) {
+            throw new BillingError('committee_review_stale', 'El prorrateo, la cuota o el vencimiento cambiaron desde la aprobación. Solicita una nueva revisión.', 409);
+        }
+    }
+
     // Un cobro preexistente para esa unidad y mes (por ejemplo creado a mano
     // desde el Agent Center) se respeta: se omite y se informa, sin duplicar.
     const { data: existing, error: existingError } = await admin
@@ -420,6 +444,7 @@ export async function issueBilling(
             due_date: dueDate,
             fallback_equal_split: result.fellBackToEqualSplit,
             issued_by: issuedBy,
+            committee_review_id: latestReview?.id ?? null,
         })
         .select('id')
         .single();
@@ -581,7 +606,7 @@ export async function issueBilling(
         entityType: 'billing_run',
         entityId: run.id,
         summary: `Gasto común ${month} emitido para ${pending.length} unidades por $${totalCharged.toLocaleString('es-CL')}`,
-        metadata: { month, dueDate, totalCharged, issuedUnits: pending.length },
+        metadata: { month, dueDate, totalCharged, issuedUnits: pending.length, committeeReviewId: latestReview?.id ?? null },
     });
     if (!issueAudit.ok) {
         issued.warnings.push('La emisión se guardó, pero falló su registro en la bitácora de operaciones. Revisa la auditoría.');
