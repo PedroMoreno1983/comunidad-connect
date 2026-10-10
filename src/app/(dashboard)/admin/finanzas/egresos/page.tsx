@@ -279,8 +279,10 @@ export default function EgresosPage() {
             const response = await fetch(`/api/admin/billing?runId=${issuedRun.id}`, { method: "DELETE" });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "No se pudo anular.");
-            setIssueWarnings([]);
-            toast({ title: "Emisión anulada", description: `${month} vuelve a quedar editable.`, variant: "default" });
+            const warnings = Array.isArray(data.warnings) ? data.warnings.filter((value: unknown): value is string => typeof value === "string") : [];
+            setIssueWarnings(warnings);
+            toast({ title: warnings.length > 0 ? "Emisión anulada con avisos" : "Emisión anulada",
+                description: `${month} vuelve a quedar editable.${warnings.length > 0 ? ` ${warnings.join(' ')}` : ''}`, variant: "default" });
             await load();
         } catch (error) {
             toast({

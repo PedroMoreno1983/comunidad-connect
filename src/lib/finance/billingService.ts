@@ -573,6 +573,20 @@ export async function issueBilling(
         }
     }
 
+    const issueAudit = await recordOperationEvent({
+        communityId,
+        actorId: issuedBy,
+        actorRole: 'admin',
+        action: 'billing.issued',
+        entityType: 'billing_run',
+        entityId: run.id,
+        summary: `Gasto común ${month} emitido para ${pending.length} unidades por $${totalCharged.toLocaleString('es-CL')}`,
+        metadata: { month, dueDate, totalCharged, issuedUnits: pending.length },
+    });
+    if (!issueAudit.ok) {
+        issued.warnings.push('La emisión se guardó, pero falló su registro en la bitácora de operaciones. Revisa la auditoría.');
+    }
+
     return issued;
 }
 
@@ -734,46 +748,38 @@ export async function createUnitExpense(
     return { expense, unitNumber: String(unit.number) };
 }
 
-/** Anula una emisión, borrando los cobros generados salvo los ya pagados. */
-export async function cancelBilling(communityId: string, runId: string) {
-    const admin = getSupabaseAdmin();
-    const { data: run } = await admin
-        .from('billing_runs')
-        .select('id, month, status')
-        .eq('id', runId)
-        .eq('community_id', communityId)
-        .maybeSingle();
-    if (!run) throw new BillingError('not_found', 'Emisión no encontrada.', 404);
-    if (run.status !== 'issued') throw new BillingError('not_issued', 'Esa emisión ya estaba anulada.', 409);
-
-    // Un cobro ya pagado no se puede borrar sin descuadrar la caja.
-    const { data: paid } = await admin
-        .from('expenses')
-        .select('id')
-        .eq('billing_run_id', runId)
-        .eq('status', 'paid');
-    if ((paid?.length ?? 0) > 0) {
-        throw new BillingError(
-            'has_paid',
-            `No se puede anular: ${paid!.length} unidad(es) ya pagaron este gasto común. Corrige esos cobros individualmente.`,
-            409,
-        );
+/** Anula cobros y fondo en una transacción; un abono parcial bloquea la anulación. */
+export async function cancelBilling(communityId: string, runId: string, actorId: string | null) {
+    const { data, error } = await getSupabaseAdmin().rpc('cancel_billing_run_safe', {
+        p_community_id: communityId,
+        p_run_id: runId,
+    });
+    if (error) throw error;
+    const outcome = data as { status?: string; month?: string } | null;
+    if (outcome?.status === 'not_found') throw new BillingError('not_found', 'Emisión no encontrada.', 404);
+    if (outcome?.status === 'not_issued') throw new BillingError('not_issued', 'Esa emisión ya estaba anulada.', 409);
+    if (outcome?.status === 'has_paid' || outcome?.status === 'has_payment') {
+        throw new BillingError('has_payment', 'No se puede anular: hay cobros pagados o abonos parciales vinculados a esta emisión.', 409);
     }
-
-    const { error: deleteError } = await admin.from('expenses').delete().eq('billing_run_id', runId);
-    if (deleteError) throw deleteError;
-
-    const { error: updateError } = await admin.from('billing_runs').update({ status: 'cancelled' }).eq('id', runId);
-    if (updateError) throw updateError;
-
-    // El aporte al fondo de reserva de esta emisión también se revierte: si no,
-    // el fondo quedaría inflado por plata que nunca se cobró.
-    const { error: fundError } = await admin
-        .from('reserve_fund_movements')
-        .delete()
-        .eq('billing_run_id', runId)
-        .eq('kind', 'contribution');
-    if (fundError) console.warn('[billingService] reserve fund reversal failed:', fundError);
-
-    return { ok: true, month: run.month };
+    if (outcome?.status === 'has_related_records') {
+        throw new BillingError('has_related_records', 'No se puede anular: esta emisión tiene cargos o aportes asociados. Revisa esos movimientos primero.', 409);
+    }
+    if (outcome?.status !== 'cancelled' || !outcome.month) {
+        throw new BillingError('cancel_failed', 'No se pudo confirmar la anulación. Revisa el estado de la emisión.', 500);
+    }
+    const audit = await recordOperationEvent({
+        communityId,
+        actorId,
+        actorRole: 'admin',
+        action: 'billing.cancelled',
+        entityType: 'billing_run',
+        entityId: runId,
+        summary: `Emisión de gasto común ${outcome.month} anulada`,
+        metadata: { month: outcome.month },
+    });
+    return {
+        ok: true,
+        month: outcome.month,
+        warnings: audit.ok ? [] : ['La anulación se completó, pero falló su registro en la bitácora de operaciones. Revisa la auditoría.'],
+    };
 }

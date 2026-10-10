@@ -94,7 +94,7 @@ export async function DELETE(req: NextRequest) {
         const runId = cleanText(req.nextUrl.searchParams.get('runId'), 60);
         if (!runId) return NextResponse.json({ error: 'Falta la emisión a anular.' }, { status: 400 });
 
-        const result = await cancelBilling(auth.communityId, runId);
+        const result = await cancelBilling(auth.communityId, runId, auth.profile.id);
         return NextResponse.json(result);
     } catch (error) {
         if (error instanceof BillingError) {
