@@ -40,6 +40,7 @@ export default function EgresosPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [issuing, setIssuing] = useState(false);
+    const [issueWarnings, setIssueWarnings] = useState<string[]>([]);
 
     const [label, setLabel] = useState("");
     const [amount, setAmount] = useState("");
@@ -250,13 +251,15 @@ export default function EgresosPage() {
             const skipped = (data.skippedUnits || []).length;
             const emailed = Number(data.emailed || 0);
             const emailFailed = Number(data.emailFailed || 0);
+            const warnings = Array.isArray(data.warnings) ? data.warnings.filter((value: unknown): value is string => typeof value === "string") : [];
+            setIssueWarnings(warnings);
             toast({
-                title: "Gasto común emitido",
+                title: warnings.length > 0 ? "Gasto común emitido con avisos" : "Gasto común emitido",
                 description: `${data.issuedUnits} unidades por ${money(data.totalCharged)}. `
                     + `${data.notified} residentes notificados en la app.`
                     + (notifyByEmail ? ` Correos: ${emailed} aceptados, ${emailFailed} fallidos.` : "")
                     + (skipped > 0 ? ` ${skipped} unidad(es) se omitieron por tener un cobro previo.` : ""),
-                variant: "success",
+                variant: warnings.length > 0 ? "default" : "success",
             });
             await load();
         } catch (error) {
@@ -276,6 +279,7 @@ export default function EgresosPage() {
             const response = await fetch(`/api/admin/billing?runId=${issuedRun.id}`, { method: "DELETE" });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "No se pudo anular.");
+            setIssueWarnings([]);
             toast({ title: "Emisión anulada", description: `${month} vuelve a quedar editable.`, variant: "default" });
             await load();
         } catch (error) {
@@ -348,7 +352,7 @@ export default function EgresosPage() {
                         <input
                             type="month"
                             value={month}
-                            onChange={event => setMonth(event.target.value)}
+                            onChange={event => { setMonth(event.target.value); setIssueWarnings([]); }}
                             className="rounded-lg border px-3 py-2 text-sm"
                             style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                         />
@@ -400,6 +404,15 @@ export default function EgresosPage() {
                             </Button>
                         </div>
                     </div>
+                )}
+
+                {issuedRun && issueWarnings.length > 0 && (
+                    <section role="alert" className="rounded-2xl border border-warning-border bg-warning-bg p-4">
+                        <p className="font-semibold text-warning-fg">La emisión requiere revisión</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm cc-text-secondary">
+                            {issueWarnings.map(warning => <li key={warning}>{warning}</li>)}
+                        </ul>
+                    </section>
                 )}
 
                 {!issuedRun && (
