@@ -43,6 +43,15 @@ Usar una comunidad de prueba confirmada por su administrador. No publicar cobros
 
 La comparación comercial con otras plataformas debe basarse en estos resultados y en el uso real, sin declarar paridad a partir del listado de funciones.
 
+## Protección de anulación de emisiones (10 de octubre de 2026)
+
+- La anulación usa `cancel_billing_run_safe`: bloquea los cobros y elimina cobros, aporte derivado al fondo y estado de la emisión en una sola transacción.
+- Rechaza cualquier cobro pagado, abono parcial asignado, cargo derivado o aporte solidario asociado. Los pagos sin destino explícito permanecen como crédito de la unidad; no se borran.
+- La función solo concede ejecución a `service_role`; la ruta exige administrador de la comunidad.
+- Emisión y anulación registran eventos operativos. Si la bitácora falla después de la escritura, la respuesta lo advierte sin fingir que se revirtió dinero.
+- Prueba en producción: una emisión sintética con abono parcial rechazó la anulación; al eliminar ese abono dentro de la misma transacción, la anulación se completó. Se revirtió toda la transacción y se confirmó cero registros de prueba.
+- Sigue pendiente un flujo separado de aprobación del comité: la plataforma todavía no tiene identidad ni permisos propios para sus integrantes. No se presenta el cierre administrativo como aprobación del comité.
+
 ## Segunda revisión: imputación de pagos
 
 La revisión encontró que el estado de cuenta y la actualización de cobros ignoraban `expense_id` y sumaban todos los pagos para cubrir la deuda más antigua. Se corrigió con una asignación compartida:
