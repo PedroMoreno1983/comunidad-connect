@@ -1,6 +1,10 @@
 import type { ServiceProvider } from "@/lib/types";
 import { getCategoryVisual } from "@/components/services/categoryVisuals";
 
+/** 1 columna en móvil estrecho, 2 en móvil ancho y tablet, 3 con sidebar, 4 en pantallas anchas. */
+export const providerListingGridClass =
+    "grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
 export function providerProfileHref(id: string, contact = false) {
     return contact ? `/services/provider/${id}?contact=1` : `/services/provider/${id}`;
 }
