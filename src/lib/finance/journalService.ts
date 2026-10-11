@@ -4,6 +4,7 @@ import { assertBalancedJournal } from './operationalFlows';
 
 export const LEDGER_ACCOUNTS = [
   { code: '1100', name: 'Banco', kind: 'asset' },
+  { code: '1200', name: 'Cuentas por cobrar a unidades', kind: 'asset' },
   { code: '4100', name: 'Ingresos por gastos comunes', kind: 'income' },
   { code: '5100', name: 'Remuneraciones', kind: 'expense' },
   { code: '5200', name: 'Gastos de operación', kind: 'expense' },

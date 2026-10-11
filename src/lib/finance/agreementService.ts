@@ -1,7 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, DATE_PATTERN } from './billingService';
-import { recordPayment } from './collectionService';
-import { postJournalEntry } from './journalService';
+import { PAYMENT_METHODS, reconcileUnitStatuses } from './collectionService';
 import { splitInstallments } from './operationalFlows';
 import { activeCommitteeMembers, requireActiveCommitteeMember } from './committeeMembers';
 import { recordOperationEvent } from '@/lib/operations/audit';
@@ -195,6 +194,9 @@ export async function payInstallment(
   if (!DATE_PATTERN.test(input.paidAt)) {
     throw new BillingError('bad_date', 'Indica la fecha de pago en formato AAAA-MM-DD.');
   }
+  if (!PAYMENT_METHODS.has(input.method || 'transfer')) {
+    throw new BillingError('bad_method', 'Medio de pago no válido.');
+  }
   const admin = getSupabaseAdmin();
   const { data: installment } = await admin
     .from('payment_agreement_installments')
@@ -209,64 +211,40 @@ export async function payInstallment(
   if (agreement.status !== 'active') throw new BillingError('closed', 'Ese convenio ya no está activo.');
   if (installment.status === 'paid') throw new BillingError('already_paid', 'Esa cuota ya está pagada.');
 
-  const reference = input.reference?.trim() || `convenio-${installment.id.slice(0, 8)}-${installment.sequence_number}`;
-  let paymentId: string;
+  await reconcileUnitStatuses(communityId, agreement.unit_id);
+  const { data, error } = await admin.rpc('pay_agreement_installment_atomic', {
+    p_community_id: communityId,
+    p_installment_id: input.installmentId,
+    p_paid_at: input.paidAt,
+    p_method: input.method || 'transfer',
+    p_reference: input.reference?.trim() || '',
+    p_recorded_by: recordedBy,
+  });
+  if (error?.code === '23505') throw new BillingError('duplicate_reference', 'Ya existe un pago con esa referencia para la unidad.', 409);
+  if (error) throw error;
+  const outcome = data as { status?: string; paymentId?: string } | null;
+  if (outcome?.status === 'not_found') throw new BillingError('not_found', 'Esa cuota no existe.', 404);
+  if (outcome?.status === 'closed') throw new BillingError('closed', 'Ese convenio ya no está activo.', 409);
+  if (outcome?.status === 'already_paid') throw new BillingError('already_paid', 'Esa cuota ya está pagada.', 409);
+  if (outcome?.status !== 'paid' || !outcome.paymentId) throw new BillingError('payment_failed', 'No se pudo confirmar el pago de la cuota.', 500);
+
+  const warnings: string[] = [];
   try {
-    const payment = await recordPayment(communityId, recordedBy, {
-      unitId: agreement.unit_id,
-      amount: installment.amount,
-      paidAt: input.paidAt,
-      method: input.method || 'transfer',
-      reference,
-      notes: `Cuota ${installment.sequence_number} del convenio «${agreement.title}».`,
-    });
-    paymentId = payment.id;
-  } catch (error) {
-    if (!(error instanceof BillingError) || error.code !== 'duplicate_reference') throw error;
-    const { data: existing } = await admin
-      .from('unit_payments')
-      .select('id')
-      .eq('community_id', communityId)
-      .eq('unit_id', agreement.unit_id)
-      .eq('reference', reference)
-      .maybeSingle();
-    if (!existing?.id) throw error;
-    paymentId = String(existing.id);
+    await reconcileUnitStatuses(communityId, agreement.unit_id);
+  } catch {
+    warnings.push('El pago y su asiento se guardaron, pero la actualización de saldos quedó pendiente. Revisa la cartola de la unidad.');
   }
-
-  await admin
-    .from('payment_agreement_installments')
-    .update({ status: 'paid', paid_at: input.paidAt, payment_id: paymentId })
-    .eq('id', installment.id);
-
-  const { data: pending } = await admin
-    .from('payment_agreement_installments')
-    .select('id')
-    .eq('agreement_id', agreement.id)
-    .eq('status', 'pending');
-  if (!pending?.length) {
-    await admin
-      .from('payment_agreements')
-      .update({ status: 'completed', updated_at: new Date().toISOString() })
-      .eq('id', agreement.id);
-  } else {
-    await admin
-      .from('payment_agreements')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', agreement.id);
+  const { data: unit } = await admin.from('units').select('owner_id')
+    .eq('id', agreement.unit_id).eq('community_id', communityId).maybeSingle();
+  if (unit?.owner_id) {
+    await admin.from('notifications').insert({
+      user_id: String(unit.owner_id), type: 'success', category: 'finance_payment',
+      title: 'Pago registrado',
+      body: `La administración registró tu pago de $${Number(installment.amount).toLocaleString('es-CL')} con fecha ${input.paidAt}.`,
+      link: '/resident/finances', community_id: communityId,
+    }).then(() => undefined, () => undefined);
   }
-
-  await postJournalEntry(communityId, recordedBy, {
-    entryDate: input.paidAt,
-    memo: `Cuota ${installment.sequence_number} · ${agreement.title}`,
-    source: 'agreement',
-    lines: [
-      { code: '1100', debit: installment.amount, credit: 0 },
-      { code: '4100', debit: 0, credit: installment.amount },
-    ],
-  }).catch(() => undefined);
-
-  return { paymentId };
+  return { paymentId: outcome.paymentId, warnings };
 }
 
 export async function cancelAgreement(communityId: string, agreementId: string) {
