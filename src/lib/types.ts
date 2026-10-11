@@ -2237,6 +2237,7 @@ export interface FinanceCommitteeReview {
     reviewedAt: string | null;
     reviewNote: string | null;
     snapshot: FinanceCommitteeReviewSnapshot;
+    isCurrent?: boolean;
 }
 
 export interface FinanceCommitteeResidentOption {
@@ -2251,6 +2252,7 @@ export interface CommitteeReviewPanelProps {
     quotaAmount?: number;
     quotaMethod: 'share' | 'equal';
     issued: boolean;
+    refreshKey: number;
 }
 
 /** Totales del condominio que el art. 31 de la Ley 21.442 exige en el aviso de cobro. */

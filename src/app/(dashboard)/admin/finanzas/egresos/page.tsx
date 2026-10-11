@@ -38,6 +38,7 @@ export default function EgresosPage() {
     const [expenses, setExpenses] = useState<CommunityExpense[]>([]);
     const [issuedRun, setIssuedRun] = useState<IssuedBillingRun | null>(null);
     const [preview, setPreview] = useState<BillingPreview | null>(null);
+    const [previewRevision, setPreviewRevision] = useState(0);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [issuing, setIssuing] = useState(false);
@@ -134,6 +135,7 @@ export default function EgresosPage() {
             setExpenses(expensesData.expenses || []);
             setIssuedRun(expensesData.issuedRun || null);
             setPreview(previewRes.ok ? previewData : null);
+            setPreviewRevision(current => current + 1);
         } catch (error) {
             toast({
                 title: "Error",
@@ -575,12 +577,12 @@ export default function EgresosPage() {
                     )}
                 </section>
 
-                {preview && preview.units.length > 0 && preview.totalCharged > 0 && <CommitteeReviewPanel
+                {!issuedRun && preview && preview.units.length > 0 && preview.totalCharged > 0 && <CommitteeReviewPanel
                     month={month} dueDate={dueDate}
                     quotaAmount={billingMode === 'fixed' ? Number(quotaAmount.replace(/[^\d]/g, '')) || undefined : undefined}
-                    quotaMethod={quotaMethod} issued={Boolean(issuedRun)} />}
+                    quotaMethod={quotaMethod} issued={Boolean(issuedRun)} refreshKey={previewRevision} />}
 
-                {preview && preview.units.length > 0 && preview.totalCharged > 0 && (
+                {!issuedRun && preview && preview.units.length > 0 && preview.totalCharged > 0 && (
                     <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-center gap-2 border-b px-5 py-4" style={{ borderColor: "var(--cc-line)" }}>
                             <Calculator className="h-4 w-4 cc-text-tertiary" />

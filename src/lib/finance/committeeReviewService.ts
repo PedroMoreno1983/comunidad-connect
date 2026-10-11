@@ -64,7 +64,15 @@ export async function adminCommitteeReview(communityId: string, month: string, a
     const options: FinanceCommitteeResidentOption[] = (residents ?? []).map(row => ({
         id: String(row.id), name: String(row.name || row.email || 'Residente'), email: String(row.email || ''),
     }));
-    return { reviewers: options, review: review ? mapReview(review, options.find(option => option.id === review.reviewer_id)?.name || await reviewerName(review.reviewer_id)) : null };
+    if (!review) return { reviewers: options, review: null };
+    const mapped = mapReview(review, options.find(option => option.id === review.reviewer_id)?.name || await reviewerName(review.reviewer_id));
+    const quota = normalizeQuota(review.quota_amount, review.quota_method);
+    const [preview, sources] = await Promise.all([
+        previewBilling(communityId, month, { quota }),
+        sourceExpenses(communityId, month),
+    ]);
+    mapped.isCurrent = committeeReviewDigest(month, review.due_date, quota, preview, sources) === review.snapshot_digest;
+    return { reviewers: options, review: mapped };
 }
 
 export async function requestCommitteeReview(
