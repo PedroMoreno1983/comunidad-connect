@@ -97,7 +97,7 @@ export default function CommitteeReviewPage() {
                 </label>
                 <div className="flex gap-2"><button type="button" disabled={working !== null} onClick={() => void decideAgreement(agreement, 'approved')} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-white disabled:opacity-50">Aprobar convenio</button>
                     <button type="button" disabled={working !== null || !(note[agreement.id] || '').trim()} onClick={() => void decideAgreement(agreement, 'rejected')} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Rechazar convenio</button></div>
-            </div> : <p className="mt-3 text-sm font-semibold">{agreement.status === 'active' ? 'Aprobado' : agreement.status === 'rejected' ? 'Rechazado' : 'Resuelto'}{agreement.committeeReviewNote ? ` · ${agreement.committeeReviewNote}` : ''}</p>}
+            </div> : <p className="mt-3 text-sm font-semibold">{agreement.status === 'active' ? 'Aprobado' : agreement.status === 'rejected' ? 'Rechazado' : agreement.status === 'cancelled' ? 'Anulado' : 'Completado'}{agreement.committeeReviewNote ? ` · ${agreement.committeeReviewNote}` : ''}</p>}
         </section>)}
     </main>;
 }
