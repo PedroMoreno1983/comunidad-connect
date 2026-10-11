@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FinanceCommitteeService } from '@/lib/api';
+import Link from 'next/link';
 import type { CommitteeReviewPanelProps, FinanceCommitteeReview, FinanceCommitteeResidentOption } from '@/lib/types';
 
 export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod, issued, refreshKey }: CommitteeReviewPanelProps) {
@@ -41,7 +42,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
     const changed = review && (review.isCurrent === false || review.dueDate !== dueDate || review.quotaAmount !== (quotaAmount ?? null) || review.quotaMethod !== (quotaAmount ? quotaMethod : null));
     return <section className="rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
         <h2 className="font-semibold cc-text-primary">Revisión del comité</h2>
-        <p className="mt-1 text-sm cc-text-secondary">Designa a un residente revisor para este mes. Una vez solicitada, la emisión espera su aprobación del cálculo vigente.</p>
+        <p className="mt-1 text-sm cc-text-secondary">Elige un integrante vigente del comité. Una vez solicitada, la emisión espera su aprobación del cálculo vigente.</p>
         {loading ? <p className="mt-3 text-sm">Cargando…</p> : <>
             {review && <div className="mt-3 rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--cc-line)' }}>
                 <strong>{review.status === 'approved' ? 'Aprobada' : review.status === 'rejected' ? 'Rechazada' : 'Pendiente'}</strong>
@@ -59,7 +60,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
                     {saving ? 'Enviando…' : review ? 'Solicitar nueva revisión' : 'Enviar a revisión'}
                 </button>
             </div>}
-            {!issued && reviewers.length === 0 && <p className="mt-2 text-sm cc-text-tertiary">No hay residentes de la comunidad disponibles como revisores.</p>}
+            {!issued && reviewers.length === 0 && <p className="mt-2 text-sm cc-text-tertiary">No hay integrantes del comité vigentes. <Link href="/admin/finanzas/comite" className="underline">Configura el comité</Link> antes de pedir revisión.</p>}
         </>}
         {message && <p role="status" className="mt-3 text-sm cc-text-secondary">{message}</p>}
     </section>;

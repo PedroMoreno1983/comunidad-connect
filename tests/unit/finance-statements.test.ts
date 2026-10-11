@@ -57,4 +57,32 @@ describe('estados financieros', () => {
         expect(statements.income.totalIncome).toBe(110_000);
         expect(statements.position.reserveFund).toBe(5_000);
     });
+
+    it('arrastra caja y deuda por tres períodos sin adelantar un pago posterior al corte', () => {
+        const january = buildFinancialStatements({ ...base, cutoffMonth: '2026-01' });
+        const february = buildFinancialStatements({ ...base, cutoffMonth: '2026-02' });
+        const march = buildFinancialStatements(base);
+
+        expect(january.position.cash).toBe(120_000);
+        expect(january.position.receivables).toBe(0);
+        expect(february.cashFlow.months[0].closing).toBe(january.position.cash);
+        expect(february.position.cash).toBe(110_000);
+        expect(february.position.receivables).toBe(60_000);
+        expect(march.cashFlow.months[1].closing).toBe(february.position.cash);
+        expect(march.position.cash).toBe(130_000);
+        expect(march.position.receivables).toBe(40_000);
+        expect(march.cashFlow.months.map(row => row.closing)).toEqual([120_000, 110_000, 130_000]);
+    });
+
+    it('inicia un nuevo año desde el cierre anterior sin volver a sumar cobros del año pasado', () => {
+        const prior = buildFinancialStatements({ ...base, cutoffMonth: '2026-12' });
+        const following = buildFinancialStatements({
+            ...base, year: 2027, cutoffMonth: '2027-01', openingCash: prior.position.cash,
+            payments: [...base.payments, { unitId: 'b', paidAt: '2027-01-15', amount: 15_000 }],
+            communityExpenses: [...base.communityExpenses, { month: '2027-01', category: 'maintenance', amount: 5_000 }],
+        });
+        expect(prior.position.cash).toBe(130_000);
+        expect(following.cashFlow.startingCash).toBe(130_000);
+        expect(following.position.cash).toBe(140_000);
+    });
 });

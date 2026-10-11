@@ -51,6 +51,7 @@ export default function ContabilidadPage() {
     const [appliedOpeningCash, setAppliedOpeningCash] = useState(0);
     const [statements, setStatements] = useState<FinancialStatements | null>(null);
     const [statementsLoading, setStatementsLoading] = useState(false);
+    const [closing, setClosing] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -73,11 +74,16 @@ export default function ContabilidadPage() {
         setStatementsLoading(true);
         try {
             const year = Number(cutoffMonth.slice(0, 4));
-            setStatements(await AdminFinanceService.getFinancialStatements({
+            const result = await AdminFinanceService.getFinancialStatements({
                 year,
                 cutoffMonth,
                 openingCash: appliedOpeningCash,
-            }));
+            });
+            setStatements(result);
+            if (result.closure) {
+                setOpeningCash(String(result.openingCash));
+                setAppliedOpeningCash(result.openingCash);
+            }
         } catch (error) {
             toast({
                 title: "No se armaron los estados",
@@ -90,6 +96,17 @@ export default function ContabilidadPage() {
     }, [appliedOpeningCash, cutoffMonth, toast]);
 
     useEffect(() => { void loadStatements(); }, [loadStatements]);
+
+    async function closePeriod() {
+        setClosing(true);
+        try {
+            const closed = await AdminFinanceService.closeFinancialPeriod({ month: cutoffMonth, openingCash: appliedOpeningCash });
+            setStatements(closed);
+            toast({ title: "Corte guardado", description: `El estado de ${cutoffMonth} quedó conservado. Los movimientos de ese mes y los anteriores ya no se pueden modificar.`, variant: "success" });
+        } catch (error) {
+            toast({ title: "No se guardó el corte", description: error instanceof Error ? error.message : "Error inesperado.", variant: "destructive" });
+        } finally { setClosing(false); }
+    }
 
     const accounts = journal?.accounts.length
         ? journal.accounts.map(account => ({ code: account.code, name: account.name }))
@@ -232,9 +249,10 @@ export default function ContabilidadPage() {
                                     className="mt-1 block rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                             </label>
                             <label className="text-xs cc-text-secondary">
-                                Caja inicial
+                                Caja inicial del año
                                 <input
                                     value={openingCash}
+                                    disabled={Boolean(statements?.closure)}
                                     onChange={event => setOpeningCash(event.target.value)}
                                     onBlur={() => setAppliedOpeningCash(Number(openingCash.replace(/[^\d]/g, "")) || 0)}
                                     inputMode="numeric"
@@ -248,6 +266,14 @@ export default function ContabilidadPage() {
                         <p className="flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Armando estados…</p>
                     ) : (
                         <>
+                            {statements.closure ? <div className="rounded-xl border border-success-border bg-success-bg p-3 text-sm">
+                                Corte de {cutoffMonth} guardado el {new Date(statements.closure.closedAt).toLocaleDateString('es-CL')}.
+                                {statements.closure.hasLaterChanges && <p className="mt-1 font-semibold text-warning-fg">Los registros difieren del corte guardado. Revisa movimientos externos o permisos de la base.</p>}
+                            </div> : <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--cc-line)" }}>
+                                <span>{cutoffMonth >= currentMonthInChile() ? 'Vista previa: el mes debe terminar antes de guardar su corte.' : 'Vista previa: revisa caja inicial, saldos y respaldos antes de guardar el corte.'}</span>
+                                <button type="button" disabled={closing || statementsLoading || cutoffMonth >= currentMonthInChile()} onClick={() => void closePeriod()}
+                                    className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-white disabled:opacity-50">{closing ? 'Guardando…' : 'Guardar corte del período'}</button>
+                            </div>}
                             <div className="grid gap-3 sm:grid-cols-3">
                                 <article className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>
                                     <p className="text-xs font-semibold uppercase tracking-wider cc-text-tertiary">Resultado del año</p>

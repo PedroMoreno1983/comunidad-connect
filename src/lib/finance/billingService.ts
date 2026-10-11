@@ -24,6 +24,7 @@ import { applyWaterConsumption, waterPeriodFromBillingMonth, previousBillingMont
 import { sendExpenseNotices } from './expenseNoticeEmail';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { committeeReviewDigest, sourceExpenseSnapshot } from './committeeReviewDigest';
+import { todayInChile } from './chileDates';
 
 export class BillingError extends Error {
     code: string;
@@ -400,6 +401,16 @@ export async function issueBilling(
         .limit(1)
         .maybeSingle();
     if (reviewError) throw reviewError;
+    const { data: committeeMembers, error: membersError } = await admin.from('finance_committee_members')
+        .select('id, profiles!finance_committee_members_resident_id_fkey!inner(role, community_id)')
+        .eq('community_id', communityId).eq('profiles.role', 'resident').eq('profiles.community_id', communityId)
+        .is('ended_at', null)
+        .lte('starts_on', todayInChile())
+        .limit(1);
+    if (membersError) throw membersError;
+    if ((committeeMembers?.length ?? 0) > 0 && !latestReview) {
+        throw new BillingError('committee_review_required', 'Antes de emitir, solicita aprobación a un integrante vigente del comité.', 409);
+    }
     if (latestReview) {
         if (latestReview.status !== 'approved') {
             throw new BillingError('committee_review_pending', 'La revisión del comité está pendiente o fue rechazada. Solicita una nueva aprobación antes de emitir.', 409);

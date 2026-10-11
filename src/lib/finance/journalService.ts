@@ -80,16 +80,18 @@ export async function postJournalEntry(
   return { ...entry, total: totals.debit };
 }
 
-async function sumAllJournalLines(communityId: string) {
+async function sumAllJournalLines(communityId: string, cutoffDate?: string) {
   const admin = getSupabaseAdmin();
   const totals = new Map<string, { debit: number; credit: number }>();
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await admin
+    let query = admin
       .from('journal_lines')
-      .select('account_id, debit, credit, journal_entries!inner(community_id)')
+      .select('account_id, debit, credit, journal_entries!inner(community_id, entry_date)')
       .eq('journal_entries.community_id', communityId)
       .range(from, from + pageSize - 1);
+    if (cutoffDate) query = query.lte('journal_entries.entry_date', cutoffDate);
+    const { data, error } = await query;
     if (error) throw error;
     for (const line of data || []) {
       const current = totals.get(line.account_id) || { debit: 0, credit: 0 };
@@ -102,17 +104,19 @@ async function sumAllJournalLines(communityId: string) {
   return totals;
 }
 
-export async function getJournal(communityId: string) {
+export async function getJournal(communityId: string, cutoffDate?: string) {
   const accounts = await ensureLedgerAccounts(communityId);
   const admin = getSupabaseAdmin();
+  let entriesQuery = admin
+    .from('journal_entries')
+    .select('id, entry_date, memo, source, created_at, journal_lines(id, account_id, debit, credit)')
+    .eq('community_id', communityId)
+    .order('entry_date', { ascending: false })
+    .limit(40);
+  if (cutoffDate) entriesQuery = entriesQuery.lte('entry_date', cutoffDate);
   const [{ data: entries, error }, totals] = await Promise.all([
-    admin
-      .from('journal_entries')
-      .select('id, entry_date, memo, source, created_at, journal_lines(id, account_id, debit, credit)')
-      .eq('community_id', communityId)
-      .order('entry_date', { ascending: false })
-      .limit(40),
-    sumAllJournalLines(communityId),
+    entriesQuery,
+    sumAllJournalLines(communityId, cutoffDate),
   ]);
   if (error) throw error;
 

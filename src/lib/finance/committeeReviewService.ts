@@ -3,6 +3,7 @@ import { recordOperationEvent } from '@/lib/operations/audit';
 import type { FinanceCommitteeReview, FinanceCommitteeResidentOption, FinanceCommitteeReviewSnapshot } from '@/lib/types';
 import { BillingError, DATE_PATTERN, MONTH_PATTERN, previewBilling, type BillingQuota } from './billingService';
 import { committeeReviewDigest, committeeReviewSnapshot, sourceExpenseSnapshot } from './committeeReviewDigest';
+import { activeCommitteeMembers, requireActiveCommitteeMember } from './committeeMembers';
 
 type ReviewRow = {
     id: string; community_id: string; month: string; reviewer_id: string; requested_by: string;
@@ -55,15 +56,11 @@ async function reviewerName(id: string): Promise<string> {
 
 export async function adminCommitteeReview(communityId: string, month: string, adminId: string) {
     if (!MONTH_PATTERN.test(month)) throw new BillingError('bad_month', 'Indica un mes válido.');
-    const admin = getSupabaseAdmin();
-    const [{ data: residents, error }, review] = await Promise.all([
-        admin.from('profiles').select('id, name, email').eq('community_id', communityId).eq('role', 'resident').neq('id', adminId).order('name'),
+    const [members, review] = await Promise.all([
+        activeCommitteeMembers(communityId),
         latestReview(communityId, month),
     ]);
-    if (error) throw error;
-    const options: FinanceCommitteeResidentOption[] = (residents ?? []).map(row => ({
-        id: String(row.id), name: String(row.name || row.email || 'Residente'), email: String(row.email || ''),
-    }));
+    const options: FinanceCommitteeResidentOption[] = members.filter(row => row.id !== adminId);
     if (!review) return { reviewers: options, review: null };
     const mapped = mapReview(review, options.find(option => option.id === review.reviewer_id)?.name || await reviewerName(review.reviewer_id));
     const quota = normalizeQuota(review.quota_amount, review.quota_method);
@@ -89,6 +86,7 @@ export async function requestCommitteeReview(
         .eq('community_id', communityId).eq('id', input.reviewerId).maybeSingle();
     if (reviewerError) throw reviewerError;
     if (!reviewer || reviewer.role !== 'resident') throw new BillingError('bad_reviewer', 'Selecciona un residente de esta comunidad.', 403);
+    await requireActiveCommitteeMember(communityId, input.reviewerId);
     const quota = normalizeQuota(input.quotaAmount, input.quotaMethod);
     const preview = await previewBilling(communityId, input.month, { quota });
     const sources = await sourceExpenses(communityId, input.month);
@@ -149,6 +147,7 @@ export async function decideCommitteeReview(
     }
     if (decision === 'rejected' && !note.trim()) throw new BillingError('missing_reason', 'Indica qué debe corregir la administración.');
     if (decision === 'approved') {
+        await requireActiveCommitteeMember(communityId, reviewerId);
         const quota = normalizeQuota(row.quota_amount, row.quota_method);
         const current = await previewBilling(communityId, row.month, { quota });
         const sources = await sourceExpenses(communityId, row.month);

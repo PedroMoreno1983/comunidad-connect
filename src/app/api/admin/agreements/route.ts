@@ -5,6 +5,7 @@ import { BillingError } from '@/lib/finance/billingService';
 import { requireCommunityAdmin } from '@/lib/finance/httpAuth';
 import { cancelAgreement, createAgreement, listAgreements, payInstallment } from '@/lib/finance/agreementService';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { activeCommitteeMembers } from '@/lib/finance/committeeMembers';
 
 export const runtime = 'nodejs';
 
@@ -30,11 +31,12 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await requireCommunityAdmin();
     if (auth.error) return auth.error;
-    const [agreements, units] = await Promise.all([
+    const [agreements, units, reviewers] = await Promise.all([
       listAgreements(auth.communityId),
       listUnits(auth.communityId),
+      activeCommitteeMembers(auth.communityId),
     ]);
-    return NextResponse.json({ agreements, units });
+    return NextResponse.json({ agreements, units, reviewers });
   } catch (error) {
     return apiErrorResponse(req, '/api/admin/agreements', error, {
       publicMessage: 'No se pudieron cargar los convenios.',
@@ -74,6 +76,7 @@ export async function POST(req: NextRequest) {
       installmentCount: Number(body.installmentCount),
       startDate: cleanText(body.startDate, 10),
       notes: cleanText(body.notes, 500),
+      reviewerId: cleanText(body.reviewerId, 60),
     });
     return NextResponse.json({ agreement }, { status: 201 });
   } catch (error) {

@@ -3,18 +3,24 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FinanceCommitteeService } from '@/lib/api';
-import type { FinanceCommitteeReview } from '@/lib/types';
+import type { FinanceCommitteeReview, PaymentAgreement } from '@/lib/types';
 
 const money = (amount: number) => `$${Math.round(amount).toLocaleString('es-CL')}`;
 
 export default function CommitteeReviewPage() {
     const [reviews, setReviews] = useState<FinanceCommitteeReview[]>([]);
+    const [agreements, setAgreements] = useState<PaymentAgreement[]>([]);
     const [loading, setLoading] = useState(true);
     const [working, setWorking] = useState<string | null>(null);
     const [note, setNote] = useState<Record<string, string>>({});
     const [message, setMessage] = useState('');
     const load = useCallback(async () => {
-        try { setReviews(await FinanceCommitteeService.getAssigned()); }
+        try {
+            const [billingReviews, agreementReviews] = await Promise.all([
+                FinanceCommitteeService.getAssigned(), FinanceCommitteeService.getAssignedAgreements(),
+            ]);
+            setReviews(billingReviews); setAgreements(agreementReviews);
+        }
         catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudieron cargar las revisiones.'); }
         finally { setLoading(false); }
     }, []);
@@ -30,13 +36,23 @@ export default function CommitteeReviewPage() {
         finally { setWorking(null); }
     }
 
+    async function decideAgreement(agreement: PaymentAgreement, decision: 'approved' | 'rejected') {
+        setWorking(agreement.id); setMessage('');
+        try {
+            await FinanceCommitteeService.decideAgreement(agreement.id, decision, note[agreement.id] || '');
+            setMessage(`Convenio ${decision === 'approved' ? 'aprobado' : 'rechazado'}.`);
+            await load();
+        } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo guardar la decisión.'); }
+        finally { setWorking(null); }
+    }
+
     return <main className="mx-auto max-w-4xl space-y-5 p-5 lg:p-8">
         <Link href="/expenses" className="text-sm underline">← Mis gastos</Link>
         <div><p className="text-xs uppercase tracking-widest cc-text-tertiary">Finanzas</p>
             <h1 className="text-3xl cc-text-primary" style={{ fontFamily: 'var(--cc-font-display)' }}>Revisión del comité</h1>
             <p className="mt-2 text-sm cc-text-secondary">Revisa los montos y el desglose antes de aprobar. Tu decisión queda registrada con tu cuenta.</p></div>
         {message && <p role="status" className="rounded-xl border p-3 text-sm">{message}</p>}
-        {loading ? <p>Cargando revisiones…</p> : reviews.length === 0 ? <p>No tienes revisiones asignadas.</p> : reviews.map(review =>
+        {loading ? <p>Cargando revisiones…</p> : reviews.length === 0 && agreements.length === 0 ? <p>No tienes revisiones asignadas.</p> : reviews.map(review =>
             <section key={review.id} className="rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div><h2 className="text-xl font-semibold">Gasto común {review.month}</h2>
@@ -69,5 +85,19 @@ export default function CommitteeReviewPage() {
                         <button type="button" disabled={working !== null || !(note[review.id] || '').trim()} onClick={() => void decide(review, 'rejected')} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Rechazar y pedir corrección</button></div>
                 </div> : <p className="mt-4 text-sm font-semibold">{review.status === 'approved' ? 'Aprobado' : 'Rechazado'}{review.reviewNote ? ` · ${review.reviewNote}` : ''}</p>}
             </section>)}
+        {!loading && agreements.map(agreement => <section key={agreement.id} className="rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+            <h2 className="text-xl font-semibold">Convenio de pago · unidad {agreement.unitLabel}</h2>
+            <p className="mt-2 text-sm">{agreement.title} · {money(agreement.totalAmount)} en {agreement.installmentCount} cuotas</p>
+            {agreement.notes && <p className="mt-2 text-sm cc-text-secondary">Antecedentes: {agreement.notes}</p>}
+            <ul className="mt-3 space-y-1 text-sm">{agreement.installments.map(item => <li key={item.id}>Cuota {item.sequence} · vence {item.dueDate} · {money(item.amount)}</li>)}</ul>
+            {agreement.status === 'pending_committee' ? <div className="mt-4 space-y-2">
+                <label className="block text-sm">Observación para administración
+                    <textarea className="mt-1 w-full rounded-lg border bg-transparent p-2" maxLength={1000} rows={3} value={note[agreement.id] || ''}
+                        onChange={event => setNote(current => ({ ...current, [agreement.id]: event.target.value }))} placeholder="Obligatoria si rechazas" />
+                </label>
+                <div className="flex gap-2"><button type="button" disabled={working !== null} onClick={() => void decideAgreement(agreement, 'approved')} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-white disabled:opacity-50">Aprobar convenio</button>
+                    <button type="button" disabled={working !== null || !(note[agreement.id] || '').trim()} onClick={() => void decideAgreement(agreement, 'rejected')} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Rechazar convenio</button></div>
+            </div> : <p className="mt-3 text-sm font-semibold">{agreement.status === 'active' ? 'Aprobado' : agreement.status === 'rejected' ? 'Rechazado' : 'Resuelto'}{agreement.committeeReviewNote ? ` · ${agreement.committeeReviewNote}` : ''}</p>}
+        </section>)}
     </main>;
 }
