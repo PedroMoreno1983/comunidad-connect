@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { FinanceCommitteeService } from '@/lib/api';
 import type { CommitteeReviewPanelProps, FinanceCommitteeReview, FinanceCommitteeResidentOption } from '@/lib/types';
 
-export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod, issued }: CommitteeReviewPanelProps) {
+export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod, issued, refreshKey }: CommitteeReviewPanelProps) {
     const [review, setReview] = useState<FinanceCommitteeReview | null>(null);
     const [reviewers, setReviewers] = useState<FinanceCommitteeResidentOption[]>([]);
     const [reviewerId, setReviewerId] = useState('');
@@ -25,7 +25,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
         }).catch(error => { if (active) setMessage(error instanceof Error ? error.message : 'No se pudo cargar la revisión.'); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [month]);
+    }, [month, refreshKey]);
 
     async function requestReview() {
         if (!reviewerId) return;
@@ -38,7 +38,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
         finally { setSaving(false); }
     }
 
-    const changed = review && (review.dueDate !== dueDate || review.quotaAmount !== (quotaAmount ?? null) || review.quotaMethod !== (quotaAmount ? quotaMethod : null));
+    const changed = review && (review.isCurrent === false || review.dueDate !== dueDate || review.quotaAmount !== (quotaAmount ?? null) || review.quotaMethod !== (quotaAmount ? quotaMethod : null));
     return <section className="rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
         <h2 className="font-semibold cc-text-primary">Revisión del comité</h2>
         <p className="mt-1 text-sm cc-text-secondary">Designa a un residente revisor para este mes. Una vez solicitada, la emisión espera su aprobación del cálculo vigente.</p>
@@ -47,7 +47,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
                 <strong>{review.status === 'approved' ? 'Aprobada' : review.status === 'rejected' ? 'Rechazada' : 'Pendiente'}</strong>
                 {' · '}{review.reviewerName || 'Residente designado'} · Vence {review.dueDate}
                 {review.reviewNote && <p className="mt-1">Comentario: {review.reviewNote}</p>}
-                {changed && <p className="mt-1 text-warning-fg">La fecha o cuota de la pantalla cambió. Solicita una nueva revisión antes de emitir.</p>}
+                {changed && <p className="mt-1 text-warning-fg">El cálculo, los respaldos, la fecha o la cuota cambiaron. Solicita una nueva revisión antes de emitir.</p>}
             </div>}
             {!issued && <div className="mt-4 flex flex-wrap items-end gap-2">
                 <label className="text-sm cc-text-secondary">Residente revisor
