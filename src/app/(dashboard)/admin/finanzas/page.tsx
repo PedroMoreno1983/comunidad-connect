@@ -123,6 +123,12 @@ export default function AdminFinanzasPage() {
                         </article>
                     ))}
                 </section>
+                <Link href="/admin/finanzas/comite" className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <Users className="h-5 w-5 shrink-0" />
+                    <div className="min-w-0 flex-1"><h2 className="font-semibold cc-text-primary">Integrantes del comité</h2>
+                        <p className="mt-1 text-sm cc-text-secondary">Designa a quienes revisan cobros y convenios.</p></div>
+                    <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
+                </Link>
                 <Link
                     href="/admin/finanzas/egresos"
                     className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm"

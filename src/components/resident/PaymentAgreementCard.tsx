@@ -7,9 +7,11 @@ import type { PaymentAgreement } from "@/lib/types";
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 
 const STATUS_LABEL: Record<PaymentAgreement["status"], string> = {
+    pending_committee: "En revisión del comité",
     active: "Vigente",
     completed: "Cumplido",
     cancelled: "Cerrado",
+    rejected: "Rechazado",
 };
 
 export function PaymentAgreementCard() {
@@ -23,7 +25,7 @@ export function PaymentAgreementCard() {
         return () => { cancelled = true; };
     }, []);
 
-    const visible = agreements.filter(agreement => agreement.status !== "cancelled");
+    const visible = agreements.filter(agreement => agreement.status !== "cancelled" && agreement.status !== "rejected");
     if (!visible.length) return null;
 
     return (
@@ -33,7 +35,7 @@ export function PaymentAgreementCard() {
             </p>
             <div className="mt-3 space-y-4">
                 {visible.map(agreement => {
-                    const next = agreement.installments.find(item => item.status === "pending");
+                    const next = agreement.status === "active" ? agreement.installments.find(item => item.status === "pending") : null;
                     return (
                         <article key={agreement.id}>
                             <p className="font-semibold cc-text-primary">{agreement.title}</p>

@@ -3,7 +3,7 @@ import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { BillingError, MONTH_PATTERN } from '@/lib/finance/billingService';
 import { requireCommunityAdmin } from '@/lib/finance/httpAuth';
-import { getFinancialStatements } from '@/lib/finance/financialStatements';
+import { closeFinancialPeriod, statementsForMonth } from '@/lib/finance/periodClosureService';
 import { currentMonthInChile } from '@/lib/finance/chileDates';
 
 export const runtime = 'nodejs';
@@ -30,10 +30,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'El saldo inicial de caja no es válido.' }, { status: 400 });
         }
 
-        return NextResponse.json(await getFinancialStatements(auth.communityId, yearParam, {
-            cutoffMonth,
-            openingCash: Math.round(openingCash),
-        }));
+        if (yearParam !== Number(cutoffMonth.slice(0, 4))) return NextResponse.json({ error: 'El año no corresponde al mes de corte.' }, { status: 400 });
+        return NextResponse.json(await statementsForMonth(auth.communityId, cutoffMonth, Math.round(openingCash)));
     } catch (error) {
         if (error instanceof BillingError) {
             return NextResponse.json({ error: error.message }, { status: error.status });
@@ -41,5 +39,21 @@ export async function GET(req: NextRequest) {
         return apiErrorResponse(req, '/api/admin/financial-statements', error, {
             publicMessage: 'No se pudieron armar los estados financieros.',
         });
+    }
+}
+
+export async function POST(req: NextRequest) {
+    const limited = await enforceDistributedRateLimit(req, 'admin.financial_statements.close', { limit: 5, windowMs: 60_000 });
+    if (limited) return limited;
+    try {
+        const auth = await requireCommunityAdmin();
+        if (auth.error) return auth.error;
+        const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+        const month = cleanText(body.month, 7);
+        const openingCash = Number(body.openingCash);
+        return NextResponse.json(await closeFinancialPeriod(auth.communityId, auth.profile.id, month, openingCash), { status: 201 });
+    } catch (error) {
+        if (error instanceof BillingError) return NextResponse.json({ error: error.message }, { status: error.status });
+        return apiErrorResponse(req, '/api/admin/financial-statements', error, { publicMessage: 'No se pudo guardar el corte.' });
     }
 }

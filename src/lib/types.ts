@@ -2113,7 +2113,10 @@ export interface PaymentAgreement {
     title: string;
     totalAmount: number;
     installmentCount: number;
-    status: "active" | "completed" | "cancelled";
+    status: "pending_committee" | "active" | "completed" | "cancelled" | "rejected";
+    committeeReviewerId: string | null;
+    committeeReviewedAt: string | null;
+    committeeReviewNote: string | null;
     notes: string;
     createdAt: string;
     paidAmount: number;
@@ -2246,6 +2249,16 @@ export interface FinanceCommitteeResidentOption {
     email: string;
 }
 
+export interface FinanceCommitteeMember {
+    id: string;
+    residentId: string;
+    name: string;
+    email: string;
+    appointedAt: string;
+    startsOn: string;
+    endedAt: string | null;
+}
+
 export interface CommitteeReviewPanelProps {
     month: string;
     dueDate: string;
@@ -2337,6 +2350,7 @@ export interface FinancialStatements {
     year: number;
     cutoffMonth: string;
     openingCash: number;
+    closure?: { closedAt: string; hasLaterChanges: boolean };
     income: {
         lines: FinancialStatementLine[];
         totalIncome: number;

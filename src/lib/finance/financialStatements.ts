@@ -2,10 +2,9 @@
  * Estados financieros del condominio: resultado, flujo de caja y situación.
  *
  * Se derivan de los registros operativos (cobros emitidos, cargos, pagos,
- * egresos y fondo de reserva), sin asientos de apertura. Por eso la caja parte
- * en el saldo inicial que declare el administrador: si la comunidad tenía
- * dinero en el banco antes de usar la plataforma, ese saldo no está en ningún
- * registro y hay que informarlo.
+ * egresos y fondo de reserva), sin asientos de apertura. La caja parte del
+ * saldo al inicio del año informado por administración; el siguiente año debe
+ * tomar el saldo final del cierre anterior para no contar movimientos dos veces.
  *
  * El estado de situación cuadra por construcción: el excedente acumulado es lo
  * que queda del activo después de pasivos y fondo de reserva. Lo que lo hace
@@ -74,7 +73,7 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
     }
     const expenseLines = [...byCategory.entries()]
         .map(([category, total]) => ({ category, label: CATEGORY_LABELS[category] || category, total }))
-        .sort((left, right) => right.total - left.total);
+        .sort((left, right) => right.total - left.total || left.category.localeCompare(right.category));
     const totalExpenses = expenseLines.reduce((sum, line) => sum + line.total, 0);
     const reserveTransfer = inputs.reserveMovements
         .filter(row => inYear(row.month) && row.kind === 'contribution' && parseFundLabel(row.label || '').fundName === LEGAL_RESERVE_FUND)
@@ -85,9 +84,7 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
     const expensesByMonth = new Map<string, number>();
     for (const row of inputs.communityExpenses) expensesByMonth.set(row.month, (expensesByMonth.get(row.month) || 0) + round(row.amount));
 
-    const sumBefore = (map: Map<string, number>, month: string) =>
-        [...map.entries()].filter(([key]) => key < month).reduce((sum, [, value]) => sum + value, 0);
-    const startingCash = inputs.openingCash + sumBefore(paymentsByMonth, firstMonth) - sumBefore(expensesByMonth, firstMonth);
+    const startingCash = inputs.openingCash;
     let running = startingCash;
     const cashFlow = months.map(month => {
         const inflow = paymentsByMonth.get(month) || 0;
@@ -107,7 +104,7 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
     const advances = [...balances.values()].reduce((sum, value) => sum + Math.max(0, -value), 0);
 
     const sumThrough = (map: Map<string, number>, month: string) =>
-        [...map.entries()].filter(([key]) => key <= month).reduce((sum, [, value]) => sum + value, 0);
+        [...map.entries()].filter(([key]) => key >= firstMonth && key <= month).reduce((sum, [, value]) => sum + value, 0);
     const cash = inputs.openingCash
         + sumThrough(paymentsByMonth, cutoffMonth)
         - sumThrough(expensesByMonth, cutoffMonth);
@@ -183,7 +180,7 @@ export async function getFinancialStatements(
         fetchAllFinanceRows<{ month: string; kind: string; amount: number; label: string }>((from, to) =>
             admin.from('reserve_fund_movements').select('month, kind, amount, label').eq('community_id', communityId)
                 .lte('month', cutoff).order('id').range(from, to)),
-        getJournal(communityId),
+        getJournal(communityId, new Date(Date.UTC(Number(cutoff.slice(0, 4)), Number(cutoff.slice(5, 7)), 0)).toISOString().slice(0, 10)),
     ]);
 
     return buildFinancialStatements({

@@ -1,7 +1,34 @@
 import { supabase } from './supabase';
-import type { FinanceCommitteeReview, FinanceCommitteeResidentOption } from './types';
+import type { FinanceCommitteeMember, FinanceCommitteeReview, FinanceCommitteeResidentOption } from './types';
 
 export const FinanceCommitteeService = {
+    async getAssignedAgreements(): Promise<PaymentAgreement[]> {
+        const response = await fetch('/api/finance/agreement-review', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los convenios.');
+        return data.agreements;
+    },
+    async decideAgreement(agreementId: string, decision: 'approved' | 'rejected', note: string): Promise<void> {
+        const response = await fetch('/api/finance/agreement-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agreementId, decision, note }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo guardar la decisión.');
+    },
+    async getMembers(): Promise<{ members: FinanceCommitteeMember[]; residents: FinanceCommitteeResidentOption[] }> {
+        const response = await fetch('/api/admin/finance-committee', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo cargar el comité.');
+        return data;
+    },
+    async appoint(residentId: string): Promise<void> {
+        const response = await fetch('/api/admin/finance-committee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ residentId }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo designar al integrante.');
+    },
+    async endMembership(membershipId: string): Promise<void> {
+        const response = await fetch('/api/admin/finance-committee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'end', membershipId }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo terminar la designación.');
+    },
     async getAdmin(month: string): Promise<{ reviewers: FinanceCommitteeResidentOption[]; review: FinanceCommitteeReview | null }> {
         const response = await fetch(`/api/admin/billing-review?month=${encodeURIComponent(month)}`, { cache: 'no-store' });
         const data = await response.json();
@@ -2164,7 +2191,7 @@ export const AdminFinanceService = {
     },
 
     getPaymentAgreements() {
-        return readApi<{ agreements: PaymentAgreement[]; units: FinanceUnitOption[] }>(
+        return readApi<{ agreements: PaymentAgreement[]; units: FinanceUnitOption[]; reviewers: FinanceCommitteeResidentOption[] }>(
             '/api/admin/agreements',
             'No se pudieron cargar los convenios.',
         );
@@ -2177,6 +2204,7 @@ export const AdminFinanceService = {
         installmentCount: number;
         startDate: string;
         notes: string;
+        reviewerId?: string;
     }) {
         return readApi<{ agreement: PaymentAgreement }>(
             '/api/admin/agreements',
@@ -2253,6 +2281,11 @@ export const AdminFinanceService = {
         return readApi<FinancialStatements>(
             `/api/admin/financial-statements?${params.toString()}`,
             'No se pudieron cargar los estados financieros.',
+        );
+    },
+    closeFinancialPeriod(input: { month: string; openingCash: number }) {
+        return readApi<FinancialStatements>(
+            '/api/admin/financial-statements', 'No se pudo guardar el corte.', financeWrite(input),
         );
     },
 };
