@@ -786,7 +786,19 @@ export async function createUnitExpense(
 
 /** Anula cobros y fondo en una transacción; un abono parcial bloquea la anulación. */
 export async function cancelBilling(communityId: string, runId: string, actorId: string | null) {
-    const { data, error } = await getSupabaseAdmin().rpc('cancel_billing_run_safe', {
+    const admin = getSupabaseAdmin();
+    const { data: run, error: runError } = await admin.from('billing_runs')
+        .select('month').eq('community_id', communityId).eq('id', runId).maybeSingle();
+    if (runError) throw runError;
+    if (!run) throw new BillingError('not_found', 'Emisión no encontrada.', 404);
+    const { data: closure, error: closureError } = await admin.from('finance_period_closures')
+        .select('month').eq('community_id', communityId).gte('month', run.month)
+        .order('month', { ascending: true }).limit(1).maybeSingle();
+    if (closureError) throw closureError;
+    if (closure) {
+        throw new BillingError('closed_period', `No se puede anular: el período ${run.month} ya está incluido en un corte financiero.`, 409);
+    }
+    const { data, error } = await admin.rpc('cancel_billing_run_safe', {
         p_community_id: communityId,
         p_run_id: runId,
     });
