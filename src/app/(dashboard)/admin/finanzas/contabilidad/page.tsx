@@ -15,6 +15,7 @@ const today = todayInChile;
 
 const FALLBACK_ACCOUNTS = [
     { code: "1100", name: "Banco" },
+    { code: "1200", name: "Cuentas por cobrar a unidades" },
     { code: "4100", name: "Ingresos por gastos comunes" },
     { code: "5100", name: "Remuneraciones" },
     { code: "5200", name: "Gastos de operación" },
@@ -24,6 +25,8 @@ const SOURCE_LABEL: Record<string, string> = {
     manual: "Manual",
     agreement: "Convenio",
     payroll: "Remuneración",
+    payment: "Pago de unidad",
+    payment_reversal: "Reversa de pago",
 };
 
 interface DraftLine {

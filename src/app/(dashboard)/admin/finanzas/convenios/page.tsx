@@ -110,13 +110,15 @@ export default function ConveniosPage() {
     async function payInstallment(installmentId: string) {
         setBusy(true);
         try {
-            await AdminFinanceService.payAgreementInstallment({
+            const result = await AdminFinanceService.payAgreementInstallment({
                 installmentId,
                 paidAt: payDate,
                 method: payMethod,
                 reference: payReference,
             });
-            toast({ title: "Cuota registrada", description: "El pago quedó en cobranza y en el libro.", variant: "success" });
+            toast({ title: "Cuota registrada", description: result.warnings.length
+                ? result.warnings.join(" ") : "El pago quedó en cobranza y en el libro.",
+                variant: result.warnings.length ? "destructive" : "success" });
             setPayReference("");
             await load();
         } catch (error) {

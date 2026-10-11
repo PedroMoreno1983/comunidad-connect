@@ -2214,7 +2214,7 @@ export const AdminFinanceService = {
     },
 
     payAgreementInstallment(input: { installmentId: string; paidAt: string; method: string; reference: string }) {
-        return readApi<{ paymentId: string }>(
+        return readApi<{ paymentId: string; warnings: string[] }>(
             '/api/admin/agreements',
             'No se pudo registrar la cuota.',
             financeWrite({ action: 'pay', ...input }),
