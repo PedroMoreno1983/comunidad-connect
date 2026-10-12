@@ -160,13 +160,19 @@ export default function ContabilidadPage() {
                     <ArrowLeft className="h-4 w-4" /> Finanzas
                 </Link>
                 <header>
-                    <Eyebrow className="mb-2">Libro diario</Eyebrow>
+                    <Eyebrow className="mb-2">Libro auxiliar</Eyebrow>
                     <DisplayHeading size={32}>Contabilidad</DisplayHeading>
                     <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
-                        Cada asiento queda con el debe igual al haber. Los convenios y las remuneraciones escriben los suyos solos.
-                        Más abajo, el estado de resultado, el flujo de caja y la situación patrimonial se arman con la recaudación y los egresos.
+                        Los asientos manuales, los pagos de unidades y las remuneraciones quedan cuadrados. Los estados de abajo
+                        se calculan desde los cobros, pagos y egresos operativos.
                     </p>
                 </header>
+
+                <p className="rounded-xl border border-warning-border bg-warning-bg p-4 text-sm text-warning-fg">
+                    Libro auxiliar en integración: aún faltan asientos automáticos para la emisión de cobros, cargos individuales,
+                    egresos y fondo de reserva. El saldo inicial y el plan de cuentas requieren revisión contable antes de usar
+                    estos estados como contabilidad oficial.
+                </p>
 
                 {loading ? (
                     <p className="flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Cargando libro…</p>
@@ -240,9 +246,9 @@ export default function ContabilidadPage() {
                 <section className="space-y-4 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
-                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Estados financieros</h2>
+                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Estados operativos</h2>
                             <p className="mt-1 text-xs cc-text-tertiary">
-                                Se arman con cobros, pagos y egresos. El libro de 4 cuentas no se toca: el saldo Banco (1100) se muestra para comparar.
+                                Se arman con cobros, pagos y egresos; el saldo Banco (1100) del libro auxiliar se muestra para comparar.
                             </p>
                         </div>
                         <div className="flex flex-wrap items-end gap-2">
