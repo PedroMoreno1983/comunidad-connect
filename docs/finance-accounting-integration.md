@@ -12,7 +12,7 @@ Los asientos manuales se guardan con todas sus líneas en una transacción; una 
 | --- | --- | --- |
 | Pago de unidad | Debe Banco 1100, Haber Cuentas por cobrar 1200; mismo commit del pago. Al eliminarlo se genera una reversa. | Separar efectivo, cheques y medios por conciliar; tratar los anticipos cuando la unidad no tiene deuda. |
 | Cuota de convenio | El pago usa el asiento de `unit_payments`; la cuota y el pago se confirman juntos. | Confirmar si un convenio solo reprograma deuda existente o crea un cargo nuevo en casos particulares. |
-| Emisión de gasto común | Aún no crea asiento automático. | Debe Cuentas por cobrar; Haber ingresos y fondo de reserva según desglose validado. |
+| Emisión de gasto común | La corrida, los cobros por unidad, sus desgloses y el aporte configurado al fondo se confirman en una transacción. Aún no crea asiento automático. | Debe Cuentas por cobrar; Haber ingresos y fondo de reserva según desglose validado. |
 | Cargo individual o descuento | Aún no crea asiento automático. | Cuentas de multa, interés, servicio y contraingreso del descuento. |
 | Egreso comunitario | El estado operativo lo trata como salida de caja del mes; el libro no lo genera automáticamente. | Distinguir factura devengada de pago efectivo, fecha de pago, proveedor y cuenta por pagar. |
 | Fondo de reserva | Libro operativo separado; sin asiento automático. | Confirmar cuenta patrimonial y si existe banco separado. |
