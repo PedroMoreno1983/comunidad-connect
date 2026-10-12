@@ -669,64 +669,32 @@ export async function createUnitExpense(
         throw new BillingError('bad_amount', 'El monto debe ser mayor que cero.');
     }
 
-    const admin = getSupabaseAdmin();
-
-    const { data: unit } = await admin
-        .from('units')
-        .select('id, number, tower')
-        .eq('id', input.unitId)
-        .eq('community_id', communityId)
-        .maybeSingle();
-    if (!unit) throw new BillingError('unit_not_found', 'Esa unidad no existe en tu comunidad.', 404);
-
     const label = (input.label || '').trim() || `Gasto común ${input.month}`;
-
-    const { data: existing, error: existingError } = await admin
-        .from('expenses')
-        .select('id')
-        .eq('community_id', communityId)
-        .eq('unit_id', input.unitId)
-        .eq('month', input.month)
-        .limit(1)
-        .maybeSingle();
-    if (existingError) throw existingError;
-    if (existing) {
-        throw new BillingError(
-            'already_charged',
-            `El Depto ${unit.number} ya tiene un cobro registrado para ${input.month}.`,
-            409,
-        );
-    }
-
-    const { data: expense, error: expenseError } = await admin
-        .from('expenses')
-        .insert({
-            unit_id: input.unitId,
-            community_id: communityId,
-            month: input.month,
-            amount,
-            status: 'pending',
-            due_date: input.dueDate,
-        })
-        .select('id, month, amount, status, due_date')
-        .single();
-    if (expenseError) throw expenseError;
-
-    const { error: itemError } = await admin.from('expense_items').insert({
-        expense_id: expense.id,
-        category: 'other',
-        label,
-        amount,
+    const { data, error } = await getSupabaseAdmin().rpc('create_unit_expense_atomic', {
+        p_community_id: communityId,
+        p_unit_id: input.unitId,
+        p_month: input.month,
+        p_amount: amount,
+        p_due_date: input.dueDate,
+        p_label: label,
     });
-    if (itemError) {
-        const { error: rollbackError } = await admin.from('expenses').delete().eq('id', expense.id);
-        throw new BillingError('breakdown_failed', rollbackError
-            ? 'Falló el desglose y no se pudo revertir el cobro. Revisa la unidad antes de reintentar.'
-            : 'Falló el desglose. Se revirtió el cobro; puedes reintentar.', 500);
+    if (error) throw error;
+    const outcome = data as {
+        status?: string; unitNumber?: string;
+        expense?: { id: string; month: string; amount: number; status: string; due_date: string };
+    } | null;
+    if (outcome?.status === 'unit_not_found') {
+        throw new BillingError('unit_not_found', 'Esa unidad no existe en tu comunidad.', 404);
     }
-
+    if (outcome?.status === 'already_charged') {
+        throw new BillingError('already_charged',
+            `El Depto ${outcome.unitNumber || ''} ya tiene un cobro registrado para ${input.month}.`, 409);
+    }
+    if (outcome?.status !== 'created' || !outcome.expense || !outcome.unitNumber) {
+        throw new BillingError('charge_failed', 'No se pudo confirmar el cobro. Revisa la unidad antes de reintentar.', 500);
+    }
     void createdBy;
-    return { expense, unitNumber: String(unit.number) };
+    return { expense: outcome.expense, unitNumber: outcome.unitNumber };
 }
 
 /** Anula cobros y fondo en una transacción; un abono parcial bloquea la anulación. */
