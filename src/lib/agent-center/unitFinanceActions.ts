@@ -42,6 +42,7 @@ export async function executeCreateUnitExpense(action: AgentAction, profile: Age
 
     let notificationId: string | null = null;
     let whatsappResult: WhatsAppNotificationResult | null = null;
+    let notificationIssue: string | null = null;
     if (target.residentId) {
         const notification = {
             id: stableNotificationId('unit_expense_created', communityId, target.residentId, String(expense.id)),
@@ -53,34 +54,48 @@ export async function executeCreateUnitExpense(action: AgentAction, profile: Age
             link: '/resident/finances',
             community_id: communityId,
         };
-        const { data: notificationRow, error: notificationError } = await admin
-            .from('notifications')
-            .upsert(notification, { onConflict: 'id' })
-            .select('id')
-            .single();
-        if (notificationError) throw notificationError;
-        notificationId = String(notificationRow.id);
-        whatsappResult = await sendWhatsAppNotificationForUser({
-            userId: target.residentId,
-            title: notification.title,
-            body: notification.body,
-            type: 'warning',
-            communityId,
-            actorId: profile.id,
-            templateKey: 'payment_reminder',
-            templateVariables: { '1': target.unitNumber, '2': `$${amount.toLocaleString('es-CL')} CLP` },
-            metadata: { source: 'agent-center.create_unit_expense', notificationId, expenseId: String(expense.id) },
-        });
+        try {
+            const { data: notificationRow, error: notificationError } = await admin
+                .from('notifications')
+                .upsert(notification, { onConflict: 'id' })
+                .select('id')
+                .single();
+            if (notificationError) throw notificationError;
+            notificationId = String(notificationRow.id);
+        } catch (error) {
+            console.error('[unitFinanceActions] charge notification failed:', error);
+            notificationIssue = 'El cobro quedó guardado, pero falló el aviso en la app.';
+        }
+        if (notificationId) {
+            try {
+                whatsappResult = await sendWhatsAppNotificationForUser({
+                    userId: target.residentId,
+                    title: notification.title,
+                    body: notification.body,
+                    type: 'warning',
+                    communityId,
+                    actorId: profile.id,
+                    templateKey: 'payment_reminder',
+                    templateVariables: { '1': target.unitNumber, '2': `$${amount.toLocaleString('es-CL')} CLP` },
+                    metadata: { source: 'agent-center.create_unit_expense', notificationId, expenseId: String(expense.id) },
+                });
+            } catch (error) {
+                console.error('[unitFinanceActions] charge WhatsApp failed:', error);
+                notificationIssue = 'El cobro y el aviso en la app quedaron guardados, pero falló WhatsApp.';
+            }
+        }
     }
 
-    const recipientText = target.residentId ? 'y notifique al residente vinculado' : 'pero no hay residente vinculado para notificar';
-    const whatsappText = target.residentId ? ` ${describeWhatsAppResult(whatsappResult)}` : '';
+    const recipientText = notificationId ? 'y notifique al residente vinculado'
+        : target.residentId ? 'pero el aviso al residente quedó pendiente'
+            : 'pero no hay residente vinculado para notificar';
+    const whatsappText = whatsappResult ? ` ${describeWhatsAppResult(whatsappResult)}` : '';
     return {
         entityType: 'expense',
         entityId: String(expense.id),
         title: 'Cobro creado',
-        message: `Cree un cobro pendiente para Depto ${target.unitNumber} por $${amount.toLocaleString('es-CL')} (${month}) ${recipientText}.${whatsappText}`,
-        data: { expense, notificationId, whatsapp: whatsappResult, unitId: target.unitId, unitNumber: target.unitNumber, residentId: target.residentId },
+        message: `Cree un cobro pendiente para Depto ${target.unitNumber} por $${amount.toLocaleString('es-CL')} (${month}) ${recipientText}.${whatsappText}${notificationIssue ? ` ${notificationIssue}` : ''}`,
+        data: { expense, notificationId, whatsapp: whatsappResult, notificationIssue, unitId: target.unitId, unitNumber: target.unitNumber, residentId: target.residentId },
     };
 }
 
