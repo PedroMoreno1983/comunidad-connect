@@ -5707,3 +5707,44 @@ revoke all on public.transfer_reports from anon, authenticated;
 grant all on public.transfer_reports to service_role;
 alter table public.unit_payments
   add column if not exists transfer_report_id uuid references public.transfer_reports(id) on delete set null;
+
+-- Liquidación legal chilena (20261012160000_payroll_chile_liquidations.sql).
+CREATE TABLE IF NOT EXISTS public.payroll_indicators (
+  month text PRIMARY KEY CHECK (month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+  "values" jsonb NOT NULL,
+  source text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.payroll_indicators ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.payroll_indicators FROM anon, authenticated;
+GRANT ALL ON public.payroll_indicators TO service_role;
+-- Las personas existentes quedan en 'fixed': siguen pagándose igual que antes.
+ALTER TABLE public.community_employees
+  ADD COLUMN IF NOT EXISTS calculation text NOT NULL DEFAULT 'fixed'
+    CHECK (calculation IN ('fixed', 'chile')),
+  ADD COLUMN IF NOT EXISTS rut text,
+  ADD COLUMN IF NOT EXISTS afp text,
+  ADD COLUMN IF NOT EXISTS health_system text NOT NULL DEFAULT 'fonasa'
+    CHECK (health_system IN ('fonasa', 'isapre')),
+  ADD COLUMN IF NOT EXISTS isapre_name text,
+  ADD COLUMN IF NOT EXISTS isapre_plan_uf numeric(8,4) CHECK (isapre_plan_uf IS NULL OR isapre_plan_uf > 0),
+  ADD COLUMN IF NOT EXISTS contract_type text NOT NULL DEFAULT 'indefinido'
+    CHECK (contract_type IN ('indefinido', 'plazo_fijo', 'indefinido_11')),
+  ADD COLUMN IF NOT EXISTS gratification boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS taxable_bonus integer NOT NULL DEFAULT 0 CHECK (taxable_bonus >= 0),
+  ADD COLUMN IF NOT EXISTS meal_allowance integer NOT NULL DEFAULT 0 CHECK (meal_allowance >= 0),
+  ADD COLUMN IF NOT EXISTS transport_allowance integer NOT NULL DEFAULT 0 CHECK (transport_allowance >= 0),
+  ADD COLUMN IF NOT EXISTS family_dependents smallint NOT NULL DEFAULT 0 CHECK (family_dependents BETWEEN 0 AND 20),
+  ADD COLUMN IF NOT EXISTS hire_date date;
+
+-- Seguro de accidentes del trabajo (Ley 16.744): tasa básica 0,90% + 0,03% Ley SANNA.
+-- Cambia por comunidad cuando la mutual asigna cotización adicional.
+ALTER TABLE public.communities
+  ADD COLUMN IF NOT EXISTS payroll_accident_rate numeric(6,4) NOT NULL DEFAULT 0.0093
+    CHECK (payroll_accident_rate >= 0 AND payroll_accident_rate < 0.2);
+ALTER TABLE public.payroll_lines
+  ADD COLUMN IF NOT EXISTS gross_amount integer,
+  ADD COLUMN IF NOT EXISTS net_amount integer,
+  ADD COLUMN IF NOT EXISTS breakdown jsonb;
+ALTER TABLE public.payroll_runs
+  ADD COLUMN IF NOT EXISTS indicators_month text;

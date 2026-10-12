@@ -2123,20 +2123,136 @@ export interface PaymentAgreement {
     installments: PaymentAgreementInstallment[];
 }
 
+/** 'fixed' paga el monto tal cual; 'chile' calcula la liquidación legal. */
+export type PayrollCalculation = "fixed" | "chile";
+export type PayrollContractType = "indefinido" | "plazo_fijo" | "indefinido_11";
+export type PayrollHealthSystem = "fonasa" | "isapre";
+
 export interface CommunityEmployeeRecord {
     id: string;
     full_name: string;
     role_title: string;
+    /** Sueldo base en modo 'chile'; monto a pagar en modo 'fixed'. */
     monthly_amount: number;
     active: boolean;
     created_at: string;
+    calculation: PayrollCalculation;
+    rut: string | null;
+    afp: string | null;
+    health_system: PayrollHealthSystem;
+    isapre_name: string | null;
+    isapre_plan_uf: number | null;
+    contract_type: PayrollContractType;
+    gratification: boolean;
+    taxable_bonus: number;
+    meal_allowance: number;
+    transport_allowance: number;
+    family_dependents: number;
+    hire_date: string | null;
+}
+
+export interface PayrollEmployeeInput {
+    id?: string;
+    fullName: string;
+    roleTitle: string;
+    monthlyAmount: number;
+    active?: boolean;
+    calculation?: PayrollCalculation;
+    rut?: string;
+    afp?: string;
+    healthSystem?: PayrollHealthSystem;
+    isapreName?: string;
+    isaprePlanUf?: number | null;
+    contractType?: PayrollContractType;
+    gratification?: boolean;
+    taxableBonus?: number;
+    mealAllowance?: number;
+    transportAllowance?: number;
+    familyDependents?: number;
+    hireDate?: string;
+}
+
+/** Indicadores previsionales de un mes de remuneraciones, tal como los publica Previred. */
+export interface PayrollIndicators {
+    uf: number;
+    utm: number;
+    /** Ingreso mínimo mensual, base del tope de gratificación. */
+    minimumWage: number;
+    afpCapUf: number;
+    unemploymentCapUf: number;
+    /** Tasa total del trabajador por AFP (10% + comisión), en fracción. */
+    afpWorkerRates: Record<string, number>;
+    employerAfpRate: number;
+    sisRate: number;
+    /** Aportes del empleador al Seguro Social (Ley 21.735), por concepto. */
+    socialInsuranceRates: Record<string, number>;
+    unemployment: Record<PayrollContractType, { employer: number; worker: number }>;
+    healthRate: number;
+    familyAllowance: { upTo: number | null; amount: number }[];
+}
+
+export interface PayslipInput {
+    calculation: PayrollCalculation;
+    baseSalary: number;
+    afp: string | null;
+    healthSystem: PayrollHealthSystem;
+    isaprePlanUf: number | null;
+    contractType: PayrollContractType;
+    gratification: boolean;
+    taxableBonus: number;
+    mealAllowance: number;
+    transportAllowance: number;
+    familyDependents: number;
+    accidentRate: number;
+}
+
+export interface Payslip {
+    calculation: PayrollCalculation;
+    baseSalary: number;
+    gratification: number;
+    taxableBonus: number;
+    taxableIncome: number;
+    mealAllowance: number;
+    transportAllowance: number;
+    familyAllowance: number;
+    grossPay: number;
+    afp: { name: string; rate: number; amount: number } | null;
+    health: { system: PayrollHealthSystem; amount: number; legalAmount: number };
+    unemploymentWorker: number;
+    taxBase: number;
+    incomeTax: number;
+    totalDeductions: number;
+    netPay: number;
+    employer: {
+        sis: number;
+        afp: number;
+        socialInsurance: number;
+        unemployment: number;
+        accidentInsurance: number;
+        total: number;
+    };
+    /** Lo que la comunidad gasta: haberes más aportes del empleador. */
+    employerCost: number;
+}
+
+export interface PayslipDocument {
+    communityName: string;
+    communityAddress: string | null;
+    month: string;
+    employee: { fullName: string; roleTitle: string; rut: string | null };
+    slip: Payslip;
+    indicatorsMonth: string | null;
 }
 
 export interface PayrollLineRecord {
     id: string;
     full_name: string;
     role_title: string;
+    /** Costo total para la comunidad. */
     amount: number;
+    gross_amount: number | null;
+    net_amount: number | null;
+    breakdown: Payslip | null;
 }
 
 export interface PayrollRunRecord {
@@ -2148,6 +2264,7 @@ export interface PayrollRunRecord {
     payment_reference: string | null;
     expense_note: string | null;
     created_at: string;
+    indicators_month: string | null;
     payroll_lines: PayrollLineRecord[];
 }
 
