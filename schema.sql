@@ -5678,3 +5678,32 @@ GRANT EXECUTE ON FUNCTION public.create_unit_expense_atomic(uuid,uuid,text,numer
   TO service_role;
 
 COMMIT;
+
+-- Informes de transferencia del residente, pendientes de revisión administrativa.
+-- Aplicada en producción por 20261002030221_resident_transfer_reports.sql; el
+-- código que la usa vive en la rama codex/resident-transfer-review, sin mergear.
+create table if not exists public.transfer_reports (
+  id uuid primary key default gen_random_uuid(),
+  community_id uuid not null references public.communities(id) on delete cascade,
+  unit_id uuid not null references public.units(id) on delete cascade,
+  expense_id uuid not null references public.expenses(id) on delete cascade,
+  reported_by uuid not null references public.profiles(id),
+  amount numeric(12,2) not null check (amount > 0),
+  paid_at date not null,
+  reference text not null check (char_length(btrim(reference)) between 4 and 120),
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'rejected')),
+  reviewed_by uuid references public.profiles(id),
+  reviewed_at timestamptz,
+  review_note text,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists transfer_reports_active_reference_uniq
+  on public.transfer_reports (community_id, unit_id, lower(btrim(reference)))
+  where status in ('pending', 'confirmed');
+create index if not exists transfer_reports_review_queue_idx
+  on public.transfer_reports (community_id, status, created_at desc);
+alter table public.transfer_reports enable row level security;
+revoke all on public.transfer_reports from anon, authenticated;
+grant all on public.transfer_reports to service_role;
+alter table public.unit_payments
+  add column if not exists transfer_report_id uuid references public.transfer_reports(id) on delete set null;
