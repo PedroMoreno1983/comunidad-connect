@@ -1,6 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { addCommunityExpense, BillingError, DATE_PATTERN, MONTH_PATTERN } from './billingService';
-import { postJournalEntry } from './journalService';
+import { BillingError, DATE_PATTERN, MONTH_PATTERN } from './billingService';
 
 export async function listPayroll(communityId: string) {
   const admin = getSupabaseAdmin();
@@ -106,45 +105,19 @@ export async function payPayrollRun(
   if (run.status === 'paid') throw new BillingError('already_paid', 'Esa liquidación ya está pagada.');
   if (run.total_amount <= 0) throw new BillingError('empty', 'La liquidación no tiene montos.');
 
-  const entry = await postJournalEntry(communityId, createdBy, {
-    entryDate: input.paidAt,
-    memo: `Remuneraciones ${run.month}`,
-    source: 'payroll',
-    lines: [
-      { code: '5100', debit: run.total_amount, credit: 0 },
-      { code: '1100', debit: 0, credit: run.total_amount },
-    ],
+  const { data, error } = await admin.rpc('pay_payroll_run_atomic', {
+    p_community_id: communityId,
+    p_run_id: run.id,
+    p_paid_at: input.paidAt,
+    p_reference: input.reference?.trim() || null,
+    p_actor_id: createdBy,
   });
-
-  let expenseId: string | null = null;
-  let expenseNote = 'Incluido en los egresos del mes.';
-  try {
-    const expense = await addCommunityExpense(communityId, createdBy, {
-      month: run.month,
-      category: 'salaries',
-      label: `Remuneraciones ${run.month}`,
-      amount: run.total_amount,
-      notes: input.reference?.trim() || null,
-      prorateMethod: 'share',
-    });
-    expenseId = expense.id;
-  } catch (error) {
-    expenseNote = error instanceof BillingError
-      ? `${error.message} El pago quedó en el libro; agrégalo a egresos solo si el mes sigue abierto.`
-      : 'No se pudo agregar el egreso. El pago quedó en el libro.';
-  }
-
-  const { error } = await admin
-    .from('payroll_runs')
-    .update({
-      status: 'paid',
-      paid_at: input.paidAt,
-      payment_reference: input.reference?.trim().slice(0, 120) || null,
-      journal_entry_id: entry.id,
-      expense_id: expenseId,
-      expense_note: expenseNote,
-    })
-    .eq('id', run.id);
   if (error) throw error;
-  return { id: run.id, expenseNote };
+  const outcome = data as { status?: string; id?: string } | null;
+  if (outcome?.status === 'not_found') throw new BillingError('not_found', 'No existe esa liquidación.', 404);
+  if (outcome?.status === 'already_paid') throw new BillingError('already_paid', 'Esa liquidación ya está pagada.', 409);
+  if (outcome?.status !== 'paid' || outcome.id !== run.id) {
+    throw new BillingError('payment_failed', 'No se pudo confirmar el pago de la remuneración.', 500);
+  }
+  return { id: run.id, expenseNote: 'Incluido en los egresos del mes.' };
 }
