@@ -444,63 +444,39 @@ export async function issueBilling(
         throw new BillingError('all_charged', 'Todas las unidades ya tienen un cobro registrado para ese mes.', 409);
     }
 
-    const { data: run, error: runError } = await admin
-        .from('billing_runs')
-        .insert({
-            community_id: communityId,
-            month,
-            status: 'issued',
-            total_amount: pending.reduce((sum, unit) => sum + unit.total, 0),
-            units_count: pending.length,
-            due_date: dueDate,
-            fallback_equal_split: result.fellBackToEqualSplit,
-            issued_by: issuedBy,
-            committee_review_id: latestReview?.id ?? null,
-        })
-        .select('id')
-        .single();
-    if (runError) throw runError;
-
-    const { data: inserted, error: insertError } = await admin
-        .from('expenses')
-        .insert(pending.map(unit => ({
-            unit_id: unit.unitId,
-            community_id: communityId,
-            month,
-            amount: unit.total,
-            status: 'pending',
-            due_date: dueDate,
-            billing_run_id: run.id,
-        })))
-        .select('id, unit_id');
-    if (insertError) {
-        // Sin la corrida huérfana el mes queda bloqueado para reintentar.
-        await admin.from('billing_runs').delete().eq('id', run.id);
-        throw insertError;
-    }
-
-    const expenseIdByUnit = new Map((inserted ?? []).map(row => [String(row.unit_id), String(row.id)]));
-    const items = pending.flatMap(unit => {
-        const expenseId = expenseIdByUnit.get(unit.unitId);
-        if (!expenseId) return [];
-        return unit.items.map(item => ({
-            expense_id: expenseId,
-            source_expense_id: item.expenseId === FIXED_QUOTA_EXPENSE_ID ? null : item.expenseId,
-            category: item.category,
-            label: item.label,
-            amount: item.amount,
-        }));
+    const { data: committed, error: issueError } = await admin.rpc('issue_billing_run_atomic', {
+        p_community_id: communityId,
+        p_month: month,
+        p_due_date: dueDate,
+        p_issued_by: issuedBy,
+        p_fallback_equal_split: result.fellBackToEqualSplit,
+        p_committee_review_id: latestReview?.id ?? null,
+        p_units: pending.map(unit => ({
+            unitId: unit.unitId,
+            total: unit.total,
+            items: unit.items.map(item => ({
+                sourceExpenseId: item.expenseId === FIXED_QUOTA_EXPENSE_ID ? null : item.expenseId,
+                category: item.category,
+                label: item.label,
+                amount: item.amount,
+            })),
+        })),
     });
-    if (items.length > 0) {
-        const { error: itemsError } = await admin.from('expense_items').insert(items);
-        if (itemsError) {
-            const { error: rollbackError } = await admin.from('expenses').delete().eq('billing_run_id', run.id);
-            if (!rollbackError) await admin.from('billing_runs').delete().eq('id', run.id);
-            throw new BillingError('breakdown_failed', rollbackError
-                ? 'Falló el desglose y no se pudo revertir la emisión. Revisa los cobros antes de reintentar.'
-                : 'Falló el desglose de los cobros. Se revirtió la emisión; puedes reintentar.', 500);
-        }
+    if (issueError) throw issueError;
+    const issue = committed as {
+        status?: string; runId?: string; issuedUnits?: number;
+        totalCharged?: number; reserveContribution?: number;
+    } | null;
+    if (issue?.status === 'already_issued') {
+        throw new BillingError('already_issued', `El gasto común de ${month} ya fue emitido.`, 409);
     }
+    if (issue?.status === 'existing_charges') {
+        throw new BillingError('existing_charges', 'Ya existen cobros para algunas unidades de este mes. Revisa esos cobros antes de emitir.', 409);
+    }
+    if (issue?.status !== 'issued' || !issue.runId || issue.issuedUnits !== pending.length || issue.totalCharged !== result.totalCharged) {
+        throw new BillingError('issue_failed', 'No se pudo confirmar la emisión completa. Revisa el mes antes de reintentar.', 500);
+    }
+    const run = { id: issue.runId };
 
     const notifications = pending.flatMap(unit => {
         const ownerId = unitRows.find(row => String(row.id) === unit.unitId)?.owner_id;
@@ -527,39 +503,8 @@ export async function issueBilling(
         else notified = insertedNotifications?.length ?? 0;
     }
 
-    const totalCharged = pending.reduce((sum, unit) => sum + unit.total, 0);
-
-    // Aporte al fondo de reserva (Ley 21.442). Solo si la comunidad configuró
-    // una tasa: sin decisión explícita del administrador no se mueve plata a
-    // un fondo aparte. El índice único por billing_run_id lo hace idempotente.
-    let reserveContribution = 0;
-    const { data: communityRow } = await admin
-        .from('communities')
-        .select('reserve_fund_rate')
-        .eq('id', communityId)
-        .maybeSingle();
-    const reserveRate = Number(communityRow?.reserve_fund_rate || 0);
-    if (reserveRate > 0) {
-        reserveContribution = Math.round(totalCharged * (reserveRate / 100));
-        if (reserveContribution > 0) {
-            const { error: fundError } = await admin.from('reserve_fund_movements').insert({
-                community_id: communityId,
-                kind: 'contribution',
-                amount: reserveContribution,
-                month,
-                label: `Aporte del gasto común ${month} (${reserveRate}%)`,
-                billing_run_id: run.id,
-                created_by: issuedBy,
-            });
-            // El aporte es un asiento derivado: si falla, la emisión sigue
-            // siendo válida y se avisa, en vez de revertir todos los cobros.
-            if (fundError) {
-                console.warn('[billingService] reserve fund contribution failed:', fundError);
-                reserveContribution = 0;
-                deliveryWarnings.push('El aporte al fondo de reserva no quedó registrado. Revisa el fondo antes de cerrar el mes.');
-            }
-        }
-    }
+    const totalCharged = issue.totalCharged;
+    const reserveContribution = issue.reserveContribution ?? 0;
 
     const issued: BillingIssueResult = {
         runId: run.id,
