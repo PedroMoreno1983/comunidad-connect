@@ -14,7 +14,7 @@ Los estados de resultado, caja y situación actuales se calculan desde `expenses
 | Cargo individual o descuento | Aún no crea asiento automático. | Cuentas de multa, interés, servicio y contraingreso del descuento. |
 | Egreso comunitario | El estado operativo lo trata como salida de caja del mes; el libro no lo genera automáticamente. | Distinguir factura devengada de pago efectivo, fecha de pago, proveedor y cuenta por pagar. |
 | Fondo de reserva | Libro operativo separado; sin asiento automático. | Confirmar cuenta patrimonial y si existe banco separado. |
-| Remuneración | Crea asiento y egreso en llamadas distintas. | Unificar liquidación, obligación, pago y retenciones en una transacción. |
+| Remuneración | Al confirmar el pago, crea egreso, asiento y estado pagado en una transacción. La preparación del borrador todavía usa llamadas separadas. | Distinguir devengo, obligación, pago y retenciones; el asiento actual registra gasto contra banco al pagar. |
 
 ## Reglas de publicación
 
@@ -31,5 +31,6 @@ Los estados de resultado, caja y situación actuales se calculan desde `expenses
 - Separación de fondos y conciliación de bancos/caja/medios en tránsito.
 - Tratamiento de anticipos, descuentos, intereses, multas y convenios.
 - Saldo de apertura respaldado para cada comunidad y fecha de adopción.
+- Revisión del plan de cuentas y del primer cierre por un contador cuando haya uno disponible. Hasta entonces el libro es auxiliar y los estados operativos no se presentan como contabilidad oficial.
 
 La pasarela de pago y la conexión bancaria quedan fuera de esta etapa, según lo indicado por el propietario del producto.
