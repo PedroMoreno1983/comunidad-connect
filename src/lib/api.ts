@@ -129,7 +129,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
@@ -2230,13 +2230,13 @@ export const AdminFinanceService = {
     },
 
     getPayroll() {
-        return readApi<{ employees: CommunityEmployeeRecord[]; runs: PayrollRunRecord[] }>(
+        return readApi<{ employees: CommunityEmployeeRecord[]; runs: PayrollRunRecord[]; afps: string[]; indicatorsMonth: string | null }>(
             '/api/admin/payroll',
             'No se pudo cargar la remuneración.',
         );
     },
 
-    saveEmployee(input: { id?: string; fullName: string; roleTitle: string; monthlyAmount: number; active?: boolean }) {
+    saveEmployee(input: PayrollEmployeeInput) {
         return readApi<{ employee: CommunityEmployeeRecord }>(
             '/api/admin/payroll',
             'No se pudo guardar a la persona.',
@@ -2245,7 +2245,7 @@ export const AdminFinanceService = {
     },
 
     createPayrollRun(month: string) {
-        return readApi<{ run: { id: string; month: string; total: number } }>(
+        return readApi<{ run: { id: string; month: string; total: number; indicatorsMonth: string | null } }>(
             '/api/admin/payroll',
             'No se pudo armar la liquidación.',
             financeWrite({ action: 'run', month }),
