@@ -3,7 +3,7 @@ import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { BillingError } from '@/lib/finance/billingService';
 import { requireCommunityAdmin } from '@/lib/finance/httpAuth';
-import { createPayrollRun, listPayroll, payPayrollRun, saveEmployee } from '@/lib/finance/payrollService';
+import { createPayrollRun, listPayroll, payPayrollRun, saveEmployee, type EmployeeInput } from '@/lib/finance/payrollService';
 
 export const runtime = 'nodejs';
 
@@ -53,6 +53,19 @@ export async function POST(req: NextRequest) {
       roleTitle: cleanText(body.roleTitle, 80),
       monthlyAmount: Number(body.monthlyAmount),
       active: body.active !== false,
+      calculation: body.calculation === 'chile' ? 'chile' : 'fixed',
+      rut: cleanText(body.rut, 12),
+      afp: cleanText(body.afp, 30),
+      healthSystem: body.healthSystem === 'isapre' ? 'isapre' : 'fonasa',
+      isapreName: cleanText(body.isapreName, 60),
+      isaprePlanUf: body.isaprePlanUf === null || body.isaprePlanUf === undefined ? null : Number(body.isaprePlanUf),
+      contractType: cleanText(body.contractType, 20) as EmployeeInput['contractType'],
+      gratification: body.gratification !== false,
+      taxableBonus: Number(body.taxableBonus),
+      mealAllowance: Number(body.mealAllowance),
+      transportAllowance: Number(body.transportAllowance),
+      familyDependents: Number(body.familyDependents),
+      hireDate: cleanText(body.hireDate, 10) || undefined,
     });
     return NextResponse.json({ employee }, { status: body.id ? 200 : 201 });
   } catch (error) {
