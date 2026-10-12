@@ -6,6 +6,8 @@ Estado: implementación parcial. Este documento registra las reglas técnicas y 
 
 Los estados de resultado, caja y situación actuales se calculan desde `expenses`, `unit_charges`, `unit_payments`, `community_expenses` y `reserve_fund_movements`. El libro `journal_entries` contiene asientos manuales, remuneraciones y, desde la migración `finance_payment_atomic_journal`, cada pago nuevo de unidad. No se debe inferir que el libro ya cubre todos los movimientos.
 
+Los asientos manuales se guardan con todas sus líneas en una transacción; una línea inválida o un descuadre cancela el asiento completo.
+
 | Evento | Tratamiento técnico actual | Regla contable por confirmar |
 | --- | --- | --- |
 | Pago de unidad | Debe Banco 1100, Haber Cuentas por cobrar 1200; mismo commit del pago. Al eliminarlo se genera una reversa. | Separar efectivo, cheques y medios por conciliar; tratar los anticipos cuando la unidad no tiene deuda. |

@@ -10,7 +10,7 @@ export const LEDGER_ACCOUNTS = [
   { code: '5200', name: 'Gastos de operación', kind: 'expense' },
 ] as const;
 
-export type JournalSource = 'manual' | 'agreement' | 'payroll';
+export type JournalSource = 'manual';
 
 export interface JournalLineInput {
   code: string;
@@ -57,28 +57,22 @@ export async function postJournalEntry(
     };
   });
 
-  const admin = getSupabaseAdmin();
-  const { data: entry, error } = await admin
-    .from('journal_entries')
-    .insert({
-      community_id: communityId,
-      entry_date: input.entryDate,
-      memo,
-      source: input.source,
-      created_by: createdBy,
-    })
-    .select('id, entry_date, memo, source, created_at')
-    .single();
-  if (error || !entry) throw error || new Error('No se pudo guardar el asiento.');
-
-  const { error: lineError } = await admin.from('journal_lines').insert(
-    rows.map(row => ({ ...row, entry_id: entry.id })),
-  );
-  if (lineError) {
-    await admin.from('journal_entries').delete().eq('id', entry.id);
-    throw lineError;
+  const { data, error } = await getSupabaseAdmin().rpc('post_manual_journal_atomic', {
+    p_community_id: communityId,
+    p_entry_date: input.entryDate,
+    p_memo: memo,
+    p_actor_id: createdBy,
+    p_lines: rows,
+  });
+  if (error) throw error;
+  const entry = data as {
+    id?: string; entry_date?: string; memo?: string;
+    source?: string; created_at?: string; total?: number;
+  } | null;
+  if (!entry?.id || entry.total !== totals.debit) {
+    throw new BillingError('journal_failed', 'No se pudo confirmar el asiento.', 500);
   }
-  return { ...entry, total: totals.debit };
+  return entry;
 }
 
 async function sumAllJournalLines(communityId: string, cutoffDate?: string) {
