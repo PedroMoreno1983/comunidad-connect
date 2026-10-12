@@ -41,49 +41,23 @@ export async function saveEmployee(
 
 export async function createPayrollRun(communityId: string, createdBy: string | null, month: string) {
   if (!MONTH_PATTERN.test(month)) throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
-  const admin = getSupabaseAdmin();
-  const { data: existing } = await admin
-    .from('payroll_runs')
-    .select('id, status')
-    .eq('community_id', communityId)
-    .eq('month', month)
-    .maybeSingle();
-  if (existing?.status === 'paid') {
-    throw new BillingError('already_paid', 'Ese mes ya tiene la remuneración pagada.');
-  }
-  const { data: employees, error } = await admin
-    .from('community_employees')
-    .select('id, full_name, role_title, monthly_amount')
-    .eq('community_id', communityId)
-    .eq('active', true);
+  const { data, error } = await getSupabaseAdmin().rpc('create_payroll_run_atomic', {
+    p_community_id: communityId,
+    p_created_by: createdBy,
+    p_month: month,
+  });
   if (error) throw error;
-  if (!employees?.length) throw new BillingError('empty', 'No hay personas activas para armar la remuneración.');
-
-  const total = employees.reduce((sum, person) => sum + person.monthly_amount, 0);
-  let runId = existing?.id;
-  if (!runId) {
-    const { data: created, error: createError } = await admin
-      .from('payroll_runs')
-      .insert({ community_id: communityId, month, total_amount: total, created_by: createdBy })
-      .select('id')
-      .single();
-    if (createError || !created) throw createError || new Error('No se pudo armar la remuneración.');
-    runId = created.id;
-  } else {
-    await admin.from('payroll_lines').delete().eq('run_id', runId);
-    await admin.from('payroll_runs').update({ total_amount: total }).eq('id', runId);
+  const outcome = data as { status?: string; id?: string; month?: string; total?: number } | null;
+  if (outcome?.status === 'already_paid') {
+    throw new BillingError('already_paid', 'Ese mes ya tiene la remuneración pagada.', 409);
   }
-  const { error: lineError } = await admin.from('payroll_lines').insert(
-    employees.map(person => ({
-      run_id: runId,
-      employee_id: person.id,
-      full_name: person.full_name,
-      role_title: person.role_title,
-      amount: person.monthly_amount,
-    })),
-  );
-  if (lineError) throw lineError;
-  return { id: runId, month, total };
+  if (outcome?.status === 'empty') {
+    throw new BillingError('empty', 'No hay personas activas para armar la remuneración.');
+  }
+  if (outcome?.status !== 'draft' || !outcome.id || outcome.month !== month || !outcome.total) {
+    throw new BillingError('draft_failed', 'No se pudo confirmar el borrador de remuneraciones.', 500);
+  }
+  return { id: outcome.id, month, total: outcome.total };
 }
 
 export async function payPayrollRun(
