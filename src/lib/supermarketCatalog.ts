@@ -20,12 +20,21 @@ import {
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import { foldedAccentVariants, matchAnchor, matchAnchors, productMatchScore } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import type { SupermarketMeasurementUnit } from '@/lib/types';
+import type { SupermarketMeasurementUnit, SupermarketStorePolicy } from '@/lib/types';
 
 const GLOBAL_CANDIDATE_LIMIT = 200;
 const STORE_FALLBACK_LIMIT = 250;
 const PACK_CANDIDATE_LIMIT = 300;
 const PRODUCT_COLUMNS = 'id,sku,offer_id,sales_unit,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs';
+/**
+ * Promoción por volumen (issue #96). Va aparte de PRODUCT_COLUMNS a propósito:
+ * si la migración 20261013140000 todavía no está aplicada, pedir estas columnas
+ * en la consulta principal la haría fallar entera. Así solo se pierde la promo
+ * y el total queda marcado como estimado.
+ */
+const PROMO_COLUMNS = 'id,promo_min_qty,promo_total_price,promo_label,promo_group,promo_checked_at';
+const PROMO_FIELDS = ['promo_min_qty', 'promo_total_price', 'promo_label', 'promo_group', 'promo_checked_at'] as const;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -195,6 +204,55 @@ async function fillLiveGaps(
   return mergeMissingStoreRows(rowsByTerm, extras);
 }
 
+/**
+ * Completa la promoción por volumen de las filas que llegaron por las rutas de
+ * respaldo (ilike, packs), que no la traen. Las del lote ya vienen con ella.
+ */
+async function attachVolumePromos(
+  rowsByTerm: Record<string, Record<string, unknown>[]>,
+): Promise<Record<string, Record<string, unknown>[]>> {
+  const missingIds = [...new Set(Object.values(rowsByTerm).flat()
+    .filter(row => !('promo_checked_at' in row))
+    .map(row => String(row.id || ''))
+    .filter(id => UUID_PATTERN.test(id)))];
+  if (missingIds.length === 0) return rowsByTerm;
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const promoById = new Map<string, Record<string, unknown>>();
+  for (let index = 0; index < missingIds.length; index += 200) {
+    const { data, error } = await supabaseAdmin
+      .from('supermarket_products')
+      .select(PROMO_COLUMNS)
+      .in('id', missingIds.slice(index, index + 200));
+    // Sin la migración aplicada no hay columnas: se sigue sin promociones.
+    if (error) return rowsByTerm;
+    for (const row of normalizeRows(data)) promoById.set(String(row.id), row);
+  }
+
+  return Object.fromEntries(Object.entries(rowsByTerm).map(([term, rows]) => [
+    term,
+    rows.map(row => {
+      const promo = promoById.get(String(row.id || ''));
+      if (!promo || 'promo_checked_at' in row) return row;
+      return { ...row, ...Object.fromEntries(PROMO_FIELDS.map(field => [field, promo[field] ?? null])) };
+    }),
+  ]));
+}
+
+/** Pedido mínimo por tienda. Sin la tabla (migración pendiente) devuelve vacío. */
+export async function fetchSupermarketStorePolicies(): Promise<SupermarketStorePolicy[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('supermarket_store_policies')
+    .select('store,minimum_order');
+  if (error) return [];
+  return normalizeRows(data).flatMap(row => {
+    const store = typeof row.store === 'string' ? row.store : '';
+    const minimum = typeof row.minimum_order === 'number' ? row.minimum_order : Number(row.minimum_order);
+    if (!store) return [];
+    return [{ store, minimumOrder: Number.isFinite(minimum) && minimum > 0 ? minimum : undefined }];
+  });
+}
+
 export async function comparePersistedSupermarkets(
   terms: string[],
   requestedQuantities: Record<string, number> = {},
@@ -253,9 +311,14 @@ export async function comparePersistedSupermarkets(
     deduplicateRows([...(rowsByTerm[term] || []), ...(supplementalPackRows[term] || [])]),
   ] as [string, Record<string, unknown>[]]);
 
-  rowsByTerm = Object.fromEntries(enrichedEntries);
-  const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities, requestedUnits);
-  const alternativesByTerm = Object.fromEntries(enrichedEntries.map(([term, rows]) => {
+  const [pricedRows, storePolicies] = await Promise.all([
+    attachVolumePromos(Object.fromEntries(enrichedEntries)),
+    fetchSupermarketStorePolicies(),
+  ]);
+  rowsByTerm = pricedRows;
+  const pricedEntries = terms.map(term => [term, rowsByTerm[term] || []] as [string, Record<string, unknown>[]]);
+  const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities, requestedUnits, storePolicies);
+  const alternativesByTerm = Object.fromEntries(pricedEntries.map(([term, rows]) => {
     const requestedQuantity = normalizeRequestedQuantity(
       requestedQuantities[term] || 1,
       requestedUnits[term],
