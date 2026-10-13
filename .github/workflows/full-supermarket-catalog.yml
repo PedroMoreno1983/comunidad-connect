@@ -6,6 +6,7 @@ on:
       - "scripts/full_catalog.py"
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
+      - "scripts/test_jumbo_catalog_gap_recovery.py"
       - "scripts/test_ingest_full_supermarket_catalog.py"
       - "scripts/backfill-lider-offer-id.js"
       - "supabase/migrations/20260810180000_reconcile_supermarket_stock.sql"
@@ -17,6 +18,7 @@ on:
       - "scripts/full_catalog.py"
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
+      - "scripts/test_jumbo_catalog_gap_recovery.py"
       - "scripts/test_ingest_full_supermarket_catalog.py"
       - "scripts/backfill-lider-offer-id.js"
       - "supabase/migrations/20260810180000_reconcile_supermarket_stock.sql"
@@ -54,24 +56,24 @@ permissions:
 
 jobs:
   parser-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Run catalog ingestion tests
-        run: python -m unittest scripts/test_full_catalog.py scripts/test_ingest_full_supermarket_catalog.py -v
+        run: python -m unittest scripts/test_full_catalog.py scripts/test_jumbo_catalog_gap_recovery.py scripts/test_ingest_full_supermarket_catalog.py -v
 
   crawl:
     if: github.event_name != 'pull_request'
     needs: parser-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -107,11 +109,11 @@ jobs:
 
       - name: Check out repository
         if: steps.selection.outputs.run == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
         if: steps.selection.outputs.run == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -133,8 +135,11 @@ jobs:
         id: crawl
         shell: bash
         env:
-          MAX_PAGES: ${{ inputs.max_pages }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          # Un push a master que toca los scrapers ya no repite el crawl completo
+          # (~85 min, Jumbo ~70): corre un smoke en vivo de 2 paginas por
+          # categoria sin persistir. La frescura la da el crawl nocturno.
+          MAX_PAGES: ${{ github.event_name == 'push' && '2' || inputs.max_pages }}
+          DRY_RUN: ${{ github.event_name == 'push' && 'true' || inputs.dry_run || 'false' }}
         run: |
           args=(--store "${{ matrix.store }}" --pretty)
           if [ -n "$MAX_PAGES" ]; then
@@ -173,14 +178,14 @@ jobs:
           fi
 
       - name: Set up Node.js for Lider offer IDs
-        if: matrix.store == 'lider' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
-        uses: actions/setup-node@v4
+        if: matrix.store == 'lider' && github.event_name != 'push' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
 
       - name: Complete Lider cart identifiers
-        if: matrix.store == 'lider' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
+        if: matrix.store == 'lider' && github.event_name != 'push' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
@@ -189,7 +194,7 @@ jobs:
 
       - name: Upload catalog report
         if: always() && steps.selection.outputs.run == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: full-catalog-${{ matrix.store }}-${{ github.run_id }}
           path: full-catalog-${{ matrix.store }}.json
