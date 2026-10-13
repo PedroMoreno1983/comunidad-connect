@@ -1,32 +1,39 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type {
+  CommunityEmployeeRecord,
   PayrollCalculation,
   PayrollContractType,
   PayrollHealthSystem,
   PayrollEmployeeInput,
   PayrollIndicators,
   Payslip,
+  PayrollSettings,
   PayslipDocument,
+  PreviredWorker,
 } from '@/lib/types';
 import { BillingError, DATE_PATTERN, MONTH_PATTERN } from './billingService';
 import { calculatePayslip, PayrollInputError } from './payrollChile';
+import { buildPreviredFile, PreviredFileError } from './previredFile';
+import { parsePreviredIndicators, PREVIRED_INDICATORS_URL } from './previredIndicators';
 
 const EMPLOYEE_COLUMNS = [
   'id, full_name, role_title, monthly_amount, active, created_at',
   'calculation, rut, afp, health_system, isapre_name, isapre_plan_uf, contract_type',
   'gratification, taxable_bonus, meal_allowance, transport_allowance, family_dependents, hire_date',
+  'first_names, father_last_name, mother_last_name, sex, foreign_national, isapre_code, part_time',
 ].join(', ');
 
 const CONTRACT_TYPES: PayrollContractType[] = ['indefinido', 'plazo_fijo', 'indefinido_11'];
 
 export type EmployeeInput = PayrollEmployeeInput;
 
-/** Indicadores del mes, o los más recientes anteriores si Previred aún no publica ese mes. */
-export async function getPayrollIndicators(month: string) {
-  const { data, error } = await getSupabaseAdmin()
+/** El cálculo legal exige el mes exacto; el listado puede mostrar el último período disponible. */
+export async function getPayrollIndicators(month: string, latestAvailable = false) {
+  let query = getSupabaseAdmin()
     .from('payroll_indicators')
-    .select('month, values')
-    .lte('month', month)
+    .select('month, values');
+  query = latestAvailable ? query.lte('month', month) : query.eq('month', month);
+  const { data, error } = await query
     .order('month', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -37,14 +44,21 @@ export async function getPayrollIndicators(month: string) {
 
 export async function listPayroll(communityId: string) {
   const admin = getSupabaseAdmin();
-  const [{ data: employees, error: employeeError }, { data: runs, error: runError }, indicators] = await Promise.all([
+  const [{ data: employees, error: employeeError }, { data: runs, error: runError }, indicators, { data: community, error: communityError }] = await Promise.all([
     admin.from('community_employees').select(EMPLOYEE_COLUMNS).eq('community_id', communityId).order('full_name'),
     admin.from('payroll_runs').select('id, month, status, total_amount, paid_at, payment_reference, expense_id, expense_note, created_at, indicators_month, payroll_lines(id, full_name, role_title, amount, gross_amount, net_amount, breakdown)').eq('community_id', communityId).order('month', { ascending: false }).limit(18),
-    getPayrollIndicators('9999-12'),
+    getPayrollIndicators('9999-12', true),
+    admin.from('communities').select('payroll_ccaf_code, payroll_mutual_code, payroll_accident_rate').eq('id', communityId).single(),
   ]);
   if (employeeError) throw employeeError;
   if (runError) throw runError;
+  if (communityError) throw communityError;
   return {
+    settings: {
+      ccafCode: community.payroll_ccaf_code as string,
+      mutualCode: community.payroll_mutual_code as string,
+      accidentRate: Number(community.payroll_accident_rate),
+    },
     employees: employees || [],
     runs: runs || [],
     afps: Object.keys(indicators?.values.afpWorkerRates || {}),
@@ -57,8 +71,16 @@ function wholePesos(value: unknown) {
   return amount > 0 ? amount : 0;
 }
 
+const nameField = (value: string | undefined) => value?.trim().replace(/\s+/g, ' ').slice(0, 30) || null;
+
 export async function saveEmployee(communityId: string, input: EmployeeInput) {
-  const fullName = input.fullName.trim().slice(0, 120);
+  const firstNames = nameField(input.firstNames);
+  const fatherLastName = nameField(input.fatherLastName);
+  const motherLastName = nameField(input.motherLastName);
+  // Con nombres separados, el nombre completo se arma igual que en Previred.
+  const fullName = (firstNames && fatherLastName
+    ? [firstNames, fatherLastName, motherLastName].filter(Boolean).join(' ')
+    : input.fullName.trim()).slice(0, 120);
   const roleTitle = input.roleTitle.trim().slice(0, 80);
   const monthlyAmount = Math.round(Number(input.monthlyAmount));
   if (!fullName || !roleTitle) throw new BillingError('bad_label', 'Indica el nombre y el cargo.');
@@ -100,6 +122,13 @@ export async function saveEmployee(communityId: string, input: EmployeeInput) {
     transport_allowance: wholePesos(input.transportAllowance),
     family_dependents: Math.min(20, Math.max(0, Math.round(Number(input.familyDependents) || 0))),
     hire_date: input.hireDate || null,
+    first_names: firstNames,
+    father_last_name: fatherLastName,
+    mother_last_name: motherLastName,
+    sex: input.sex === 'M' || input.sex === 'F' ? input.sex : null,
+    foreign_national: input.foreignNational === true,
+    isapre_code: healthSystem === 'isapre' && /^\d{2}$/.test(input.isapreCode || '') ? input.isapreCode : null,
+    part_time: input.partTime === true,
   };
   const query = input.id
     ? admin.from('community_employees').update(payload).eq('id', input.id).eq('community_id', communityId)
@@ -107,6 +136,27 @@ export async function saveEmployee(communityId: string, input: EmployeeInput) {
   const { data, error } = await query.select(EMPLOYEE_COLUMNS).single();
   if (error) throw error;
   return data;
+}
+
+const CCAF_CODES = ['00', '01', '02', '03', '04'];
+const MUTUAL_CODES = ['00', '01', '02', '03'];
+
+export async function savePayrollSettings(communityId: string, input: PayrollSettings) {
+  if (!CCAF_CODES.includes(input.ccafCode)) throw new BillingError('bad_ccaf', 'Elige una caja de compensación válida.');
+  if (!MUTUAL_CODES.includes(input.mutualCode)) throw new BillingError('bad_mutual', 'Elige una mutual válida.');
+  if (!(input.accidentRate >= 0.009 && input.accidentRate < 0.2)) {
+    throw new BillingError('bad_rate', 'La tasa de accidentes va entre 0,90% y 20%.');
+  }
+  const { error } = await getSupabaseAdmin()
+    .from('communities')
+    .update({
+      payroll_ccaf_code: input.ccafCode,
+      payroll_mutual_code: input.mutualCode,
+      payroll_accident_rate: Math.round(input.accidentRate * 10000) / 10000,
+    })
+    .eq('id', communityId);
+  if (error) throw error;
+  return input;
 }
 
 interface EmployeeRow {
@@ -139,7 +189,7 @@ export async function createPayrollRun(communityId: string, createdBy: string | 
   if (!rows.length) throw new BillingError('empty', 'No hay personas activas para armar la remuneración.');
   const needsIndicators = rows.some(row => row.calculation === 'chile');
   if (needsIndicators && !indicators) {
-    throw new BillingError('no_indicators', 'Faltan los indicadores previsionales de ese mes.');
+    throw new BillingError('no_indicators', 'Faltan los indicadores previsionales del mes exacto. La liquidación legal queda pendiente hasta cargarlos.');
   }
 
   const lines = rows.map(row => {
@@ -271,4 +321,83 @@ export async function getPayslipDocument(communityId: string, lineId: string): P
     slip,
     indicatorsMonth: run.indicators_month,
   };
+}
+
+/** Archivo de 105 campos para cargar en Previred la nómina de un mes ya calculado. */
+export async function getPreviredFile(communityId: string, runId: string) {
+  const admin = getSupabaseAdmin();
+  const { data: run, error } = await admin
+    .from('payroll_runs')
+    .select('id, month, indicators_month, payroll_lines(full_name, breakdown, employee_id)')
+    .eq('id', runId)
+    .eq('community_id', communityId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!run) throw new BillingError('not_found', 'No existe esa liquidación.', 404);
+  if (!run.indicators_month) {
+    throw new BillingError('fixed_run', 'Esta nómina no tiene trabajadores con liquidación legal.');
+  }
+  const lines = (run.payroll_lines || []) as { full_name: string; breakdown: Payslip | null; employee_id: string | null }[];
+  const employeeIds = lines.map(line => line.employee_id).filter((id): id is string => Boolean(id));
+  const [{ data: employees, error: employeeError }, { data: community, error: communityError }, { data: indicators, error: indicatorsError }] = await Promise.all([
+    admin.from('community_employees').select(EMPLOYEE_COLUMNS).in('id', employeeIds),
+    admin.from('communities').select('payroll_ccaf_code, payroll_mutual_code').eq('id', communityId).single(),
+    admin.from('payroll_indicators').select('values').eq('month', run.indicators_month).single(),
+  ]);
+  if (employeeError) throw employeeError;
+  if (communityError) throw communityError;
+  if (indicatorsError) throw indicatorsError;
+  const byId = new Map(((employees || []) as unknown as CommunityEmployeeRecord[]).map(row => [row.id, row]));
+
+  const workers: PreviredWorker[] = lines
+    .filter(line => line.breakdown?.calculation === 'chile')
+    .map(line => {
+      const row = line.employee_id ? byId.get(line.employee_id) : undefined;
+      return {
+        fullName: line.full_name,
+        rut: row?.rut ?? null,
+        firstNames: row?.first_names ?? null,
+        fatherLastName: row?.father_last_name ?? null,
+        motherLastName: row?.mother_last_name ?? null,
+        sex: row?.sex ?? null,
+        foreignNational: row?.foreign_national ?? false,
+        contractType: row?.contract_type ?? 'indefinido',
+        hireDate: row?.hire_date ?? null,
+        familyDependents: row?.family_dependents ?? 0,
+        isapreCode: row?.isapre_code ?? null,
+        isaprePlanUf: row?.isapre_plan_uf === null || row?.isapre_plan_uf === undefined ? null : Number(row.isapre_plan_uf),
+        partTime: row?.part_time ?? false,
+        slip: line.breakdown as Payslip,
+      };
+    });
+
+  try {
+    const text = buildPreviredFile({
+      month: run.month,
+      indicators: indicators.values as PayrollIndicators,
+      ccafCode: community.payroll_ccaf_code,
+      mutualCode: community.payroll_mutual_code,
+      workers,
+    });
+    return { month: run.month, text };
+  } catch (fileError) {
+    if (fileError instanceof PreviredFileError) {
+      throw new BillingError('previred_incomplete', fileError.problems.join(' '), 422);
+    }
+    throw fileError;
+  }
+}
+
+/**
+ * Carga los indicadores del mes publicado por Previred si todavía no están.
+ * Nunca pisa un mes ya cargado: si Previred corrige un valor, se revisa a mano.
+ */
+export async function refreshPayrollIndicators(fetchHtml: () => Promise<string>) {
+  const parsed = parsePreviredIndicators(await fetchHtml());
+  const { data, error } = await getSupabaseAdmin()
+    .from('payroll_indicators')
+    .upsert({ month: parsed.month, values: parsed.values, source: PREVIRED_INDICATORS_URL }, { onConflict: 'month', ignoreDuplicates: true })
+    .select('month');
+  if (error) throw error;
+  return { month: parsed.month, inserted: Boolean(data?.length) };
 }

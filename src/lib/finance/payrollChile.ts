@@ -69,7 +69,7 @@ export function calculatePayslip(input: PayslipInput, indicators: PayrollIndicat
             incomeTax: 0,
             totalDeductions: 0,
             netPay: baseSalary,
-            employer: { sis: 0, afp: 0, socialInsurance: 0, unemployment: 0, accidentInsurance: 0, total: 0 },
+            employer: { sis: 0, afp: 0, socialInsurance: 0, socialInsuranceDetail: {}, unemployment: 0, accidentInsurance: 0, total: 0 },
             employerCost: baseSalary,
         };
     }
@@ -109,11 +109,15 @@ export function calculatePayslip(input: PayslipInput, indicators: PayrollIndicat
     const grossPay = taxableIncome + mealAllowance + transportAllowance + familyAllowance;
     const totalDeductions = afpAmount + healthAmount + unemploymentWorker + tax;
 
-    const socialInsuranceRate = Object.values(indicators.socialInsuranceRates).reduce((sum, rate) => sum + rate, 0);
+    // Cada aporte se redondea por separado: Previred los recibe en campos distintos.
+    const socialInsuranceDetail = Object.fromEntries(
+        Object.entries(indicators.socialInsuranceRates).map(([concept, rate]) => [concept, peso(pensionBase * rate)]),
+    );
     const employer = {
         sis: peso(pensionBase * indicators.sisRate),
         afp: peso(pensionBase * indicators.employerAfpRate),
-        socialInsurance: peso(pensionBase * socialInsuranceRate),
+        socialInsurance: Object.values(socialInsuranceDetail).reduce((sum, amount) => sum + amount, 0),
+        socialInsuranceDetail,
         unemployment: peso(unemploymentBase * unemploymentRates.employer),
         accidentInsurance: peso(pensionBase * input.accidentRate),
         total: 0,
