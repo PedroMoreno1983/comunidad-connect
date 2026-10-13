@@ -125,7 +125,7 @@ PIN asignado a la tarea. Eliminado el bypass.
 
 ### Credenciales reales expuestas (requieren rotación externa)
 
-1. **Contraseña root SSH real** (`Datawise2026#`) para el servidor
+1. **Contraseña root SSH real** (valor omitido — no publicar credenciales en este archivo) para el servidor
    `72.62.12.242` (datawiseconsultoria.com), hardcodeada en
    `download_scrapp.py` y `download_scrapp_zip.py` — **ya eliminados del
    árbol actual**, pero siguen en el historial de git. Acción:
