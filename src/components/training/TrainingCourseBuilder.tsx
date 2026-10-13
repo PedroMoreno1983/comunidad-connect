@@ -75,6 +75,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
     const [fileName, setFileName] = useState<string | null>(null);
     const [busy, setBusy] = useState<"file" | "generate" | "publish" | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [reviewed, setReviewed] = useState(false);
 
     const activities = useMemo(() => trainingActivityCount(slides), [slides]);
     const quality = useMemo(() => trainingQualityReport(slides), [slides]);
@@ -87,7 +88,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
         draft.title.trim()
         && draft.description.trim()
         && objectives.length
-        && (isStructured || draft.embedUrl.trim()),
+        && ((isStructured && reviewed) || draft.embedUrl.trim()),
     );
 
     const setField = <K extends keyof TrainingCourseDraft>(key: K, value: TrainingCourseDraft[K]) => {
@@ -98,6 +99,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
     const updateSource = (content: string) => {
         setField("content", content);
         setSlides([]);
+        setReviewed(false);
     };
 
     const loadFile = async (file: File) => {
@@ -142,16 +144,10 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                 throw new Error(data.error || "No se pudo construir un curso interactivo válido.");
             }
             setSlides(normalized);
-            if (!objectivesText.trim()) {
-                setObjectivesText([
-                    "Reconocer los criterios esenciales del protocolo.",
-                    "Aplicar el procedimiento correcto en situaciones reales.",
-                    "Registrar, escalar y cerrar cada gestión con evidencia.",
-                ].join("\n"));
-            }
+            setReviewed(false);
             toast({
                 title: "Curso diseñado",
-                description: `${normalized.length} secciones y ${trainingActivityCount(normalized)} actividades listas para revisar.`,
+                description: `${normalized.length} secciones y ${trainingActivityCount(normalized)} actividades. Revisa la fuente y las respuestas antes de publicar.`,
                 variant: "success",
             });
         } catch (error) {
@@ -311,7 +307,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                             <Eyebrow>Vista previa</Eyebrow>
                             <h3 className="mt-2 text-lg font-semibold cc-text-primary">Estructura del curso</h3>
                         </div>
-                        {isStructured && <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><ShieldCheck className="h-3.5 w-3.5" />Calidad {quality.score}/100</span>}
+                        {isStructured && <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><ShieldCheck className="h-3.5 w-3.5" />Estructura {quality.score}/100</span>}
                     </div>
 
                     {slides.length === 0 ? (
@@ -327,20 +323,28 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                                 <PreviewMetric value={activities} label="actividades" />
                             </div>
                             <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                                <div className="flex items-center justify-between text-xs font-semibold"><span className="cc-text-primary">Control editorial</span><span style={{ color: quality.publishable ? "var(--cc-sage)" : "var(--cc-copper)" }}>{quality.score}/100</span></div>
+                                <div className="flex items-center justify-between text-xs font-semibold"><span className="cc-text-primary">Control de estructura</span><span style={{ color: quality.publishable ? "var(--cc-sage)" : "var(--cc-copper)" }}>{quality.score}/100</span></div>
                                 <div className="mt-2 grid gap-1.5">{quality.checks.map(check => <div key={check.id} className="flex items-center gap-2 text-[11px] cc-text-secondary">{check.passed ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "var(--cc-sage)" }} /> : <span className="h-3.5 w-3.5 rounded-full border" style={{ borderColor: "var(--cc-line-strong)" }} />}{check.label}</div>)}</div>
                             </div>
-                            <ol className="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-1">
+                            <ol className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-1">
                                 {slides.map((slide, index) => (
                                     <li key={slide.id} className="flex gap-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white" style={{ background: "var(--cc-ink)" }}>{index + 1}</span>
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold cc-text-primary">{slide.title}</p>
+                                            <p className="text-sm font-semibold cc-text-primary">{slide.title}</p>
                                             <p className="mt-1 text-xs cc-text-secondary">{slide.activity ? activityLabel(slide.activity.type) : `${slide.bullets.length} ideas clave`}</p>
+                                            <details className="mt-2 text-xs leading-5 cc-text-secondary">
+                                                <summary className="cursor-pointer font-semibold">Revisar contenido y fuente</summary>
+                                                <p className="mt-2 font-semibold cc-text-primary">{slide.lead}</p>
+                                                <ul className="mt-1 list-disc space-y-1 pl-4">{slide.bullets.map((bullet, bulletIndex) => <li key={bulletIndex}>{bullet}</li>)}</ul>
+                                                {slide.activity && <div className="mt-2"><p className="font-semibold">{slide.activity.prompt}</p>{slide.activity.options?.map((option, optionIndex) => <p key={optionIndex}>{optionIndex === slide.activity?.correctIndex ? "✓ " : "· "}{option}</p>)}{slide.activity.items?.map(item => <p key={item}>· {item}</p>)}<p>{slide.activity.explanation}</p></div>}
+                                                <p className="mt-2"><strong>Fragmento de la fuente:</strong> {slide.source_note || "No indicado en esta versión"}</p>
+                                            </details>
                                         </div>
                                     </li>
                                 ))}
                             </ol>
+                            {!draft.embedUrl && <label className="mt-4 flex items-start gap-2 text-xs leading-5 cc-text-secondary"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} className="mt-1" />Revisé cada sección, las respuestas correctas y los fragmentos de la fuente. Confirmo que el contenido corresponde a mi procedimiento.</label>}
                         </>
                     )}
 
