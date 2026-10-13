@@ -2401,7 +2401,7 @@ CREATE TABLE IF NOT EXISTS "public"."parking_bookings" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "parking_bookings_community_fee_amount_check" CHECK (("community_fee_amount" >= 0)),
     CONSTRAINT "parking_bookings_owner_payout_amount_check" CHECK (("owner_payout_amount" >= 0)),
-    CONSTRAINT "parking_bookings_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'refunded'::"text", 'failed'::"text"]))),
+    CONSTRAINT "parking_bookings_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'refunded'::"text", 'failed'::"text", 'voided'::"text"]))),
     CONSTRAINT "parking_bookings_range_valid" CHECK (("ends_at" > "starts_at")),
     CONSTRAINT "parking_bookings_status_check" CHECK (("status" = ANY (ARRAY['confirmed'::"text", 'active'::"text", 'completed'::"text", 'cancelled'::"text", 'no_show'::"text"]))),
     CONSTRAINT "parking_bookings_total_amount_check" CHECK (("total_amount" >= 0))
@@ -5877,3 +5877,69 @@ CREATE INDEX IF NOT EXISTS tax_documents_community_idx
 ALTER TABLE public.tax_documents ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.tax_documents FROM anon, authenticated;
 GRANT ALL ON public.tax_documents TO service_role;
+
+-- Libro de cobros de estacionamientos (20261013160000_parking_charges_ledger.sql).
+-- Un cobro por reserva; por defecto se carga como unit_charges (kind 'service')
+-- en la cuenta de la unidad del residente. Triggers y RPCs en la migración.
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS parking_billing_method text NOT NULL DEFAULT 'common_expenses'
+  CHECK (parking_billing_method IN ('common_expenses', 'haulmer'));
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS parking_free_cancellation_hours integer NOT NULL DEFAULT 2
+  CHECK (parking_free_cancellation_hours BETWEEN 0 AND 168);
+ALTER TABLE public.parking_bookings ADD COLUMN IF NOT EXISTS cancelled_by_party text
+  CHECK (cancelled_by_party IS NULL OR cancelled_by_party IN ('driver', 'owner', 'admin', 'system'));
+
+CREATE TABLE IF NOT EXISTS public.parking_charges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  booking_id uuid NOT NULL UNIQUE REFERENCES public.parking_bookings(id) ON DELETE CASCADE,
+  driver_id uuid NOT NULL REFERENCES public.parking_drivers(id) ON DELETE CASCADE,
+  payer_profile_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  unit_id uuid REFERENCES public.units(id) ON DELETE SET NULL,
+  amount integer NOT NULL CHECK (amount >= 0),
+  currency text NOT NULL DEFAULT 'CLP' CHECK (currency = 'CLP'),
+  method text NOT NULL CHECK (method IN ('common_expenses', 'haulmer', 'none')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'charged', 'paid', 'failed', 'voided', 'refunded')),
+  unit_charge_id uuid UNIQUE REFERENCES public.unit_charges(id) ON DELETE SET NULL,
+  provider_reference text,
+  payment_url text,
+  failure_reason text,
+  needs_review boolean NOT NULL DEFAULT false,
+  charged_at timestamptz,
+  paid_at timestamptz,
+  voided_at timestamptz,
+  refunded_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS parking_charges_community_status_idx
+  ON public.parking_charges (community_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS parking_charges_driver_idx ON public.parking_charges (driver_id);
+CREATE INDEX IF NOT EXISTS parking_charges_review_idx ON public.parking_charges (community_id) WHERE needs_review;
+ALTER TABLE public.parking_charges ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_charges FROM anon, authenticated;
+GRANT SELECT ON public.parking_charges TO authenticated;
+GRANT ALL ON public.parking_charges TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.parking_charge_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  seq bigint GENERATED ALWAYS AS IDENTITY,
+  charge_id uuid NOT NULL REFERENCES public.parking_charges(id) ON DELETE CASCADE,
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  event_type text NOT NULL CHECK (char_length(event_type) BETWEEN 3 AND 60),
+  from_status text,
+  to_status text,
+  amount integer,
+  actor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX IF NOT EXISTS parking_charge_events_charge_idx ON public.parking_charge_events (charge_id, seq);
+CREATE INDEX IF NOT EXISTS parking_charge_events_community_idx ON public.parking_charge_events (community_id, created_at DESC);
+ALTER TABLE public.parking_charge_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_charge_events FROM anon, authenticated;
+GRANT SELECT ON public.parking_charge_events TO authenticated;
+GRANT SELECT, INSERT ON public.parking_charge_events TO service_role;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_charges_parking_booking_once
+  ON public.unit_charges (notes)
+  WHERE notes LIKE 'parking_booking:%' AND status <> 'cancelled';
