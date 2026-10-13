@@ -3,7 +3,7 @@ import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { BillingError } from '@/lib/finance/billingService';
 import { requireCommunityAdmin } from '@/lib/finance/httpAuth';
-import { createPayrollRun, listPayroll, payPayrollRun, saveEmployee, type EmployeeInput } from '@/lib/finance/payrollService';
+import { createPayrollRun, listPayroll, payPayrollRun, savePayrollSettings, saveEmployee, type EmployeeInput } from '@/lib/finance/payrollService';
 
 export const runtime = 'nodejs';
 
@@ -38,6 +38,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ run }, { status: 201 });
     }
 
+    if (action === 'settings') {
+      const settings = await savePayrollSettings(auth.communityId, {
+        ccafCode: cleanText(body.ccafCode, 2),
+        mutualCode: cleanText(body.mutualCode, 2),
+        accidentRate: Number(body.accidentRate),
+      });
+      return NextResponse.json({ settings });
+    }
+
     if (action === 'pay') {
       const result = await payPayrollRun(auth.communityId, auth.profile.id, {
         runId: cleanText(body.runId, 60),
@@ -66,6 +75,13 @@ export async function POST(req: NextRequest) {
       transportAllowance: Number(body.transportAllowance),
       familyDependents: Number(body.familyDependents),
       hireDate: cleanText(body.hireDate, 10) || undefined,
+      firstNames: cleanText(body.firstNames, 30),
+      fatherLastName: cleanText(body.fatherLastName, 30),
+      motherLastName: cleanText(body.motherLastName, 30),
+      sex: body.sex === 'M' || body.sex === 'F' ? body.sex : null,
+      foreignNational: body.foreignNational === true,
+      isapreCode: cleanText(body.isapreCode, 2),
+      partTime: body.partTime === true,
     });
     return NextResponse.json({ employee }, { status: body.id ? 200 : 201 });
   } catch (error) {
