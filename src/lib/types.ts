@@ -3416,3 +3416,72 @@ export interface OversightReport {
         totalUnits: number;
     };
 }
+
+/** 33 = factura electrónica afecta a IVA; 34 = factura electrónica exenta. */
+export type TaxDocumentType = 33 | 34;
+
+/** Datos del emisor tal como los pide el SII. */
+export interface InvoicingEmitter {
+    rut: string;
+    businessName: string;
+    activity: string;
+    /** Código de actividad económica del SII (Acteco). */
+    activityCode: string;
+    address: string;
+    commune: string;
+    /** Código de sucursal del SII, si la tiene. */
+    branchCode?: string;
+}
+
+export interface TaxDocumentReceiver {
+    rut: string;
+    businessName: string;
+    activity: string;
+    address: string;
+    commune: string;
+}
+
+export interface TaxDocumentItem {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+}
+
+export interface TaxDocumentDraft {
+    type: TaxDocumentType;
+    issueDate: string;
+    receiver: TaxDocumentReceiver;
+    items: TaxDocumentItem[];
+}
+
+export interface TaxDocumentTotals {
+    net: number;
+    exempt: number;
+    tax: number;
+    total: number;
+}
+
+export interface TaxDocument {
+    id: string;
+    environment: "test" | "production";
+    type: TaxDocumentType;
+    status: "pending" | "issued" | "failed";
+    folio: number | null;
+    receiver: TaxDocumentReceiver;
+    items: TaxDocumentItem[];
+    totals: TaxDocumentTotals;
+    issueDate: string;
+    hasPdf: boolean;
+    warnings: string[];
+    error: string | null;
+    createdAt: string;
+}
+
+export interface InvoicingSettingsView {
+    configured: boolean;
+    environment: "test" | "production";
+    emitter: InvoicingEmitter | null;
+    /** Últimos 4 caracteres de la API key, para reconocerla sin mostrarla. */
+    apiKeyHint: string | null;
+    encryptionReady: boolean;
+}
