@@ -112,6 +112,15 @@ function contains(candidate: unknown, query: string) {
     return normalizeIntentText(String(candidate || '')).includes(normalizeIntentText(query));
 }
 
+/**
+ * Lecturas acotadas a `profile.community_id`. Se exporta para que el ciclo
+ * agentico (agentTools.ts) reutilice la misma busqueda de residentes y unidades
+ * en vez de duplicarla.
+ */
+export async function runCommunityReadTool(name: string, rawInput: unknown, profile: AgentProfile) {
+    return runReadTool(name, rawInput, profile);
+}
+
 async function runReadTool(name: string, rawInput: unknown, profile: AgentProfile) {
     const input = asRecord(rawInput);
     const communityId = profile.community_id;
