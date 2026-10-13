@@ -280,27 +280,32 @@ export function buildStructuredTrainingFallback(source: string, audience: 'admin
     ];
 }
 
-export function ensureInteractiveTrainingCourse(value: unknown, source: string, audience: 'admin' | 'concierge' | 'all') {
+function comparableSource(value: string) {
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Una cita literal permite revisar cada afirmación del curso contra el material cargado. */
+export function trainingSourceEvidence(slides: TrainingSlide[], source: string) {
+    const normalizedSource = comparableSource(source);
+    const unsupported = slides.filter(slide => {
+        const quote = comparableSource(slide.source_note || '');
+        return quote.length < 20 || !normalizedSource.includes(quote);
+    });
+    const supportedCount = slides.length - unsupported.length;
+    return {
+        supportedCount,
+        total: slides.length,
+        sufficient: slides.length > 0
+            && supportedCount >= Math.ceil(slides.length * 0.7)
+            && unsupported.every(slide => !slide.activity),
+        unsupportedIds: unsupported.map(slide => slide.id),
+    };
+}
+
+export function ensureInteractiveTrainingCourse(value: unknown, source: string) {
     const slides = normalizeTrainingSlides(value);
-    const fallback = buildStructuredTrainingFallback(source, audience);
-    if (slides.length < 6) return fallback;
-
-    const existingTypes = new Set(slides.flatMap(slide => slide.activity ? [slide.activity.type] : []));
-    const missingActivities = fallback.map(slide => slide.activity).filter((activity): activity is TrainingActivity => {
-        if (!activity) return false;
-        return !existingTypes.has(activity.type);
-    });
-    let activityIndex = 0;
-    const preferredIndexes = [1, Math.floor(slides.length / 2), slides.length - 1];
-    const supplemented = slides.map((slide, index) => {
-        if (slide.activity || !preferredIndexes.includes(index) || !missingActivities[activityIndex]) return slide;
-        const activity = missingActivities[activityIndex++];
-        return { ...slide, activity, layout: activity.type === 'scenario' ? 'scenario' : activity.type === 'checklist' ? 'checklist' : slide.layout } satisfies TrainingSlide;
-    });
-
-    if (!supplemented.some(slide => (slide.role_cards?.length || 0) >= 2)) {
-        const roleIndex = Math.min(2, supplemented.length - 1);
-        supplemented[roleIndex] = { ...supplemented[roleIndex], role_cards: fallback[2].role_cards, layout: 'process' };
+    if (!isPublishableTrainingCourse(slides) || !trainingSourceEvidence(slides, source).sufficient) {
+        throw new Error('El curso generado está incompleto o no cita suficientemente el documento fuente.');
     }
-    return isPublishableTrainingCourse(supplemented) ? supplemented : fallback;
+    return slides;
 }

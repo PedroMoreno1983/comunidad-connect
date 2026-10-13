@@ -10,7 +10,7 @@ import {
     recordAiUsage,
 } from '@/lib/ai/budget';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
-import { buildStructuredTrainingFallback, ensureInteractiveTrainingCourse, trainingQualityReport } from '@/lib/training/courseContent';
+import { ensureInteractiveTrainingCourse, trainingQualityReport } from '@/lib/training/courseContent';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -56,16 +56,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Agrega al menos 80 caracteres de contenido fuente para diseñar el curso.' }, { status: 400 });
     }
 
-    const fallback = () => {
-        const slides = buildStructuredTrainingFallback(text, audience);
-        return NextResponse.json({
-            slides,
-            quality: trainingQualityReport(slides),
-            warning: 'CoCo preparó una versión estructurada localmente. Revísala antes de publicar.',
-        });
-    };
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return fallback();
+    if (!apiKey) return NextResponse.json({ error: 'El diseño automático no está disponible. Conservamos tu fuente; vuelve a intentarlo cuando se restablezca el servicio.' }, { status: 503 });
 
     const systemPrompt = `Eres CoCo, diseñador instruccional para condominios chilenos.
 Transforma el texto fuente en un curso operativo profesional para ${audienceLabel(audience)}.
@@ -82,6 +74,7 @@ Reglas editoriales obligatorias:
 9. Usa solo estos temas visuales: copper, sage, ink o amber.
 10. Las notes forman el guion de la tutora: explican qué hacer, quién responde, qué registrar y cuándo escalar.
 11. Evita diapositivas genéricas: cada una debe contener una decisión, un procedimiento o un criterio transferible al trabajo.
+12. Cada sección lleva source_note: copia literalmente una frase de 20 a 180 caracteres del texto fuente que respalde esa sección. Las tres secciones con actividad deben tener una cita. No atribuyas al documento procedimientos, cifras o deberes que no contiene.
 
 Texto fuente:
 ${text}`;
@@ -151,7 +144,7 @@ ${text}`;
                                     },
                                 },
                             },
-                            required: ['id', 'title', 'lead', 'layout', 'bullets', 'visual_theme', 'notes'],
+                            required: ['id', 'title', 'lead', 'layout', 'bullets', 'source_note', 'visual_theme', 'notes'],
                         },
                     },
                 },
@@ -166,7 +159,7 @@ ${text}`;
         const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!rawResponse) throw new Error('Gemini no devolvio contenido estructurado');
         const generated = JSON.parse(rawResponse) as unknown;
-        const slides = ensureInteractiveTrainingCourse(generated, text, audience);
+        const slides = ensureInteractiveTrainingCourse(generated, text);
         const actualPromptTokens = data.usageMetadata?.promptTokenCount ?? promptTokens;
         const completionTokens = data.usageMetadata?.candidatesTokenCount ?? estimateTokensFromText(rawResponse);
 
@@ -191,7 +184,7 @@ ${text}`;
         if (isAiBudgetExceededError(error)) {
             return NextResponse.json({ error: error.reason }, { status: 429 });
         }
-        console.error('[training/generate-slides] AI generation failed; using structured fallback:', error);
-        return fallback();
+        console.error('[training/generate-slides] AI generation failed:', error);
+        return NextResponse.json({ error: 'No se pudo generar un curso fiel y completo desde la fuente. Revisa el documento y vuelve a intentarlo; no se publicó contenido genérico.' }, { status: 502 });
     }
 }
