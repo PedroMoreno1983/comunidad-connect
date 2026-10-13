@@ -10,6 +10,7 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import type { FinanceSettings, MonthlyFinanceReport, ReserveFund } from "@/lib/types";
 import { currentMonthInChile } from "@/lib/finance/chileDates";
+import { OversightLinksCard } from "@/components/integrations/OversightLinksCard";
 
 
 
@@ -297,6 +298,7 @@ export default function RendicionPage() {
                         )}
                     </>
                 )}
+                <OversightLinksCard />
             </motion.div>
         </ErrorBoundary>
     );

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { AccessGateCard } from "@/components/intercom/AccessGateCard";
+import { ApiKeysCard } from "@/components/integrations/ApiKeysCard";
 import type { HealthResponse, OperationEvent, OperationsResponse } from "@/lib/types";
 
 
@@ -147,6 +148,8 @@ export default function AdminOperationsPage() {
             </header>
 
             <AccessGateCard />
+
+            <ApiKeysCard />
 
             {error && (
                 <div className="rounded-lg border border-danger-border bg-danger-bg p-4 text-sm font-semibold text-danger-fg">

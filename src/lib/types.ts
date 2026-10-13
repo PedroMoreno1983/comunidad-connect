@@ -3376,3 +3376,43 @@ export interface IntercomCall {
     gateStatus: "opened" | "failed" | "not_configured" | null;
     admitted: boolean;
 }
+
+export type ApiKeyScope = "units" | "finance" | "access";
+
+/** Clave de la API pública tal como se muestra: nunca incluye el secreto. */
+export interface CommunityApiKey {
+    id: string;
+    name: string;
+    prefix: string;
+    scopes: ApiKeyScope[];
+    createdAt: string;
+    lastUsedAt: string | null;
+    revokedAt: string | null;
+}
+
+/** Enlace de solo lectura para un fiscalizador, auditor o comité de vigilancia. */
+export interface OversightLink {
+    id: string;
+    label: string;
+    expiresAt: string;
+    createdAt: string;
+    revokedAt: string | null;
+    lastViewedAt: string | null;
+    viewCount: number;
+}
+
+export interface OversightReport {
+    community: { name: string; address: string | null };
+    label: string;
+    expiresAt: string;
+    generatedAt: string;
+    months: import("@/lib/finance/reportingService").MonthlyReport[];
+    reserveFundBalance: number;
+    debt: {
+        totalDebt: number;
+        totalOverdue: number;
+        unitsWithDebt: number;
+        unitsOverdue: number;
+        totalUnits: number;
+    };
+}
