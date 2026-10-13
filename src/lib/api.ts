@@ -129,6 +129,8 @@ import {
     User,
     WaterReading,
 } from './types';
+import type { ParkingBillingMethod, ParkingCharge, ParkingChargeProcessResult } from './types';
+import { mapParkingChargeRow, PARKING_CHARGE_COLUMNS } from './parking';
 import type { AnnouncementDatabaseRow, ApiKeyScope, InvoicingEmitter, InvoicingSettingsView, TaxDocument, TaxDocumentDraft, CommunityApiKey, CommunityEmployeeRecord, OversightLink, IntercomCall, IntercomVisitKind, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, PayrollSettings, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
@@ -3020,7 +3022,90 @@ export const ParkingService = {
             .order('starts_at', { ascending: false });
 
         if (error) throw error;
-        return ((data || []) as ParkingBookingRow[]).map(mapParkingBooking);
+        const bookings = ((data || []) as ParkingBookingRow[]).map(mapParkingBooking);
+        const charges = await ParkingService.getChargesForBookings(bookings.map(b => b.id));
+        return bookings.map(b => (charges.has(b.id) ? { ...b, charge: charges.get(b.id) } : b));
+    },
+
+    /* — Cobros (libro parking_charges) — */
+
+    /**
+     * Cobros de un conjunto de reservas. Va en una consulta aparte y no como
+     * embed de parking_bookings: si la migración del libro no está aplicada, el
+     * embed rompería la lista de reservas entera. Así, sin migración, las
+     * reservas se ven igual y solo falta la línea del cobro.
+     */
+    async getChargesForBookings(bookingIds: string[]): Promise<Map<string, ParkingCharge>> {
+        const result = new Map<string, ParkingCharge>();
+        if (bookingIds.length === 0) return result;
+        const { data, error } = await supabase
+            .from('parking_charges')
+            .select(`${PARKING_CHARGE_COLUMNS},units(tower,number)`)
+            .in('booking_id', bookingIds.slice(0, 200));
+        if (error) return result;
+        for (const row of (data || []) as Record<string, unknown>[]) {
+            const charge = mapParkingChargeRow(row);
+            result.set(charge.bookingId, charge);
+        }
+        return result;
+    },
+
+    /**
+     * Pide al servidor que deje resuelto el cobro de una reserva recién creada
+     * (link de Haulmer o cargo a gastos comunes). Con el método por defecto la
+     * base ya lo cargó al reservar y esto solo confirma el estado. No envía
+     * montos: el servidor los lee del libro.
+     */
+    async processCharge(bookingId: string): Promise<ParkingChargeProcessResult | null> {
+        try {
+            const response = await fetch('/api/parking/charges/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId }),
+            });
+            if (!response.ok) return null;
+            return await response.json() as ParkingChargeProcessResult;
+        } catch {
+            return null;
+        }
+    },
+
+    /** Cobros de la comunidad, para la administración (RLS: solo admin). */
+    async getCommunityCharges(communityId: string): Promise<ParkingCharge[]> {
+        const { data, error } = await supabase
+            .from('parking_charges')
+            .select(`${PARKING_CHARGE_COLUMNS},units(tower,number),parking_drivers(full_name,plate),parking_bookings(starts_at,ends_at,status,parking_spots(label))`)
+            .eq('community_id', communityId)
+            .order('created_at', { ascending: false })
+            .limit(200);
+        if (error) throw error;
+        return ((data || []) as Record<string, unknown>[]).map(mapParkingChargeRow);
+    },
+
+    async adminPostChargeToUnit(chargeId: string): Promise<string> {
+        const { data, error } = await supabase.rpc('admin_post_parking_charge_to_unit', { p_charge_id: chargeId });
+        if (error) throw error;
+        return String(data);
+    },
+
+    async adminMarkChargeRefunded(chargeId: string, note: string): Promise<void> {
+        const { error } = await supabase.rpc('admin_mark_parking_charge_refunded', {
+            p_charge_id: chargeId,
+            p_note: note.trim(),
+        });
+        if (error) throw error;
+    },
+
+    /** Plazo de cancelación sin costo de la comunidad; 2 h si no hay dato. */
+    async getFreeCancellationHours(communityId?: string): Promise<number> {
+        if (!communityId) return 2;
+        const { data, error } = await supabase
+            .from('communities')
+            .select('parking_free_cancellation_hours')
+            .eq('id', communityId)
+            .maybeSingle();
+        const hours = Number((data as { parking_free_cancellation_hours?: number } | null)?.parking_free_cancellation_hours);
+        return error || !Number.isFinite(hours) ? 2 : hours;
     },
 
     /** Reservas recibidas en los estacionamientos del usuario. */
@@ -3100,10 +3185,24 @@ export const ParkingService = {
             .single();
 
         if (error) throw error;
-        return {
+        const settings: ParkingCommunitySettings = {
             externalEnabled: Boolean(data?.parking_external_enabled),
             commissionPercent: Number(data?.parking_commission_percent ?? 0),
         };
+
+        // Columnas del libro de cobros: aparte, para que el panel siga
+        // funcionando si la migración todavía no se aplicó.
+        const billing = await supabase
+            .from('communities')
+            .select('parking_billing_method,parking_free_cancellation_hours')
+            .eq('id', communityId)
+            .maybeSingle();
+        if (!billing.error && billing.data) {
+            const row = billing.data as { parking_billing_method?: string; parking_free_cancellation_hours?: number };
+            settings.billingMethod = row.parking_billing_method === 'haulmer' ? 'haulmer' : 'common_expenses';
+            settings.freeCancellationHours = Number(row.parking_free_cancellation_hours ?? 2);
+        }
+        return settings;
     },
 
     async updateCommunitySettings(
@@ -3114,8 +3213,21 @@ export const ParkingService = {
         if (settings.externalEnabled !== undefined) payload.parking_external_enabled = settings.externalEnabled;
         if (settings.commissionPercent !== undefined) payload.parking_commission_percent = settings.commissionPercent;
 
-        const { error } = await supabase.from('communities').update(payload).eq('id', communityId);
-        if (error) throw error;
+        if (Object.keys(payload).length > 0) {
+            const { error } = await supabase.from('communities').update(payload).eq('id', communityId);
+            if (error) throw error;
+        }
+
+        // El método de cobro y el plazo de cancelación pasan por una RPC que
+        // valida que quien cambia es admin de esa comunidad.
+        if (settings.billingMethod !== undefined || settings.freeCancellationHours !== undefined) {
+            const billingMethod: ParkingBillingMethod | null = settings.billingMethod ?? null;
+            const { error } = await supabase.rpc('admin_set_parking_billing_settings', {
+                p_billing_method: billingMethod,
+                p_free_cancellation_hours: settings.freeCancellationHours ?? null,
+            });
+            if (error) throw error;
+        }
     },
 
     /** Todos los estacionamientos de la comunidad, para revisión de la administración. */
