@@ -59,7 +59,8 @@ export async function POST(request: Request) {
 
             const pdfBase64 = buffer.toString('base64');
             const inlineData = { mimeType: 'application/pdf', data: pdfBase64 };
-            const model = 'gemini-2.0-flash';
+            // gemini-2.0-flash fue retirado por Google (404). Transcribir no necesita razonamiento.
+            const model = 'gemini-2.5-flash';
             const prompt = 'Extrae TODO el texto de este documento de entrenamiento exactamente como esta escrito, sin omitir partes, sin resumir y sin agregar comentarios extras. Solo retorna el contenido puro en texto plano directo, sin usar bloques de codigo Markdown.';
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
             const body = {
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
                         { inlineData },
                     ],
                 }],
-                generationConfig: { temperature: 0.1 },
+                generationConfig: { temperature: 0.1, thinkingConfig: { thinkingBudget: 0 } },
             };
 
             const promptTokens = estimateTokensFromText(prompt) + 2000;

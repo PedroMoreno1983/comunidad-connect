@@ -80,7 +80,7 @@ export function getAiHealthSnapshot() {
             supabase: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)),
         },
         models: {
-            geminiTraining: process.env.GEMINI_TRAINING_MODELS || 'gemini-2.5-flash-lite,gemini-2.5-flash,gemini-2.0-flash',
+            geminiTraining: process.env.GEMINI_TRAINING_MODELS || 'gemini-2.5-flash-lite,gemini-2.5-flash',
             image: process.env.OPENAI_IMAGE_MODEL || 'dall-e-3',
         },
         lastHour: {
