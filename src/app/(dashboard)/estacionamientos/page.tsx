@@ -35,7 +35,14 @@ import {
   ACCESS_STATUS_TONES,
   BOOKING_STATUS_LABELS,
   BOOKING_STATUS_TONES,
+  DEFAULT_FREE_CANCELLATION_HOURS,
+  PARKING_CHARGE_STATUS_LABELS,
+  PARKING_CHARGE_STATUS_TONES,
   VEHICLE_SIZE_LABELS,
+  describeParkingCharge,
+  formatChileanDateTime,
+  freeCancellationDeadline,
+  isFreeCancellation,
   calculateCommercialSavings,
   formatMinuteRate,
   formatParkingRange,
@@ -49,6 +56,7 @@ import { ParkingMap } from "@/components/parking/ParkingMap";
 import { ParkingAccessPassModal } from "@/components/parking/ParkingAccessPassModal";
 import { ParkingOwnerDashboard } from "@/components/parking/ParkingOwnerDashboard";
 import { ParkingConciergeGate } from "@/components/parking/ParkingConciergeGate";
+import { ParkingChargesAdmin } from "@/components/parking/ParkingChargesAdmin";
 import type {
   ParkingAccessRequest,
   ParkingCommunityAccess,
@@ -296,14 +304,18 @@ function SpotCard({
 
 function BookingRow({
   booking,
+  freeCancellationHours,
   onOpenPass,
   onCancel,
 }: {
   booking: ParkingBooking;
+  freeCancellationHours: number;
   onOpenPass: (booking: ParkingBooking) => void;
   onCancel: (booking: ParkingBooking) => void;
 }) {
   const cancellable = booking.status === "confirmed" || booking.status === "active";
+  const charge = booking.charge;
+  const chargeOpen = charge && (charge.status === "pending" || charge.status === "charged");
 
   return (
     <div className="rounded-2xl border border-subtle bg-surface p-4 hover:shadow-xs transition-shadow">
@@ -318,8 +330,32 @@ function BookingRow({
             </Tag>
           </div>
           <p className="mt-1 text-[12px] cc-text-secondary">
-            {formatParkingRange(booking.startsAt, booking.endsAt)} · {formatCurrency(booking.totalAmount)}
+            {formatParkingRange(booking.startsAt, booking.endsAt)} · {formatCurrency(charge?.amount ?? booking.totalAmount)}
           </p>
+          {charge && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Tag tone={PARKING_CHARGE_STATUS_TONES[charge.status]}>
+                {PARKING_CHARGE_STATUS_LABELS[charge.status]}
+              </Tag>
+              <span className="text-[12px] cc-text-secondary">{describeParkingCharge(charge)}</span>
+              {charge.status === "pending" && charge.checkoutUrl && (
+                <a
+                  href={charge.checkoutUrl}
+                  className="text-[12px] font-semibold underline"
+                  style={{ color: "var(--cc-copper)" }}
+                >
+                  Pagar en línea
+                </a>
+              )}
+            </div>
+          )}
+          {cancellable && chargeOpen && (
+            <p className="mt-1 text-[11px] cc-text-tertiary">
+              {isFreeCancellation(booking.startsAt, freeCancellationHours)
+                ? `Cancelación sin costo hasta el ${formatChileanDateTime(freeCancellationDeadline(booking.startsAt, freeCancellationHours).toISOString())}.`
+                : "Ya pasó el plazo de cancelación sin costo: si cancelas, el cobro se mantiene."}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -393,6 +429,12 @@ function EstacionamientosContent() {
 
   // Admin settings
   const [communitySettings, setCommunitySettings] = useState<ParkingCommunitySettings | null>(null);
+  const [freeCancellationHours, setFreeCancellationHours] = useState(DEFAULT_FREE_CANCELLATION_HOURS);
+
+  useEffect(() => {
+    if (!user?.communityId) return;
+    ParkingService.getFreeCancellationHours(user.communityId).then(setFreeCancellationHours, () => undefined);
+  }, [user?.communityId]);
 
   const loadDriver = useCallback(async () => {
     try {
@@ -543,6 +585,11 @@ function EstacionamientosContent() {
       // reserva que la base había rechazado.
       const bookingId = await ParkingService.book(spotId, start, end);
 
+      // El cobro lo abrió la base al reservar. Esto solo lo deja resuelto
+      // cuando la comunidad cobra en línea (link de Haulmer o respaldo a
+      // gastos comunes). Si falla, la reserva sigue siendo válida.
+      const processed = await ParkingService.processCharge(bookingId);
+
       // El pase se arma con la fila real: el código de acceso lo genera la base
       // y es el que conserjería valida en la barrera. Uno inventado aquí no
       // coincidiría con nada y el conductor se quedaría fuera.
@@ -552,13 +599,23 @@ function EstacionamientosContent() {
       const created = bookings.find((b) => b.id === bookingId);
       if (created) setSelectedPassBooking(created);
 
+      const charge = processed?.charge ?? created?.charge;
+      const chargeLine = charge
+        ? ` ${formatCurrency(charge.amount)}: ${describeParkingCharge(charge).toLowerCase()}.`
+        : "";
+
       toast({
         title: "Reserva confirmada",
-        description: created
+        description: (created
           ? `Estacionamiento ${spot.label}. Tu código de portería es ${created.accessCode}.`
-          : `Estacionamiento ${spot.label}. Revisa el código en "Mis reservas".`,
+          : `Estacionamiento ${spot.label}. Revisa el código en "Mis reservas".`) + chargeLine,
         variant: "success",
       });
+
+      if (processed?.checkoutUrl) {
+        window.location.assign(processed.checkoutUrl);
+        return;
+      }
 
       await runSearch();
     } catch (error: unknown) {
@@ -573,11 +630,26 @@ function EstacionamientosContent() {
   };
 
   const cancelBooking = async (booking: ParkingBooking) => {
+    const charge = booking.charge;
+    const chargeOpen = charge && (charge.status === "pending" || charge.status === "charged" || charge.status === "paid");
+    const free = isFreeCancellation(booking.startsAt, freeCancellationHours);
+    if (chargeOpen && charge.amount > 0) {
+      const ok = window.confirm(
+        free
+          ? `Cancelas sin costo: el cobro de ${formatCurrency(charge.amount)} se anula. ¿Cancelar la reserva?`
+          : `Faltan menos de ${freeCancellationHours} h para el inicio: el cobro de ${formatCurrency(charge.amount)} se mantiene. ¿Cancelar igual?`,
+      );
+      if (!ok) return;
+    }
     try {
       await ParkingService.cancelBooking(booking.id);
       toast({
         title: "Reserva cancelada",
-        description: "El cupo vuelve a estar disponible.",
+        description: chargeOpen && charge.amount > 0
+          ? free
+            ? "El cupo vuelve a estar disponible y el cobro quedó anulado."
+            : "El cupo vuelve a estar disponible. El cobro se mantiene por cancelar fuera de plazo."
+          : "El cupo vuelve a estar disponible.",
         variant: "success",
       });
       await loadBookings();
@@ -1022,6 +1094,7 @@ function EstacionamientosContent() {
                 <BookingRow
                   key={booking.id}
                   booking={booking}
+                  freeCancellationHours={freeCancellationHours}
                   onOpenPass={(b) => setSelectedPassBooking(b)}
                   onCancel={cancelBooking}
                 />
@@ -1094,12 +1167,64 @@ function EstacionamientosContent() {
               </span>
             </div>
 
+            {communitySettings?.billingMethod !== undefined && (
+              <>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
+                    Cobro de los arriendos
+                  </label>
+                  <select
+                    className={field}
+                    value={communitySettings.billingMethod}
+                    onChange={(e) =>
+                      setCommunitySettings((prev) =>
+                        prev
+                          ? { ...prev, billingMethod: e.target.value === "haulmer" ? "haulmer" : "common_expenses" }
+                          : null
+                      )
+                    }
+                  >
+                    <option value="common_expenses">Cargo en la cuenta de gastos comunes de la unidad</option>
+                    <option value="haulmer">Pago en línea con Haulmer (si no está habilitado, va a gastos comunes)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
+                    Cancelación sin costo (horas antes del inicio)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={168}
+                    className={field}
+                    value={communitySettings.freeCancellationHours ?? DEFAULT_FREE_CANCELLATION_HOURS}
+                    onChange={(e) =>
+                      setCommunitySettings((prev) =>
+                        prev ? { ...prev, freeCancellationHours: Math.max(0, Math.min(168, Number(e.target.value) || 0)) } : null
+                      )
+                    }
+                  />
+                  <span className="text-[11px] cc-text-secondary mt-1 block">
+                    Si el conductor cancela antes de este plazo, el cargo se anula. Después, se mantiene. Si cancela el dueño o la administración, siempre se anula.
+                  </span>
+                </div>
+              </>
+            )}
+
             <Button
               variant="copper"
               onClick={async () => {
                 if (!communitySettings || !user?.communityId) return;
-                await ParkingService.updateCommunitySettings(user.communityId, communitySettings);
-                toast({ title: "Ajustes actualizados", variant: "success" });
+                try {
+                  await ParkingService.updateCommunitySettings(user.communityId, communitySettings);
+                  if (communitySettings.freeCancellationHours !== undefined) {
+                    setFreeCancellationHours(communitySettings.freeCancellationHours);
+                  }
+                  toast({ title: "Ajustes actualizados", variant: "success" });
+                } catch (error: unknown) {
+                  toast({ title: "No se pudo guardar", description: parkingErrorMessage(error), variant: "destructive" });
+                }
               }}
             >
               Guardar Configuración
@@ -1110,6 +1235,10 @@ function EstacionamientosContent() {
 
       {activeTab === "admin" && isAdmin && (
         <AccessRequestsInbox externalEnabled={Boolean(communitySettings?.externalEnabled)} />
+      )}
+
+      {activeTab === "admin" && isAdmin && user?.communityId && (
+        <ParkingChargesAdmin communityId={user.communityId} />
       )}
 
       {/* Digital Access Pass Modal */}
