@@ -56,6 +56,11 @@ export const AI_TASKS = {
         needsTools: true,
         description: 'Orquestación de misiones del Agent Center',
     },
+    'agent-center.agent-loop': {
+        complexity: 'standard',
+        needsTools: true,
+        description: 'Ciclo agéntico del Agent Center: lecturas encadenadas y escrituras con confirmación',
+    },
     'agent-center.research': {
         complexity: 'standard',
         needsTools: true,
