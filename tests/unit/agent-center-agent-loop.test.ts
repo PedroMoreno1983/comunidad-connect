@@ -99,6 +99,18 @@ describe('Agent Center: ciclo agentico con tool use nativo', () => {
         delete process.env.ANTHROPIC_API_KEY;
     });
 
+    it('si Claude falla en la primera ronda no deja una corrida huerfana en la bitacora', async () => {
+        // La ruta cae al respaldo deterministico / puente CoCo, que audita su
+        // propia corrida. Una fila "Ciclo agentico" aqui taparia esa corrida.
+        mocks.responses = [new Error('401 invalid x-api-key')];
+
+        await expect(runAgentLoop({ message: 'Publica un aviso en el muro', profile: admin })).rejects.toThrow('401');
+
+        expect(mocks.db.tables.agent_runs ?? []).toHaveLength(0);
+        expect(mocks.db.tables.agent_tool_calls ?? []).toHaveLength(0);
+        expect(mocks.db.tables.agent_tasks ?? []).toHaveLength(0);
+    });
+
     it('encadena dos lecturas y responde sin pedir confirmacion', async () => {
         const backlog = toolUse('get_maintenance_backlog');
         const parking = toolUse('get_parking_status');
