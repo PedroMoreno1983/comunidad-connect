@@ -18,6 +18,16 @@ export type ToolName =
     | 'clarify_intent'
     | 'run_playbook'
     | 'run_mission'
+    // Herramientas del ciclo agentico (agentTools.ts). Lecturas:
+    | 'get_parking_status'
+    | 'get_supermarket_orders_summary'
+    | 'get_active_polls'
+    | 'get_maintenance_backlog'
+    | 'find_resident_or_unit'
+    // Escrituras (siempre con confirmacion humana dentro del ciclo):
+    | 'create_poll'
+    | 'update_maintenance_ticket'
+    | 'create_parking_booking'
     // Puente al cerebro de CoCo: ejecuta una accion que CoCo propuso (reanudando
     // su sesion con la confirmacion humana). Siempre requiere aprobacion.
     | 'coco_action';
@@ -38,6 +48,14 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'run_playbook',
     'run_mission',
     'coco_action',
+    'get_parking_status',
+    'get_supermarket_orders_summary',
+    'get_active_polls',
+    'get_maintenance_backlog',
+    'find_resident_or_unit',
+    'create_poll',
+    'update_maintenance_ticket',
+    'create_parking_booking',
 ];
 
 export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
@@ -52,6 +70,14 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     send_unit_payment_reminder: 'finance',
     answer_community_question: 'community',
     coco_action: 'community',
+    get_parking_status: 'concierge',
+    get_supermarket_orders_summary: 'community',
+    get_active_polls: 'community',
+    get_maintenance_backlog: 'maintenance',
+    find_resident_or_unit: 'community',
+    create_poll: 'community',
+    update_maintenance_ticket: 'maintenance',
+    create_parking_booking: 'concierge',
 };
 
 // Solo lecturas reales: cualquier herramienta que escriba (incluidos cobros y
@@ -62,6 +88,11 @@ export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_community_snapshot',
     'answer_community_question',
     'clarify_intent',
+    'get_parking_status',
+    'get_supermarket_orders_summary',
+    'get_active_polls',
+    'get_maintenance_backlog',
+    'find_resident_or_unit',
 ];
 
 export const MUTATING_AGENT_TOOLS: ToolName[] = AGENT_TOOL_NAMES.filter(
@@ -84,7 +115,15 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
     get_community_snapshot: 'read',
     answer_community_question: 'read',
     clarify_intent: 'read',
+    get_parking_status: 'read',
+    get_supermarket_orders_summary: 'read',
+    get_active_polls: 'read',
+    get_maintenance_backlog: 'read',
+    find_resident_or_unit: 'read',
     create_booking: 'write_low',
+    update_maintenance_ticket: 'write_low',
+    create_parking_booking: 'write_high',
+    create_poll: 'write_high',
     create_marketplace_item: 'write_low',
     create_service_request: 'write_low',
     register_visitor: 'write_low',
@@ -146,7 +185,9 @@ export type PlaybookKey =
     | 'onboarding_import_review'
     | 'iot_emergency_readiness'
     | 'community_broadcast'
-    | 'multi_agent_mission';
+    | 'multi_agent_mission'
+    // Tarea persistente de un ciclo agentico pausado en una escritura.
+    | 'agentic_loop';
 
 export type AgentProfile = ServerAgentProfile;
 
@@ -165,6 +206,14 @@ export type AgentAction = {
     };
     proposalId?: string | null;
     runId?: string | null;
+    /**
+     * Tarea `agentic_loop` que quedo en waiting_human esperando esta escritura.
+     * Lo fija el servidor (metadata de la corrida auditada), nunca el cliente:
+     * al confirmar, el ciclo se reanuda desde esa tarea.
+     */
+    agentTaskId?: string | null;
+    /** Lecturas que el ciclo agentico ya ejecuto antes de llegar a esta accion. */
+    loopTrace?: AgentStep[];
 };
 
 // El `summary` de una AgentAction cumple dos papeles muy distintos. En una
@@ -197,6 +246,9 @@ export type AgentStep = {
 // tarjeta de aprobacion humana.
 // ---------------------------------------------------------------------------
 export const MAX_MISSION_STEPS = 4;
+
+// Tope de rondas de Claude por ciclo agentico (se acumula entre reanudaciones).
+export const MAX_AGENT_LOOP_STEPS = 8;
 
 export type AgentMissionStep = {
     agentKey: AgentKey;
