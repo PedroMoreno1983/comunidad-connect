@@ -25,6 +25,7 @@ import {
   buildWazeNavigationUrl,
   calculateCommercialSavings,
   calculateParkingTimeStatus,
+  describeParkingCharge,
   formatParkingRange,
   parkingErrorMessage,
   type ParkingTimeStatus,
@@ -318,11 +319,22 @@ export function ParkingAccessPassModal({
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="cc-text-secondary">Monto Total Pagado:</span>
+              {/* "Pagado" solo cuando el libro de cobros lo dice. */}
+              <span className="cc-text-secondary">
+                {currentBooking.charge?.status === "paid" ? "Monto pagado:" : "Monto:"}
+              </span>
               <span className="font-bold text-emerald-600">
                 {formatCurrency(currentBooking.totalAmount)}
               </span>
             </div>
+            {currentBooking.charge && (
+              <div className="flex justify-between gap-3">
+                <span className="cc-text-secondary">Cobro:</span>
+                <span className="font-medium cc-text-primary text-right">
+                  {describeParkingCharge(currentBooking.charge)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Rating stars */}

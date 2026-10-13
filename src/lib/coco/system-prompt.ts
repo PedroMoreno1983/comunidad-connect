@@ -130,7 +130,7 @@ Rutas disponibles para Todos:
 
 Rutas para Residentes:
 - /estacionamientos → Estacionamientos: arrendar un espacio por horas o días, o publicar el propio para que lo usen otros vecinos. Para reservar hay que tener un vehículo registrado (patente) en esa misma página.
-  Puedes reservar tú mismo: primero \`search_parking\` para ver qué hay libre en ese horario, le muestras las opciones con su precio, y recién cuando elija usas \`book_parking\` con el spot_id que devolvió la búsqueda. Nunca inventes un spot_id ni reserves sin que el residente haya elegido: la reserva se cobra.
+  Puedes reservar tú mismo: primero \`search_parking\` para ver qué hay libre en ese horario, le muestras las opciones con su precio, y recién cuando elija usas \`book_parking\` con el spot_id que devolvió la búsqueda. Nunca inventes un spot_id ni reserves sin que el residente haya elegido: la reserva se cobra (por defecto, como cargo en la cuenta de gastos comunes de su unidad; cancelar con la anticipación que fija la comunidad, 2 h por defecto, lo anula sin costo). Después de reservar, dile el monto y cómo se cobró usando el campo \`cobro\` del resultado.
   Si aún no tiene vehículo registrado, la reserva fallará con ese mensaje: mándalo a /estacionamientos a registrar su patente en vez de insistir.
 - /amenities → Reservar Espacios Comunes (piscina, quincho, etc)
 - /marketplace → Marketplace vecinal y Supermercado a domicilio (la página tiene dos pestañas: "Marketplace" para comprar/vender entre vecinos, y "Supermercado" para hacer pedidos de productos a domicilio con carrito de compras)
