@@ -23,6 +23,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
+from supermarket_promotions import lider_volume_promo
+
 
 REQUEST_TIMEOUT_SECONDS = 18
 MAX_TERMS = 12
@@ -77,6 +79,14 @@ class Product:
     channel_type: str = "retail"
     pack_units: int = 1
     minimum_packs: int = 1
+    # Promocion por volumen (issue #96): `promo_total_price` pesos por cada
+    # bloque de `promo_min_qty` unidades. `promo_checked` dice si el parser
+    # miro el badge; False deja intacta la promocion guardada en Supabase.
+    promo_min_qty: int | None = None
+    promo_total_price: int | None = None
+    promo_label: str | None = None
+    promo_group: str | None = None
+    promo_checked: bool = False
 
 
 @dataclass(frozen=True)
@@ -316,6 +326,7 @@ def parse_lider_search_products(page: str, query: str) -> list[Product]:
         if re.fullmatch(r"\d{14}", sku) and canonical.startswith("/ip/") and name and price > 0:
             brand = value.get("brand")
             image = value.get("image")
+            promo = lider_volume_promo(value, price)
             products[sku] = Product(
                 store="Lider", query=query, name=name, price=price,
                 list_price=None, in_stock=value.get("canAddToCart") is not False,
@@ -323,6 +334,8 @@ def parse_lider_search_products(page: str, query: str) -> list[Product]:
                 sku=sku, ean=sku, product_url=f"https://super.lider.cl{canonical}",
                 image_url=image if isinstance(image, str) and image.startswith("https://") else None,
                 scraped_at=utc_now(),
+                **(promo.as_product_fields() if promo else {}),
+                promo_checked=True,
             )
             return
         for child in value.values():
