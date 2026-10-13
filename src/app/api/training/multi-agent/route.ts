@@ -6,7 +6,8 @@ import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 import { logApiError } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { parseTrainingSlides } from "@/lib/training/courseContent";
-import type { TrainingSlide } from "@/lib/types";
+import { runClassroomTurn } from "@/lib/training/classroomAgents";
+import type { TrainingChatMessage, TrainingSlide } from "@/lib/types";
 
 const MAX_MESSAGE_LENGTH = 4_000;
 const MAX_COURSE_CONTENT_LENGTH = 40_000;
@@ -57,6 +58,32 @@ export async function POST(req: NextRequest) {
             fullCourse: parseTrainingSlides(lessonContent),
             instruction: 'Responde desde esta versión publicada. Distingue responsabilidades, cita la sección pertinente y termina con una acción aplicable al rol.',
         }).slice(0, MAX_COURSE_CONTENT_LENGTH);
+
+        // Motor principal: Claude, en una sola llamada coherente. Gemini queda de
+        // respaldo, y la respuesta anclada a la sección, como último recurso.
+        if (process.env.ANTHROPIC_API_KEY) {
+            try {
+                const responses = await runClassroomTurn({
+                    role: profile.role as 'admin' | 'concierge',
+                    course: {
+                        title: String(courseModule.title),
+                        description: courseModule.description ?? null,
+                        objectives: Array.isArray(courseModule.learning_objectives) ? courseModule.learning_objectives : [],
+                        slides: parseTrainingSlides(lessonContent),
+                    },
+                    section: currentSlide,
+                    message,
+                    history: history as TrainingChatMessage[],
+                    learnerName: profile.name && !profile.name.includes("@") ? profile.name : undefined,
+                    communityId: profile.community_id || undefined,
+                    userId: profile.id,
+                });
+                return NextResponse.json({ responses }, { status: 200 });
+            } catch (error) {
+                if (isAiBudgetExceededError(error)) throw error;
+                logApiError(req, "/api/training/multi-agent#claude", error);
+            }
+        }
 
         if (!geminiApiKey || !geminiApiKey.startsWith("AIza")) {
             const responses = await buildTrainingFallbackTurn(history || [], message, currentSlide);

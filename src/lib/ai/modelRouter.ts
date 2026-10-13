@@ -65,6 +65,10 @@ export const AI_TASKS = {
         complexity: 'deep',
         description: 'Redacción creativa de guiones de marketing',
     },
+    'training.classroom': {
+        complexity: 'standard',
+        description: 'Tutora y compañeros de práctica del aula del equipo',
+    },
 } as const satisfies Record<string, AiTaskProfile>;
 
 export type AiTaskName = keyof typeof AI_TASKS;
