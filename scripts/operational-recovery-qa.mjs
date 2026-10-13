@@ -37,7 +37,7 @@ try {
       CREATE POLICY users_update_own_requests ON service_requests FOR UPDATE TO authenticated USING(user_id=auth.uid());
       CREATE POLICY providers_update_request_status ON service_requests FOR UPDATE TO authenticated USING(true);
     `);
-    await db.exec(await readFile(new URL('../supabase/migrations/20261006185658_operational_request_boundaries.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261006192053_operational_request_boundaries.sql', import.meta.url), 'utf8'));
     checks.push('La migración se aplica en PostgreSQL aislado.');
     const community = randomUUID(), foreign = randomUUID(), resident = randomUUID(), admin = randomUUID(), provider = randomUUID(), request = randomUUID();
     await db.query('INSERT INTO communities VALUES ($1,$2),($3,$4)', [community,'QA local',foreign,'QA otra comunidad']);
