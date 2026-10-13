@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { QRAccessValidator } from "@/components/admin/QRAccessValidator";
+import { IntercomPanel } from "@/components/intercom/IntercomPanel";
 import { useAuth } from "@/lib/authContext";
 import type { UnitRow, VisitorLog, VisitorLogDatabaseRow } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
@@ -246,6 +247,13 @@ export default function VisitorsPage() {
                     ))}
                 </div>
             </section>
+
+            <IntercomPanel
+                units={units}
+                onAdmitted={() => {
+                    void VisitorService.getAll().then(logs => setVisitors((logs || []).map(mapVisitorRow))).catch(() => undefined);
+                }}
+            />
 
             {/* Main Scanner Section */}
             <QRAccessValidator
