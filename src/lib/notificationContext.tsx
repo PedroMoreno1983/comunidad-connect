@@ -21,6 +21,7 @@ function dbToUi(n: DbNotification): Notification {
     return {
         id: n.id,
         type: n.type,
+        category: n.category,
         title: n.title,
         message: n.body,
         timestamp: new Date(n.created_at),
