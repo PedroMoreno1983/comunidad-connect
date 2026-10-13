@@ -19,9 +19,9 @@ const classroom = read('src/components/training/MultiAgentClassroom.tsx');
 const builder = read('src/components/training/TrainingCourseBuilder.tsx');
 const courseContent = read('src/lib/training/courseContent.ts');
 const migration = read('supabase/migrations/043_training_multitenant_progress.sql');
-const professionalMigration = read('supabase/migrations/20260916210840_training_professional_learning.sql');
-const operationsMigration = read('supabase/migrations/20260917143000_training_learning_operations.sql');
-const policyCleanupMigration = read('supabase/migrations/20260920043500_training_policy_bootstrap_cleanup.sql');
+const professionalMigration = read('supabase/migrations/20260916210954_training_professional_learning.sql');
+const operationsMigration = read('supabase/migrations/20260917162913_training_learning_operations.sql');
+const policyCleanupMigration = read('supabase/migrations/20260920043353_training_policy_bootstrap_cleanup.sql');
 const rootSchema = read('schema.sql');
 
 expect('Course API resolves authenticated profile', modulesRoute.includes('getAuthenticatedAgentProfile'));
