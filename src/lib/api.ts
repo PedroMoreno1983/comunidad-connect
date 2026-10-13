@@ -129,7 +129,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, PayrollSettings, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
@@ -2230,7 +2230,7 @@ export const AdminFinanceService = {
     },
 
     getPayroll() {
-        return readApi<{ employees: CommunityEmployeeRecord[]; runs: PayrollRunRecord[]; afps: string[]; indicatorsMonth: string | null }>(
+        return readApi<{ employees: CommunityEmployeeRecord[]; runs: PayrollRunRecord[]; afps: string[]; indicatorsMonth: string | null; settings: PayrollSettings }>(
             '/api/admin/payroll',
             'No se pudo cargar la remuneración.',
         );
@@ -2241,6 +2241,14 @@ export const AdminFinanceService = {
             '/api/admin/payroll',
             'No se pudo guardar a la persona.',
             financeWrite(input),
+        );
+    },
+
+    savePayrollSettings(input: PayrollSettings) {
+        return readApi<{ settings: PayrollSettings }>(
+            '/api/admin/payroll',
+            'No se pudieron guardar los datos previsionales.',
+            financeWrite({ action: 'settings', ...input }),
         );
     },
 

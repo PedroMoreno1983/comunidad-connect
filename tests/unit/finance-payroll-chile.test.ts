@@ -53,7 +53,9 @@ describe('liquidación chilena', () => {
         expect(slip.incomeTax).toBe(0);
         expect(slip.netPay).toBe(750000 + 70000 - 84525 - 52500 - 4500);
         expect(slip.employer).toEqual({
-            sis: 13350, afp: 750, socialInsurance: 12150, unemployment: 18000, accidentInsurance: 6975, total: 51225,
+            sis: 13350, afp: 750, socialInsurance: 12150,
+            socialInsuranceDetail: { rentabilidadProtegida: 6750, expectativaDeVida: 5400 },
+            unemployment: 18000, accidentInsurance: 6975, total: 51225,
         });
         expect(slip.employerCost).toBe(820000 + 51225);
     });
@@ -120,5 +122,105 @@ describe('liquidación en PDF', () => {
             indicatorsMonth: '2026-09',
         });
         expect(Buffer.from(bytes.slice(0, 4)).toString()).toBe('%PDF');
+    });
+});
+
+describe('indicadores desde la página de Previred', () => {
+    it('lee el mes y todos los valores tal como los usa el cálculo', async () => {
+        const { readFileSync } = await import('node:fs');
+        const { parsePreviredIndicators } = await import('@/lib/finance/previredIndicators');
+        const html = readFileSync('tests/fixtures/previred-indicadores-2026-09.html', 'utf8');
+        const parsed = parsePreviredIndicators(html);
+        expect(parsed.month).toBe('2026-09');
+        expect(parsed.values.socialInsuranceRates.rentabilidadProtegida).toBeCloseTo(0.009, 6);
+        expect(parsed.values.socialInsuranceRates.expectativaDeVida).toBeCloseTo(0.0072, 6);
+        const round = (value: unknown): unknown => typeof value === 'number'
+            ? Math.round(value * 1e6) / 1e6
+            : value && typeof value === 'object'
+                ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, round(v)]))
+                : value;
+        expect(round(parsed.values)).toEqual(round({
+            ...SEPTEMBER_2026,
+            familyAllowance: SEPTEMBER_2026.familyAllowance.map(tier => ({ amount: tier.amount, upTo: tier.upTo })),
+        }));
+    });
+
+    it('se niega a cargar una página que no reconoce', async () => {
+        const { parsePreviredIndicators, IndicatorsParseError } = await import('@/lib/finance/previredIndicators');
+        expect(() => parsePreviredIndicators('<html><body>Mantención programada</body></html>')).toThrow(IndicatorsParseError);
+    });
+});
+
+describe('archivo Previred de 105 campos', () => {
+    const worker = (overrides: Partial<import('@/lib/types').PreviredWorker> = {}): import('@/lib/types').PreviredWorker => ({
+        fullName: 'José Muñoz Pérez',
+        rut: '12.345.678-5',
+        firstNames: 'José Andrés',
+        fatherLastName: 'Muñoz',
+        motherLastName: 'Pérez',
+        sex: 'M',
+        foreignNational: false,
+        contractType: 'indefinido',
+        hireDate: '2024-03-01',
+        familyDependents: 0,
+        isapreCode: null,
+        isaprePlanUf: null,
+        partTime: false,
+        slip: calculatePayslip(concierge, SEPTEMBER_2026),
+        ...overrides,
+    });
+
+    it('valida el RUT con módulo 11', async () => {
+        const { splitRut } = await import('@/lib/finance/previredFile');
+        expect(splitRut('12.345.678-5')).toEqual({ number: '12345678', dv: '5' });
+        expect(splitRut('12.345.678-9')).toBeNull();
+        expect(splitRut('10.000.013-k')).toEqual({ number: '10000013', dv: 'K' });
+    });
+
+    it('escribe exactamente 105 campos con los montos del cálculo', async () => {
+        const { buildPreviredFile } = await import('@/lib/finance/previredFile');
+        const text = buildPreviredFile({ month: '2026-09', indicators: SEPTEMBER_2026, ccafCode: '00', mutualCode: '00', workers: [worker()] });
+        const lines = text.trimEnd().split('\r\n');
+        expect(lines).toHaveLength(1);
+        const f = ['', ...lines[0].split(';')];
+        expect(f.length - 1).toBe(105);
+        expect(f.slice(1, 16)).toEqual(['12345678', '5', 'MUÑOZ', 'PEREZ', 'JOSE ANDRES', 'M', '0', '01', '092026', '092026', 'AFP', '0', '30', '00', '0']);
+        expect(f[18]).toBe('D');
+        expect(f[26]).toBe('05');
+        expect(f[27]).toBe('750000');
+        expect(f[28]).toBe(String(84525 + 750));
+        expect(f[29]).toBe('13350');
+        expect(f[64]).toBe('750000');
+        expect(f[70]).toBe('52500');
+        expect(f[71]).toBe('6975');
+        expect(f[75]).toBe('07');
+        expect(f[93]).toBe('1');
+        expect(f[94]).toBe('5400');
+        expect(f[95]).toBe('6750');
+        expect([f[100], f[101], f[102]]).toEqual(['750000', '4500', '18000']);
+    });
+
+    it('con isapre, CCAF y mutual reparte la salud y el seguro de accidentes donde corresponde', async () => {
+        const { buildPreviredFile } = await import('@/lib/finance/previredFile');
+        const slip = calculatePayslip({ ...concierge, healthSystem: 'isapre', isaprePlanUf: 4.0241 }, SEPTEMBER_2026);
+        const text = buildPreviredFile({
+            month: '2026-09', indicators: SEPTEMBER_2026, ccafCode: '02', mutualCode: '01',
+            workers: [worker({ slip, isapreCode: '01', isaprePlanUf: 4.0241, hireDate: '2026-09-15', contractType: 'plazo_fijo' })],
+        });
+        const f = ['', ...text.trimEnd().split(';')];
+        expect([f[15], f[16]]).toEqual(['7', '15-09-2026']);
+        expect([f[70], f[71]]).toEqual(['0', '0']);
+        expect([f[75], f[77], f[78], f[79]]).toEqual(['01', '750000', '2', '4,0241']);
+        expect(Number(f[80]) + Number(f[81])).toBe(slip.health.amount);
+        expect([f[83], f[84]]).toEqual(['02', '750000']);
+        expect([f[96], f[97], f[98]]).toEqual(['01', '750000', '6975']);
+    });
+
+    it('no genera un archivo que Previred va a rechazar', async () => {
+        const { buildPreviredFile, PreviredFileError } = await import('@/lib/finance/previredFile');
+        expect(() => buildPreviredFile({
+            month: '2026-09', indicators: SEPTEMBER_2026, ccafCode: '00', mutualCode: '00',
+            workers: [worker({ rut: '11.111.111-2', sex: null })],
+        })).toThrow(PreviredFileError);
     });
 });

@@ -2149,6 +2149,13 @@ export interface CommunityEmployeeRecord {
     transport_allowance: number;
     family_dependents: number;
     hire_date: string | null;
+    first_names: string | null;
+    father_last_name: string | null;
+    mother_last_name: string | null;
+    sex: "M" | "F" | null;
+    foreign_national: boolean;
+    isapre_code: string | null;
+    part_time: boolean;
 }
 
 export interface PayrollEmployeeInput {
@@ -2170,6 +2177,13 @@ export interface PayrollEmployeeInput {
     transportAllowance?: number;
     familyDependents?: number;
     hireDate?: string;
+    firstNames?: string;
+    fatherLastName?: string;
+    motherLastName?: string;
+    sex?: "M" | "F" | null;
+    foreignNational?: boolean;
+    isapreCode?: string;
+    partTime?: boolean;
 }
 
 /** Indicadores previsionales de un mes de remuneraciones, tal como los publica Previred. */
@@ -2227,6 +2241,8 @@ export interface Payslip {
         sis: number;
         afp: number;
         socialInsurance: number;
+        /** Por concepto (rentabilidadProtegida, expectativaDeVida), como van a Previred. */
+        socialInsuranceDetail: Record<string, number>;
         unemployment: number;
         accidentInsurance: number;
         total: number;
@@ -2242,6 +2258,32 @@ export interface PayslipDocument {
     employee: { fullName: string; roleTitle: string; rut: string | null };
     slip: Payslip;
     indicatorsMonth: string | null;
+}
+
+/** Un trabajador del mes, tal como lo necesita el archivo de 105 campos de Previred. */
+export interface PreviredWorker {
+    fullName: string;
+    rut: string | null;
+    firstNames: string | null;
+    fatherLastName: string | null;
+    motherLastName: string | null;
+    sex: "M" | "F" | null;
+    foreignNational: boolean;
+    contractType: PayrollContractType;
+    hireDate: string | null;
+    familyDependents: number;
+    isapreCode: string | null;
+    isaprePlanUf: number | null;
+    partTime: boolean;
+    slip: Payslip;
+}
+
+/** Datos previsionales del empleador (la comunidad). Códigos de las tablas 18 y 19 de Previred. */
+export interface PayrollSettings {
+    ccafCode: string;
+    mutualCode: string;
+    /** Tasa total de la Ley 16.744, en fracción (0.0093 = 0,93%). */
+    accidentRate: number;
 }
 
 export interface PayrollLineRecord {
