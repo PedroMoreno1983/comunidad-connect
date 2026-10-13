@@ -7,7 +7,29 @@ import type {
 } from '@/lib/agent-center/domain';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
-type TaskStepDefinition = { key: string; title: string; input?: Record<string, unknown> };
+type TaskStepDefinition = {
+    key: string;
+    title: string;
+    input?: Record<string, unknown>;
+    // Un ciclo agentico crea su tarea cuando ya ejecuto lecturas: esos pasos
+    // nacen completados en vez de pendientes.
+    status?: AgentTaskStepStatus;
+    output?: Record<string, unknown>;
+};
+
+function stepRow(taskId: string, position: number, step: TaskStepDefinition) {
+    const done = step.status === 'completed' || step.status === 'skipped';
+    return {
+        task_id: taskId,
+        position,
+        step_key: step.key,
+        title: step.title,
+        input: step.input || {},
+        ...(step.status ? { status: step.status, attempts: step.status === 'pending' ? 0 : 1 } : {}),
+        ...(step.output ? { output: step.output } : {}),
+        ...(done ? { completed_at: new Date().toISOString() } : {}),
+    };
+}
 
 function errorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'No se pudo completar el paso.';
@@ -39,13 +61,7 @@ export async function createAgentTask(
     if (error) throw new Error(`No se pudo crear la tarea persistente: ${error.message}`);
 
     const { error: stepsError } = await admin.from('agent_task_steps').insert(
-        steps.map((step, position) => ({
-            task_id: task.id,
-            position,
-            step_key: step.key,
-            title: step.title,
-            input: step.input || {},
-        })),
+        steps.map((step, position) => stepRow(String(task.id), position, step)),
     );
     if (stepsError) {
         await admin.from('agent_tasks').delete().eq('id', task.id);
@@ -120,6 +136,22 @@ export async function completeAgentTask(taskId: string, result: Record<string, u
         result,
         last_error: null,
         completed_at: new Date().toISOString(),
+    });
+}
+
+/** Agrega un paso a una tarea viva (los ciclos agenticos descubren sus pasos al andar). */
+export async function appendAgentTaskStep(taskId: string, position: number, step: TaskStepDefinition) {
+    const { error } = await getSupabaseAdmin().from('agent_task_steps').insert(stepRow(taskId, position, step));
+    if (error) throw new Error(`No se pudo registrar el paso de la tarea: ${error.message}`);
+}
+
+export async function setAgentTaskStep(taskId: string, position: number, values: { status: AgentTaskStepStatus; output?: Record<string, unknown>; error?: string | null }) {
+    const done = values.status === 'completed' || values.status === 'skipped';
+    await updateStep(taskId, position, {
+        status: values.status,
+        ...(values.output ? { output: values.output } : {}),
+        ...(values.error !== undefined ? { error: values.error } : {}),
+        ...(done ? { completed_at: new Date().toISOString() } : {}),
     });
 }
 

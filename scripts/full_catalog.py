@@ -106,6 +106,13 @@ JUMBO_CATEGORIES = (
     "mascotas",
     "hogar-electro-y-libreria",
 )
+# Pausas (ms) antes de cada reintento profundo de una pagina intermedia que
+# llego vacia o repetida aunque una pagina posterior si trajo productos. En
+# las corridas programadas del 29-sep, 30-sep, 9-oct y 13-oct de 2026 fue
+# siempre UNA pagina suelta (limpieza 37, bebe 28, belleza 83-85, despensa 78)
+# que luego cargaba bien: un render tardio de Jumbo, no un cambio de catalogo.
+# Solo se pagan cuando hay un hueco confirmado, nunca en la cola del catalogo.
+JUMBO_GAP_RETRY_DELAYS_MS = (5_000, 15_000, 30_000)
 ACUENTA_HOME_URL = "https://www.acuenta.cl/"
 ACUENTA_HEADERS = {
     **HTTP_HEADERS,
@@ -1315,6 +1322,35 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     page.wait_for_timeout(1_500 * (attempt + 1))
             return (best_products, best_total) if best_products else (products, total)
 
+        def recover_catalog_page(
+            page_number: int,
+            category: str,
+            seen_signatures: set[tuple[str, ...]],
+            page_size: int,
+        ) -> list[Product]:
+            """Reintenta con backoff una pagina intermedia que fallo en un hueco.
+
+            Se usa solo cuando ya se sabe que el catalogo sigue despues de esa
+            pagina. Pasa por about:blank para descartar el estado del cliente
+            (una pagina repetida es el render anterior que quedo pegado).
+            """
+            for delay_ms in JUMBO_GAP_RETRY_DELAYS_MS:
+                try:
+                    page.goto("about:blank")
+                except Exception:  # noqa: BLE001 - solo limpia estado; el reintento decide.
+                    pass
+                page.wait_for_timeout(delay_ms)
+                try:
+                    products, _ = load_catalog_page(
+                        page_number, category, seen_signatures, page_size
+                    )
+                except RuntimeError:
+                    continue
+                signature = tuple(product_key(product) for product in products)
+                if products and signature not in seen_signatures:
+                    return products
+            return []
+
         page.on("response", capture_catalog_response)
         coverage_warnings: list[str] = []
         yielded = 0
@@ -1371,21 +1407,46 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                         if first_empty_page is None:
                             first_empty_page = page_number
                         continue
-                    if first_empty_page is not None:
-                        coverage_warnings.append(
-                            f"{category}: empty page {first_empty_page} before page {page_number} returned products"
-                        )
-                        first_empty_page = None
                     if signature in seen_pages:
                         if probes_until_repeat:
                             repeated_page = True
                             break
-                        coverage_warnings.append(
-                            f"{category}: repeated page {page_number} before "
-                            f"published page {published_page_count}"
+                        # Antes de la ultima pagina publicada, una repeticion es
+                        # casi siempre el render anterior pegado: reintentar.
+                        recovered = recover_catalog_page(
+                            page_number, category, seen_pages, page_size
                         )
-                        break
+                        if not recovered:
+                            coverage_warnings.append(
+                                f"{category}: repeated page {page_number} before "
+                                f"published page {published_page_count}"
+                            )
+                            break
+                        products = recovered
+                        signature = tuple(product_key(product) for product in products)
                     seen_pages.add(signature)
+                    if first_empty_page is not None:
+                        # Hueco confirmado: el catalogo sigue en esta pagina.
+                        # Recuperar las paginas vacias en vez de saltarlas,
+                        # porque saltarlas obliga a omitir la reconciliacion
+                        # de stock y deja la corrida en rojo.
+                        for gap_page in range(first_empty_page, page_number):
+                            gap_products = recover_catalog_page(
+                                gap_page, category, seen_pages, page_size
+                            )
+                            if not gap_products:
+                                coverage_warnings.append(
+                                    f"{category}: empty page {gap_page} before page "
+                                    f"{page_number} returned products"
+                                )
+                                continue
+                            seen_pages.add(
+                                tuple(product_key(product) for product in gap_products)
+                            )
+                            category_product_count += len(gap_products)
+                            yielded += len(gap_products)
+                            yield from gap_products
+                        first_empty_page = None
                     category_product_count += len(products)
                     yielded += len(products)
                     yield from products
