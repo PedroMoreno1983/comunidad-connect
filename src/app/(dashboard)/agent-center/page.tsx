@@ -690,14 +690,14 @@ export default function AgentCenterPage() {
                   {task.targetHref && (
                     <Link href={task.targetHref} className="mt-3 inline-block text-[12px] font-medium" style={{ color: "var(--cc-copper)" }}>Abrir modulo →</Link>
                   )}
-                  {['finance_collection_review', 'maintenance_ticket_triage'].includes(task.playbookKey || '') &&
+                  {['finance_collection_review', 'maintenance_ticket_triage', 'agentic_loop'].includes(task.playbookKey || '') &&
                       ['waiting_human', 'failed', 'escalated', 'running'].includes(task.status) && (
                         <button type="button" disabled={loading} onClick={() => resumeTask(task)}
                           className="ml-3 mt-3 text-[12px] font-medium disabled:opacity-50" style={{ color: 'var(--cc-copper)' }}>
                           Retomar y verificar
                         </button>
                       )}
-                    {task.status === "escalated" && task.playbookKey && (
+                    {task.status === "escalated" && playbooks.some((item) => item.key === task.playbookKey) && (
                     <button type="button" disabled={loading} onClick={() => replanTask(task)} className="ml-3 mt-3 text-[12px] font-medium disabled:opacity-50" style={{ color: "var(--cc-rose)" }}>
                       Replanificar con aprobacion
                     </button>
