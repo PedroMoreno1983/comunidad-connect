@@ -332,6 +332,9 @@ export default function SupermarketPage() {
   const hasResults = basketOptions.some(basket => basket.coveredCount > 0);
   const winner = basketOptions.find(basket => basket.store === ranking.winnerStore) ?? null;
   const winnerSavings = ranking.savings;
+  const selectedStanding = selectedBasket
+    ? ranking.standings.find(row => row.store === selectedBasket.store) ?? null
+    : null;
   const sourceByStore = useMemo(
     () => new Map(sources.map(source => [source.store, source.status])),
     [sources],
@@ -630,13 +633,15 @@ export default function SupermarketPage() {
   const copyComparison = async () => {
     const rows = rankedBaskets.map(({ basket, standing }) => {
       if (basket.coveredCount === 0) return `${basket.store}: sin resultados vigentes`;
-      const kind = standing.kind === 'published'
-        ? 'total de la tienda'
-        : standing.belowMinimum
-          ? 'bajo el mínimo'
+      const kind = standing.belowMinimum
+        ? `bajo el mínimo de ${money(standing.minimumOrder ?? 0)}`
+        : standing.kind === 'published'
+          ? 'total de la tienda'
           : standing.kind === 'pending'
             ? 'consultando'
-            : 'estimado de catálogo';
+            : basket.pricingBasis === 'promo_aware'
+              ? 'catálogo con promociones por volumen'
+              : 'estimado sin promociones por volumen';
       return `${basket.store}: ${money(standing.kind === 'published' ? standing.amount : basket.subtotal)} · ${kind} · ${basket.coveredCount}/${basket.requestedCount}`;
     });
     try {
@@ -645,7 +650,7 @@ export default function SupermarketPage() {
         ...rows,
         '',
         'Jumbo, Santa Isabel y Unimarc usan el total que publica la tienda, con promociones.',
-        'Lider y aCuenta siguen con el precio de catálogo: no publican combos ni el mínimo de pedido.',
+        'Lider y aCuenta usan el catálogo: incluye promociones por volumen solo donde dice "catálogo con promociones".',
       ].join('\n'));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2_000);
@@ -1055,18 +1060,18 @@ export default function SupermarketPage() {
                     {ranking.basis === 'published'
                       ? `Según el total que publica la tienda, ${winner.store} sale ${money(winnerSavings)} más barata que la siguiente canasta completa.`
                       : ranking.basis === 'mixed'
-                        ? `Entre las tiendas que publican el total, ${winner.store} sale ${money(winnerSavings)} más barata. Lider y aCuenta siguen estimados.`
+                        ? `Con totales publicados y promociones por volumen, ${winner.store} sale ${money(winnerSavings)} más barata.${ranking.excludedEstimates.length > 0 ? ` ${ranking.excludedEstimates.join(' y ')} quedan fuera: estimado sin promociones.` : ''}`
                         : `Según el precio de catálogo, ${winner.store} sale ${money(winnerSavings)} más barata que la siguiente canasta completa.`}
                   </p>
                 )}
                 <p className="mt-2 max-w-xl text-xs cc-text-tertiary">
                   {ranking.standings.some(row => row.kind === 'pending')
                     ? 'Consultando el total que publican Jumbo, Santa Isabel y Unimarc, con sus promociones.'
-                    : 'Jumbo, Santa Isabel y Unimarc se ordenan con el total publicado. Si no alcanza el pedido mínimo, esa canasta no se ofrece como la más barata. Lider y aCuenta no publican combos ni el mínimo.'}
+                    : 'Jumbo, Santa Isabel y Unimarc se ordenan con el total publicado. Lider y aCuenta, con el catálogo y sus promociones por volumen cuando la tienda las publica. Si no alcanza el pedido mínimo, esa canasta no se ofrece como la más barata.'}
                 </p>
                 {ranking.standings.filter(row => row.belowMinimum).map(row => (
                   <p key={row.store} className="mt-2 max-w-xl text-xs font-semibold" style={{ color: 'var(--cc-amber)' }}>
-                    {row.store} publica {money(row.amount)} y exige un mínimo de {money(row.minimumOrder ?? 0)}. Faltan {money(row.shortfall ?? 0)}. No se recomienda como compra.
+                    {row.store} {row.kind === 'published' ? 'publica' : 'suma'} {money(row.amount)} y exige un mínimo de {money(row.minimumOrder ?? 0)}. Faltan {money(row.shortfall ?? 0)}. No se recomienda como compra.
                   </p>
                 ))}
               </div>
@@ -1129,7 +1134,7 @@ export default function SupermarketPage() {
                       {!hasStoreResults
                         ? 'Sin precios vigentes para esta lista'
                         : standing.belowMinimum
-                          ? `Bajo el mínimo de ${money(standing.minimumOrder ?? 0)}`
+                          ? `Bajo el mínimo de ${money(standing.minimumOrder ?? 0)} · faltan ${money(standing.shortfall ?? 0)}`
                           : standing.kind === 'published'
                             ? 'Total de la tienda'
                             : standing.kind === 'pending'
@@ -1137,7 +1142,9 @@ export default function SupermarketPage() {
                               : standing.kind === 'unverified'
                                 ? 'La tienda no confirmó el total'
                                 : basket.complete
-                                  ? 'Estimado de catálogo'
+                                  ? basket.pricingBasis === 'promo_aware'
+                                    ? 'Catálogo con promociones por volumen'
+                                    : 'Estimado: sin promociones por volumen'
                                   : `${basket.missingTerms.length} productos faltantes`}
                     </p>
                     <p className="mt-2 text-[10px] cc-text-tertiary">Actualización: {freshness(basket.fetchedAt)}</p>
@@ -1160,6 +1167,20 @@ export default function SupermarketPage() {
                     <p className="mt-1 text-sm cc-text-secondary">
                       {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos · {money(selectedBasket.subtotal)}
                     </p>
+                    {selectedBasket.coveredCount > 0 && (
+                      <p className="mt-1 text-xs cc-text-tertiary" data-testid="basket-pricing-basis">
+                        {selectedBasket.pricingBasis === 'promo_aware'
+                          ? (selectedBasket.promoSavings ?? 0) > 0
+                            ? `Incluye ${money(selectedBasket.promoSavings ?? 0)} en promociones por volumen.`
+                            : 'Sin promociones por volumen para estas cantidades.'
+                          : 'Total estimado sobre precio unitario: no incluye promociones por volumen.'}
+                      </p>
+                    )}
+                    {selectedStanding?.belowMinimum && (
+                      <p className="mt-1 text-xs font-semibold" style={{ color: 'var(--cc-amber)' }}>
+                        Bajo el pedido mínimo de {money(selectedStanding.minimumOrder ?? 0)}: faltan {money(selectedStanding.shortfall ?? 0)}.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

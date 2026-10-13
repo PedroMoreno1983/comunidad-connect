@@ -19,6 +19,12 @@ from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
 from scrape_supermarkets import Product, pack_units_from_name, utc_now
+from supermarket_promotions import (
+    VolumePromo,
+    acuenta_volume_promo,
+    jumbo_volume_promo,
+    lider_volume_promo,
+)
 
 
 USER_AGENT = "Mozilla/5.0 (compatible; ConviveConnect/1.0; +https://conviveconnect.com)"
@@ -100,6 +106,13 @@ JUMBO_CATEGORIES = (
     "mascotas",
     "hogar-electro-y-libreria",
 )
+# Pausas (ms) antes de cada reintento profundo de una pagina intermedia que
+# llego vacia o repetida aunque una pagina posterior si trajo productos. En
+# las corridas programadas del 29-sep, 30-sep, 9-oct y 13-oct de 2026 fue
+# siempre UNA pagina suelta (limpieza 37, bebe 28, belleza 83-85, despensa 78)
+# que luego cargaba bien: un render tardio de Jumbo, no un cambio de catalogo.
+# Solo se pagan cuando hay un hueco confirmado, nunca en la cola del catalogo.
+JUMBO_GAP_RETRY_DELAYS_MS = (5_000, 15_000, 30_000)
 ACUENTA_HOME_URL = "https://www.acuenta.cl/"
 ACUENTA_HEADERS = {
     **HTTP_HEADERS,
@@ -345,6 +358,9 @@ def parse_acuenta_category_page(
                         promotion_price = candidate
                         break
         price = promotion_price or regular_price
+        # Umbrales por volumen ("4 X $990"): se guardan aparte y se aplican en
+        # la canasta solo cuando la cantidad pedida los alcanza (issue #96).
+        volume_promo = acuenta_volume_promo(promotion, price, resolve)
         stock = parse_price(raw.get("stock"))
         sku = str(raw.get("sku") or "").strip() or None
         slug = str(raw.get("slug") or "").strip()
@@ -379,6 +395,8 @@ def parse_acuenta_category_page(
                 channel_type="wholesale",
                 pack_units=pack_units_from_name(name),
                 minimum_packs=1,
+                **(volume_promo.as_product_fields() if volume_promo else {}),
+                promo_checked=True,
             )
         )
 
@@ -591,6 +609,7 @@ def parse_jumbo_payload(data: dict[str, Any], query: str) -> tuple[list[Product]
             continue
         slug = str(raw.get("slug") or "").strip()
         images = item.get("images") or []
+        volume_promo = jumbo_volume_promo(item, price)
         products.append(
             Product(
                 store="Jumbo",
@@ -604,6 +623,9 @@ def parse_jumbo_payload(data: dict[str, Any], query: str) -> tuple[list[Product]
                 product_url=f"https://www.jumbo.cl/{slug}/p" if slug else None,
                 image_url=str(images[0]) if images else None,
                 scraped_at=observed_at,
+                **(volume_promo.as_product_fields() if volume_promo else {}),
+                # Solo si el payload trae la lista: sin ella no se sabe si hay promo.
+                promo_checked=isinstance(item.get("promotions"), list),
             )
         )
     return products, parse_price(data.get("results")) or len(products)
@@ -986,8 +1008,45 @@ def parse_lider_browse_page(page_html: str) -> tuple[list[tuple[str, int, int]],
     return rows, max_page
 
 
+def parse_lider_browse_promotions(page_html: str) -> dict[str, VolumePromo | None]:
+    """sku -> promoción por volumen (o None) de una página /browse/ de Lider.
+
+    Mismos items que `parse_lider_browse_page`; el badge vive en
+    `badges.flags[].text` ("Combina 4 x $2.390", "2 x $3.000"). Un sku presente
+    con None significa "revisado y sin promoción", distinto de no haberlo visto.
+    """
+    match = LIDER_NEXT_DATA_RE.search(page_html)
+    if not match:
+        return {}
+    try:
+        root = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return {}
+    search_result = (
+        (root.get("props") or {})
+        .get("pageProps", {})
+        .get("initialData", {})
+        .get("searchResult")
+        or {}
+    )
+    promotions: dict[str, VolumePromo | None] = {}
+    for stack in search_result.get("itemStacks") or []:
+        if not isinstance(stack, dict):
+            continue
+        for item in stack.get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            sku = str(item.get("usItemId") or "").strip()
+            price = parse_price(item.get("price"))
+            if sku and price > 0:
+                promotions[sku] = lider_volume_promo(item, price)
+    return promotions
+
+
 def harvest_lider_offer_prices(
-    delay_seconds: float = 0.5, max_pages: int | None = None
+    delay_seconds: float = 0.5,
+    max_pages: int | None = None,
+    promotions_out: dict[str, VolumePromo | None] | None = None,
 ) -> dict[str, tuple[int, int]]:
     """Cosecha sku -> (precio actual, precio regular) de ofertas de Lider.
 
@@ -1031,6 +1090,8 @@ def harvest_lider_offer_prices(
                 page_rows, _ = parse_lider_browse_page(page_html)
                 if not page_rows:
                     break
+                if promotions_out is not None:
+                    promotions_out.update(parse_lider_browse_promotions(page_html))
                 signature = tuple(sku for sku, _, _ in page_rows)
                 if signature in seen_signatures:
                     break
@@ -1044,6 +1105,8 @@ def harvest_lider_offer_prices(
                 f"[lider] cosecha de ofertas descartada: solo {total_items} items leídos",
                 file=sys.stderr,
             )
+            if promotions_out is not None:
+                promotions_out.clear()
             return {}
         print(
             f"[lider] ofertas cosechadas: {len(offers)} SKU en oferta de {total_items} items",
@@ -1055,6 +1118,8 @@ def harvest_lider_offer_prices(
             f"[lider] cosecha de ofertas falló ({exc}); el catálogo seguirá sin list_price",
             file=sys.stderr,
         )
+        if promotions_out is not None:
+            promotions_out.clear()
         return {}
 
 
@@ -1257,6 +1322,35 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     page.wait_for_timeout(1_500 * (attempt + 1))
             return (best_products, best_total) if best_products else (products, total)
 
+        def recover_catalog_page(
+            page_number: int,
+            category: str,
+            seen_signatures: set[tuple[str, ...]],
+            page_size: int,
+        ) -> list[Product]:
+            """Reintenta con backoff una pagina intermedia que fallo en un hueco.
+
+            Se usa solo cuando ya se sabe que el catalogo sigue despues de esa
+            pagina. Pasa por about:blank para descartar el estado del cliente
+            (una pagina repetida es el render anterior que quedo pegado).
+            """
+            for delay_ms in JUMBO_GAP_RETRY_DELAYS_MS:
+                try:
+                    page.goto("about:blank")
+                except Exception:  # noqa: BLE001 - solo limpia estado; el reintento decide.
+                    pass
+                page.wait_for_timeout(delay_ms)
+                try:
+                    products, _ = load_catalog_page(
+                        page_number, category, seen_signatures, page_size
+                    )
+                except RuntimeError:
+                    continue
+                signature = tuple(product_key(product) for product in products)
+                if products and signature not in seen_signatures:
+                    return products
+            return []
+
         page.on("response", capture_catalog_response)
         coverage_warnings: list[str] = []
         yielded = 0
@@ -1313,21 +1407,46 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                         if first_empty_page is None:
                             first_empty_page = page_number
                         continue
-                    if first_empty_page is not None:
-                        coverage_warnings.append(
-                            f"{category}: empty page {first_empty_page} before page {page_number} returned products"
-                        )
-                        first_empty_page = None
                     if signature in seen_pages:
                         if probes_until_repeat:
                             repeated_page = True
                             break
-                        coverage_warnings.append(
-                            f"{category}: repeated page {page_number} before "
-                            f"published page {published_page_count}"
+                        # Antes de la ultima pagina publicada, una repeticion es
+                        # casi siempre el render anterior pegado: reintentar.
+                        recovered = recover_catalog_page(
+                            page_number, category, seen_pages, page_size
                         )
-                        break
+                        if not recovered:
+                            coverage_warnings.append(
+                                f"{category}: repeated page {page_number} before "
+                                f"published page {published_page_count}"
+                            )
+                            break
+                        products = recovered
+                        signature = tuple(product_key(product) for product in products)
                     seen_pages.add(signature)
+                    if first_empty_page is not None:
+                        # Hueco confirmado: el catalogo sigue en esta pagina.
+                        # Recuperar las paginas vacias en vez de saltarlas,
+                        # porque saltarlas obliga a omitir la reconciliacion
+                        # de stock y deja la corrida en rojo.
+                        for gap_page in range(first_empty_page, page_number):
+                            gap_products = recover_catalog_page(
+                                gap_page, category, seen_pages, page_size
+                            )
+                            if not gap_products:
+                                coverage_warnings.append(
+                                    f"{category}: empty page {gap_page} before page "
+                                    f"{page_number} returned products"
+                                )
+                                continue
+                            seen_pages.add(
+                                tuple(product_key(product) for product in gap_products)
+                            )
+                            category_product_count += len(gap_products)
+                            yielded += len(gap_products)
+                            yield from gap_products
+                        first_empty_page = None
                     category_product_count += len(products)
                     yielded += len(products)
                     yield from products
@@ -1357,10 +1476,36 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             browser.close()
 
 
+def with_lider_promotion(
+    product: Product,
+    promotions: Mapping[str, VolumePromo | None],
+) -> Product:
+    """Aplica la promoción cosechada si el sku se vio en /browse/.
+
+    Un sku no visto queda con promo_checked=False: la ingesta conserva lo que
+    hubiera en Supabase en vez de borrar una promoción que no se pudo revisar.
+    """
+    if not product.sku or product.sku not in promotions:
+        return product
+    promo = promotions[product.sku]
+    if promo is not None and promo.total_price >= promo.min_qty * product.price:
+        promo = None
+    return replace(
+        product,
+        promo_min_qty=promo.min_qty if promo else None,
+        promo_total_price=promo.total_price if promo else None,
+        promo_label=promo.label if promo else None,
+        promo_group=promo.group if promo else None,
+        promo_checked=True,
+    )
+
+
 def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
     # Las páginas Verbolia no traen precio de lista: se cosecha antes el mapa
     # sku -> wasPrice desde el app Next.js (/browse/...) y se aplica al vuelo.
-    offer_prices = harvest_lider_offer_prices(max_pages=max_pages)
+    # La misma cosecha lee el badge de promoción por volumen (issue #96).
+    promotions: dict[str, VolumePromo | None] = {}
+    offer_prices = harvest_lider_offer_prices(max_pages=max_pages, promotions_out=promotions)
 
     def with_offer(product: Product) -> Product:
         if not product.sku:
@@ -1369,8 +1514,8 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
         # list_price debe ser >= price (constraint del catálogo) y solo aplica
         # si el precio regular supera al precio actual del listado Verbolia.
         if offer and offer[0] == product.price and offer[1] > product.price:
-            return replace(product, list_price=offer[1])
-        return product
+            product = replace(product, list_price=offer[1])
+        return with_lider_promotion(product, promotions)
 
     def listing_url(page_number: int) -> str:
         return (

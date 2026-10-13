@@ -1819,6 +1819,46 @@ CREATE INDEX IF NOT EXISTS supermarket_saved_lists_user_recent_idx
 
 ALTER TABLE public.supermarket_saved_lists ENABLE ROW LEVEL SECURITY;
 
+-- Promociones por volumen y pedido minimo (issue #96).
+-- Ver 20261013140000_supermarket_volume_promotions.sql: promo_total_price
+-- pesos por cada bloque de promo_min_qty unidades; promo_checked_at NULL
+-- significa que el scraper nunca reviso el badge y el total es estimado.
+-- Un ALTER por columna para que qa:schema-drift las reconozca todas.
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_min_qty INTEGER;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_total_price INTEGER;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_label TEXT;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_group TEXT;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_checked_at TIMESTAMPTZ;
+ALTER TABLE public.supermarket_products
+  DROP CONSTRAINT IF EXISTS supermarket_products_volume_promo_check;
+ALTER TABLE public.supermarket_products
+  ADD CONSTRAINT supermarket_products_volume_promo_check
+  CHECK (
+    (promo_min_qty IS NULL AND promo_total_price IS NULL)
+    OR (promo_min_qty BETWEEN 2 AND 1000 AND promo_total_price > 0)
+  );
+
+CREATE TABLE IF NOT EXISTS public.supermarket_store_policies (
+  store TEXT PRIMARY KEY,
+  minimum_order INTEGER,
+  source TEXT,
+  observed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT supermarket_store_policies_store_check
+    CHECK (store IN ('Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun')),
+  CONSTRAINT supermarket_store_policies_minimum_order_check
+    CHECK (minimum_order IS NULL OR minimum_order > 0)
+);
+
+ALTER TABLE public.supermarket_store_policies ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "supermarket_store_policies_read" ON public.supermarket_store_policies;
+CREATE POLICY "supermarket_store_policies_read"
+  ON public.supermarket_store_policies
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
 
 -- ############################################################################
 -- Esquema completado desde la base, 2026-09-06
