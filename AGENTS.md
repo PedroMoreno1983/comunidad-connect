@@ -60,6 +60,7 @@ TWILIO_WHATSAPP_FROM=
 HAULMER_ACCOUNT_ID=
 HAULMER_SECRET_KEY=
 HAULMER_ENVIRONMENT=production
+PARKING_HAULMER_ENABLED=   # Opcional. 'true' habilita Haulmer para arriendos de estacionamiento (además la comunidad debe elegirlo). Sin esto, se cargan a gastos comunes
 
 # Deploy
 NEXT_PUBLIC_SITE_URL=    # https://conviveconnect.com

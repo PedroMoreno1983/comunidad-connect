@@ -1610,7 +1610,17 @@ export interface ConciergeOperationsResponse {
 export type ParkingVehicleSize = 'moto' | 'auto' | 'suv' | 'camioneta';
 export type ParkingSpotStatus = 'draft' | 'pending_approval' | 'published' | 'paused' | 'rejected';
 export type ParkingBookingStatus = 'confirmed' | 'active' | 'completed' | 'cancelled' | 'no_show';
-export type ParkingPaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed';
+/** Espejo del libro de cobros en la reserva. 'voided' = el cobro se anuló. */
+export type ParkingPaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed' | 'voided';
+/**
+ * Estado de un cobro del libro parking_charges. Replica el CHECK de la base:
+ * pending -> charged -> paid / failed / voided / refunded.
+ */
+export type ParkingChargeStatus = 'pending' | 'charged' | 'paid' | 'failed' | 'voided' | 'refunded';
+/** Cómo se cobró: cargo en gastos comunes, pago en línea o nada (arriendo gratuito). */
+export type ParkingChargeMethod = 'common_expenses' | 'haulmer' | 'none';
+/** Método que la comunidad elige para cobrar los arriendos. */
+export type ParkingBillingMethod = 'common_expenses' | 'haulmer';
 /**
  * Autorización de un conductor para operar en un condominio concreto.
  * Es por comunidad y no un estado global del conductor: que un comité lo acepte
@@ -1773,6 +1783,76 @@ export interface ParkingBooking {
   rating?: number;
   ratingComment?: string;
   createdAt: string;
+  /** Cobro del libro; ausente si la migración del libro no está aplicada. */
+  charge?: ParkingCharge;
+}
+
+/** Un cobro del libro de estacionamientos (uno por reserva). */
+export interface ParkingCharge {
+  id: string;
+  bookingId: string;
+  communityId: string;
+  amount: number;
+  status: ParkingChargeStatus;
+  method: ParkingChargeMethod;
+  unitId?: string;
+  unitLabel?: string;
+  needsReview: boolean;
+  failureReason?: string;
+  /** Link de pago en línea, solo cuando el método es Haulmer y está pendiente. */
+  checkoutUrl?: string;
+  chargedAt?: string;
+  paidAt?: string;
+  voidedAt?: string;
+  refundedAt?: string;
+  createdAt: string;
+  /** Datos de la reserva, para la vista de administración. */
+  spotLabel?: string;
+  driverName?: string;
+  driverPlate?: string;
+  startsAt?: string;
+  endsAt?: string;
+  bookingStatus?: ParkingBookingStatus;
+}
+
+/** Resultado de procesar el cobro de una reserva en el servidor. */
+export interface ParkingChargeProcessResult {
+  charge: ParkingCharge | null;
+  /** Proveedor que quedó a cargo del cobro. */
+  provider: ParkingChargeMethod | null;
+  /** Si el cobro se paga en línea, el link al que hay que llevar al conductor. */
+  checkoutUrl: string | null;
+  /** Por qué no se usó Haulmer, cuando la comunidad lo tenía elegido. */
+  fallbackReason?: string;
+}
+
+/** Lo que un proveedor necesita para cobrar un arriendo. El monto viene del libro, nunca del cliente. */
+export interface ParkingChargeProviderInput {
+  chargeId: string;
+  bookingId: string;
+  communityId: string;
+  amount: number;
+  description: string;
+  payer: { name: string; email: string | null; phone?: string | null };
+  returnUrl: string;
+  /** Por qué se usa este proveedor (queda en la bitácora del cobro). */
+  note?: string;
+}
+
+export type ParkingChargeProviderOutcome =
+  | { kind: 'checkout'; checkoutUrl: string; providerReference: string }
+  | { kind: 'posted_to_unit'; status: ParkingChargeStatus };
+
+/**
+ * Proveedor de cobro de arriendos de estacionamiento. Hoy hay dos: gastos
+ * comunes (siempre disponible) y Haulmer (apagado por defecto).
+ */
+export interface PaymentProvider {
+  id: ParkingChargeMethod;
+  /** null si está disponible; si no, por qué no (para la bitácora del cobro). */
+  unavailableReason(): string | null;
+  createCharge(input: ParkingChargeProviderInput): Promise<ParkingChargeProviderOutcome>;
+  refund(input: { chargeId: string; amount: number; providerReference: string | null }): Promise<{ refunded: boolean; reason: string }>;
 }
 
 /** Lo que ve conserjería al validar un código o una patente en la barrera. */
@@ -1807,6 +1887,10 @@ export interface ParkingAccessEvent {
 export interface ParkingCommunitySettings {
   externalEnabled: boolean;
   commissionPercent: number;
+  /** Ausente si la migración del libro de cobros no está aplicada. */
+  billingMethod?: ParkingBillingMethod;
+  /** Horas antes del inicio hasta las que se cancela sin costo. */
+  freeCancellationHours?: number;
 }
 
 export interface ParkingEarningsTransaction {
