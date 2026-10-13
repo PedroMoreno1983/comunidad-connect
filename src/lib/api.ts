@@ -129,7 +129,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, ApiKeyScope, CommunityApiKey, CommunityEmployeeRecord, OversightLink, IntercomCall, IntercomVisitKind, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, PayrollSettings, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, ApiKeyScope, InvoicingEmitter, InvoicingSettingsView, TaxDocument, TaxDocumentDraft, CommunityApiKey, CommunityEmployeeRecord, OversightLink, IntercomCall, IntercomVisitKind, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, PayrollSettings, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
@@ -3566,5 +3566,20 @@ export const OversightLinksService = {
 
     revoke(id: string) {
         return readApi<{ revoked: boolean }>('/api/admin/oversight-links', 'No se pudo revocar el acceso.', financeWrite({ action: 'revoke', id }));
+    },
+};
+
+/** Facturación electrónica (OpenFactura). */
+export const InvoicingService = {
+    get() {
+        return readApi<{ settings: InvoicingSettingsView; documents: TaxDocument[] }>('/api/admin/invoicing', 'No se pudo cargar la facturación.');
+    },
+
+    saveSettings(input: { environment: 'test' | 'production'; apiKey?: string; emitter: InvoicingEmitter }) {
+        return readApi<{ settings: InvoicingSettingsView }>('/api/admin/invoicing', 'No se pudo guardar el emisor.', financeWrite({ action: 'settings', ...input }));
+    },
+
+    issue(draft: TaxDocumentDraft, idempotencyKey: string) {
+        return readApi<{ document: TaxDocument }>('/api/admin/invoicing', 'No se pudo emitir el documento.', financeWrite({ action: 'issue', ...draft, idempotencyKey }));
     },
 };

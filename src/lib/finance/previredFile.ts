@@ -1,3 +1,4 @@
+import { splitRut } from '@/lib/utils/rut';
 import type { PayrollContractType, PayrollIndicators, Payslip, PreviredWorker } from '@/lib/types';
 
 // Formato de envío estándar de largo variable por separador, Previred v100
@@ -35,22 +36,7 @@ export class PreviredFileError extends Error {
     }
 }
 
-/** RUT chileno: dígito verificador por módulo 11. */
-export function splitRut(rut: string): { number: string; dv: string } | null {
-    const clean = rut.replace(/[^\dkK]/g, '').toUpperCase();
-    if (clean.length < 2) return null;
-    const number = clean.slice(0, -1);
-    const dv = clean.slice(-1);
-    let sum = 0;
-    let factor = 2;
-    for (let i = number.length - 1; i >= 0; i -= 1) {
-        sum += Number(number[i]) * factor;
-        factor = factor === 7 ? 2 : factor + 1;
-    }
-    const expected = 11 - (sum % 11);
-    const expectedDv = expected === 11 ? '0' : expected === 10 ? 'K' : String(expected);
-    return expectedDv === dv && Number(number) > 0 ? { number: String(Number(number)), dv } : null;
-}
+export { splitRut } from '@/lib/utils/rut';
 
 /** Mayúsculas sin tildes; Previred rechaza caracteres no alfabéticos. Conserva la Ñ. */
 function previredName(value: string | null): string {
