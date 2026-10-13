@@ -1523,6 +1523,8 @@ export interface SolidarityResolutionResult {
 export interface Notification {
   id: string;
   type: 'info' | 'success' | 'warning' | 'alert';
+  /** Para reaccionar a avisos puntuales, como 'intercom_call'. */
+  category?: string;
   title: string;
   message: string;
   timestamp: Date;
@@ -3354,4 +3356,23 @@ export interface FinanceLegacyExpense {
     amount: number;
     status: string;
     payment_metadata?: unknown;
+}
+
+export type IntercomVisitKind = "visit" | "delivery" | "service" | "other";
+export type IntercomCallStatus = "ringing" | "approved" | "rejected" | "cancelled" | "expired" | "admitted";
+
+/** Llamada del citófono digital: conserjería pregunta, la unidad aprueba o rechaza. */
+export interface IntercomCall {
+    id: string;
+    unitId: string;
+    unitNumber: string | null;
+    visitorName: string;
+    visitKind: IntercomVisitKind;
+    note: string | null;
+    status: IntercomCallStatus;
+    createdAt: string;
+    answeredAt: string | null;
+    expiresAt: string;
+    gateStatus: "opened" | "failed" | "not_configured" | null;
+    admitted: boolean;
 }
