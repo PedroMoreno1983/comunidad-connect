@@ -18,6 +18,8 @@ import { summarizeAccountPaymentStatus } from './paymentStatus';
 import { getUnitStatement } from '@/lib/finance/collectionService';
 import { rememberFact } from './user-memory';
 import { PUBLIC_SITE_URL } from '@/lib/config';
+import { processParkingCharge, type ParkingChargesDb } from '@/lib/payments/parkingCharges';
+import { describeParkingCharge } from '@/lib/parking';
 import {
     compareSupermarketGroupOrder,
     createSupermarketGroupOrder,
@@ -593,7 +595,7 @@ export function describePendingAction(name: string, input: Record<string, unknow
             };
             return {
                 title: 'Reservar estacionamiento',
-                summary: `Desde el ${legible('starts_at')} hasta el ${legible('ends_at')}. Se cobra según la tarifa del cupo.`,
+                summary: `Desde el ${legible('starts_at')} hasta el ${legible('ends_at')}. El monto se calcula con la tarifa del cupo y se carga a la cuenta de gastos comunes de tu unidad (o se paga en línea si la comunidad lo habilitó).`,
             };
         }
         case 'create_circular':
@@ -1070,10 +1072,34 @@ export async function executeTool(
                     .eq('id', String(bookingId))
                     .maybeSingle();
 
+                // El cobro lo abrió la base en el mismo INSERT de la reserva (y,
+                // con el método por defecto, ya lo cargó a gastos comunes). Aquí
+                // solo se resuelve el caso Haulmer y se lee el estado para que
+                // CoCo se lo diga al residente. Si falla, la reserva sigue en pie.
+                let cobro: Record<string, unknown> | undefined;
+                try {
+                    const processed = await processParkingCharge(
+                        supabaseAdmin as unknown as ParkingChargesDb,
+                        String(bookingId),
+                    );
+                    if (processed.charge) {
+                        cobro = {
+                            monto: processed.charge.amount,
+                            estado: processed.charge.status,
+                            detalle: describeParkingCharge(processed.charge),
+                            link_pago: processed.checkoutUrl ?? undefined,
+                            cancelacion: 'Sin costo si se cancela con la anticipación que fija la comunidad (2 h por defecto); después el cobro se mantiene.',
+                        };
+                    }
+                } catch {
+                    cobro = undefined;
+                }
+
                 return {
                     reserva_id: bookingId,
                     estacionamiento: spot.label,
                     ...(creada ?? {}),
+                    cobro,
                     donde_verla: '/estacionamientos',
                 };
             }
