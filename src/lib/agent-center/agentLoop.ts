@@ -246,7 +246,19 @@ export type AgentLoopOutcome =
     | { kind: 'answer'; text: string; trace: LoopTraceEntry[]; taskId: string | null; runId: string | null; stepLimitReached: boolean }
     | { kind: 'pause'; action: AgentAction; trace: LoopTraceEntry[]; taskId: string; runId: string | null };
 
-type LoopContext = { profile: AgentProfile; filter: LoopToolFilter; taskId: string | null };
+type LoopContext = {
+    profile: AgentProfile;
+    filter: LoopToolFilter;
+    taskId: string | null;
+    /**
+     * Mensaje original de un ciclo nuevo. La corrida auditada se crea recien
+     * cuando Claude responde la primera ronda: si Claude falla (sin red, clave
+     * invalida, cuota), la ruta cae al respaldo deterministico / puente CoCo y
+     * no debe quedar una corrida huerfana "Ciclo agentico" en la bitacora
+     * tapando la corrida real del puente.
+     */
+    newRunMessage?: string;
+};
 
 function toolResultContent(value: unknown) {
     return JSON.stringify(value ?? null).slice(0, TOOL_RESULT_MAX_CHARS);
@@ -351,6 +363,9 @@ async function driveLoop(state: LoopState, ctx: LoopContext): Promise<AgentLoopO
             });
             rounds += 1;
             state.stepsUsed += 1;
+            if (!state.runId && ctx.newRunMessage) {
+                state.runId = await createLoopRun(profile, ctx.newRunMessage);
+            }
             promptTokens += (response.usage?.input_tokens || 0)
                 + (response.usage?.cache_creation_input_tokens || 0)
                 + (response.usage?.cache_read_input_tokens || 0);
@@ -493,9 +508,9 @@ export async function runAgentLoop(input: {
 }): Promise<AgentLoopOutcome | null> {
     if (!process.env.ANTHROPIC_API_KEY) return null;
     if (!input.profile.community_id) throw new Error('Tu perfil no tiene una comunidad asignada.');
-    const runId = await createLoopRun(input.profile, input.message);
     const state: LoopState = {
-        runId,
+        // La corrida se crea en driveLoop tras la primera respuesta de Claude.
+        runId: null,
         goal: input.message.slice(0, 700),
         messages: [{ role: 'user', content: buildUserPrompt(input.message, input.profile, input.history || []) }],
         stepsUsed: 0,
@@ -503,7 +518,7 @@ export async function runAgentLoop(input: {
         trace: [],
         pending: null,
     };
-    return driveLoop(state, { profile: input.profile, filter: input.filter || {}, taskId: null });
+    return driveLoop(state, { profile: input.profile, filter: input.filter || {}, taskId: null, newRunMessage: input.message });
 }
 
 /** La ruta llama esto despues de persistir la tarjeta de aprobacion de la escritura. */
