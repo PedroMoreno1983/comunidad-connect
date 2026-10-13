@@ -459,5 +459,29 @@ describe('puente coco_action end-to-end (checklist de QA del PR #68)', () => {
             expect(metadata.cocoTools).toEqual(['create_social_post']);
             expect(metadata.cocoRisk).toBe('write_low');
         });
+
+        it('si el ciclo agentico falla y cae al puente, la unica corrida es la de CoCo', async () => {
+            // Simula Claude caido (clave invalida, sin red) de forma deterministica.
+            const previousKey = process.env.ANTHROPIC_API_KEY;
+            process.env.ANTHROPIC_API_KEY = 'ci-placeholder';
+            const anthropic = await import('@anthropic-ai/sdk');
+            const createSpy = vi.spyOn(anthropic.default.Messages.prototype, 'create')
+                .mockRejectedValue(new Error('401 invalid x-api-key'));
+            try {
+                turnoConMutacion('create_social_post', 'Publicar aviso en el muro');
+
+                await POST(post({ message: UNRECOGNIZED_MESSAGE }));
+
+                const runs = mocks.inserts.filter(i => i.table === 'agent_runs');
+                expect(runs.map(r => (r.payload.metadata as Record<string, unknown>).displayAction))
+                    .not.toContain('Ciclo agentico');
+                expect((runs[0]?.payload.metadata as Record<string, unknown>).displayAction)
+                    .toBe('CoCo: Publicar aviso en el muro');
+            } finally {
+                createSpy.mockRestore();
+                if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+                else process.env.ANTHROPIC_API_KEY = previousKey;
+            }
+        });
     });
 });
