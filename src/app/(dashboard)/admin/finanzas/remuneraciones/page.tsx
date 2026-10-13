@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, FileText, Loader2 } from "lucide-react";
 import { AdminFinanceService } from "@/lib/api";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -14,7 +14,9 @@ import type {
     PayrollEmployeeInput,
     PayrollHealthSystem,
     PayrollRunRecord,
+    PayrollSettings,
 } from "@/lib/types";
+import { PREVIRED_HEALTH_INSTITUTIONS } from "@/lib/finance/previredFile";
 import { currentMonthInChile, todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
@@ -31,6 +33,21 @@ const CONTRACT_LABELS: Record<PayrollContractType, string> = {
     plazo_fijo: "Plazo fijo",
     indefinido_11: "Indefinido, 11 años o más",
 };
+
+const CCAF_OPTIONS = [
+    { code: "00", name: "Sin caja de compensación" },
+    { code: "01", name: "Los Andes" },
+    { code: "02", name: "La Araucana" },
+    { code: "03", name: "Los Héroes" },
+    { code: "04", name: "18 de Septiembre" },
+];
+
+const MUTUAL_OPTIONS = [
+    { code: "00", name: "ISL (sin mutual)" },
+    { code: "01", name: "ACHS" },
+    { code: "02", name: "Mutual de Seguridad CChC" },
+    { code: "03", name: "IST" },
+];
 
 const AFP_LABELS: Record<string, string> = {
     capital: "Capital", cuprum: "Cuprum", habitat: "Habitat", planvital: "PlanVital",
@@ -54,12 +71,20 @@ interface FormState {
     mealAllowance: string;
     transportAllowance: string;
     familyDependents: string;
+    firstNames: string;
+    fatherLastName: string;
+    motherLastName: string;
+    sex: "" | "M" | "F";
+    foreignNational: boolean;
+    isapreCode: string;
+    partTime: boolean;
 }
 
 const EMPTY_FORM: FormState = {
     fullName: "", roleTitle: "", monthlyAmount: "", calculation: "chile", rut: "", afp: "",
     healthSystem: "fonasa", isapreName: "", isaprePlanUf: "", contractType: "indefinido",
     gratification: true, taxableBonus: "", mealAllowance: "", transportAllowance: "", familyDependents: "",
+    firstNames: "", fatherLastName: "", motherLastName: "", sex: "", foreignNational: false, isapreCode: "", partTime: false,
 };
 
 function formFromEmployee(person: CommunityEmployeeRecord): FormState {
@@ -80,6 +105,13 @@ function formFromEmployee(person: CommunityEmployeeRecord): FormState {
         mealAllowance: person.meal_allowance ? String(person.meal_allowance) : "",
         transportAllowance: person.transport_allowance ? String(person.transport_allowance) : "",
         familyDependents: person.family_dependents ? String(person.family_dependents) : "",
+        firstNames: person.first_names || "",
+        fatherLastName: person.father_last_name || "",
+        motherLastName: person.mother_last_name || "",
+        sex: person.sex || "",
+        foreignNational: person.foreign_national,
+        isapreCode: person.isapre_code || "",
+        partTime: person.part_time,
     };
 }
 
@@ -102,7 +134,28 @@ function inputFromForm(form: FormState, active = true): PayrollEmployeeInput {
         mealAllowance: digits(form.mealAllowance),
         transportAllowance: digits(form.transportAllowance),
         familyDependents: digits(form.familyDependents),
+        firstNames: form.firstNames,
+        fatherLastName: form.fatherLastName,
+        motherLastName: form.motherLastName,
+        sex: form.sex || null,
+        foreignNational: form.foreignNational,
+        isapreCode: form.isapreCode,
+        partTime: form.partTime,
     };
+}
+
+async function downloadPrevired(run: PayrollRunRecord) {
+    const response = await fetch(`/api/admin/payroll/runs/${run.id}/previred`);
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || "No se pudo generar el archivo Previred.");
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `previred-${run.month}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
 }
 
 export default function RemuneracionesPage() {
@@ -111,6 +164,8 @@ export default function RemuneracionesPage() {
     const [runs, setRuns] = useState<PayrollRunRecord[]>([]);
     const [afps, setAfps] = useState<string[]>([]);
     const [indicatorsMonth, setIndicatorsMonth] = useState<string | null>(null);
+    const [settings, setSettings] = useState<PayrollSettings>({ ccafCode: "00", mutualCode: "00", accidentRate: 0.0093 });
+    const [accidentRateText, setAccidentRateText] = useState("0,93");
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -119,6 +174,11 @@ export default function RemuneracionesPage() {
     const [reference, setReference] = useState("");
 
     const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm(prev => ({ ...prev, [key]: value }));
+    // El nombre completo se arma con los nombres separados que pide Previred.
+    const setName = (key: "firstNames" | "fatherLastName" | "motherLastName", value: string) => setForm(prev => {
+        const next = { ...prev, [key]: value };
+        return { ...next, fullName: [next.firstNames, next.fatherLastName, next.motherLastName].filter(Boolean).join(" ") };
+    });
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -128,6 +188,8 @@ export default function RemuneracionesPage() {
             setRuns(data.runs);
             setAfps(data.afps);
             setIndicatorsMonth(data.indicatorsMonth);
+            setSettings(data.settings);
+            setAccidentRateText((data.settings.accidentRate * 100).toFixed(2).replace(".", ","));
         } catch (error) {
             toast({
                 title: "No se cargó la remuneración",
@@ -172,6 +234,40 @@ export default function RemuneracionesPage() {
         } catch (error) {
             toast({
                 title: "No se actualizó",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function saveSettings(event: FormEvent) {
+        event.preventDefault();
+        setBusy(true);
+        try {
+            const accidentRate = Number(accidentRateText.replace(",", ".")) / 100;
+            await AdminFinanceService.savePayrollSettings({ ...settings, accidentRate });
+            toast({ title: "Datos previsionales guardados", description: "Se usan desde la próxima liquidación.", variant: "success" });
+            await load();
+        } catch (error) {
+            toast({
+                title: "No se guardó",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function previred(run: PayrollRunRecord) {
+        setBusy(true);
+        try {
+            await downloadPrevired(run);
+        } catch (error) {
+            toast({
+                title: "Falta información para Previred",
                 description: error instanceof Error ? error.message : "Error inesperado.",
                 variant: "destructive",
             });
@@ -260,10 +356,26 @@ export default function RemuneracionesPage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-4">
-                        <label className="text-sm cc-text-secondary sm:col-span-2">
-                            Nombre
-                            <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.fullName} onChange={e => set("fullName", e.target.value)} required />
-                        </label>
+                        {legal ? (
+                            <>
+                                <label className="text-sm cc-text-secondary">
+                                    Nombres
+                                    <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.firstNames} onChange={e => setName("firstNames", e.target.value)} required />
+                                </label>
+                                <label className="text-sm cc-text-secondary">
+                                    Apellidos
+                                    <span className="mt-1 flex gap-2">
+                                        <input className={fieldClass} style={fieldStyle} value={form.fatherLastName} onChange={e => setName("fatherLastName", e.target.value)} placeholder="Paterno" required />
+                                        <input className={fieldClass} style={fieldStyle} value={form.motherLastName} onChange={e => setName("motherLastName", e.target.value)} placeholder="Materno" />
+                                    </span>
+                                </label>
+                            </>
+                        ) : (
+                            <label className="text-sm cc-text-secondary sm:col-span-2">
+                                Nombre
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.fullName} onChange={e => set("fullName", e.target.value)} required />
+                            </label>
+                        )}
                         <label className="text-sm cc-text-secondary">
                             Cargo
                             <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.roleTitle} onChange={e => set("roleTitle", e.target.value)} placeholder="Conserje" required />
@@ -278,7 +390,29 @@ export default function RemuneracionesPage() {
                         <div className="grid gap-3 sm:grid-cols-4">
                             <label className="text-sm cc-text-secondary">
                                 RUT
-                                <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.rut} onChange={e => set("rut", e.target.value)} placeholder="12.345.678-5" />
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.rut} onChange={e => set("rut", e.target.value)} placeholder="12.345.678-5" required />
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Sexo
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.sex} onChange={e => set("sex", e.target.value as FormState["sex"])} required>
+                                    <option value="">Elige…</option>
+                                    <option value="F">Femenino</option>
+                                    <option value="M">Masculino</option>
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Nacionalidad
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.foreignNational ? "1" : "0"} onChange={e => set("foreignNational", e.target.value === "1")}>
+                                    <option value="0">Chilena</option>
+                                    <option value="1">Extranjera</option>
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Jornada
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.partTime ? "2" : "1"} onChange={e => set("partTime", e.target.value === "2")}>
+                                    <option value="1">Completa</option>
+                                    <option value="2">Parcial</option>
+                                </select>
                             </label>
                             <label className="text-sm cc-text-secondary">
                                 AFP
@@ -304,7 +438,20 @@ export default function RemuneracionesPage() {
                                 <>
                                     <label className="text-sm cc-text-secondary sm:col-span-2">
                                         Isapre
-                                        <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.isapreName} onChange={e => set("isapreName", e.target.value)} />
+                                        <select
+                                            className={`${fieldClass} mt-1`}
+                                            style={fieldStyle}
+                                            value={form.isapreCode}
+                                            onChange={e => setForm(prev => ({
+                                                ...prev,
+                                                isapreCode: e.target.value,
+                                                isapreName: PREVIRED_HEALTH_INSTITUTIONS.find(item => item.code === e.target.value)?.name || "",
+                                            }))}
+                                            required
+                                        >
+                                            <option value="">Elige…</option>
+                                            {PREVIRED_HEALTH_INSTITUTIONS.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}
+                                        </select>
                                     </label>
                                     <label className="text-sm cc-text-secondary sm:col-span-2">
                                         Plan (UF)
@@ -387,6 +534,29 @@ export default function RemuneracionesPage() {
                     </section>
                 )}
 
+                <form onSubmit={event => void saveSettings(event)} className="flex flex-wrap items-end gap-3 rounded-2xl border p-5" style={cardStyle}>
+                    <p className="w-full text-sm font-semibold cc-text-primary">Datos previsionales de la comunidad</p>
+                    <label className="text-sm cc-text-secondary">
+                        Caja de compensación
+                        <select className={`${fieldClass} mt-1`} style={fieldStyle} value={settings.ccafCode} onChange={e => setSettings(prev => ({ ...prev, ccafCode: e.target.value }))}>
+                            {CCAF_OPTIONS.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="text-sm cc-text-secondary">
+                        Seguro de accidentes
+                        <select className={`${fieldClass} mt-1`} style={fieldStyle} value={settings.mutualCode} onChange={e => setSettings(prev => ({ ...prev, mutualCode: e.target.value }))}>
+                            {MUTUAL_OPTIONS.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="text-sm cc-text-secondary">
+                        Tasa total (%)
+                        <input className={`${fieldClass} mt-1 w-24`} style={fieldStyle} inputMode="decimal" value={accidentRateText} onChange={e => setAccidentRateText(e.target.value)} />
+                    </label>
+                    <button type="submit" disabled={busy} className="rounded-xl border px-4 py-2 text-sm font-semibold cc-text-primary disabled:opacity-60" style={{ borderColor: "var(--cc-line)" }}>
+                        Guardar
+                    </button>
+                </form>
+
                 <section className="flex flex-wrap items-end gap-3 rounded-2xl border p-5" style={cardStyle}>
                     <label className="text-sm cc-text-secondary">
                         Mes
@@ -428,11 +598,18 @@ export default function RemuneracionesPage() {
                                             {run.indicators_month && ` · Indicadores ${run.indicators_month}`}
                                         </p>
                                     </div>
-                                    {run.status === "draft" && (
-                                        <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void payRun(run.id)}>
-                                            Marcar pagada
-                                        </button>
-                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                        {run.indicators_month && (
+                                            <button type="button" disabled={busy} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold cc-text-primary disabled:opacity-60" style={{ borderColor: "var(--cc-line)" }} onClick={() => void previred(run)}>
+                                                <Download className="h-4 w-4" /> Archivo Previred
+                                            </button>
+                                        )}
+                                        {run.status === "draft" && (
+                                            <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void payRun(run.id)}>
+                                                Marcar pagada
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <ul className="mt-3 divide-y text-sm cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>
                                     {run.payroll_lines.map(line => (

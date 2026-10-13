@@ -5735,13 +5735,26 @@ ALTER TABLE public.community_employees
   ADD COLUMN IF NOT EXISTS meal_allowance integer NOT NULL DEFAULT 0 CHECK (meal_allowance >= 0),
   ADD COLUMN IF NOT EXISTS transport_allowance integer NOT NULL DEFAULT 0 CHECK (transport_allowance >= 0),
   ADD COLUMN IF NOT EXISTS family_dependents smallint NOT NULL DEFAULT 0 CHECK (family_dependents BETWEEN 0 AND 20),
-  ADD COLUMN IF NOT EXISTS hire_date date;
+  ADD COLUMN IF NOT EXISTS hire_date date,
+  -- Datos que exige el archivo de 105 campos de Previred.
+  ADD COLUMN IF NOT EXISTS first_names text,
+  ADD COLUMN IF NOT EXISTS father_last_name text,
+  ADD COLUMN IF NOT EXISTS mother_last_name text,
+  ADD COLUMN IF NOT EXISTS sex text CHECK (sex IS NULL OR sex IN ('M', 'F')),
+  ADD COLUMN IF NOT EXISTS foreign_national boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS isapre_code text CHECK (isapre_code IS NULL OR isapre_code ~ '^\d{2}$'),
+  ADD COLUMN IF NOT EXISTS part_time boolean NOT NULL DEFAULT false;
 
 -- Seguro de accidentes del trabajo (Ley 16.744): tasa básica 0,90% + 0,03% Ley SANNA.
 -- Cambia por comunidad cuando la mutual asigna cotización adicional.
 ALTER TABLE public.communities
   ADD COLUMN IF NOT EXISTS payroll_accident_rate numeric(6,4) NOT NULL DEFAULT 0.0093
-    CHECK (payroll_accident_rate >= 0 AND payroll_accident_rate < 0.2);
+    CHECK (payroll_accident_rate >= 0 AND payroll_accident_rate < 0.2),
+  -- Códigos Previred: '00' = sin CCAF; mutual '00' = cotiza accidentes al ISL.
+  ADD COLUMN IF NOT EXISTS payroll_ccaf_code text NOT NULL DEFAULT '00'
+    CHECK (payroll_ccaf_code IN ('00', '01', '02', '03', '04')),
+  ADD COLUMN IF NOT EXISTS payroll_mutual_code text NOT NULL DEFAULT '00'
+    CHECK (payroll_mutual_code IN ('00', '01', '02', '03'));
 ALTER TABLE public.payroll_lines
   ADD COLUMN IF NOT EXISTS gross_amount integer,
   ADD COLUMN IF NOT EXISTS net_amount integer,
