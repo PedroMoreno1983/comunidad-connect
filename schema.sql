@@ -4090,7 +4090,7 @@ REVOKE ALL ON FUNCTION public.set_supermarket_history_enabled(boolean) FROM PUBL
 GRANT EXECUTE ON FUNCTION public.set_supermarket_history_enabled(boolean) TO authenticated;
 
 -- =====================================================================
--- FORMACIÓN TRAZABLE, VERSIONADA Y CERTIFICADA (20260917143000 / 151500)
+-- FORMACIÓN TRAZABLE, VERSIONADA Y CERTIFICADA (20260917162913 / 163902)
 -- Espejo de las migraciones aplicadas para instalaciones nuevas.
 -- =====================================================================
 
@@ -4531,7 +4531,7 @@ GRANT SELECT ON public.training_certificates TO authenticated;
 COMMIT;
 
 -- Cleanup de políticas heredadas al reconstruir desde este esquema maestro
--- (20260920043500_training_policy_bootstrap_cleanup).
+-- (20260920043353_training_policy_bootstrap_cleanup).
 BEGIN;
 
 DROP POLICY IF EXISTS training_modules_select ON public.training_modules;
@@ -4680,7 +4680,7 @@ VALUES ('finance-documents', 'finance-documents', false, 10485760,
 ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 10485760;
 
 
--- Operational request boundaries (20261006185658):
+-- Operational request boundaries (20261006192053):
 -- Requests preserve identity, tenant boundaries and lifecycle; notifications commit atomically.
 BEGIN;
 ALTER TABLE public.service_requests DROP CONSTRAINT service_requests_status_check;
@@ -4853,7 +4853,7 @@ $$;
 REVOKE ALL ON FUNCTION public.cancel_billing_run_safe(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_billing_run_safe(uuid, uuid) TO service_role;
 
--- Revisión del comité del gasto común (migración 20261010144618)
+-- Revisión del comité del gasto común (migración 20261010150842)
 -- Revisión independiente del prorrateo antes de emitir el gasto común.
 -- Cada solicitud conserva una foto de la propuesta; una nueva solicitud no
 -- sobreescribe decisiones anteriores.
