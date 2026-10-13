@@ -278,6 +278,31 @@ export interface SupermarketGroupComparison {
   retailerUrl: string;
 }
 
+/**
+ * Promoción por volumen ("4 x $990", "Combina 4 x $5.990"): `totalPrice` pesos
+ * por cada bloque de `minQuantity` unidades. Issue #96.
+ */
+export interface SupermarketVolumePromo {
+  minQuantity: number;
+  totalPrice: number;
+  label?: string;
+  /** Productos con la misma clave se suman para completar el bloque ("Combina"). */
+  group?: string;
+}
+
+/**
+ * `promo_aware`: todos los productos de la canasta tienen la promoción por
+ * volumen revisada por el scraper. `unit_price`: al menos uno no, así que el
+ * total es un estimado sobre precio unitario.
+ */
+export type SupermarketPricingBasis = 'promo_aware' | 'unit_price';
+
+/** Reglas de compra por tienda que el catálogo no trae. */
+export interface SupermarketStorePolicy {
+  store: string;
+  minimumOrder?: number;
+}
+
 export interface SupermarketSearchCandidate {
   id: string;
   name: string;
@@ -308,6 +333,12 @@ export interface SupermarketSearchCandidate {
   /** Por qué CoCo eligió esta marca/presentación (visible para el usuario). */
   selectionReason?: string;
   fetchedAt?: string;
+  /** Promoción por volumen vigente para este producto, si la tienda la publica. */
+  volumePromo?: SupermarketVolumePromo;
+  /** El scraper revisó el badge de promoción en su última pasada. */
+  promoChecked?: boolean;
+  /** Ahorro de la promoción por volumen ya descontado en `lineTotal`. */
+  promoSavings?: number;
 }
 
   export interface SupermarketCatalogProduct {
@@ -368,6 +399,16 @@ export interface SupermarketBasketCandidate extends SupermarketBasketSummary {
   channelType: SupermarketChannelType;
   items: SupermarketSearchCandidate[];
   fetchedAt?: string;
+  /** Si el subtotal incluye promociones por volumen o es estimado sobre precio unitario. */
+  pricingBasis?: SupermarketPricingBasis;
+  /** Ahorro total por promociones por volumen incluido en `subtotal`. */
+  promoSavings?: number;
+  /** Pedido mínimo conocido de la tienda. */
+  minimumOrder?: number;
+  /** La canasta no alcanza el pedido mínimo: la tienda no deja cursarla. */
+  belowMinimum?: boolean;
+  /** Cuánto falta para el pedido mínimo. */
+  shortfall?: number;
 }
 
 export type SupermarketComparisonSourceStatus = 'ok' | 'no_results' | 'degraded';
