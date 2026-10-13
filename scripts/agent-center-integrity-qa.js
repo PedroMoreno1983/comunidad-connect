@@ -13,6 +13,11 @@ const triggerMigration = read('supabase/migrations/054_agent_proactive_triggers.
 const proactiveEngine = read('src/lib/agent-center/proactiveEngine.ts');
 const schedulerRoute = read('src/app/api/agent-center/scheduler/route.ts');
 const planner = read('src/lib/agent-center/planner.ts');
+const actionExecutor = read('src/lib/agent-center/actionExecutor.ts');
+const agentLoop = read('src/lib/agent-center/agentLoop.ts');
+const agentLoopStore = read('src/lib/agent-center/agentLoopStore.ts');
+const agentTools = read('src/lib/agent-center/agentTools.ts');
+const resumeRoute = read('src/app/api/agent-center/tasks/[id]/resume/route.ts');
 const communityResearch = read('src/lib/agent-center/communityResearch.ts');
 const unitFinanceActions = read('src/lib/agent-center/unitFinanceActions.ts');
 const whatsappNotifyRoute = read('src/app/api/whatsapp-notify/route.ts');
@@ -23,7 +28,14 @@ const twilioContentTemplate = read('src/lib/server/twilioContentTemplate.ts');
 
 const checks = [
   ['Department number extraction is supported', intentSafety.includes('extractUnitNumber')],
-  ['Anthropic tool-calling is the primary reasoning planner', route.includes('planAgentAction(message, profile, history)') && planner.includes("tool_choice: { type: 'tool'")],
+  ['Native Claude tool-use loop is the primary reasoning engine', route.includes('runAgentLoop({ message, profile, history') && agentLoop.includes("tool_choice: { type: 'auto'") && agentLoop.includes("type: 'tool_result'")],
+  ['Agent loop is capped in steps and budgeted every round', agentLoop.includes('state.stepsUsed < MAX_AGENT_LOOP_STEPS') && agentLoop.includes('await enforceAiBudget(') && agentLoop.includes('recordAiUsage(')],
+  ['Agent loop writes pause in waiting_human and resume after confirmation', agentLoop.includes("saveLoopTask(ctx.taskId, 'waiting_human'") && route.includes('continueAgentLoopAfterWrite(') && resumeRoute.includes('resumeAgentLoopTask(profile, id)')],
+  ['Agent loop writes always require a human, whatever the autonomy policy', route.includes('const needsConfirmation = action.agentTaskId') && route.includes('? true')],
+  ['Agent loop audits every tool call', agentLoop.includes('recordLoopToolCall(profile, state.runId') && agentLoopStore.includes("bestEffortInsert('agent_tool_calls'")],
+  ['Regex multi-intent is only a hint and a fallback, not a gate', !route.includes('planAgentMission(') && agentLoop.includes('detectMultiIntent(message)') && route.includes('buildHeuristicMission(message, profile)')],
+  ['Loop tools are role-gated and scoped to the profile community', agentTools.includes('isAgentToolAllowedForRole(name, profile.role)') && agentTools.includes('communityOf(profile)') && agentLoop.includes('tool.roles.includes(profile.role)')],
+  ['Loop tools reuse existing business rules instead of duplicating them', agentTools.includes("executeCoCoTool('book_parking'") && agentTools.includes("executeCoCoTool('create_poll'") && agentTools.includes('serviceRequestTransitionError(') && agentTools.includes('listSupermarketGroupOrders(')],
   ['Agent Center exposes planner model metadata in the API', route.includes('getAgentPlannerModel()') && route.includes("provider: 'anthropic'")],
   ['Finance Agent can send audited WhatsApp when residents opted in', unitFinanceActions.includes('sendWhatsAppNotificationForUser') && unitFinanceActions.includes('agent-center.send_unit_payment_reminder') && unitFinanceActions.includes('agent-center.create_unit_expense')],
   ['WhatsApp outbound endpoint uses the shared audited sender', whatsappNotifyRoute.includes('sendWhatsAppNotificationForUser') && whatsappNotify.includes("action: 'whatsapp.notification.send'")],
@@ -33,7 +45,7 @@ const checks = [
   ['Agent Center planning does not fall back to Gemini', !route.includes('GEMINI_SYSTEM_PROMPT') && !route.includes('callGeminiInference') && !route.includes('geminiResult')],
   ['Operational prompts reach Claude instead of a canned menu reply', !route.includes('Hola. Puedo ayudarte con acciones concretas') && route.includes('Esperando instrucci')],
   ['Planner decisions carry confidence and a concise explanation', planner.includes('decision:') && route.includes('action.decision?.explanation')],
-  ['Open-ended operational questions use a real read-only snapshot', route.includes("action.toolName === 'get_community_snapshot'") && planner.includes('get_community_snapshot')],
+  ['Open-ended operational questions use a real read-only snapshot', actionExecutor.includes("action.toolName === 'get_community_snapshot'") && agentLoop.includes("toolName: 'get_community_snapshot'")],
   ['Research questions can cross authorized read-only sources', planner.includes('answer_community_question') && communityResearch.includes('MAX_ROUNDS = 4') && communityResearch.includes("name: 'find_residents'") && communityResearch.includes("name: 'read_expenses'")],
   ['Research can read the full authorized condominium context', communityResearch.includes("name: 'read_units'") && communityResearch.includes("name: 'read_visitors'") && communityResearch.includes("name: 'read_packages'") && communityResearch.includes("name: 'read_marketplace_items'") && communityResearch.includes("name: 'read_polls'") && communityResearch.includes("name: 'read_operation_events'") && communityResearch.includes("name: 'read_coco_cases'")],
   ['Research can search administrator-uploaded private documents', communityResearch.includes("name: 'search_uploaded_documents'") && communityResearch.includes(".textSearch('search_vector'")],
@@ -47,8 +59,8 @@ const checks = [
   ['Executed proposals reuse their original tool-call audit', route.includes('const toolCallId = action.proposalId ||')],
   ['Proposal tenant ownership is checked', route.includes('run.community_id || DEFAULT_COMMUNITY_ID') && route.includes('toolCall.community_id || DEFAULT_COMMUNITY_ID')],
   ['Configured daily action limits are enforced', route.includes('assertDailyActionLimit(profile, action, policy)')],
-  ['Booking overlap is checked before insert', route.includes(".lt('start_time'") && route.includes(".gt('end_time'")],
-  ['Maintenance provider is explicit and verified', route.includes(".eq('name', 'Mesa de ayuda interna')")],
+  ['Booking overlap is checked before insert', actionExecutor.includes(".lt('start_time'") && actionExecutor.includes(".gt('end_time'")],
+  ['Maintenance provider is explicit and verified', actionExecutor.includes(".eq('name', 'Mesa de ayuda interna')")],
   ['UI waits for server success before closing approval card', page.includes('const succeeded = await sendAgentRequest')],
   ['Persistent task and task-step tables exist', taskMigration.includes('CREATE TABLE IF NOT EXISTS public.agent_tasks') && taskMigration.includes('CREATE TABLE IF NOT EXISTS public.agent_task_steps')],
   ['Task steps retry and escalate on repeated failure', taskEngine.includes('attempt <= 2') && taskEngine.includes("status: 'escalated'")],
