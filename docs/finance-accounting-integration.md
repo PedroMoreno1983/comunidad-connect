@@ -34,5 +34,6 @@ Los asientos manuales se guardan con todas sus líneas en una transacción; una 
 - Tratamiento de anticipos, descuentos, intereses, multas y convenios.
 - Saldo de apertura respaldado para cada comunidad y fecha de adopción.
 - Revisión del plan de cuentas y del primer cierre por un contador cuando haya uno disponible. Hasta entonces el libro es auxiliar y los estados operativos no se presentan como contabilidad oficial.
+- Las liquidaciones legales chilenas requieren indicadores previsionales del mes exacto, contraste de las tasas con una publicación oficial y revisión de casos laborales especiales antes de usarlas para pagar sueldos reales.
 
 La pasarela de pago y la conexión bancaria quedan fuera de esta etapa, según lo indicado por el propietario del producto.
