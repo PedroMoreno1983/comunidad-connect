@@ -129,7 +129,7 @@ import {
     User,
     WaterReading,
 } from './types';
-import type { AnnouncementDatabaseRow, CommunityEmployeeRecord, IntercomCall, IntercomVisitKind, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, PayrollSettings, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
+import type { AnnouncementDatabaseRow, ApiKeyScope, CommunityApiKey, CommunityEmployeeRecord, OversightLink, IntercomCall, IntercomVisitKind, ExpenseDatabaseRow, FinanceUnitOption, FinancialStatements, JournalView, PaymentAgreement, PayrollEmployeeInput, PayrollRunRecord, PayrollSettings, ProductCapabilities, UnitProfileOption, UnitRow } from './types';
 
 async function readApi<T>(url: string, fallback: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
@@ -3536,5 +3536,35 @@ export const AccessGateService = {
             'No se pudo guardar el portón.',
             financeWrite({ url }),
         );
+    },
+};
+
+/** Claves de la API pública de la comunidad. */
+export const ApiKeysService = {
+    list() {
+        return readApi<{ keys: CommunityApiKey[] }>('/api/admin/api-keys', 'No se pudieron cargar las claves.');
+    },
+
+    create(input: { name: string; scopes: ApiKeyScope[] }) {
+        return readApi<{ apiKey: CommunityApiKey; secret: string }>('/api/admin/api-keys', 'No se pudo crear la clave.', financeWrite(input));
+    },
+
+    revoke(id: string) {
+        return readApi<{ revoked: boolean }>('/api/admin/api-keys', 'No se pudo revocar la clave.', financeWrite({ action: 'revoke', id }));
+    },
+};
+
+/** Accesos de solo lectura para fiscalizadores y comité de vigilancia. */
+export const OversightLinksService = {
+    list() {
+        return readApi<{ links: OversightLink[] }>('/api/admin/oversight-links', 'No se pudieron cargar los accesos.');
+    },
+
+    create(input: { label: string; days: number }) {
+        return readApi<{ link: OversightLink; token: string }>('/api/admin/oversight-links', 'No se pudo crear el acceso.', financeWrite(input));
+    },
+
+    revoke(id: string) {
+        return readApi<{ revoked: boolean }>('/api/admin/oversight-links', 'No se pudo revocar el acceso.', financeWrite({ action: 'revoke', id }));
     },
 };
