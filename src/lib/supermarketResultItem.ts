@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { calculateProductQuantity } from '@/lib/supermarketBasket';
+import { calculateProductQuantity, volumePromoLineTotal } from '@/lib/supermarketBasket';
 import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
-import type { SupermarketMeasurementUnit, SupermarketShoppingItem } from '@/lib/types';
+import type { SupermarketMeasurementUnit, SupermarketShoppingItem, SupermarketVolumePromo } from '@/lib/types';
 
 export interface SupermarketRequestedTerm {
   term: string;
@@ -22,6 +22,20 @@ function optionalText(value: unknown): string | undefined {
  */
 export function catalogOfferId(item: Record<string, unknown>): string | undefined {
   return optionalText(item.offerId) || optionalText(item.offer_id);
+}
+
+function volumePromoFrom(value: unknown): SupermarketVolumePromo | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const minQuantity = typeof record.minQuantity === 'number' ? Math.round(record.minQuantity) : 0;
+  const totalPrice = typeof record.totalPrice === 'number' ? Math.round(record.totalPrice) : 0;
+  if (minQuantity < 2 || totalPrice <= 0) return undefined;
+  return {
+    minQuantity,
+    totalPrice,
+    label: optionalText(record.label),
+    group: optionalText(record.group),
+  };
 }
 
 export function toSupermarketShoppingItem(
@@ -47,6 +61,18 @@ export function toSupermarketShoppingItem(
   const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
   const rawProductUrl = optionalText(item.productUrl);
   const imageUrl = optionalText(item.imageUrl) || optionalText(item.image_url);
+  const volumePromo = volumePromoFrom(item.volumePromo);
+  const regularTotal = price * packs;
+  // La canasta ya puede traer el total con una promoción combinada entre
+  // productos ("Combina"); se respeta si no supera el precio normal. Si no
+  // viene, se recalcula con la promo de la propia línea.
+  const providedTotal = typeof item.lineTotal === 'number' && Number.isFinite(item.lineTotal)
+    && typeof item.quantity === 'number' && Math.round(item.quantity) === packs
+    ? item.lineTotal
+    : undefined;
+  const lineTotal = volumePromo && providedTotal !== undefined && providedTotal > 0 && providedTotal <= regularTotal
+    ? providedTotal
+    : volumePromoLineTotal(price, packs, volumePromo);
   return {
     id: typeof item.id === 'string' ? item.id : randomUUID(),
     name,
@@ -61,7 +87,10 @@ export function toSupermarketShoppingItem(
     packUnits,
     suppliedQuantity,
     price,
-    lineTotal: price * packs,
+    lineTotal,
+    volumePromo,
+    promoChecked: typeof item.promoChecked === 'boolean' ? item.promoChecked : undefined,
+    promoSavings: regularTotal - lineTotal > 0 ? regularTotal - lineTotal : undefined,
     store,
     // Todo producto encontrado queda linkeable: ficha exacta si existe, o la
     // búsqueda del nombre exacto dentro del sitio de la tienda como respaldo.
