@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import CoCo from "@/components/CoCo/CoCo";
+import { IntercomCallWatcher } from "@/components/intercom/IntercomCallWatcher";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AdminShell } from "@/components/cc/AdminShell";
 import { useToast } from "@/components/ui/Toast";
@@ -146,6 +147,11 @@ function DashboardShell({
             <ErrorBoundary name="CoCo Widget">
                 <CoCo />
             </ErrorBoundary>
+            {user.role === "resident" && (
+                <ErrorBoundary name="Citófono">
+                    <IntercomCallWatcher />
+                </ErrorBoundary>
+            )}
         </div>
     );
 }
