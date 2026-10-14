@@ -62,6 +62,8 @@ expect('Classroom hides a repeated lead and does not show the tutor script', cla
 expect('Tutor stays on the projected slide instead of opening another deck', orchestrator.includes('La presentación ya está en pantalla') && !orchestrator.includes('OBLIGATORIO EN ESTE TURNO') && classroom.includes('Preguntar a CoCo'));
 const lengthMigration = read('supabase/migrations/20260923213055_training_course_length.sql');
 expect('Official courses grow by two sections and keep the previous slide order', ['convivencia-respuesta', 'convivencia-reiteracion', 'datos-puesto', 'datos-copia', 'turno-primeros', 'turno-residentes'].every(id => lengthMigration.includes(id)) && lengthMigration.includes('estimated_minutes = 45') && lengthMigration.includes('quality_version = 6') && lengthMigration.includes("content::jsonb -> 2 ->> 'id' = 'convivencia-canal'"));
+const baseCoursesMigration = read('supabase/migrations/20261014210000_training_six_base_courses.sql');
+expect('Six global base courses are seeded idempotently with lesson and version 1', (baseCoursesMigration.match(/\$course\$/g) || []).length === 12 && (baseCoursesMigration.match(/ON CONFLICT \(id\) DO UPDATE/g) || []).length === 3 && baseCoursesMigration.includes('training_module_versions') && baseCoursesMigration.includes("'Publicación inicial'"));
 expect('New courses ask for a longer deck', read('src/app/api/training/generate-slides/route.ts').includes('entre 8 y 10 secciones'));
 
 console.log(JSON.stringify({ generatedAt: new Date().toISOString(), passed: failures.length === 0, checks: checks.length, failures }, null, 2));
