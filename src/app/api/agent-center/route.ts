@@ -104,6 +104,7 @@ const TOOL_LABELS: Record<ToolName, string> = {
     get_supermarket_orders_summary: 'Revisar compras grupales del super',
     get_active_polls: 'Revisar votaciones activas',
     get_maintenance_backlog: 'Revisar backlog de mantencion',
+    get_maintenance_risk: 'Revisar riesgo de activos',
     find_resident_or_unit: 'Buscar residente o unidad',
     create_poll: 'Crear votacion',
     update_maintenance_ticket: 'Actualizar ticket de mantencion',

@@ -10,7 +10,8 @@ import {
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
-import { planPreventiveMaintenance, type PlanAsset, type PlanTask, type PreventivePlan } from '@/lib/maintenance/preventivePlan';
+import { planPreventiveMaintenance, type PlanTask, type PreventivePlan } from '@/lib/maintenance/preventivePlan';
+import { scoreAssetRisks, type RiskAsset, type RiskLog } from '@/lib/maintenance/assetRisk';
 
 function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -317,17 +318,21 @@ async function runBroadcastTask(profile: AgentProfile, goal: string, requestedTe
     }
 }
 
-async function readPreventiveInputs(communityId: string) {
+export async function readPreventiveInputs(communityId: string) {
     const admin = getSupabaseAdmin();
-    const [assets, tasks] = await Promise.all([
-        admin.from('building_assets').select('id, name, category, health_status, last_maintenance, next_maintenance')
+    const since = new Date(Date.now() - 2 * 365 * 86_400_000).toISOString().slice(0, 10);
+    const [assets, tasks, logs] = await Promise.all([
+        admin.from('building_assets').select('id, name, category, health_status, last_maintenance, next_maintenance, installation_date')
             .eq('community_id', communityId).order('id').limit(1000),
         admin.from('maintenance_tasks').select('id, asset_id, status, due_date')
             .eq('community_id', communityId).in('status', ['pending', 'in_progress', 'overdue']).order('id').limit(2000),
+        admin.from('maintenance_logs').select('asset_id, task_id, cost, date')
+            .eq('community_id', communityId).gte('date', since).order('date').limit(5000),
     ]);
     if (assets.error) throw assets.error;
     if (tasks.error) throw tasks.error;
-    return { assets: (assets.data || []) as PlanAsset[], tasks: (tasks.data || []) as PlanTask[] };
+    if (logs.error) throw logs.error;
+    return { assets: (assets.data || []) as RiskAsset[], tasks: (tasks.data || []) as PlanTask[], logs: (logs.data || []) as RiskLog[] };
 }
 
 /**
@@ -380,29 +385,35 @@ async function runPreventiveMaintenanceTask(profile: AgentProfile, goal: string,
         const inputs = await runVerifiedTaskStep(taskId, 0, () => readPreventiveInputs(communityId),
             { output: value => ({ assets: value.assets.length, openTasks: value.tasks.length }) });
         const plan = await runVerifiedTaskStep(taskId, 1,
-            async () => planPreventiveMaintenance({ ...inputs, today: chileTodayISO() }),
-            { output: value => ({ newTasks: value.newTasks.length, overdue: value.overdueTaskIds.length, assetUpdates: value.assetUpdates.length, scheduledLater: value.scheduledLater }) });
+            async () => {
+                const today = chileTodayISO();
+                const risks = scoreAssetRisks({ ...inputs, today });
+                return { ...planPreventiveMaintenance({ ...inputs, today, riskLevels: new Map(risks.map(risk => [risk.assetId, risk.level])) }), risks };
+            },
+            { output: value => ({ newTasks: value.newTasks.length, overdue: value.overdueTaskIds.length, assetUpdates: value.assetUpdates.length, scheduledLater: value.scheduledLater, highRisk: value.risks.filter(risk => risk.level === 'high').map(risk => risk.assetName) }) });
         const applied = await runVerifiedTaskStep(taskId, 2, () => applyPreventivePlan(communityId, plan),
             { verify: value => value.createdTaskIds.length + value.skippedExisting === plan.newTasks.length, output: value => value });
         const warnings = plan.assetUpdates.filter(update => update.healthStatus === 'warning').length;
+        const highRisk = plan.risks.filter(risk => risk.level === 'high');
         await runVerifiedTaskStep(taskId, 3, async () => {
             const audit = await recordOperationEvent({
                 communityId, actorId: profile.id, actorRole: profile.role,
                 action: 'agent.task.maintenance_preventive_plan', entityType: 'agent_task', entityId: taskId,
                 severity: warnings ? 'warning' : 'success', status: 'success',
-                summary: `Plan preventivo: ${applied.createdTaskIds.length} tarea(s) agendada(s), ${plan.overdueTaskIds.length} vencida(s), ${warnings} activo(s) en alerta`,
+                summary: `Plan preventivo: ${applied.createdTaskIds.length} tarea(s) agendada(s), ${highRisk.length} activo(s) de riesgo alto, ${plan.overdueTaskIds.length} vencida(s), ${warnings} activo(s) en alerta`,
                 metadata: { taskId, createdTaskIds: applied.createdTaskIds, overdueTaskIds: plan.overdueTaskIds, assetUpdates: plan.assetUpdates, scheduledLater: plan.scheduledLater },
             });
             if (!audit.ok) throw new Error('No fue posible guardar la auditoria del plan preventivo.');
             return { auditRecorded: true };
         }, { verify: value => value.auditRecorded, output: value => value });
 
-        const result = { taskId, created: applied.createdTaskIds.length, skippedExisting: applied.skippedExisting, overdue: plan.overdueTaskIds.length, warnings, scheduledLater: plan.scheduledLater, tasks: plan.newTasks.map(task => ({ asset: task.assetName, title: task.title, dueDate: task.dueDate, priority: task.priority, catchUp: task.catchUp })) };
+        const result = { taskId, risks: plan.risks.slice(0, 10), created: applied.createdTaskIds.length, skippedExisting: applied.skippedExisting, overdue: plan.overdueTaskIds.length, warnings, scheduledLater: plan.scheduledLater, tasks: plan.newTasks.map(task => ({ asset: task.assetName, title: task.title, dueDate: task.dueDate, priority: task.priority, catchUp: task.catchUp })) };
         await completeAgentTask(taskId, result);
         const catchUp = plan.newTasks.filter(task => task.catchUp).length;
+        const advanced = plan.newTasks.filter(task => task.riskAdvanced).length;
         return {
             entityType: 'agent_task', entityId: taskId, title: 'Plan preventivo agendado', targetHref: definition.targetHref,
-            message: `Agende ${applied.createdTaskIds.length} mantención(es) preventiva(s)${catchUp ? `, ${catchUp} atrasada(s) para hoy` : ''}. ${plan.overdueTaskIds.length ? `${plan.overdueTaskIds.length} tarea(s) quedaron marcadas como vencidas. ` : ''}${warnings ? `${warnings} activo(s) pasaron a alerta por atraso. ` : ''}${plan.scheduledLater ? `${plan.scheduledLater} activo(s) tienen su próxima fecha fijada más adelante. ` : ''}No se contrató ni se gastó nada.`,
+            message: `Agende ${applied.createdTaskIds.length} mantención(es) preventiva(s)${catchUp ? `, ${catchUp} atrasada(s) para hoy` : ''}${advanced ? `, ${advanced} adelantada(s) por riesgo alto` : ''}. ${highRisk.length ? `Riesgo alto: ${highRisk.map(risk => risk.assetName).join(', ')}. ` : ''}${plan.overdueTaskIds.length ? `${plan.overdueTaskIds.length} tarea(s) quedaron marcadas como vencidas. ` : ''}${warnings ? `${warnings} activo(s) pasaron a alerta por atraso o riesgo. ` : ''}${plan.scheduledLater ? `${plan.scheduledLater} activo(s) tienen su próxima fecha fijada más adelante. ` : ''}No se contrató ni se gastó nada.`,
             data: { ...result, taskStatus: 'completed' },
         };
     } catch (error) {

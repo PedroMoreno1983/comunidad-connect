@@ -13,7 +13,8 @@
  *     mantención más la frecuencia del tipo; si no hay ninguna, hoy.
  *   - Solo se crean tareas que vencen dentro del horizonte (45 días), para no
  *     llenar la agenda de trabajos lejanos.
- *   - La salud del activo solo empeora a "warning" por atraso; nunca se mejora
+ *   - Riesgo alto (assetRisk.ts) adelanta la mantención a 7 días y sube la prioridad.
+ *   - La salud del activo solo empeora a "warning" por atraso o riesgo alto; nunca se mejora
  *     ni se marca "critical" automáticamente: eso lo decide una persona.
  */
 
@@ -49,6 +50,8 @@ const CATEGORY_ALIASES: Record<string, string> = {
 
 const MONTHS: Record<PreventiveFrequency, number> = { monthly: 1, quarterly: 3, semiannual: 6, annual: 12 };
 export const PREVENTIVE_HORIZON_DAYS = 45;
+/** Un activo de riesgo alto se revisa dentro de esta ventana aunque su fecha sea posterior. */
+export const HIGH_RISK_WINDOW_DAYS = 7;
 export const OVERDUE_WARNING_DAYS = 30;
 const OPEN_STATUSES = new Set(['pending', 'in_progress', 'overdue']);
 
@@ -95,6 +98,8 @@ export interface PlannedTask {
     dueDate: string;
     priority: MaintenancePriority;
     catchUp: boolean;
+    /** Adelantada por riesgo alto (mantención predictiva). */
+    riskAdvanced?: boolean;
 }
 
 export interface AssetUpdate {
@@ -110,7 +115,19 @@ export interface PreventivePlan {
     scheduledLater: number;
 }
 
-export function planPreventiveMaintenance(input: { assets: PlanAsset[]; tasks: PlanTask[]; today: string }): PreventivePlan {
+function addDays(date: string, amount: number) {
+    const value = new Date(`${date}T00:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + amount);
+    return value.toISOString().slice(0, 10);
+}
+
+export function planPreventiveMaintenance(input: {
+    assets: PlanAsset[];
+    tasks: PlanTask[];
+    today: string;
+    /** Nivel de riesgo por activo (assetRisk.ts). Riesgo alto adelanta la mantención. */
+    riskLevels?: Map<string, 'low' | 'medium' | 'high'>;
+}): PreventivePlan {
     const today = input.today.slice(0, 10);
     const openByAsset = new Map<string, PlanTask[]>();
     const overdueTaskIds: string[] = [];
@@ -135,16 +152,20 @@ export function planPreventiveMaintenance(input: { assets: PlanAsset[]; tasks: P
         const planned = asset.next_maintenance?.slice(0, 10)
             || (asset.last_maintenance ? addFrequency(asset.last_maintenance, rule.frequency) : today);
         const lateBy = Math.max(oldestOpenDue ? daysBetween(oldestOpenDue, today) : 0, open.length ? 0 : daysBetween(planned, today));
-        if (lateBy > OVERDUE_WARNING_DAYS && (asset.health_status || 'optimal') === 'optimal') update.healthStatus = 'warning';
+        const highRisk = input.riskLevels?.get(asset.id) === 'high';
+        if ((lateBy > OVERDUE_WARNING_DAYS || highRisk) && (asset.health_status || 'optimal') === 'optimal') update.healthStatus = 'warning';
 
         if (!open.length) {
             const catchUp = planned < today;
-            const dueDate = catchUp ? today : planned;
+            const riskDate = addDays(today, HIGH_RISK_WINDOW_DAYS);
+            const riskAdvanced = highRisk && !catchUp && planned > riskDate;
+            const dueDate = catchUp ? today : riskAdvanced ? riskDate : planned;
             if (daysBetween(today, dueDate) <= PREVENTIVE_HORIZON_DAYS) {
                 newTasks.push({
                     assetId: asset.id, assetName: asset.name, title: `${rule.title}: ${asset.name}`,
                     description: rule.checklist, frequency: rule.frequency, dueDate,
-                    priority: catchUp ? 'high' : rule.priority, catchUp,
+                    priority: catchUp || highRisk ? 'high' : rule.priority, catchUp,
+                    ...(riskAdvanced ? { riskAdvanced: true, description: `${rule.checklist} Adelantada por riesgo alto de falla.` } : {}),
                 });
             } else {
                 scheduledLater += 1;
