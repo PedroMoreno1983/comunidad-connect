@@ -53,7 +53,7 @@ function days(from: string, to: string) {
     return Math.round((Date.parse(`${to.slice(0, 10)}T00:00:00Z`) - Date.parse(`${from.slice(0, 10)}T00:00:00Z`)) / 86_400_000);
 }
 
-function categoryKey(category: string | null | undefined) {
+export function assetCategoryKey(category: string | null | undefined) {
     const rule = preventiveRuleFor(category);
     const entry = Object.entries(LIFESPAN_YEARS).find(([key]) => preventiveRuleFor(key) === rule);
     return entry ? entry[0] : 'other';
@@ -85,7 +85,7 @@ export function scoreAssetRisks(input: { assets: RiskAsset[]; tasks: PlanTask[];
     return input.assets.map(asset => {
         const reasons: string[] = [];
         let score = 0;
-        const category = categoryKey(asset.category);
+        const category = assetCategoryKey(asset.category);
 
         // 1. Edad.
         if (asset.installation_date) {
