@@ -418,6 +418,7 @@ export function MultiAgentClassroom({
                                     <p key={message.id} className="px-1 text-center text-xs leading-5 cc-text-secondary">{message.text}</p>
                                 ) : (
                                     <div key={message.id} className={`rounded-xl px-3 py-2.5 text-sm leading-6 ${message.role === "user" ? "ml-8 text-white" : "mr-4"}`} style={{ background: message.role === "user" ? "var(--cc-ink)" : "var(--cc-paper-warm)", border: message.role === "user" ? undefined : "1px solid var(--cc-line)" }}>
+                                        {message.role !== "user" && <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{message.role === "tutor" ? "Orientación" : "Punto de práctica"}</p>}
                                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <p>{children}</p>, ul: ({ children }) => <ul className="list-disc pl-4">{children}</ul>, ol: ({ children }) => <ol className="list-decimal pl-4">{children}</ol> }}>{message.text}</ReactMarkdown>
                                     </div>
                                 )
