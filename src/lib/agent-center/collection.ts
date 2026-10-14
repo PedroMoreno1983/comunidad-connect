@@ -182,7 +182,7 @@ export async function resolveCollectionRecipients(
                     candidates.map(item => item.unitId).sort().join(',')),
                 user_id: adminId, type: 'alert', category: 'finance_collection',
                 title: 'Vecinos a los que podríamos ofrecer un convenio',
-                body: `${candidates.length} unidad(es) llevan mas de 30 dias con cobros vencidos (${labels.slice(0, 8).join(', ')}${labels.length > 8 ? '...' : ''}). Te sugiero contactarlos en persona y ofrecer un convenio en cuotas; nada se crea sin tu aprobación.`,
+                body: `${candidates.length} unidad(es) llevan mas de 30 dias con cobros vencidos (${labels.slice(0, 8).join(', ')}${labels.length > 8 ? '...' : ''}). Te sugiero contactarlos en persona y ofrecer un convenio en cuotas. Agent Center puede calcularte una propuesta a la medida de cada uno; nada se crea sin tu aprobación.`,
                 link: '/admin/finanzas/convenios', community_id: communityId,
             })));
         }

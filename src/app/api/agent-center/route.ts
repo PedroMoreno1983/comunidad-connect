@@ -108,6 +108,8 @@ const TOOL_LABELS: Record<ToolName, string> = {
     create_poll: 'Crear votacion',
     update_maintenance_ticket: 'Actualizar ticket de mantencion',
     create_parking_booking: 'Reservar estacionamiento',
+    preview_payment_agreement: 'Calcular propuesta de convenio',
+    propose_payment_agreement: 'Proponer convenio de pago',
 };
 
 function humanizeArgKey(key: string) {

@@ -24,10 +24,12 @@ export type ToolName =
     | 'get_active_polls'
     | 'get_maintenance_backlog'
     | 'find_resident_or_unit'
+    | 'preview_payment_agreement'
     // Escrituras (siempre con confirmacion humana dentro del ciclo):
     | 'create_poll'
     | 'update_maintenance_ticket'
     | 'create_parking_booking'
+    | 'propose_payment_agreement'
     // Puente al cerebro de CoCo: ejecuta una accion que CoCo propuso (reanudando
     // su sesion con la confirmacion humana). Siempre requiere aprobacion.
     | 'coco_action';
@@ -56,6 +58,8 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'create_poll',
     'update_maintenance_ticket',
     'create_parking_booking',
+    'preview_payment_agreement',
+    'propose_payment_agreement',
 ];
 
 export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
@@ -78,6 +82,8 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     create_poll: 'community',
     update_maintenance_ticket: 'maintenance',
     create_parking_booking: 'concierge',
+    preview_payment_agreement: 'finance',
+    propose_payment_agreement: 'finance',
 };
 
 // Solo lecturas reales: cualquier herramienta que escriba (incluidos cobros y
@@ -93,6 +99,7 @@ export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_active_polls',
     'get_maintenance_backlog',
     'find_resident_or_unit',
+    'preview_payment_agreement',
 ];
 
 export const MUTATING_AGENT_TOOLS: ToolName[] = AGENT_TOOL_NAMES.filter(
@@ -120,6 +127,8 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
     get_active_polls: 'read',
     get_maintenance_backlog: 'read',
     find_resident_or_unit: 'read',
+    preview_payment_agreement: 'read',
+    propose_payment_agreement: 'write_high',
     create_booking: 'write_low',
     update_maintenance_ticket: 'write_low',
     create_parking_booking: 'write_high',
