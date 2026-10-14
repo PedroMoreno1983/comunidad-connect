@@ -909,7 +909,7 @@ async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile)
     const plan = await resolveCollectionRecipients(profile.community_id, expenses);
     return {
         ...action,
-        summary: `Revisar ${expenses.length} cobro(s). Registrar ${plan.notifications.length} aviso(s) en la app para ${plan.recipientCount} residente(s). ${plan.missingRecipients.length} cobro(s) sin destinatario quedaran pendientes. Los avisos remiten al saldo actualizado; no envian correo ni WhatsApp.`,
+        summary: `Revisar ${expenses.length} cobro(s), incluidos multas y cargos. Registrar ${plan.notifications.length} aviso(s) por unidad en la app para ${plan.recipientCount} residente(s). ${plan.skippedWithAgreement ? `${plan.skippedWithAgreement} unidad(es) con convenio vigente no reciben aviso. ` : ''}${plan.agreementCandidates?.length ? `${plan.agreementCandidates.length} unidad(es) con mas de 30 dias se proponen para convenio. ` : ''}${plan.missingRecipients.length} cobro(s) sin destinatario quedaran pendientes. Los avisos remiten al saldo actualizado; no envian correo ni WhatsApp.`,
     };
 }
 
