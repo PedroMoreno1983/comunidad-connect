@@ -18,6 +18,7 @@ import { providersService } from "@/lib/services/providersService";
 import { INTERNAL_SERVICE_PROVIDER_IDS } from "@/lib/config";
 import { DirectoryNeighbor, ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
+import { providerListingGridClass } from "@/components/services/providerPresentation";
 import { getInitials } from "@/lib/utils/avatar";
 import { DirectoryService } from "@/lib/api";
 
@@ -368,7 +369,7 @@ export default function DirectoryPage() {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] items-stretch gap-5">
+                                    <div className={providerListingGridClass}>
                                         {filteredProviders.map((provider) => (
                                             <ProviderCard key={provider.id} provider={provider} showCategory compact />
                                         ))}
