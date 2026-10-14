@@ -192,7 +192,7 @@ async function main() {
         await conciergePage.reload({ waitUntil: 'networkidle' });
         const card = conciergePage.locator('article').filter({ hasText: title });
         await card.getByRole('button', { name: 'Revisar curso' }).click();
-        await conciergePage.getByText('Equipo multiagente CoCo').waitFor();
+        await conciergePage.getByText('Consulta sobre el curso').waitFor();
         const certificateLink = conciergePage.getByRole('link', { name: 'Descargar constancia' });
         await certificateLink.waitFor({ timeout: 20_000 });
         if (writeArtifacts) await conciergePage.screenshot({ path: path.join(outputDir, 'concierge-classroom.png'), fullPage: true });
