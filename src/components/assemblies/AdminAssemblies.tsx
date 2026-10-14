@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { AssemblyService, type AssemblyDraftPayload } from "@/lib/services/assemblyService";
+import { CONDUCTOR_BADGE } from "@/lib/assemblies/eligibilityCopy";
 import type {
   AssemblyAgendaItem,
   AssemblyMatter,
@@ -387,6 +388,10 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
   const present = view.attendance.filter(row => row.status === "present" && row.identityVerifiedAt);
   const pendingVotes = openItem ? view.votes.filter(vote => vote.agendaItemId === openItem.id && vote.mode === "remote" && !vote.identityVerifiedAt) : [];
   const labelOf = (id: string) => view.rights.units.find(unit => unit.unitId === id)?.label || "Unidad";
+  const certificate = view.quorum.eligibility;
+  const votingStarted = a.items.some(item => item.votingStatus !== "pending");
+  // Solo quien conduce lo ve, y solo para la unidad que está acreditando.
+  const selectedNotEligible = Boolean(unitId && view.conductor?.ineligibleUnitIds.includes(unitId));
 
   const closeVote = async (item: AssemblyAgendaItem) => {
     const ok = await run(() => AssemblyService.closeVote(a.id, item.id, false, notes));
@@ -405,6 +410,15 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
       </Card>
 
       <Card>
+        <SectionTitle eyebrow="Ley 21.442, art. 15 · DS 7, art. 14" title="Certificado de habilidad" />
+        <p className="text-sm cc-text-secondary">Solo votan los copropietarios hábiles: al día con la comunidad o con un convenio vigente con su primera cuota pagada. Todos asisten con voz. Emítelo con fecha de corte de hoy antes de abrir la primera votación; puedes volver a emitirlo hasta entonces si alguien se puso al día. El detalle por unidad queda guardado solo para administración.</p>
+        {certificate ? (
+          <p className="mt-2 text-sm cc-text-primary">Emitido el {formatDateTime(certificate.issuedAt)} por {certificate.issuedByName || "administración"} · corte {certificate.cutoffDate} · {certificate.eligibleUnits} de {certificate.totalUnits} unidades · {fmt(certificate.eligibleWeight)} de {fmt(certificate.totalWeight)} {view.rights.method === "share" ? "‰ de derechos" : "votos"} ({certificate.eligibleShare.toLocaleString("es-CL")}%)</p>
+        ) : <p className="mt-2 text-sm" style={{ color: "var(--cc-amber)" }}>Aún no se emite: la votación no se puede abrir sin él.</p>}
+        {!votingStarted && <Button className="mt-3" size="sm" variant="dark" disabled={busy} onClick={() => run(() => AssemblyService.certifyEligibility(a.id), "Certificado de habilidad emitido.")}>{certificate ? "Volver a emitir con datos de hoy" : "Emitir certificado de habilidad"}</Button>}
+      </Card>
+
+      <Card>
         <SectionTitle eyebrow="Acreditación" title="Asistencia por unidad" />
         <p className="text-sm cc-text-secondary">En línea, marca «verificada» solo después de ver y oír a la persona a la vez (DS 7, art. 16). No se puede exigir dónde está conectada.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -416,6 +430,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
           {capacity === "proxy" && <Field label="Poder aceptado"><select className={inputClass} style={inputStyle} value={proxyId} onChange={e => setProxyId(e.target.value)}><option value="">Elige</option>{acceptedProxies.map(p => <option key={p.id} value={p.id}>{p.proxyName || residents.find(r => r.id === p.proxyProfileId)?.name || "Poder"}</option>)}</select></Field>}
           <label className="flex items-center gap-2 text-sm cc-text-secondary"><input type="checkbox" checked={verified} onChange={e => setVerified(e.target.checked)} /> {mode === "remote" ? "Imagen y voz verificadas" : "Identidad acreditada en sala"}</label>
         </div>
+        {selectedNotEligible && <p className="mt-3 text-sm" role="status"><Tag tone="amber">{CONDUCTOR_BADGE}</Tag> <span className="cc-text-tertiary">{view.conductor?.certified ? "Según el certificado." : "Estimación de hoy; el certificado lo confirma."} Acredítala igual: asiste y opina, pero su voto no se registra.</span></p>}
         <Button className="mt-3" size="sm" variant="dark" disabled={busy || !unitId} onClick={() => run(() => AssemblyService.checkIn(a.id, { unitId, capacity, attendeeProfileId: attendeeProfileId || null, attendeeName, proxyId: proxyId || null, mode, verified }))}>Acreditar</Button>
 
         <div className="mt-4 overflow-x-auto">
@@ -452,7 +467,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
                   <p className="text-sm font-medium cc-text-primary">{item.position}. {item.title}</p>
                   <Tag tone={item.quorumClass === "reinforced" ? "rose" : item.quorumClass === "absolute" ? "amber" : "sage"}>{CLASS_LABEL[item.quorumClass]}</Tag>
                 </div>
-                {item.votingStatus === "pending" && <Button className="mt-2" size="sm" variant="dark" disabled={busy || Boolean(openItem)} onClick={() => run(() => AssemblyService.openVote(a.id, item.id))}>Abrir votación</Button>}
+                {item.votingStatus === "pending" && <Button className="mt-2" size="sm" variant="dark" disabled={busy || Boolean(openItem) || !certificate} onClick={() => run(() => AssemblyService.openVote(a.id, item.id))}>Abrir votación</Button>}
                 {item.votingStatus === "open" && (
                   <div className="mt-2 space-y-2 text-sm cc-text-secondary">
                     <p>A favor {fmt(tally.yes)} · En contra {fmt(tally.no)} · Abstención {fmt(tally.abstain)}{tally.pending ? ` · ${tally.pending} sin verificar` : ""}</p>

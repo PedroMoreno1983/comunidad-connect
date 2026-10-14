@@ -21,6 +21,7 @@ import type {
     AssemblyModality,
     AssemblySessionType,
     AttendanceCapacity,
+    EligibilityCertificate,
     RightsSnapshot,
 } from './types';
 
@@ -93,6 +94,8 @@ export function citationBody(input: CitationInput): string {
     lines.push('', '### Quórum para sesionar');
     lines.push(QUORUM_RULES[sessionClass].constitution);
     lines.push('Cada unidad vota en proporción a sus derechos en los bienes comunes (Ley 21.442, art. 15).');
+    lines.push('', '### Quiénes votan');
+    lines.push('Todos los copropietarios pueden asistir y opinar. Votan los copropietarios hábiles: al día con la comunidad o con un convenio vigente (Ley 21.442, arts. 2 N°13 y 15; DS 7, art. 9). Lo acredita el certificado que emite el administrador el día de la sesión. Cada unidad ve en la app, en privado, si está habilitada; si necesitas ponerte al día o conversar un convenio, todavía estás a tiempo.');
     if (input.sessionType !== 'ordinary') lines.push('En esta sesión extraordinaria solo se tratarán las materias de esta tabla (art. 14).');
     lines.push('', '### Si no puedes asistir');
     lines.push('Puedes hacerte representar con un poder, según lo que disponga el reglamento de copropiedad (DS 7, art. 11). Regístralo en la app antes de la sesión para que administración lo revise. El administrador no puede representar a ningún copropietario (art. 15).');
@@ -122,6 +125,25 @@ export interface MinutesInput {
     notaryRequired: boolean;
     notaryName: string;
     dueOn: string;
+    /** Totales del certificado de habilidad (nunca qué unidades). */
+    eligibility?: EligibilityCertificate | null;
+    /** ¿Los derechos hábiles presentes constituyeron la sesión? (sin la cifra, para no exponer a nadie). */
+    constitutionMet?: boolean | null;
+}
+
+/** Sección del acta con el certificado de habilidad: solo totales, sin unidades. */
+export function eligibilityMinutesSection(certificate: EligibilityCertificate | null | undefined, method: RightsSnapshot['method']): string[] {
+    if (!certificate) {
+        return ['', '### Copropietarios hábiles', 'No se emitió certificado de habilidad para esta sesión.'];
+    }
+    const rights = method === 'share'
+        ? `${fmtNumber(certificate.eligibleWeight)}‰ de ${fmtNumber(certificate.totalWeight)}‰ de los derechos del condominio (${fmtPct(certificate.eligibleShare)})`
+        : `${fmtNumber(certificate.eligibleWeight)} de ${fmtNumber(certificate.totalWeight)} votos (1 unidad = 1 voto; ${fmtPct(certificate.eligibleShare)})`;
+    return [
+        '', '### Copropietarios hábiles',
+        `Según el certificado de habilidad emitido por el administrador${certificate.issuedByName ? `, ${certificate.issuedByName},` : ''} el ${formatChileDateTime(certificate.issuedAt)}, con fecha de corte ${certificate.cutoffDate}, estaban habilitadas para votar ${certificate.eligibleUnits} de ${certificate.totalUnits} unidades, con ${rights} (Ley 21.442, arts. 2 N°13 y 15; DS 7, arts. 9 y 14).`,
+        'Todas las unidades pudieron asistir con derecho a voz. El quórum para sesionar se verificó con los derechos hábiles presentes, sobre el total de derechos del condominio; los acuerdos, con los votos de las unidades habilitadas y la base que fija el cuadro del art. 15.',
+    ];
 }
 
 export function fallbackMinutesNarrative(input: MinutesInput): string {
@@ -146,12 +168,18 @@ export function composeMinutes(input: MinutesInput, narrative: string): string {
         ? 'Los derechos se contaron según la alícuota de cada unidad.'
         : 'Los derechos se contaron como 1 unidad = 1 voto porque no todas las unidades tenían alícuota cargada.');
     lines.push(`Quórum exigido para sesionar: ${QUORUM_RULES[sessionQuorumClass(input.sessionType)].constitution}`);
+    if (typeof input.constitutionMet === 'boolean') {
+        lines.push(input.constitutionMet
+            ? 'Con los derechos hábiles presentes, la sesión quedó válidamente constituida.'
+            : 'Con los derechos hábiles presentes, la sesión no alcanzó el quórum para sesionar.');
+    }
     if (verified.length) {
         lines.push('', '| Unidad | Calidad | Modalidad | Derechos |', '|---|---|---|---|');
         [...verified].sort((a, b) => a.unitLabel.localeCompare(b.unitLabel, 'es')).forEach(row => {
             lines.push(`| ${row.unitLabel} | ${CAPACITY_LABEL[row.capacity]} | ${row.mode === 'remote' ? 'En línea (imagen y voz verificadas)' : 'Presencial'} | ${fmtNumber(row.weight)} |`);
         });
     }
+    lines.push(...eligibilityMinutesSection(input.eligibility, input.rights.method));
     lines.push('', '### Desarrollo de la sesión', narrative.trim());
     lines.push('', '### Acuerdos');
     for (const item of input.items) {

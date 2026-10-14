@@ -4,6 +4,9 @@ import { activeCommitteeMembers } from '@/lib/finance/committeeMembers';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { writeAssemblyProse } from './aiWriter';
+import { eligiblePresentWeight } from './eligibility';
+import { AGREEMENT_REQUEST_SENT, agreementRequestAdminCopy, VOTE_NOT_RECORDED } from './eligibilityCopy';
+import { evaluateEligibility, insertCertificate, loadCurrentCertificate } from './eligibilityService';
 import { findMatter } from './catalog';
 import {
     acceptableAiProse,
@@ -47,7 +50,9 @@ import type {
     AssemblyVoteRow,
     AttendanceCapacity,
     AttendanceMode,
+    EligibilityCertificate,
     LiveQuorum,
+    MyEligibility,
     ProxyKind,
     RepresentableUnit,
     RightsSnapshot,
@@ -61,10 +66,11 @@ import type {
  * comunidad; el RLS de la migración 20261014230000 cubre las lecturas directas.
  * Avisos solo dentro de la app (tabla notifications, categoría 'assembly').
  *
- * TODO(hábiles, decisión de Pedro): la ley solo deja votar a copropietarios
- * hábiles (Ley 21.442, art. 15; DS 7, art. 14). Por la convención del proyecto
- * (la convivencia construye comunidad: sin lenguaje de deudor y sin exponer a
- * nadie) NO se excluye a nadie automáticamente por deuda. Ver AGENTS.md.
+ * Copropietarios hábiles (Ley 21.442, arts. 2 N°13 y 15; DS 7, arts. 9 y 14):
+ * el administrador emite el certificado de habilidad en la sesión, antes de
+ * abrir la primera votación (`issueEligibilityCertificate`). Solo votan las
+ * unidades habilitadas; todas asisten con voz. Cada unidad ve solo su estado;
+ * el panel y el acta, solo totales. Regla en `eligibility.ts`, ver AGENTS.md.
  */
 
 export class AssemblyError extends Error {
@@ -101,7 +107,7 @@ function fail(error: unknown): never {
     if (error instanceof AssemblyError) throw error;
     const message = typeof error === 'object' && error && 'message' in error ? String((error as { message: unknown }).message) : '';
     // Las reglas de la base (triggers) llegan con su propio mensaje en español.
-    if (/administrador no puede|no está abierta|ya está firmada/.test(message)) throw new AssemblyError(message, 422);
+    if (/administrador no puede|no está abierta|ya está firmada|certificado de habilidad|no figura habilitada/.test(message)) throw new AssemblyError(message, 422);
     throw error;
 }
 
@@ -257,18 +263,43 @@ function representableUnits(actor: AssemblyActor, units: UnitRow[], proxies: Ass
     return [...result.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
 }
 
-function liveQuorum(sessionType: AssemblySessionType, rights: RightsSnapshot, attendance: AssemblyAttendanceRow[]): LiveQuorum {
+type CurrentCertificate = { certificate: EligibilityCertificate; eligibleUnitIds: Set<string> } | null;
+
+/**
+ * Quórum en vivo. Con certificado, la sesión se constituye con los derechos
+ * HÁBILES presentes (ver `rules.ts`). Lo que se muestra es solo el total
+ * presente y los totales del certificado: nunca cuánto pesan los no hábiles
+ * presentes ni quiénes son.
+ */
+function liveQuorum(sessionType: AssemblySessionType, rights: RightsSnapshot, attendance: AssemblyAttendanceRow[], current: CurrentCertificate): LiveQuorum {
     const present = attendance.filter(row => row.status === 'present' && row.identityVerifiedAt);
     const presentWeight = present.reduce((sum, row) => sum + row.weight, 0);
+    const constitutionWeight = current ? eligiblePresentWeight(present, current.eligibleUnitIds) : presentWeight;
     const quorumClass = sessionQuorumClass(sessionType);
     return {
         presentWeight, totalWeight: rights.total,
         presentShare: rights.total > 0 ? Math.round((presentWeight / rights.total) * 10_000) / 100 : 0,
         presentUnits: present.length, totalUnits: rights.units.length,
-        constitutionMet: constitutionMet(quorumClass, presentWeight, rights.total),
+        constitutionMet: constitutionMet(quorumClass, constitutionWeight, rights.total),
         constitutionRule: QUORUM_RULES[quorumClass].constitution,
         pendingVerification: attendance.filter(row => row.status !== 'left' && !row.identityVerifiedAt && (row.status === 'present' || row.mode === 'remote')).length,
+        eligibility: current ? current.certificate : null,
     };
+}
+
+const CERTIFIED_STATUSES: AssemblyRecord['status'][] = ['in_progress', 'closed', 'minutes_signed'];
+
+/**
+ * Habilidad para la vista: el certificado si ya se emitió; si no, una
+ * estimación de hoy (solo mientras la asamblea está citada o recién iniciada).
+ * Devuelve el conjunto de unidades no habilitadas, que solo usa el servidor.
+ */
+async function eligibilityForView(actor: AssemblyActor, assembly: AssemblyRecord, units: UnitRow[], rights: RightsSnapshot, current: CurrentCertificate) {
+    if (current) return { ineligible: new Set(units.map(unit => unit.id).filter(id => !current.eligibleUnitIds.has(id))), certified: true };
+    if (!['cited', 'in_progress'].includes(assembly.status)) return null;
+    const weights = new Map(rights.units.map(unit => [unit.unitId, unit.weight]));
+    const result = await evaluateEligibility(actor.communityId, units.map(unit => ({ unitId: unit.id, ownerId: unit.ownerId, weight: weights.get(unit.id) ?? 0 })), todayChile());
+    return { ineligible: new Set(result.units.filter(unit => !unit.eligible).map(unit => unit.unitId)), certified: false };
 }
 
 function alertsFor(assembly: AssemblyRecord, rights: RightsSnapshot, viewerIsAdmin: boolean, minutes: AssemblyMinutes | null): AssemblyAlert[] {
@@ -350,6 +381,13 @@ export async function getAssemblyView(actor: AssemblyActor, assemblyId: string):
     const representable = representableUnits(actor, units, proxies);
     const mine = new Set(representable.map(unit => unit.unitId));
     const broad = viewer.role !== 'resident';
+    const current = CERTIFIED_STATUSES.includes(assembly.status) ? await loadCurrentCertificate(assemblyId) : null;
+    const needsEligibility = representable.length > 0 || viewer.role === 'admin';
+    const eligibility = needsEligibility ? await eligibilityForView(actor, assembly, units, rights, current) : null;
+    // Cada unidad ve solo su propio estado.
+    const myEligibility: MyEligibility[] = eligibility
+        ? representable.map(unit => ({ unitId: unit.unitId, label: unit.label, eligible: !eligibility.ineligible.has(unit.unitId), certified: eligibility.certified }))
+        : [];
     const minutesRaw = minutesRow as Row | null;
     let minutes: AssemblyMinutes | null = minutesRaw ? {
         id: str(minutesRaw.id), content: str(minutesRaw.content), source: minutesRaw.source as AssemblyMinutes['source'],
@@ -363,7 +401,7 @@ export async function getAssemblyView(actor: AssemblyActor, assemblyId: string):
         viewer,
         alerts: alertsFor(assembly, rights, viewer.role === 'admin', minutes),
         rights: broad ? rights : { ...rights, units: rights.units.filter(unit => mine.has(unit.unitId)) },
-        quorum: liveQuorum(assembly.sessionType, rights, attendance),
+        quorum: liveQuorum(assembly.sessionType, rights, attendance, current),
         attendance: broad ? attendance : attendance.filter(row => mine.has(row.unitId) || row.attendeeProfileId === actor.id),
         votes: (broad ? votes : votes.filter(vote => mine.has(vote.unitId) || vote.castBy === actor.id))
             .map(vote => ({ id: vote.id, agendaItemId: vote.agendaItemId, unitId: vote.unitId, choice: vote.choice, weight: vote.weight, mode: vote.mode, identityVerifiedAt: vote.identityVerifiedAt })),
@@ -371,6 +409,11 @@ export async function getAssemblyView(actor: AssemblyActor, assemblyId: string):
         minutes,
         representable,
         minutesDeadline: ['closed', 'minutes_signed'].includes(assembly.status) ? minutesDeadline(sessionOn, todayChile(), assembly.status === 'minutes_signed') : null,
+        myEligibility,
+        // Solo quien conduce (administración) y solo para acreditar.
+        conductor: viewer.role === 'admin' && eligibility && ['cited', 'in_progress'].includes(assembly.status)
+            ? { ineligibleUnitIds: [...eligibility.ineligible], certified: eligibility.certified }
+            : null,
     };
 }
 
@@ -784,6 +827,9 @@ export async function openVote(actor: AssemblyActor, assemblyId: string, itemId:
     if (assembly.items.some(item => item.votingStatus === 'open' && item.id !== itemId)) throw new AssemblyError('Cierra la votación abierta antes de abrir otra.', 409);
     const item = await loadItem(assemblyId, itemId);
     if (item.votingStatus !== 'pending') throw new AssemblyError('Este punto ya se votó.', 409);
+    if (!(await loadCurrentCertificate(assemblyId))) {
+        throw new AssemblyError('Antes de abrir la votación, emite el certificado de habilidad (Ley 21.442, art. 15; DS 7, art. 14).', 422);
+    }
     await check(db().from('assembly_agenda_items').update({ voting_status: 'open', opened_at: nowIso() }).eq('id', itemId).eq('voting_status', 'pending'));
     return getAssemblyView(actor, assemblyId);
 }
@@ -805,6 +851,11 @@ async function writeVote(actor: AssemblyActor, assemblyId: string, itemId: strin
     const row = mapAttendance(attendance);
     if (row.status !== 'present' || !row.identityVerifiedAt) throw new AssemblyError('Primero hay que acreditar la asistencia de la unidad (imagen y voz si es en línea).', 422);
     if (!recordedByStaff && row.attendeeProfileId !== actor.id) throw new AssemblyError('Solo vota quien está acreditado por esa unidad.', 403);
+    // Solo votan las unidades habilitadas en el certificado (Ley 21.442, art. 15). Quien
+    // representa a la unidad (poder u ocupante) vota con la habilidad de ella.
+    const current = await loadCurrentCertificate(assemblyId);
+    if (!current) throw new AssemblyError('La votación necesita el certificado de habilidad emitido.', 422);
+    if (!current.eligibleUnitIds.has(unitId)) throw new AssemblyError(recordedByStaff ? VOTE_NOT_RECORDED.staff : VOTE_NOT_RECORDED.self, 422);
     if (row.capacity === 'occupant' && !occupantMayVote(item.quorumClass, await hasOccupantAuthorization(assemblyId, unitId))) {
         throw new AssemblyError('En materias de mayoría reforzada el arrendatario u ocupante necesita autorización expresa del copropietario (DS 7, art. 12).', 422);
     }
@@ -854,13 +905,15 @@ export async function closeVote(actor: AssemblyActor, assemblyId: string, itemId
     const votes = (((await check(db().from('assembly_votes').select(VOTE_COLUMNS).eq('agenda_item_id', itemId))) ?? []) as Row[]).map(mapVote);
     const present = attendance.filter(entry => entry.status === 'present' && entry.identityVerifiedAt);
     const presentWeight = present.reduce((sum, entry) => sum + entry.weight, 0);
+    const current = await loadCurrentCertificate(assemblyId);
+    if (!current) throw new AssemblyError('Falta el certificado de habilidad de esta sesión.', 422);
     const weighted = votes.map(vote => {
         const entry = byId.get(vote.attendanceId);
         return {
             choice: vote.choice, weight: vote.weight,
             counts: Boolean(entry) && voteCounts({
                 attendanceVerified: Boolean(entry?.identityVerifiedAt), attendancePresent: entry?.status === 'present',
-                mode: vote.mode, voteVerified: Boolean(vote.identityVerifiedAt),
+                mode: vote.mode, voteVerified: Boolean(vote.identityVerifiedAt), unitEligible: current.eligibleUnitIds.has(vote.unitId),
             }),
         };
     });
@@ -868,7 +921,10 @@ export async function closeVote(actor: AssemblyActor, assemblyId: string, itemId
     if (pending > 0 && !force) {
         throw new AssemblyError(`Hay ${pending} voto(s) en línea sin verificar imagen y voz. Si cierras ahora no se contarán (DS 7, art. 16).`, 409);
     }
-    const result = evaluateAgendaItem({ sessionType: assembly.sessionType, matterClass: item.quorumClass, tally: tallyVotes(weighted, presentWeight, rights.total), pendingVerification: pending });
+    const result = evaluateAgendaItem({
+        sessionType: assembly.sessionType, matterClass: item.quorumClass, tally: tallyVotes(weighted, presentWeight, rights.total), pendingVerification: pending,
+        eligiblePresent: eligiblePresentWeight(present, current.eligibleUnitIds),
+    });
     const updated = await check(db().from('assembly_agenda_items').update({
         voting_status: 'closed', closed_at: nowIso(), outcome: result.outcome, result, notes: notes.trim().slice(0, 2000) || item.notes,
     }).eq('id', itemId).eq('voting_status', 'open').select('id'));
@@ -890,10 +946,14 @@ async function buildMinutes(actor: AssemblyActor, assemblyId: string) {
     const { rights } = await rightsFor(row, actor.communityId);
     const attendance = (((await check(db().from('assembly_attendance').select(ATTENDANCE_COLUMNS).eq('assembly_id', assemblyId))) ?? []) as Row[]).map(mapAttendance);
     const dueOn = minutesDeadline(chileDateOf(assembly.scheduledAt), todayChile()).dueOn;
+    const current = await loadCurrentCertificate(assemblyId);
+    const quorum = liveQuorum(assembly.sessionType, rights, attendance, current);
     const input = {
         title: assembly.title, sessionType: assembly.sessionType, modality: assembly.modality, scheduledAt: assembly.scheduledAt,
         startedAt: assembly.startedAt, closedAt: assembly.closedAt, location: assembly.location, rights, attendance,
         items: assembly.items, notaryRequired: assembly.notaryRequired, notaryName: assembly.notaryName, dueOn,
+        // Solo totales del certificado y si se constituyó: nunca qué unidades no estaban habilitadas.
+        eligibility: current?.certificate ?? null, constitutionMet: current ? quorum.constitutionMet : null,
     };
     const prose = await writeAssemblyProse({ communityId: actor.communityId, userId: actor.id }, {
         maxTokens: 700,
@@ -973,4 +1033,62 @@ export async function signMinutes(actor: AssemblyActor, assemblyId: string, sign
         entityId: assemblyId, severity: 'info', status: 'success', summary: 'Acta firmada', metadata: { channel: 'in_app' },
     });
     return getAssemblyView(actor, assemblyId);
+}
+
+// ---------------------------------------------------------------------------
+// Copropietarios hábiles
+// ---------------------------------------------------------------------------
+
+/**
+ * El administrador emite el certificado de habilidad (Ley 21.442, art. 15; DS 7,
+ * art. 14) con fecha de corte = hoy, en la sesión y antes de abrir la primera
+ * votación. Se puede volver a emitir (reemplaza al anterior) mientras no se haya
+ * abierto ninguna votación: así, quien se puso al día o firmó un convenio a última
+ * hora queda habilitado. Guarda los totales y, aparte y solo para admin, el
+ * detalle por unidad como respaldo legal.
+ */
+export async function issueEligibilityCertificate(actor: AssemblyActor, assemblyId: string) {
+    requireAdmin(actor);
+    const { row, assembly } = await loadAssembly(actor.communityId, assemblyId);
+    requireStatus(assembly, 'in_progress');
+    if (assembly.items.some(item => item.votingStatus !== 'pending')) {
+        throw new AssemblyError('El certificado de habilidad se emite antes de abrir la primera votación.', 409);
+    }
+    const { rights, units } = await rightsFor(row, actor.communityId);
+    const owners = new Map(units.map(unit => [unit.id, unit.ownerId]));
+    const cutoffDate = todayChile();
+    const result = await evaluateEligibility(actor.communityId, rights.units.map(unit => ({ unitId: unit.unitId, ownerId: owners.get(unit.unitId) ?? null, weight: unit.weight })), cutoffDate);
+    const profile = await check(db().from('profiles').select('name').eq('id', actor.id).maybeSingle()) as Row | null;
+    const certificate = await insertCertificate({
+        assemblyId, communityId: actor.communityId, issuedBy: actor.id, issuedByName: str(profile?.name) || 'Administración',
+        rightsMethod: rights.method, result,
+    });
+    await recordOperationEvent({
+        communityId: actor.communityId, actorId: actor.id, actorRole: 'admin', action: 'assembly.eligibility_certified', entityType: 'assembly',
+        entityId: assemblyId, severity: 'info', status: 'success', summary: 'Certificado de habilidad emitido',
+        // Solo totales: el detalle queda en assembly_eligibility_units (RLS solo admin).
+        metadata: { certificateId: certificate.id, cutoffDate, eligibleUnits: certificate.eligibleUnits, totalUnits: certificate.totalUnits, eligibleShare: certificate.eligibleShare },
+    });
+    return getAssemblyView(actor, assemblyId);
+}
+
+/**
+ * La unidad pide conversar un convenio desde la asamblea. Llega solo a
+ * administración, en la app; es idempotente por asamblea y unidad.
+ */
+export async function requestAgreementConversation(actor: AssemblyActor, assemblyId: string, unitId: string) {
+    const { assembly } = await loadAssembly(actor.communityId, assemblyId);
+    requireStatus(assembly, 'cited', 'in_progress');
+    const units = await loadUnits(actor.communityId);
+    const proxies = await loadProxies(assemblyId, units);
+    const unit = representableUnits(actor, units, proxies).find(candidate => candidate.unitId === unitId);
+    if (!unit) throw new AssemblyError('No puedes hacer esta solicitud por esa unidad.', 403);
+    const admins = await communityRecipients(actor.communityId, ['admin']);
+    const copy = agreementRequestAdminCopy(unit.label, assembly.title);
+    await notify(actor.communityId, `agreement-request-${unitId}`, assemblyId, admins, { ...copy, type: 'info' });
+    await recordOperationEvent({
+        communityId: actor.communityId, actorId: actor.id, actorRole: actor.role, action: 'assembly.agreement_requested', entityType: 'assembly',
+        entityId: assemblyId, severity: 'info', status: 'success', summary: 'Solicitud de conversar un convenio', metadata: { unitId, channel: 'in_app' },
+    });
+    return { view: await getAssemblyView(actor, assemblyId), message: AGREEMENT_REQUEST_SENT };
 }

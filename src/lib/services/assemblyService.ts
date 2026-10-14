@@ -54,6 +54,8 @@ export const AssemblyService = {
         post('check_in', { assemblyId, ...input }),
     verifyAttendance: (assemblyId: string, attendanceId: string) => post('verify_attendance', { assemblyId, attendanceId }),
     markLeft: (assemblyId: string, attendanceId: string) => post('mark_left', { assemblyId, attendanceId }),
+    certifyEligibility: (assemblyId: string) => post('certify_eligibility', { assemblyId }),
+    requestAgreement: (assemblyId: string, unitId: string) => post<{ view: AssemblyView; message: string }>('request_agreement', { assemblyId, unitId }),
     openVote: (assemblyId: string, itemId: string) => post('open_vote', { assemblyId, itemId }),
     castVote: (assemblyId: string, itemId: string, unitId: string, choice: VoteChoice) => post('cast_vote', { assemblyId, itemId, unitId, choice }),
     recordVote: (assemblyId: string, itemId: string, unitId: string, choice: VoteChoice) => post('record_vote', { assemblyId, itemId, unitId, choice }),
