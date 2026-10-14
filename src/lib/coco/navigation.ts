@@ -19,6 +19,7 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/resident/cases": "Mis Casos CoCo",
     "/resident/invitations": "Mis Invitaciones",
     "/votaciones": "Votaciones",
+    "/votaciones/asambleas": "Asambleas",
     "/resident/finances": "Mis Gastos",
     "/resident/consumo": "Mi Consumo de Agua",
     "/concierge/visitors": "Registro de Visitas",
@@ -38,6 +39,7 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/admin/consumo": "Control Hídrico",
     "/admin/mantenimiento": "Mantenimiento",
     "/admin/votaciones": "Gestión de Votos",
+    "/admin/asambleas": "Asambleas (Ley 21.442)",
     "/admin/users": "Usuarios",
     "/admin/onboarding": "Carga Masiva",
     // "/admin/training": Generador de Cursos oculto temporalmente (2026-07); fuera del nav de CoCo.
