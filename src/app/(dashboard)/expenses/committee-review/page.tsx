@@ -47,7 +47,8 @@ export default function CommitteeReviewPage() {
     }
 
     return <main className="mx-auto max-w-4xl space-y-5 p-5 lg:p-8">
-        <Link href="/expenses" className="text-sm underline">← Mis gastos</Link>
+        <div className="flex flex-wrap justify-between gap-2"><Link href="/expenses" className="text-sm underline">← Mis gastos</Link>
+            <Link href="/expenses/committee-digest" className="text-sm font-medium underline">Resumen semanal →</Link></div>
         <div><p className="text-xs uppercase tracking-widest cc-text-tertiary">Finanzas</p>
             <h1 className="text-3xl cc-text-primary" style={{ fontFamily: 'var(--cc-font-display)' }}>Revisión del comité</h1>
             <p className="mt-2 text-sm cc-text-secondary">Revisa los montos y el desglose antes de aprobar. Tu decisión queda registrada con tu cuenta.</p></div>
