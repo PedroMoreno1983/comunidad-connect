@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
+import { providerListingGridClass } from "@/components/services/providerPresentation";
 import { Briefcase, Eraser, Key, SlidersHorizontal, Wrench, Zap } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -73,7 +74,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
             </section>
 
             {filteredProviders.length > 0 ? (
-                <section className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] items-stretch gap-5">
+                <section className={providerListingGridClass}>
                     {filteredProviders.map(provider => (
                         <ProviderCard key={provider.id} provider={provider} />
                     ))}

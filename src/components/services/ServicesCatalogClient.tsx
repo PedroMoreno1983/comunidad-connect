@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { ProviderCard } from "@/components/services/ProviderCard";
+import { providerListingGridClass } from "@/components/services/providerPresentation";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -137,7 +138,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
             </section>
 
             {filteredProviders.length > 0 ? (
-                <section className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] items-stretch gap-5">
+                <section className={providerListingGridClass}>
                     {filteredProviders.map(provider => (
                         <ProviderCard key={provider.id} provider={provider} showCategory />
                     ))}
