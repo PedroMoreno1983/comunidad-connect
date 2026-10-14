@@ -19,6 +19,14 @@
     {
       "path": "/api/finance/payroll-indicators",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/agent-center/committee-digest/cron",
+      "schedule": "0 11 * * 1"
+    },
+    {
+      "path": "/api/agent-center/committee-digest/cron",
+      "schedule": "0 12 * * 1"
     }
   ]
 }
