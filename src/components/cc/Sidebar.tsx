@@ -40,7 +40,8 @@ import {
   Clapperboard,
   Sparkles,
   Bell,
-  HeartHandshake
+  HeartHandshake,
+  Landmark
 } from "lucide-react";
 import { Brand } from "./Brand";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
@@ -230,6 +231,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
         { href: "/votaciones", label: "Votaciones", icon: Vote, roles: ["resident", "admin"], feature: "voting" },
+        { href: "/votaciones/asambleas", label: "Asambleas", icon: Landmark, roles: ["resident"] },
       ]
     },
     {
@@ -255,6 +257,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/admin/finanzas", label: "Control Finanzas", icon: PieChart, roles: ["admin"] },
         { href: "/admin/units", label: "Unidades", icon: Home, roles: ["admin"] },
+        { href: "/admin/asambleas", label: "Asambleas", icon: Landmark, roles: ["admin"] },
         { href: "/estacionamientos?tab=admin", label: "Estacionamientos", icon: Car, roles: ["admin"] },
         { href: "/admin/consumo", label: "Control Hídrico", icon: Waves, roles: ["admin"] },
         { href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"] },
