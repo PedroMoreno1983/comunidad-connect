@@ -23,6 +23,7 @@ export type ToolName =
     | 'get_supermarket_orders_summary'
     | 'get_active_polls'
     | 'get_maintenance_backlog'
+    | 'get_maintenance_risk'
     | 'find_resident_or_unit'
     | 'preview_payment_agreement'
     // Escrituras (siempre con confirmacion humana dentro del ciclo):
@@ -54,6 +55,7 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'get_supermarket_orders_summary',
     'get_active_polls',
     'get_maintenance_backlog',
+    'get_maintenance_risk',
     'find_resident_or_unit',
     'create_poll',
     'update_maintenance_ticket',
@@ -78,6 +80,7 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     get_supermarket_orders_summary: 'community',
     get_active_polls: 'community',
     get_maintenance_backlog: 'maintenance',
+    get_maintenance_risk: 'maintenance',
     find_resident_or_unit: 'community',
     create_poll: 'community',
     update_maintenance_ticket: 'maintenance',
@@ -98,6 +101,7 @@ export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_supermarket_orders_summary',
     'get_active_polls',
     'get_maintenance_backlog',
+    'get_maintenance_risk',
     'find_resident_or_unit',
     'preview_payment_agreement',
 ];
@@ -126,6 +130,7 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
     get_supermarket_orders_summary: 'read',
     get_active_polls: 'read',
     get_maintenance_backlog: 'read',
+    get_maintenance_risk: 'read',
     find_resident_or_unit: 'read',
     preview_payment_agreement: 'read',
     propose_payment_agreement: 'write_high',
