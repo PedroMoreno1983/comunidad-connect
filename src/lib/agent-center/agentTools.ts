@@ -25,7 +25,8 @@ import { listSupermarketGroupOrders } from '@/lib/supermarketGroupOrders';
 import { serviceRequestTransitionError, validServiceSchedule } from '@/lib/services/requestLifecycle';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { readOpenMaintenanceRequests } from '@/lib/agent-center/taskPlaybooks';
+import { readOpenMaintenanceRequests, readPreventiveInputs } from '@/lib/agent-center/taskPlaybooks';
+import { scoreAssetRisks } from '@/lib/maintenance/assetRisk';
 import { runCommunityReadTool } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { getUnitStatement } from '@/lib/finance/collectionService';
@@ -381,6 +382,42 @@ const findResidentOrUnit: AgentToolDefinition = {
             entityType: 'directory_search', entityId: communityId, title: 'Busqueda en el directorio', targetHref: '/admin/units',
             message: `${plural(residentRows.length, 'residente')} y ${plural(unitRows.length, 'unidad', 'unidades')} coinciden con "${args.query}".`,
             data: { residents: residentRows, units: unitRows },
+        };
+    },
+};
+
+const getMaintenanceRisk: AgentToolDefinition = {
+    name: 'get_maintenance_risk',
+    agentKey: 'maintenance',
+    risk: 'read',
+    roles: STAFF,
+    targetHref: '/admin/mantenimiento',
+    label: 'Revisar riesgo de activos',
+    tool: {
+        name: 'get_maintenance_risk',
+        description: 'Mantencion predictiva: puntaje de riesgo 0-100 por activo del edificio (edad vs vida util, fallas correctivas recientes y si se aceleran, preventiva atrasada, costo de 12 meses), con razones legibles, dias promedio entre fallas y costo. Ordenado de mayor a menor riesgo. No escribe nada.',
+        input_schema: {
+            type: 'object',
+            properties: { onlyAtRisk: { type: 'boolean', description: 'Solo activos de riesgo medio o alto' } },
+            required: [],
+            additionalProperties: false,
+        },
+    },
+    validate(input) {
+        return { onlyAtRisk: flag(input.onlyAtRisk) };
+    },
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const inputs = await readPreventiveInputs(communityId);
+        const all = scoreAssetRisks({ ...inputs, today: chileTodayISO() });
+        const risks = args.onlyAtRisk ? all.filter(risk => risk.level !== 'low') : all;
+        const high = all.filter(risk => risk.level === 'high');
+        const medium = all.filter(risk => risk.level === 'medium');
+        const cost12m = all.reduce((sum, risk) => sum + risk.cost12m, 0);
+        return {
+            entityType: 'building_assets', entityId: communityId, title: 'Riesgo de activos revisado', targetHref: '/admin/mantenimiento',
+            message: `${plural(all.length, 'activo')}: ${high.length} de riesgo alto${high.length ? ` (${high.slice(0, 3).map(risk => risk.assetName).join(', ')})` : ''}, ${medium.length} medio. Costo de mantencion en 12 meses: $${Math.round(cost12m).toLocaleString('es-CL')}.`,
+            data: { total: all.length, high: high.length, medium: medium.length, cost12m, assets: risks.slice(0, 20) },
         };
     },
 };
@@ -762,6 +799,7 @@ export const AGENT_TOOL_DEFINITIONS: AgentToolDefinition[] = [
     getSupermarketOrdersSummary,
     getActivePolls,
     getMaintenanceBacklog,
+    getMaintenanceRisk,
     findResidentOrUnit,
     createPoll,
     updateMaintenanceTicket,
