@@ -44,7 +44,8 @@ export function slideTopic(title: string, lead = ''): TrainingTopic {
 export function splitLabeled(bullet: string): { label: string | null; text: string } {
     const match = bullet.match(/^([^:.!?]{2,40}):\s+([\s\S]+)$/);
     if (!match || match[1].trim().split(/\s+/).length > 4) return { label: null, text: bullet };
-    return { label: match[1].trim(), text: match[2].trim() };
+    const text = match[2].trim();
+    return { label: match[1].trim(), text: text.charAt(0).toUpperCase() + text.slice(1) };
 }
 
 /** Separa lo que se hace de lo que no se hace (viñetas que parten con "No", "Nunca" o "Evita"). */
