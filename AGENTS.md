@@ -241,6 +241,48 @@ npm run lint             # ESLint
 
 ---
 
+## Agente Operador (Agent Center) — reglas de fondo
+
+El Agent Center (`src/lib/agent-center/`) opera la cobranza y la mantención del condominio con herramientas (`agentTools.ts`), riesgos (`domain.ts`, `TOOL_RISK_LEVELS`) y playbooks (`taskPlaybooks.ts`). Se construyó por fases (PR #161 a #166, octubre 2026). Respeta estas reglas al tocarlo:
+
+**Principios generales**
+- **Humano en el circuito.** Toda escritura pasa por la confirmación del administrador según la política de autonomía (`riskRequiresConfirmation`). Lo que mueve plata, notifica a terceros o corre en lote es `write_high`.
+- **Nunca contrata, paga ni gasta.** Elegir una cotización o proponer un convenio queda registrado; la decisión y el pago son humanos.
+- **Solo notifica dentro de la app** (tabla `notifications`). No envía WhatsApp ni correo masivo por su cuenta.
+- **Todo se audita** con `recordOperationEvent` (acciones `agent.*`).
+- **Releer antes de escribir.** Se usa bloqueo optimista (`.eq('status', previo)`) y se vuelve a verificar contra la base para no usar datos obsoletos ni duplicar.
+
+**Cobranza** (`src/lib/finance/`; cobranza unificada de `expenses` + `unit_charges`, con una escalera de mensajes)
+- La cobranza construye comunidad. Los avisos van **sin montos**, sin lenguaje de deudor ni amenazas, y siempre ofrecen una salida: conversar o un convenio, con reserva.
+- Convenios (`agreementProposal.ts`; `preview_payment_agreement` solo lee, `propose_payment_agreement` es `write_high` y solo para admin):
+  - La cuota apunta a cerca de media cuota de gasto común: se sugieren 2 a 12 cuotas y el admin puede llegar a 36.
+  - La primera cuota vence el día 5 del mes siguiente.
+  - Si existe comité, el convenio queda `pending_committee`.
+  - Los intereses (`applyLateInterest`) todavía no están implementados.
+
+**Mantención**
+- Plan preventivo (`src/lib/maintenance/preventivePlan.ts`, playbook `maintenance_preventive_plan`):
+  - La frecuencia depende del tipo de activo y se agenda con un horizonte de 45 días.
+  - Se mantiene como máximo una tarea abierta por activo.
+  - La salud del activo solo empeora hasta `warning`, nunca llega a `critical` de forma automática ni mejora sola.
+- Riesgo predictivo (`assetRisk.ts`, `get_maintenance_risk`):
+  - Puntaje explicable de 0 a 100: edad frente a vida útil, fallas correctivas (bitácora sin `task_id`), aceleración, atraso y costo.
+  - Riesgo alto desde 60 y medio desde 30. Un riesgo alto adelanta la preventiva a 7 días.
+- Cotizaciones (`quotes.ts`, `quoteService.ts`, tabla `maintenance_quotes`):
+  - Se piden a 2 o 3 proveedores **verificados**.
+  - Para elegir hacen falta ≥2 cotizaciones recibidas y la más baja; si no se cumple, se exige una justificación escrita.
+- **Cierre con foto obligatorio.**
+  - Ruta: `POST /api/admin/maintenance/tasks/[id]/complete`; la foto queda en el bucket privado `maintenance-photos`.
+  - El trigger `trg_maintenance_task_requires_photo` rechaza completar una tarea sin `completion_photo_path`, así que **no actualices `maintenance_tasks.status` a `completed` directo desde el cliente.**
+  - Al completar, `trg_maintenance_task_completed_update_asset` actualiza `last_maintenance`.
+  - `MaintenanceService.completeTask` en `src/lib/api.ts` quedó obsoleto: usa la ruta.
+
+**Al agregar una herramienta**, regístrala en `ToolName`, `AGENT_TOOL_NAMES`, `TOOL_AGENT_KEYS`, `TOOL_RISK_LEVELS` (y `READ_ONLY_AGENT_TOOLS` si solo lee) en `domain.ts`, y también en la etiqueta de `src/app/api/agent-center/route.ts` y en el arreglo de herramientas de `agentTools.ts`.
+
+**Migraciones:** en `supabase/migrations/`, idempotentes. Se aplican en Supabase al mismo tiempo que se mergea el PR que las usa.
+
+---
+
 ## Próximos Pasos Planificados
 
 - [ ] **Búsqueda híbrida** — pgvector + Full Text Search en Supabase para Marketplace y Directorio (Anthropic embeddings)
