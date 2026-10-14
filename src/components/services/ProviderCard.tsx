@@ -55,11 +55,13 @@ export function ProviderCard({ provider }: ProviderCardProps) {
                         <span>
                             {" · "}
                             <span className="cc-text-primary" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
-                                {provider.rating}
+                                {provider.rating} / 5
                             </span>
                             {` · ${provider.reviewCount} reseña${provider.reviewCount === 1 ? "" : "s"}`}
                         </span>
-                    ) : null}
+                    ) : (
+                        <span>{" · Sin reseñas todavía"}</span>
+                    )}
                 </p>
                 <p
                     className="mt-2 text-sm cc-text-primary"
