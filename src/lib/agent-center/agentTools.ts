@@ -27,6 +27,8 @@ import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { readOpenMaintenanceRequests, readPreventiveInputs } from '@/lib/agent-center/taskPlaybooks';
 import { scoreAssetRisks } from '@/lib/maintenance/assetRisk';
+import { MAX_QUOTES, MIN_QUOTES, compareQuotes, pickQuoteProviders, quoteSelectionError } from '@/lib/maintenance/quotes';
+import { listCommunityProviders, listQuotes, loadQuoteTarget, targetColumn } from '@/lib/maintenance/quoteService';
 import { runCommunityReadTool } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { getUnitStatement } from '@/lib/finance/collectionService';
@@ -726,6 +728,270 @@ const previewPaymentAgreement: AgentToolDefinition = {
     },
 };
 
+// ---------------------------------------------------------------------------
+// Cotizaciones de mantencion (fase 5). Elegir no contrata ni paga.
+// ---------------------------------------------------------------------------
+const QUOTE_TARGET_PROPERTIES = {
+    taskId: { type: 'string', description: 'Tarea de mantencion preventiva' },
+    ticketId: { type: 'string', description: 'Ticket de mantencion (service request)' },
+} as const;
+
+function quoteTarget(input: Record<string, unknown>) {
+    const taskId = input.taskId ? uuid(input.taskId, 'La tarea') : '';
+    const ticketId = input.ticketId ? uuid(input.ticketId, 'El ticket') : '';
+    if (Boolean(taskId) === Boolean(ticketId)) throw new Error('Indica una tarea (taskId) o un ticket (ticketId), no ambos.');
+    return { taskId, ticketId };
+}
+
+const getMaintenanceQuotes: AgentToolDefinition = {
+    name: 'get_maintenance_quotes',
+    agentKey: 'maintenance',
+    risk: 'read',
+    roles: STAFF,
+    targetHref: '/admin/mantenimiento',
+    label: 'Comparar cotizaciones',
+    tool: {
+        name: 'get_maintenance_quotes',
+        description: 'Cotizaciones de una tarea o ticket de mantencion: proveedor, estado, monto, vigencia, la mas baja y la diferencia entre la mas baja y la mas alta. Con quoteId de cada una para registrar o elegir. No escribe nada.',
+        input_schema: { type: 'object', properties: { ...QUOTE_TARGET_PROPERTIES }, required: [], additionalProperties: false },
+    },
+    validate: quoteTarget,
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const target = await loadQuoteTarget(communityId, args as { taskId?: string; ticketId?: string });
+        const quotes = await listQuotes(communityId, target);
+        const comparison = compareQuotes(quotes);
+        const cheapest = comparison.cheapest ? quotes.find(quote => quote.id === comparison.cheapest?.id) : null;
+        return {
+            entityType: 'maintenance_quotes', entityId: target.id, title: 'Cotizaciones revisadas', targetHref: '/admin/mantenimiento',
+            message: quotes.length
+                ? `"${target.title.slice(0, 60)}": ${comparison.received} de ${comparison.requested} cotizaciones recibidas${cheapest ? `; la mas baja es ${cheapest.provider_name} por ${clp(Number(cheapest.amount))}` : ''}${comparison.received >= 2 ? ` (diferencia ${comparison.spreadPct}%)` : ''}.`
+                : `"${target.title.slice(0, 60)}" aun no tiene cotizaciones pedidas.`,
+            data: { target, comparison: { ...comparison, ranking: undefined }, quotes },
+        };
+    },
+};
+
+const requestMaintenanceQuotes: AgentToolDefinition = {
+    name: 'request_maintenance_quotes',
+    agentKey: 'maintenance',
+    risk: 'write',
+    roles: STAFF,
+    targetHref: '/admin/mantenimiento',
+    label: 'Pedir cotizaciones',
+    tool: {
+        name: 'request_maintenance_quotes',
+        description: `Pide cotizacion a ${MIN_QUOTES}-${MAX_QUOTES} proveedores verificados para una tarea o ticket de mantencion. Si no indicas providerIds, elige los de mayor afinidad con el tipo de trabajo y mejor evaluacion. Avisa en la app a los proveedores con cuenta y devuelve los contactos del resto. No contrata ni gasta. Requiere confirmacion humana.`,
+        input_schema: {
+            type: 'object',
+            properties: {
+                ...QUOTE_TARGET_PROPERTIES,
+                providerIds: { type: 'array', items: { type: 'string' }, maxItems: MAX_QUOTES, description: 'Opcional: proveedores elegidos por la administracion' },
+                note: { type: 'string', description: 'Detalle del trabajo para los proveedores (opcional)' },
+            },
+            required: [],
+            additionalProperties: false,
+        },
+    },
+    validate(input) {
+        const target = quoteTarget(input);
+        const raw = Array.isArray(input.providerIds) ? input.providerIds : [];
+        const providerIds = Array.from(new Set(raw.map(id => uuid(id, 'El proveedor'))));
+        if (providerIds.length > MAX_QUOTES) throw new Error(`Se piden como maximo ${MAX_QUOTES} cotizaciones a la vez.`);
+        return { ...target, providerIds, note: text(input.note, 400) };
+    },
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const target = await loadQuoteTarget(communityId, args as { taskId?: string; ticketId?: string });
+        if (['completed', 'cancelled', 'rejected'].includes(target.status)) throw new Error('Ese trabajo ya esta cerrado; no hace falta cotizar.');
+        const existing = await listQuotes(communityId, target);
+        if (existing.some(quote => quote.status === 'selected')) throw new Error('Ese trabajo ya tiene una cotizacion elegida.');
+        const providers = await listCommunityProviders(communityId);
+        const already = existing.map(quote => quote.provider_id);
+        const requested = (args.providerIds as string[]).filter(id => !already.includes(id));
+        let chosen;
+        if (requested.length) {
+            chosen = requested.map(id => {
+                const provider = providers.find(row => row.id === id);
+                if (!provider) throw new Error('Uno de los proveedores no existe en tu comunidad.');
+                if (!provider.verified) throw new Error(`${provider.name} no esta verificado; solo se cotiza con proveedores verificados.`);
+                return provider;
+            });
+        } else {
+            const slots = MAX_QUOTES - existing.length;
+            if (slots <= 0) throw new Error(`Ese trabajo ya tiene ${existing.length} cotizaciones pedidas.`);
+            const picked = pickQuoteProviders({ category: target.category, providers, exclude: already, max: slots });
+            chosen = picked.map(pick => providers.find(row => row.id === pick.id)!);
+        }
+        if (existing.length + chosen.length < MIN_QUOTES) {
+            throw new Error(`Solo hay ${existing.length + chosen.length} proveedor(es) verificado(s) para este tipo de trabajo. Agrega proveedores o indica providerIds para llegar a ${MIN_QUOTES}.`);
+        }
+        const admin = getSupabaseAdmin();
+        const { data: inserted, error } = await admin.from('maintenance_quotes').insert(chosen.map(provider => ({
+            community_id: communityId,
+            [targetColumn(target.kind)]: target.id,
+            provider_id: provider.id,
+            status: 'requested',
+            notes: args.note || null,
+            requested_by: profile.id,
+        }))).select('id, provider_id');
+        if (error) throw error;
+
+        const withAccount = chosen.filter(provider => provider.user_id);
+        if (withAccount.length) {
+            const { error: notifyError } = await admin.from('notifications').insert(withAccount.map(provider => ({
+                user_id: provider.user_id,
+                type: 'info',
+                category: 'maintenance_quote_request',
+                title: 'Solicitud de cotizacion',
+                body: `La administracion te pide cotizar: ${target.title.slice(0, 140)}.${args.note ? ` ${String(args.note)}` : ''}`,
+                link: '/services',
+                community_id: communityId,
+            })));
+            if (notifyError) console.error('[request_maintenance_quotes] no se pudo notificar:', notifyError.message);
+        }
+        await recordOperationEvent({
+            communityId, actorId: profile.id, actorRole: profile.role,
+            action: 'agent.maintenance_quotes.requested', entityType: target.kind === 'task' ? 'maintenance_task' : 'service_request', entityId: target.id,
+            severity: 'success', status: 'success',
+            summary: `Cotizacion pedida a ${chosen.map(provider => provider.name).join(', ')}`,
+            metadata: { providerIds: chosen.map(provider => provider.id), category: target.category, notified: withAccount.length },
+        });
+        const toContact = chosen.filter(provider => !provider.user_id);
+        return {
+            entityType: 'maintenance_quotes', entityId: target.id, title: 'Cotizaciones pedidas', targetHref: '/admin/mantenimiento',
+            message: `Pedi cotizacion a ${chosen.map(provider => provider.name).join(', ')} para "${target.title.slice(0, 60)}".${withAccount.length ? ` ${withAccount.length} recibieron el aviso en la app.` : ''}${toContact.length ? ` Hay que contactar a ${toContact.map(provider => provider.name).join(', ')} por telefono o correo.` : ''} No se contrato ni se gasto nada.`,
+            data: {
+                quotes: inserted,
+                contacts: toContact.map(provider => ({ name: provider.name, phone: provider.contact_phone, email: provider.email })),
+            },
+        };
+    },
+};
+
+const recordMaintenanceQuote: AgentToolDefinition = {
+    name: 'record_maintenance_quote',
+    agentKey: 'maintenance',
+    risk: 'write',
+    roles: STAFF,
+    targetHref: '/admin/mantenimiento',
+    label: 'Registrar cotizacion',
+    tool: {
+        name: 'record_maintenance_quote',
+        description: 'Registra el monto (CLP, IVA incluido) y la vigencia de una cotizacion recibida. Usa quoteId de get_maintenance_quotes. Requiere confirmacion humana.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                quoteId: { type: 'string' },
+                amount: { type: 'number', minimum: 0 },
+                validUntil: { type: 'string', description: 'YYYY-MM-DD (opcional)' },
+                notes: { type: 'string', description: 'Plazo, garantia u otras condiciones (opcional)' },
+            },
+            required: ['quoteId', 'amount'],
+            additionalProperties: false,
+        },
+    },
+    validate(input) {
+        const amount = Math.round(Number(input.amount));
+        if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000) throw new Error('El monto de la cotizacion no es valido.');
+        const validUntil = text(input.validUntil, 10);
+        if (validUntil && !/^\d{4}-\d{2}-\d{2}$/.test(validUntil)) throw new Error('La vigencia debe venir como YYYY-MM-DD.');
+        return { quoteId: uuid(input.quoteId, 'La cotizacion'), amount, validUntil, notes: text(input.notes, 400) };
+    },
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const admin = getSupabaseAdmin();
+        const patch: Record<string, unknown> = { status: 'received', amount: args.amount, received_at: new Date().toISOString() };
+        if (args.validUntil) patch.valid_until = args.validUntil;
+        if (args.notes) patch.notes = args.notes;
+        const { data: updated, error } = await admin.from('maintenance_quotes').update(patch)
+            .eq('id', String(args.quoteId)).eq('community_id', communityId).in('status', ['requested', 'received'])
+            .select('id, status, amount, provider_id, task_id, service_request_id').maybeSingle();
+        if (error) throw error;
+        if (!updated) throw new Error('La cotizacion no existe o ya fue elegida o descartada.');
+        await recordOperationEvent({
+            communityId, actorId: profile.id, actorRole: profile.role,
+            action: 'agent.maintenance_quote.recorded', entityType: 'maintenance_quote', entityId: String(updated.id),
+            severity: 'success', status: 'success', summary: `Cotizacion registrada por ${clp(Number(args.amount))}`,
+            metadata: { amount: args.amount, validUntil: args.validUntil || null },
+        });
+        return {
+            entityType: 'maintenance_quote', entityId: String(updated.id), title: 'Cotizacion registrada', targetHref: '/admin/mantenimiento',
+            message: `Cotizacion registrada por ${clp(Number(args.amount))}.`,
+            data: updated,
+        };
+    },
+};
+
+const selectMaintenanceQuote: AgentToolDefinition = {
+    name: 'select_maintenance_quote',
+    agentKey: 'maintenance',
+    risk: 'write',
+    roles: ['admin'],
+    targetHref: '/admin/mantenimiento',
+    label: 'Elegir cotizacion',
+    tool: {
+        name: 'select_maintenance_quote',
+        description: `Elige una cotizacion recibida y descarta las demas. Exige al menos ${MIN_QUOTES} cotizaciones recibidas y que sea la mas baja; si no, pide una justificacion escrita. En un ticket asigna el proveedor elegido. No contrata ni paga. Requiere confirmacion humana. Solo administracion.`,
+        input_schema: {
+            type: 'object',
+            properties: {
+                quoteId: { type: 'string' },
+                justification: { type: 'string', description: 'Obligatoria si hay menos de 2 cotizaciones o no es la mas baja' },
+            },
+            required: ['quoteId'],
+            additionalProperties: false,
+        },
+    },
+    validate(input) {
+        return { quoteId: uuid(input.quoteId, 'La cotizacion'), justification: text(input.justification, 500) };
+    },
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const admin = getSupabaseAdmin();
+        const { data: quote, error } = await admin.from('maintenance_quotes').select('id, task_id, service_request_id')
+            .eq('id', String(args.quoteId)).eq('community_id', communityId).maybeSingle();
+        if (error) throw error;
+        if (!quote) throw new Error('La cotizacion no existe en tu comunidad.');
+        const target = await loadQuoteTarget(communityId, quote.task_id ? { taskId: String(quote.task_id) } : { ticketId: String(quote.service_request_id) });
+        const quotes = await listQuotes(communityId, target);
+        const selectionError = quoteSelectionError(quotes, String(quote.id), String(args.justification || ''));
+        if (selectionError) throw new Error(selectionError);
+        const chosen = quotes.find(row => row.id === quote.id)!;
+        const now = new Date().toISOString();
+        const { data: selected, error: selectError } = await admin.from('maintenance_quotes')
+            .update({ status: 'selected', decided_by: profile.id, decided_at: now, decision_note: args.justification || null })
+            .eq('id', chosen.id).eq('community_id', communityId).eq('status', 'received').select('id').maybeSingle();
+        if (selectError) throw selectError;
+        if (!selected) throw new Error('La cotizacion cambio mientras se elegia. Vuelve a revisarla.');
+        const { error: rejectError } = await admin.from('maintenance_quotes')
+            .update({ status: 'rejected', decided_by: profile.id, decided_at: now })
+            .eq('community_id', communityId).eq(targetColumn(target.kind), target.id).in('status', ['requested', 'received']);
+        if (rejectError) throw rejectError;
+
+        let assigned = false;
+        if (target.kind === 'ticket' && ['pending', 'accepted'].includes(target.status) && target.providerId !== chosen.provider_id) {
+            const { data: ticket, error: assignError } = await admin.from('service_requests').update({ provider_id: chosen.provider_id })
+                .eq('id', target.id).eq('community_id', communityId).eq('status', target.status).select('id').maybeSingle();
+            if (assignError) throw assignError;
+            assigned = Boolean(ticket);
+        }
+        const comparison = compareQuotes(quotes);
+        await recordOperationEvent({
+            communityId, actorId: profile.id, actorRole: profile.role,
+            action: 'agent.maintenance_quote.selected', entityType: 'maintenance_quote', entityId: chosen.id,
+            severity: 'success', status: 'success',
+            summary: `Cotizacion de ${chosen.provider_name} elegida por ${clp(Number(chosen.amount))}`,
+            metadata: { amount: chosen.amount, received: comparison.received, cheapest: comparison.cheapest?.id === chosen.id, justification: args.justification || null, assigned },
+        });
+        return {
+            entityType: 'maintenance_quote', entityId: chosen.id, title: 'Cotizacion elegida', targetHref: '/admin/mantenimiento',
+            message: `Elegi la cotizacion de ${chosen.provider_name} por ${clp(Number(chosen.amount))} entre ${comparison.received} recibidas para "${target.title.slice(0, 60)}".${assigned ? ' El ticket quedo asignado a ese proveedor.' : ''} No se contrato ni se pago nada.`,
+            data: { quoteId: chosen.id, providerId: chosen.provider_id, amount: chosen.amount, assigned },
+        };
+    },
+};
+
 const proposePaymentAgreement: AgentToolDefinition = {
     name: 'propose_payment_agreement',
     agentKey: 'finance',
@@ -800,6 +1066,10 @@ export const AGENT_TOOL_DEFINITIONS: AgentToolDefinition[] = [
     getActivePolls,
     getMaintenanceBacklog,
     getMaintenanceRisk,
+    getMaintenanceQuotes,
+    requestMaintenanceQuotes,
+    recordMaintenanceQuote,
+    selectMaintenanceQuote,
     findResidentOrUnit,
     createPoll,
     updateMaintenanceTicket,
