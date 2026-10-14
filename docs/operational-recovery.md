@@ -40,6 +40,8 @@ Referencias oficiales: [Backups de Supabase](https://supabase.com/docs/guides/pl
 
 Requisitos: CLI Supabase autenticada y vinculada al proyecto correcto, variables de Supabase locales y PostgreSQL 17 para Windows. No se requieren Docker ni un cambio de plan.
 
+El script fija la CLI en `supabase@2.114.0` para que el comando de respaldo sea reproducible en Windows. Si se actualiza esa versión, comprobar primero `db dump --linked --dry-run` y ejecutar un respaldo con restauración aislada antes de adoptarla.
+
 ```powershell
 node scripts/supabase-manual-backup.js
 ```
@@ -67,6 +69,8 @@ node scripts/supabase-pglite-restore.mjs '<directorio privado>'
 Importa datos reales en una instancia local PGlite con pgvector, restaura índices, restricciones, permisos y políticas, compara conteos y sumas financieras con la referencia de origen, comprueba aislamiento de lectura residente y verifica nuevamente los archivos de Storage. El resultado queda en `pglite-restore-report.json`; únicamente `passed: true` acredita el ensayo completo.
 
 El ensayo no sustituye una recuperación del servicio gestionado: no ejecuta las APIs alojadas de Auth/Storage, webhooks, secretos, configuración OAuth ni integraciones externas. Los módulos de plataforma que dependen de procesos gestionados deben configurarse y validarse por separado en una recuperación real.
+
+Ensayo del 14 de octubre de 2026: respaldo privado nuevo, archivo PostgreSQL de 39,542,585 bytes y 69 objetos de Storage. La restauración aislada terminó con `passed: true`: 72 cuentas Auth, 15 perfiles, 7 comunidades, 13 gastos y 102,263 productos coincidieron con el origen; las sumas de gastos ($958,200) y pagos ($1,000) también. El residente de prueba leyó dos gastos propios y ninguno ajeno. Se verificaron los 69 objetos y los 76 archivos del paquete mediante sus hashes. La copia permanece solo en este computador; falta guardarla en un segundo dispositivo privado.
 
 ### Ensayo de los servicios locales
 

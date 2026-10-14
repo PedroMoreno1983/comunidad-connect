@@ -9,6 +9,7 @@ import {
 } from "@/components/services/providerMarks";
 
 const SIZE = {
+    tile: "h-[4.5rem] w-[4.5rem]",
     compact: "h-24 w-24 sm:h-28 sm:w-28",
     card: "h-28 w-28 sm:h-[9.5rem] sm:w-[9.5rem]",
     profile: "h-32 w-32 sm:h-36 sm:w-36",

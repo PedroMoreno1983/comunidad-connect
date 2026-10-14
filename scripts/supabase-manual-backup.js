@@ -7,6 +7,8 @@ const { createReadStream } = require('node:fs');
 const { createClient } = require('@supabase/supabase-js');
 require('./load-env').loadEnvFile();
 
+// Keep backup commands reproducible when a newer CLI release changes its Windows package.
+const supabaseDryRun = ['cmd.exe', ['/d', '/s', '/c', 'npx.cmd --yes supabase@2.114.0 db dump --linked --dry-run']];
 const bin = process.env.QA_POSTGRES_BIN || 'C:/Program Files/PostgreSQL/17/bin';
 const resume = process.argv[2] === '--resume';
 if (resume && !process.argv[3]) throw new Error('Pass the private backup directory to resume.');
@@ -43,7 +45,7 @@ async function main() {
     if (!manifest.archiveReadable || !manifest.files[0] || await hash(path.join(root, manifest.files[0].name)) !== manifest.files[0].sha256) throw new Error('Cannot resume an unverified archive.');
   }
   await fs.writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest, null, 2));
-  const script = await run('cmd.exe', ['/d', '/s', '/c', 'npx.cmd supabase db dump --linked --dry-run']);
+  const script = await run(...supabaseDryRun);
   const dbEnv = { ...process.env, PGSSLMODE: 'require', PGCONNECT_TIMEOUT: '20', PGOPTIONS: '-c default_transaction_read_only=on' };
   delete dbEnv.PGSERVICE;
   delete dbEnv.PGSERVICEFILE;
@@ -72,7 +74,7 @@ async function main() {
   if (!resume) await record(archive);
   manifest.archiveReadable = true;
   // Another tool/session may rotate the CLI login while a large dump is running.
-  const renewed = await run('cmd.exe', ['/d', '/s', '/c', 'npx.cmd supabase db dump --linked --dry-run']);
+  const renewed = await run(...supabaseDryRun);
   for (const match of renewed.matchAll(/^export (PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE)="(.*)"$/gm)) dbEnv[match[1]] = match[2].replace(/\\(["\\$`])/g, '$1');
   if (!dbEnv.PGUSER.endsWith(`.${projectRef}`)) throw new Error('Linked project changed during backup.');
   await run(path.join(bin, 'pg_dumpall.exe'), ['--no-password', '--database=postgres', '--roles-only', '--no-role-passwords', '--role=postgres', '--file', path.join(root, 'roles.sql')], dbEnv);

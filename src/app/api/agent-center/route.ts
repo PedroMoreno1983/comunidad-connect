@@ -104,10 +104,13 @@ const TOOL_LABELS: Record<ToolName, string> = {
     get_supermarket_orders_summary: 'Revisar compras grupales del super',
     get_active_polls: 'Revisar votaciones activas',
     get_maintenance_backlog: 'Revisar backlog de mantencion',
+    get_maintenance_risk: 'Revisar riesgo de activos',
     find_resident_or_unit: 'Buscar residente o unidad',
     create_poll: 'Crear votacion',
     update_maintenance_ticket: 'Actualizar ticket de mantencion',
     create_parking_booking: 'Reservar estacionamiento',
+    preview_payment_agreement: 'Calcular propuesta de convenio',
+    propose_payment_agreement: 'Proponer convenio de pago',
 };
 
 function humanizeArgKey(key: string) {
@@ -258,6 +261,7 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     const wantsResidentOnboarding = lower.includes('onboarding') || lower.includes('nomina') || lower.includes('residentes') || lower.includes('cargar usuarios') || lower.includes('cargar edificio') || lower.includes('activar edificio');
     const wantsCollection = lower.includes('moros') || lower.includes('cobran') || lower.includes('impago') || lower.includes('deudor') || lower.includes('cobros pendientes');
     const wantsIotReadiness = lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion');
+    const wantsPreventiveMaintenance = lower.includes('preventiv') || lower.includes('plan de mantencion') || lower.includes('plan de mantenimiento') || lower.includes('agenda de mantencion');
     const wantsMaintenanceReview = lower.includes('tickets abiertos') || lower.includes('triage') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor');
     const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
     const wantsOperationalSnapshot = looksReadOnlyRequest(message) && /\b(resumen|estado|indicadores|cuantos|cuantas|total|morosos|deudas|tickets|reservas|residentes)\b/i.test(normalizeText(message));
@@ -360,6 +364,10 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
     if (wantsIotReadiness) {
         const playbook = getPlaybook('iot_emergency_readiness');
+        if (playbook) return playbookAction(playbook, message);
+    }
+    if (wantsPreventiveMaintenance) {
+        const playbook = getPlaybook('maintenance_preventive_plan');
         if (playbook) return playbookAction(playbook, message);
     }
     if (wantsMaintenanceReview && wantsWorkflow) {
@@ -909,7 +917,7 @@ async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile)
     const plan = await resolveCollectionRecipients(profile.community_id, expenses);
     return {
         ...action,
-        summary: `Revisar ${expenses.length} cobro(s). Registrar ${plan.notifications.length} aviso(s) en la app para ${plan.recipientCount} residente(s). ${plan.missingRecipients.length} cobro(s) sin destinatario quedaran pendientes. Los avisos remiten al saldo actualizado; no envian correo ni WhatsApp.`,
+        summary: `Revisar ${expenses.length} cobro(s), incluidos multas y cargos. Registrar ${plan.notifications.length} aviso(s) por unidad en la app para ${plan.recipientCount} residente(s). ${plan.skippedWithAgreement ? `${plan.skippedWithAgreement} unidad(es) con convenio vigente no reciben aviso. ` : ''}${plan.agreementCandidates?.length ? `${plan.agreementCandidates.length} unidad(es) con mas de 30 dias se proponen para convenio. ` : ''}${plan.missingRecipients.length} cobro(s) sin destinatario quedaran pendientes. Los avisos remiten al saldo actualizado; no envian correo ni WhatsApp.`,
     };
 }
 

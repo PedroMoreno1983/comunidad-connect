@@ -5983,3 +5983,48 @@ GRANT SELECT, INSERT ON public.parking_charge_events TO service_role;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_charges_parking_booking_once
   ON public.unit_charges (notes)
   WHERE notes LIKE 'parking_booking:%' AND status <> 'cancelled';
+
+-- Monthly finance close: the snapshot and its operation event commit together.
+CREATE TABLE IF NOT EXISTS public.finance_period_closures (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  month text NOT NULL CHECK (month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  opening_cash bigint NOT NULL CHECK (opening_cash >= 0),
+  statements jsonb NOT NULL,
+  closed_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  closed_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (community_id, month)
+);
+CREATE INDEX IF NOT EXISTS finance_period_closures_latest
+  ON public.finance_period_closures(community_id, month DESC);
+ALTER TABLE public.finance_period_closures ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.finance_period_closures FROM anon, authenticated;
+REVOKE ALL ON public.finance_period_closures FROM service_role;
+GRANT SELECT, INSERT ON public.finance_period_closures TO service_role;
+
+CREATE OR REPLACE FUNCTION public.audit_finance_period_closure()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.operation_events (
+    community_id, actor_id, actor_role, action, entity_type, entity_id,
+    severity, status, summary, metadata
+  ) VALUES (
+    NEW.community_id, NEW.closed_by, 'admin', 'finance.period_snapshot_saved',
+    'finance_period_closure', NEW.month, 'info', 'success',
+    'Corte financiero ' || NEW.month || ' guardado',
+    jsonb_build_object(
+      'month', NEW.month,
+      'openingCash', NEW.opening_cash,
+      'totalIncome', NEW.statements #> '{income,totalIncome}',
+      'totalExpenses', NEW.statements #> '{income,totalExpenses}'
+    )
+  );
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.audit_finance_period_closure() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.audit_finance_period_closure() TO service_role;
+DROP TRIGGER IF EXISTS finance_period_closure_audit ON public.finance_period_closures;
+CREATE TRIGGER finance_period_closure_audit
+  AFTER INSERT ON public.finance_period_closures
+  FOR EACH ROW EXECUTE FUNCTION public.audit_finance_period_closure();

@@ -23,11 +23,14 @@ export type ToolName =
     | 'get_supermarket_orders_summary'
     | 'get_active_polls'
     | 'get_maintenance_backlog'
+    | 'get_maintenance_risk'
     | 'find_resident_or_unit'
+    | 'preview_payment_agreement'
     // Escrituras (siempre con confirmacion humana dentro del ciclo):
     | 'create_poll'
     | 'update_maintenance_ticket'
     | 'create_parking_booking'
+    | 'propose_payment_agreement'
     // Puente al cerebro de CoCo: ejecuta una accion que CoCo propuso (reanudando
     // su sesion con la confirmacion humana). Siempre requiere aprobacion.
     | 'coco_action';
@@ -52,10 +55,13 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'get_supermarket_orders_summary',
     'get_active_polls',
     'get_maintenance_backlog',
+    'get_maintenance_risk',
     'find_resident_or_unit',
     'create_poll',
     'update_maintenance_ticket',
     'create_parking_booking',
+    'preview_payment_agreement',
+    'propose_payment_agreement',
 ];
 
 export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
@@ -74,10 +80,13 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     get_supermarket_orders_summary: 'community',
     get_active_polls: 'community',
     get_maintenance_backlog: 'maintenance',
+    get_maintenance_risk: 'maintenance',
     find_resident_or_unit: 'community',
     create_poll: 'community',
     update_maintenance_ticket: 'maintenance',
     create_parking_booking: 'concierge',
+    preview_payment_agreement: 'finance',
+    propose_payment_agreement: 'finance',
 };
 
 // Solo lecturas reales: cualquier herramienta que escriba (incluidos cobros y
@@ -92,7 +101,9 @@ export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_supermarket_orders_summary',
     'get_active_polls',
     'get_maintenance_backlog',
+    'get_maintenance_risk',
     'find_resident_or_unit',
+    'preview_payment_agreement',
 ];
 
 export const MUTATING_AGENT_TOOLS: ToolName[] = AGENT_TOOL_NAMES.filter(
@@ -119,7 +130,10 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
     get_supermarket_orders_summary: 'read',
     get_active_polls: 'read',
     get_maintenance_backlog: 'read',
+    get_maintenance_risk: 'read',
     find_resident_or_unit: 'read',
+    preview_payment_agreement: 'read',
+    propose_payment_agreement: 'write_high',
     create_booking: 'write_low',
     update_maintenance_ticket: 'write_low',
     create_parking_booking: 'write_high',
@@ -182,6 +196,7 @@ export function effectiveRequiresConfirmation(
 export type PlaybookKey =
     | 'finance_collection_review'
     | 'maintenance_ticket_triage'
+    | 'maintenance_preventive_plan'
     | 'onboarding_import_review'
     | 'iot_emergency_readiness'
     | 'community_broadcast'
@@ -468,6 +483,15 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
         targetHref: '/admin/mantenimiento',
         requiresAdmin: true,
         steps: ['Detectar tickets abiertos', 'Revisar proveedores verificados', 'Priorizar seguimiento', 'Registrar bitacora'],
+    },
+    {
+        key: 'maintenance_preventive_plan',
+        agentKey: 'maintenance',
+        name: 'Mantención preventiva',
+        description: 'Agenda la próxima mantención de cada activo según su tipo (ascensores, bombas, generador, extintores, portones), marca tareas vencidas y alerta activos atrasados. Una tarea abierta por activo.',
+        targetHref: '/admin/mantenimiento',
+        requiresAdmin: true,
+        steps: ['Leer activos y tareas', 'Calcular plan preventivo', 'Agendar tareas y fechas', 'Registrar auditoria'],
     },
     {
         key: 'onboarding_import_review',

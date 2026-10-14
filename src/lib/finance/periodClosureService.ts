@@ -1,6 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { isDeepStrictEqual } from 'node:util';
-import { recordOperationEvent } from '@/lib/operations/audit';
 import type { FinancialStatements } from '@/lib/types';
 import { BillingError, MONTH_PATTERN } from './billingService';
 import { currentMonthInChile } from './chileDates';
@@ -71,10 +70,5 @@ export async function closeFinancialPeriod(communityId: string, adminId: string,
     }).select('closed_at').single();
     if (error?.code === '23505') throw new BillingError('already_closed', 'Este período ya tiene un corte guardado.', 409);
     if (error || !data) throw error || new Error('No se pudo guardar el corte.');
-    await recordOperationEvent({ communityId, actorId: adminId, actorRole: 'admin',
-        action: 'finance.period_snapshot_saved', entityType: 'finance_period_closure', entityId: month,
-        summary: `Corte financiero ${month} guardado`, metadata: { month, openingCash,
-            totalIncome: statements.income.totalIncome, totalExpenses: statements.income.totalExpenses },
-    });
     return { ...statements, closure: { closedAt: String(data.closed_at), hasLaterChanges: false } };
 }
