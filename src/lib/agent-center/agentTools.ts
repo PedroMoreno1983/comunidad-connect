@@ -27,6 +27,11 @@ import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { readOpenMaintenanceRequests } from '@/lib/agent-center/taskPlaybooks';
 import { runCommunityReadTool } from '@/lib/agent-center/communityResearch';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { getUnitStatement } from '@/lib/finance/collectionService';
+import { createAgreement, listAgreementsForUnits } from '@/lib/finance/agreementService';
+import { activeCommitteeMembers } from '@/lib/finance/committeeMembers';
+import { proposeAgreementPlan, type AgreementProposal } from '@/lib/finance/agreementProposal';
 import type { AgentKey, AgentProfile, ToolName } from '@/lib/agent-center/domain';
 import type { AgentExecutionResult } from '@/lib/agent-center/orchestrator';
 import type { ParkingBookingStatus, ParkingSpotStatus, ServiceRequestStatus, UserRole } from '@/lib/types';
@@ -606,6 +611,152 @@ const createParkingBooking: AgentToolDefinition = {
     },
 };
 
+// ---------------------------------------------------------------------------
+// Convenios de pago: el agente calcula una propuesta a la medida y la deja
+// para aprobación humana (y del comité, si existe). Nunca se crea solo.
+// ---------------------------------------------------------------------------
+
+function optionalInstallments(value: unknown) {
+    if (value === undefined || value === null || value === '') return null;
+    const count = Number(value);
+    if (!Number.isInteger(count) || count < 2 || count > 36) throw new Error('Un convenio tiene entre 2 y 36 cuotas.');
+    return count;
+}
+
+function clp(value: number) {
+    return `$${Math.round(value).toLocaleString('es-CL')}`;
+}
+
+async function buildAgreementProposal(communityId: string, unitId: string, installmentCount: number | null) {
+    const statement = await getUnitStatement(communityId, unitId);
+    const { data: lastExpense, error } = await getSupabaseAdmin().from('expenses').select('amount, month')
+        .eq('community_id', communityId).eq('unit_id', unitId).order('month', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    const proposal: AgreementProposal = proposeAgreementPlan({
+        balance: statement.balance,
+        monthlyFee: lastExpense ? Number(lastExpense.amount) : null,
+        today: chileTodayISO(),
+        installmentCount,
+    });
+    return { proposal, unitLabel: statement.unitLabel, overdueAmount: statement.overdueAmount, oldestOverdueMonth: statement.oldestOverdueMonth };
+}
+
+async function openAgreementFor(communityId: string, unitId: string) {
+    const agreements = await listAgreementsForUnits(communityId, [unitId]);
+    return agreements.find(item => item.status === 'active' || item.status === 'pending_committee') || null;
+}
+
+const previewPaymentAgreement: AgentToolDefinition = {
+    name: 'preview_payment_agreement',
+    agentKey: 'finance',
+    risk: 'read',
+    roles: ['admin'],
+    targetHref: '/admin/finanzas/convenios',
+    label: 'Calcular propuesta de convenio',
+    tool: {
+        name: 'preview_payment_agreement',
+        description: 'Calcula una propuesta de convenio de pago para una unidad con saldo pendiente: total, cuotas y primera fecha. La cuota se ajusta para que el pago mensual siga siendo llevable. No crea nada. Solo administracion.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                unitId: { type: 'string', description: 'UUID de la unidad (de find_resident_or_unit o de la cobranza)' },
+                installmentCount: { type: 'integer', minimum: 2, maximum: 36, description: 'Opcional: cuotas pedidas por la administracion' },
+            },
+            required: ['unitId'],
+            additionalProperties: false,
+        },
+    },
+    validate(input) {
+        return { unitId: uuid(input.unitId, 'La unidad'), installmentCount: optionalInstallments(input.installmentCount) };
+    },
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const unitId = String(args.unitId);
+        const existing = await openAgreementFor(communityId, unitId);
+        if (existing) {
+            return {
+                entityType: 'payment_agreement', entityId: existing.id, title: 'La unidad ya tiene convenio', targetHref: '/admin/finanzas/convenios',
+                message: `La unidad ${existing.unitLabel || ''} ya tiene un convenio ${existing.status === 'active' ? 'vigente' : 'en revision del comite'}. No corresponde proponer otro.`,
+                data: { existingAgreementId: existing.id, status: existing.status },
+            };
+        }
+        const { proposal, unitLabel, overdueAmount, oldestOverdueMonth } = await buildAgreementProposal(communityId, unitId, args.installmentCount as number | null);
+        return {
+            entityType: 'unit', entityId: unitId, title: 'Propuesta de convenio', targetHref: '/admin/finanzas/convenios',
+            message: `Unidad ${unitLabel}: ${clp(proposal.totalAmount)} en ${proposal.installmentCount} cuotas de cerca de ${clp(proposal.installmentAmount)}, desde el ${proposal.startDate}. ${proposal.reasoning}`,
+            data: { unitId, unitLabel, overdueAmount, oldestOverdueMonth, ...proposal },
+        };
+    },
+};
+
+const proposePaymentAgreement: AgentToolDefinition = {
+    name: 'propose_payment_agreement',
+    agentKey: 'finance',
+    risk: 'write',
+    roles: ['admin'],
+    targetHref: '/admin/finanzas/convenios',
+    label: 'Proponer convenio de pago',
+    tool: {
+        name: 'propose_payment_agreement',
+        description: 'Crea un convenio de pago para una unidad con el plan de preview_payment_agreement. Si la comunidad tiene comite de finanzas, queda pendiente de su revision. Requiere confirmacion humana. Solo administracion.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                unitId: { type: 'string' },
+                installmentCount: { type: 'integer', minimum: 2, maximum: 36 },
+                reviewerId: { type: 'string', description: 'Opcional: integrante del comite que revisa' },
+                note: { type: 'string', description: 'Contexto humano del acuerdo (opcional)' },
+            },
+            required: ['unitId'],
+            additionalProperties: false,
+        },
+    },
+    validate(input) {
+        const reviewer = text(input.reviewerId, 40);
+        return {
+            unitId: uuid(input.unitId, 'La unidad'),
+            installmentCount: optionalInstallments(input.installmentCount),
+            reviewerId: reviewer ? uuid(reviewer, 'El revisor del comite') : null,
+            note: text(input.note, 300),
+        };
+    },
+    async execute(args, profile) {
+        const communityId = communityOf(profile);
+        const unitId = String(args.unitId);
+        if (await openAgreementFor(communityId, unitId)) throw new Error('Esa unidad ya tiene un convenio vigente o en revision.');
+        // Se recalcula con el saldo de este momento: entre la propuesta y la
+        // aprobacion pudo entrar un pago.
+        const { proposal, unitLabel } = await buildAgreementProposal(communityId, unitId, args.installmentCount as number | null);
+        const committee = await activeCommitteeMembers(communityId);
+        const reviewerId = committee.length
+            ? (committee.some(member => member.id === args.reviewerId) ? String(args.reviewerId) : committee[0].id)
+            : undefined;
+        const agreement = await createAgreement(communityId, profile.id, {
+            unitId,
+            title: `Convenio comunitario unidad ${unitLabel}`,
+            totalAmount: proposal.totalAmount,
+            installmentCount: proposal.installmentCount,
+            startDate: proposal.startDate,
+            notes: [proposal.reasoning, String(args.note || '')].filter(Boolean).join(' '),
+            reviewerId,
+        });
+        await recordOperationEvent({
+            communityId, actorId: profile.id, actorRole: profile.role,
+            action: 'agent.payment_agreement.proposed', entityType: 'payment_agreement', entityId: agreement.id,
+            severity: 'info', status: 'success',
+            summary: `Convenio propuesto para la unidad ${unitLabel}: ${proposal.installmentCount} cuotas`,
+            metadata: { unitId, ...proposal, reviewerId: reviewerId || null },
+        });
+        const pending = agreement.status === 'pending_committee';
+        return {
+            entityType: 'payment_agreement', entityId: agreement.id,
+            title: pending ? 'Convenio enviado al comite' : 'Convenio abierto', targetHref: '/admin/finanzas/convenios',
+            message: `Unidad ${unitLabel}: ${clp(proposal.totalAmount)} en ${proposal.installmentCount} cuotas desde el ${proposal.startDate}. ${pending ? 'Queda pendiente de la revision del comite.' : 'Ya esta vigente y se aviso al propietario.'}`,
+            data: { agreementId: agreement.id, status: agreement.status, ...proposal },
+        };
+    },
+};
+
 export const AGENT_TOOL_DEFINITIONS: AgentToolDefinition[] = [
     getParkingStatus,
     getSupermarketOrdersSummary,
@@ -615,6 +766,8 @@ export const AGENT_TOOL_DEFINITIONS: AgentToolDefinition[] = [
     createPoll,
     updateMaintenanceTicket,
     createParkingBooking,
+    previewPaymentAgreement,
+    proposePaymentAgreement,
 ];
 
 const BY_NAME = new Map<string, AgentToolDefinition>(AGENT_TOOL_DEFINITIONS.map(definition => [definition.name, definition]));
