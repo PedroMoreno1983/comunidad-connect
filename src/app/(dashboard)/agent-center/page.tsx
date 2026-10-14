@@ -15,6 +15,7 @@ import remarkGfm from "remark-gfm";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
 import { normalizeAgentMarkdown } from "@/lib/agent-center/markdown";
+import { CommitteeDigestCard } from "@/components/committeeDigest/CommitteeDigestCard";
 import type {
   AgentAction,
   AgentActivityRow,
@@ -710,6 +711,9 @@ export default function AgentCenterPage() {
       )}
         </details>
       )}
+
+      {/* Resumen semanal para el comité: borrador, edición, aprobación e historial */}
+      <CommitteeDigestCard refreshKey={messages.length} />
 
       {/* Pedir algo nuevo — necesario para poder crear propuestas */}
       <div className="mt-8 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
