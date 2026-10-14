@@ -55,3 +55,8 @@ export function splitComparison(bullets: string[]) {
     const doList = bullets.filter(bullet => !negative.test(bullet.trim()));
     return { doList, dont, contrasted: dont.length > 0 && doList.length > 0 };
 }
+
+/** Ilustración estática del tema (public/training/topics, generadas una vez con el mismo estilo). */
+export function topicImage(topic: TrainingTopic) {
+    return `/training/topics/${topic}.webp`;
+}
