@@ -70,6 +70,14 @@ export const AI_TASKS = {
         complexity: 'standard',
         description: 'Resumen semanal para el comité, redactado desde métricas agregadas (lo revisa el admin)',
     },
+    'assemblies.writer': {
+        complexity: 'standard',
+        description: 'Asambleas (Ley 21.442): prosa de la citación y del acta; las cifras las arma el código y el admin revisa',
+    },
+    'assemblies.writer.fallback': {
+        complexity: 'light',
+        description: 'Respaldo de la redacción de asambleas cuando Anthropic falla (DeepSeek si hay credencial)',
+    },
     'marketing.reel': {
         complexity: 'deep',
         description: 'Redacción creativa de guiones de marketing',
