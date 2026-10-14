@@ -113,6 +113,10 @@ JUMBO_CATEGORIES = (
 # que luego cargaba bien: un render tardio de Jumbo, no un cambio de catalogo.
 # Solo se pagan cuando hay un hueco confirmado, nunca en la cola del catalogo.
 JUMBO_GAP_RETRY_DELAYS_MS = (5_000, 15_000, 30_000)
+# Segunda oportunidad al final de la corrida, cuando Jumbo ya tuvo minutos
+# para recuperarse (corrida real del 13-oct: chocolates pagina 43 siguio vacia
+# tras los reintentos inmediatos y dejo la reconciliacion sin hacer).
+JUMBO_DEFERRED_GAP_DELAYS_MS = (60_000, 120_000)
 ACUENTA_HOME_URL = "https://www.acuenta.cl/"
 ACUENTA_HEADERS = {
     **HTTP_HEADERS,
@@ -1327,6 +1331,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             category: str,
             seen_signatures: set[tuple[str, ...]],
             page_size: int,
+            delays_ms: tuple[int, ...] = JUMBO_GAP_RETRY_DELAYS_MS,
         ) -> list[Product]:
             """Reintenta con backoff una pagina intermedia que fallo en un hueco.
 
@@ -1334,7 +1339,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             pagina. Pasa por about:blank para descartar el estado del cliente
             (una pagina repetida es el render anterior que quedo pegado).
             """
-            for delay_ms in JUMBO_GAP_RETRY_DELAYS_MS:
+            for delay_ms in delays_ms:
                 try:
                     page.goto("about:blank")
                 except Exception:  # noqa: BLE001 - solo limpia estado; el reintento decide.
@@ -1354,6 +1359,11 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
         page.on("response", capture_catalog_response)
         coverage_warnings: list[str] = []
         yielded = 0
+        # Huecos que no se recuperaron en el momento: se reintentan al final.
+        deferred_gaps: list[tuple[str, int, int, int]] = []
+        category_seen_pages: dict[str, set[tuple[str, ...]]] = {}
+        category_counts: dict[str, int] = {}
+        category_totals: dict[str, int] = {}
         try:
             for category in JUMBO_CATEGORIES:
                 try:
@@ -1435,9 +1445,8 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                                 gap_page, category, seen_pages, page_size
                             )
                             if not gap_products:
-                                coverage_warnings.append(
-                                    f"{category}: empty page {gap_page} before page "
-                                    f"{page_number} returned products"
+                                deferred_gaps.append(
+                                    (category, gap_page, page_number, page_size)
                                 )
                                 continue
                             seen_pages.add(
@@ -1451,12 +1460,9 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     yielded += len(products)
                     yield from products
 
-                if max_pages is None and not jumbo_category_coverage_sufficient(
-                    category_product_count, total
-                ):
-                    coverage_warnings.append(
-                        f"{category}: only {category_product_count} of {total} advertised products were visible"
-                    )
+                category_seen_pages[category] = seen_pages
+                category_counts[category] = category_product_count
+                category_totals[category] = total
 
                 if (
                     probes_until_repeat
@@ -1467,6 +1473,34 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     coverage_warnings.append(
                         f"{category}: exceeded the 200-page safety limit"
                     )
+            for category, gap_page, next_page, gap_page_size in deferred_gaps:
+                seen_pages = category_seen_pages[category]
+                gap_products = recover_catalog_page(
+                    gap_page,
+                    category,
+                    seen_pages,
+                    gap_page_size,
+                    JUMBO_DEFERRED_GAP_DELAYS_MS,
+                )
+                if not gap_products:
+                    coverage_warnings.append(
+                        f"{category}: empty page {gap_page} before page "
+                        f"{next_page} returned products"
+                    )
+                    continue
+                seen_pages.add(tuple(product_key(product) for product in gap_products))
+                category_counts[category] += len(gap_products)
+                yielded += len(gap_products)
+                yield from gap_products
+
+            if max_pages is None:
+                for category, category_product_count in category_counts.items():
+                    total = category_totals[category]
+                    if not jumbo_category_coverage_sufficient(category_product_count, total):
+                        coverage_warnings.append(
+                            f"{category}: only {category_product_count} of {total} advertised products were visible"
+                        )
+
             if yielded == 0:
                 detail = "; ".join(coverage_warnings) or "all categories empty"
                 raise RuntimeError(f"Jumbo returned no usable products ({detail})")

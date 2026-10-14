@@ -178,6 +178,19 @@ class JumboGapRecoveryTests(unittest.TestCase):
         # Las paginas que si cargaron se entregan igual (se persisten).
         self.assertEqual(product_pages(products), {1, 2, 4, 5})
 
+    def test_gap_still_empty_after_immediate_retries_is_recovered_at_the_end(self) -> None:
+        # Corrida real del 13-oct: el hueco siguio vacio tras los reintentos
+        # inmediatos (3 cargas normales + 3 reintentos x 3 cargas) y Jumbo lo
+        # entrego minutos despues. Debe recuperarse en la pasada final.
+        site = FakeSite(last_page=5, total=20, script={3: [None] * 12 + [3]})
+
+        products, page, error = run(site)
+
+        self.assertIsNone(error)
+        self.assertEqual(product_pages(products), {1, 2, 3, 4, 5})
+        self.assertEqual(len(products), 20)
+        self.assertIn(full_catalog.JUMBO_DEFERRED_GAP_DELAYS_MS[0], page.waits)
+
     def test_empty_tail_after_stock_filter_does_not_spend_deep_retries(self) -> None:
         # El pager publica 5 paginas pero el stock real termina en la 4.
         site = FakeSite(last_page=5, total=20, script={5: [None]})
