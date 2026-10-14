@@ -36,6 +36,10 @@ export function MaintenanceDashboard() {
     const [caseUrgencyFilter, setCaseUrgencyFilter] = useState<'all' | 'hot'>('all');
     const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [closurePhoto, setClosurePhoto] = useState<File | null>(null);
+    const [closureCost, setClosureCost] = useState('');
+    const [closureNote, setClosureNote] = useState('');
+    const [isClosing, setIsClosing] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -58,20 +62,44 @@ export function MaintenanceDashboard() {
         fetchData();
     }, []);
 
+    const resetClosure = () => {
+        setClosurePhoto(null);
+        setClosureCost('');
+        setClosureNote('');
+    };
+
     const handleCompleteTask = async (taskId: string) => {
+        if (!closurePhoto) {
+            toast({ title: "Falta la foto", description: "La tarea se cierra con una foto del trabajo terminado.", variant: "destructive" });
+            return;
+        }
+        setIsClosing(true);
         try {
-            await MaintenanceService.completeTask(taskId);
+            const form = new FormData();
+            form.append('photo', closurePhoto);
+            if (closureCost) form.append('cost', closureCost);
+            if (closureNote) form.append('note', closureNote);
+            const response = await fetch(getApiUrl(`/api/admin/maintenance/tasks/${taskId}/complete`), { method: 'POST', body: form });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'No se pudo cerrar la tarea.');
             setTasks(prev => prev.map(t =>
                 t.id === taskId ? { ...t, status: 'completed' } : t
             ));
             setIsDetailOpen(false);
+            resetClosure();
             toast({
-                title: "Tarea Completada",
-                description: "El registro ha sido actualizado exitosamente.",
+                title: "Tarea cerrada",
+                description: "Quedó la foto y el registro en la bitácora del activo.",
                 variant: "success"
             });
         } catch (error) {
-            console.error(error);
+            toast({
+                title: "No se pudo cerrar",
+                description: error instanceof Error ? error.message : 'Intentalo nuevamente.',
+                variant: "destructive"
+            });
+        } finally {
+            setIsClosing(false);
         }
     };
 
@@ -627,6 +655,7 @@ export function MaintenanceDashboard() {
                                         <button
                                             onClick={() => {
                                                 setSelectedTask(task);
+                                                resetClosure();
                                                 setIsDetailOpen(true);
                                             }}
                                             className="p-4 bg-elevated rounded-lg group-hover:bg-[var(--cc-copper)] group-hover:text-white transition-all"
@@ -705,9 +734,40 @@ export function MaintenanceDashboard() {
                             <div className="p-4 bg-[var(--cc-copper-tint)] rounded-lg flex gap-3 border border-[rgba(156, 86, 54,0.20)]">
                                 <Info className="h-5 w-5 text-[var(--cc-copper)] shrink-0" />
                                 <p className="text-[11px] font-medium text-[var(--cc-copper)] leading-relaxed">
-                                    Al completar esta tarea, se generará automáticamente un registro en la bitácora técnica del activo correspondiente.
+                                    Para cerrar la tarea sube una foto del trabajo terminado. Queda en la bitácora técnica del activo y actualiza su última mantención.
                                 </p>
                             </div>
+
+                            {selectedTask.status !== 'completed' && (
+                                <div className="space-y-3">
+                                    <label className="block text-[10px] font-medium cc-text-tertiary uppercase tracking-widest">
+                                        Foto del trabajo terminado
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                            capture="environment"
+                                            onChange={event => setClosurePhoto(event.target.files?.[0] || null)}
+                                            className="mt-2 block w-full text-sm cc-text-primary"
+                                        />
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input
+                                            inputMode="numeric"
+                                            placeholder="Costo (opcional)"
+                                            value={closureCost}
+                                            onChange={event => setClosureCost(event.target.value)}
+                                            className="h-11 rounded-lg border border-[var(--cc-line)] bg-transparent px-3 text-sm cc-text-primary"
+                                        />
+                                        <input
+                                            placeholder="Nota (opcional)"
+                                            value={closureNote}
+                                            maxLength={500}
+                                            onChange={event => setClosureNote(event.target.value)}
+                                            className="h-11 rounded-lg border border-[var(--cc-line)] bg-transparent px-3 text-sm cc-text-primary"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex gap-4">
                                 <Button
@@ -720,10 +780,11 @@ export function MaintenanceDashboard() {
                                 {selectedTask.status !== 'completed' && (
                                     <Button
                                         onClick={() => handleCompleteTask(selectedTask.id)}
+                                        disabled={!closurePhoto || isClosing}
                                         className="flex-[2] h-16 rounded-lg bg-[var(--cc-copper)] hover:opacity-90 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all"
                                     >
                                         <Check className="mr-2 h-5 w-5" />
-                                        Marcar como Completada
+                                        {isClosing ? 'Cerrando...' : 'Cerrar con foto'}
                                     </Button>
                                 )}
                             </div>
