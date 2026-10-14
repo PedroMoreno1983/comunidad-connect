@@ -217,6 +217,7 @@ export type PlaybookKey =
     | 'onboarding_import_review'
     | 'iot_emergency_readiness'
     | 'community_broadcast'
+    | 'committee_weekly_digest'
     | 'multi_agent_mission'
     // Tarea persistente de un ciclo agentico pausado en una escritura.
     | 'agentic_loop';
@@ -536,5 +537,14 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
         targetHref: '/comunicaciones',
         requiresAdmin: false,
         steps: ['Definir titulo', 'Redactar contenido', 'Confirmar publicacion', 'Auditar difusion'],
+    },
+    {
+        key: 'committee_weekly_digest',
+        agentKey: 'community',
+        name: 'Resumen semanal para el comité',
+        description: 'Arma cada lunes un resumen agregado de la semana (recaudación, mantención, solicitudes y vida en comunidad) con decisiones sugeridas. Sin nombres ni montos individuales; lo ve el comité solo después de tu aprobación.',
+        targetHref: '/agent-center#resumen-semanal',
+        requiresAdmin: true,
+        steps: ['Agregar datos de la semana', 'Redactar borrador', 'Revisión y aprobación del admin', 'Aviso al comité en la app'],
     },
 ];

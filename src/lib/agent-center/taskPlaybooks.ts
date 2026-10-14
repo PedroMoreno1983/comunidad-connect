@@ -12,6 +12,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { planPreventiveMaintenance, type PlanTask, type PreventivePlan } from '@/lib/maintenance/preventivePlan';
 import { scoreAssetRisks, type RiskAsset, type RiskLog } from '@/lib/maintenance/assetRisk';
+import { approveCommitteeDigest, generateCommitteeDigest } from '@/lib/committeeDigest/service';
+import { periodLabel } from '@/lib/committeeDigest/week';
 
 function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -422,6 +424,37 @@ async function runPreventiveMaintenanceTask(profile: AgentProfile, goal: string,
     }
 }
 
+/**
+ * Resumen semanal para el comité. Con `digestId` (la tarjeta que dejó el cron o
+ * el botón) aprueba y comparte el borrador vigente; sin él, genera el borrador
+ * de esta semana (idempotente) y lo deja en la cola para su aprobación.
+ */
+async function runCommitteeDigestPlaybook(profile: AgentProfile, digestId: string) {
+    requireAdmin(profile);
+    const definition = playbook('committee_weekly_digest');
+    if (digestId) {
+        const result = await approveCommitteeDigest(profile.community_id!, profile.id, digestId);
+        const label = periodLabel(result.digest.periodStart, result.digest.periodEnd);
+        return {
+            entityType: 'committee_digest', entityId: result.digest.id, title: 'Resumen semanal compartido', targetHref: definition.targetHref,
+            message: result.alreadyPublished
+                ? `El resumen de la semana (${label}) ya estaba compartido.`
+                : `Compartí el resumen de la semana (${label}) con ${result.digest.audience === 'committee' ? 'el comité' : 'administración, porque no hay comité vigente'}: ${result.notified} aviso(s) en la app. No se enviaron correos ni WhatsApp.`,
+            data: { digestId: result.digest.id, audience: result.digest.audience, notified: result.notified },
+        };
+    }
+    const result = await generateCommitteeDigest(profile.community_id!, { actorId: profile.id, trigger: 'agent_center' });
+    const label = periodLabel(result.digest.periodStart, result.digest.periodEnd);
+    return {
+        entityType: 'committee_digest', entityId: result.digest.id, title: result.created ? 'Borrador del resumen semanal listo' : 'Resumen semanal ya generado',
+        targetHref: definition.targetHref,
+        message: result.created
+            ? `Preparé el borrador del resumen (${label}). Revísalo en la tarjeta "Resumen semanal", edítalo si quieres y apruébalo; recién entonces lo verá el comité.`
+            : `Ya existe el resumen de esta semana (${label}); hay uno solo por semana. Revísalo en la tarjeta "Resumen semanal".`,
+        data: { digestId: result.digest.id, status: result.digest.status, source: result.digest.source },
+    };
+}
+
 export async function runAgentPlaybook(action: AgentAction, profile: AgentProfile) {
     const playbookKey = cleanText(action.args.playbookKey, 80) as PlaybookKey;
     const goal = cleanText(action.args.requestedText, 700) || action.summary;
@@ -431,5 +464,6 @@ export async function runAgentPlaybook(action: AgentAction, profile: AgentProfil
     if (playbookKey === 'onboarding_import_review') return runOnboardingTask(profile, goal);
     if (playbookKey === 'iot_emergency_readiness') return runIotReadinessTask(profile, goal);
     if (playbookKey === 'community_broadcast') return runBroadcastTask(profile, goal, cleanText(action.args.requestedText, 700));
+    if (playbookKey === 'committee_weekly_digest') return runCommitteeDigestPlaybook(profile, cleanText(action.args.digestId, 60));
     throw new Error('Accion no soportada.');
 }
