@@ -171,6 +171,7 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 | Marketplace | `/marketplace` | ✅ Activo | Supabase real |
 | Amenities | `/amenities` | ✅ Activo | Supabase real |
 | Votaciones | `/votaciones` | ✅ Activo | Supabase real |
+| Asambleas (Ley 21.442) | `/votaciones/asambleas` (residentes y comité), `/admin/asambleas` (admin) | ✅ Activo | Supabase real |
 | Gastos comunes | `/expenses` | ✅ Activo \(pagos reales pendientes de permisos Haulmer\) | Supabase real |
 | Feed/Anuncios | `/feed` | ✅ Activo | Supabase real |
 | Chat (CoCo AI) | `/chat` | ✅ Activo | Agente local + Anthropic |
@@ -285,6 +286,30 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el
 - Flujo: borrador → tarjeta en la cola de aprobaciones del Agent Center (`run_playbook` con `digestId`) y aviso en la app a los admins → el admin edita y aprueba (`POST /api/agent-center/committee-digest`, bloqueo optimista por `updated_at`) → lo ve el comité vigente (`finance_committee_members`) en `/expenses/committee-digest`, o los admins si no hay comité. Solo avisos en la app (`notifications`, categoría `committee_digest`).
 - RLS: lectura para admins de la comunidad y, ya publicado, para integrantes vigentes del comité (`is_active_committee_member`); escrituras solo por el servidor. Auditoría `agent.committee_digest.*`.
 - Los tipos del resumen viven en `src/lib/committeeDigest/types.ts` y el cliente en `src/lib/services/committeeDigestService.ts`, porque `src/lib/api.ts` y `src/lib/types.ts` ya no se pueden publicar por la API de GitHub. No los muevas ahí.
+
+**Asambleas en línea (Ley 21.442 y DS 7 de 2025)** (`src/lib/assemblies/`, ruta `/api/assemblies`, migración `20261014230000_assemblies_ley_21442.sql`)
+- Tablas: `assemblies` (tipo `ordinary | extraordinary | reinforced`, modalidad `in_person | remote | hybrid`, estado `draft → cited → in_progress → closed → minutes_signed`, más `cancelled`), `assembly_agenda_items`, `assembly_attendance` (una fila por unidad), `assembly_proxies`, `assembly_votes` (uno por unidad y punto) y `assembly_minutes`.
+- Reglas en `rules.ts`, módulo **puro** con sus cifras y artículos (verificadas en bcn.cl el 2026-10-14). El catálogo de materias del cuadro del art. 15 está en `catalog.ts`: el quórum de cada punto sale de su materia, no lo elige el admin.
+  - Citación de 5 a 15 días (art. 16). La publicación se bloquea fuera de ese rango.
+  - Constitución: ordinaria ≥33%, extraordinaria >50% y reforzada ≥66% de los derechos.
+  - Acuerdo: ordinaria con más de la mitad de los derechos presentes, mayoría absoluta con más de la mitad del total y reforzada con ≥66% del total (art. 15).
+  - Si piden la sesión copropietarios con ≥10% (art. 14), se cita dentro de 10 días corridos (DS 7, art. 15).
+  - El acta se firma en 30 días (art. 15).
+  - Hay notario en las reforzadas y en la modificación del reglamento 2) a).
+  - Los gastos sobre 6 cuotas en 12 meses solo se aprueban en extraordinaria.
+  - El administrador no representa a nadie (art. 15; DS 7 art. 22). Además lo bloquea un trigger.
+  - El ocupante representa por ley y en las reforzadas necesita autorización expresa (DS 7 art. 12).
+- Derechos: `units.share_permille` (la alícuota de gastos comunes). Si falta en alguna unidad se cuenta **1 unidad = 1 voto para todas**, con una advertencia al admin, igual que el prorrateo. Al iniciar la sesión se guarda la foto en `assemblies.rights_snapshot`.
+- Imagen y voz (DS 7 art. 16): las marca **a mano** el admin o la secretaría designada (`secretary_profile_id`, un residente) al acreditar y en cada voto en línea. Un voto en línea sin verificar no se cuenta. No hay videollamada integrada: el enlace es externo.
+- La IA (`aiWriter.ts`: Anthropic y luego DeepSeek si hay clave, tareas `assemblies.writer*` del `modelRouter`) solo redacta prosa: la apertura de la citación y el "desarrollo" del acta. La tabla, los quórums, la asistencia por unidad y los resultados los arma `compose.ts` desde los datos. Si la IA falla, se usa el texto determinista.
+- Escrituras solo por el servidor. RLS:
+  - Admin: ve todo.
+  - Comité vigente: ve todo en solo lectura (`assembly_can_oversee`).
+  - Residente: ve las asambleas ya citadas y solo la asistencia, los votos y los poderes de sus unidades (`assembly_unit_is_mine`). Ve el acta cuando está firmada.
+- Los avisos son solo dentro de la app (`notifications`, categoría `assembly`). Se auditan las acciones `assembly.*`.
+- Tipos en `src/lib/assemblies/types.ts` y cliente en `src/lib/services/assemblyService.ts`, no en `api.ts`/`types.ts`.
+- **TODO (decisión de Pedro): copropietarios hábiles.** La ley solo deja votar a los copropietarios hábiles, es decir, al día en sus obligaciones económicas (Ley 21.442 arts. 2 N°13 y 15; DS 7 art. 14). Con un convenio vigente también lo son (DS 7 art. 9). Por la convención del proyecto (la convivencia construye comunidad: sin lenguaje de deudor y sin exponer a nadie) **no hay exclusión automática ligada a deuda**: hoy toda unidad acreditada vota. Falta decidir cómo se acredita la calidad de hábil (el certificado del administrador que pide la ley) sin exponer a nadie, antes de implementarlo.
+- Pendiente: la consulta por escrito con sesión informativa (art. 15) y la recolección en la app de firmas para la petición del 10% (hoy el admin registra la fecha y el porcentaje).
 
 **Al agregar una herramienta**, regístrala en `ToolName`, `AGENT_TOOL_NAMES`, `TOOL_AGENT_KEYS`, `TOOL_RISK_LEVELS` (y `READ_ONLY_AGENT_TOOLS` si solo lee) en `domain.ts`, y también en la etiqueta de `src/app/api/agent-center/route.ts` y en el arreglo de herramientas de `agentTools.ts`.
 
