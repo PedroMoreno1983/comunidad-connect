@@ -11,7 +11,7 @@ describe('training slide visuals', () => {
     });
 
     it('splits "Label: text" bullets with short labels only', () => {
-        expect(splitLabeled('Novedad: encomienda o visita.')).toEqual({ label: 'Novedad', text: 'encomienda o visita.' });
+        expect(splitLabeled('Novedad: encomienda o visita.')).toEqual({ label: 'Novedad', text: 'Encomienda o visita.' });
         expect(splitLabeled('No prometas hora de llegada.')).toEqual({ label: null, text: 'No prometas hora de llegada.' });
         expect(splitLabeled('Cuando llegues al edificio y veas que todo está en orden: anota.').label).toBeNull();
     });
