@@ -755,7 +755,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
 DROP TRIGGER IF EXISTS trg_prevent_profile_privilege_escalation ON public.profiles;
 CREATE TRIGGER trg_prevent_profile_privilege_escalation
   BEFORE UPDATE ON public.profiles
@@ -1820,6 +1819,46 @@ CREATE INDEX IF NOT EXISTS supermarket_saved_lists_user_recent_idx
 
 ALTER TABLE public.supermarket_saved_lists ENABLE ROW LEVEL SECURITY;
 
+-- Promociones por volumen y pedido minimo (issue #96).
+-- Ver 20261013140000_supermarket_volume_promotions.sql: promo_total_price
+-- pesos por cada bloque de promo_min_qty unidades; promo_checked_at NULL
+-- significa que el scraper nunca reviso el badge y el total es estimado.
+-- Un ALTER por columna para que qa:schema-drift las reconozca todas.
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_min_qty INTEGER;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_total_price INTEGER;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_label TEXT;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_group TEXT;
+ALTER TABLE public.supermarket_products ADD COLUMN IF NOT EXISTS promo_checked_at TIMESTAMPTZ;
+ALTER TABLE public.supermarket_products
+  DROP CONSTRAINT IF EXISTS supermarket_products_volume_promo_check;
+ALTER TABLE public.supermarket_products
+  ADD CONSTRAINT supermarket_products_volume_promo_check
+  CHECK (
+    (promo_min_qty IS NULL AND promo_total_price IS NULL)
+    OR (promo_min_qty BETWEEN 2 AND 1000 AND promo_total_price > 0)
+  );
+
+CREATE TABLE IF NOT EXISTS public.supermarket_store_policies (
+  store TEXT PRIMARY KEY,
+  minimum_order INTEGER,
+  source TEXT,
+  observed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT supermarket_store_policies_store_check
+    CHECK (store IN ('Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun')),
+  CONSTRAINT supermarket_store_policies_minimum_order_check
+    CHECK (minimum_order IS NULL OR minimum_order > 0)
+);
+
+ALTER TABLE public.supermarket_store_policies ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "supermarket_store_policies_read" ON public.supermarket_store_policies;
+CREATE POLICY "supermarket_store_policies_read"
+  ON public.supermarket_store_policies
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
 
 -- ############################################################################
 -- Esquema completado desde la base, 2026-09-06
@@ -2402,7 +2441,7 @@ CREATE TABLE IF NOT EXISTS "public"."parking_bookings" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "parking_bookings_community_fee_amount_check" CHECK (("community_fee_amount" >= 0)),
     CONSTRAINT "parking_bookings_owner_payout_amount_check" CHECK (("owner_payout_amount" >= 0)),
-    CONSTRAINT "parking_bookings_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'refunded'::"text", 'failed'::"text"]))),
+    CONSTRAINT "parking_bookings_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'refunded'::"text", 'failed'::"text", 'voided'::"text"]))),
     CONSTRAINT "parking_bookings_range_valid" CHECK (("ends_at" > "starts_at")),
     CONSTRAINT "parking_bookings_status_check" CHECK (("status" = ANY (ARRAY['confirmed'::"text", 'active'::"text", 'completed'::"text", 'cancelled'::"text", 'no_show'::"text"]))),
     CONSTRAINT "parking_bookings_total_amount_check" CHECK (("total_amount" >= 0))
@@ -4091,7 +4130,7 @@ REVOKE ALL ON FUNCTION public.set_supermarket_history_enabled(boolean) FROM PUBL
 GRANT EXECUTE ON FUNCTION public.set_supermarket_history_enabled(boolean) TO authenticated;
 
 -- =====================================================================
--- FORMACIÓN TRAZABLE, VERSIONADA Y CERTIFICADA (20260917143000 / 151500)
+-- FORMACIÓN TRAZABLE, VERSIONADA Y CERTIFICADA (20260917162913 / 163902)
 -- Espejo de las migraciones aplicadas para instalaciones nuevas.
 -- =====================================================================
 
@@ -4532,7 +4571,7 @@ GRANT SELECT ON public.training_certificates TO authenticated;
 COMMIT;
 
 -- Cleanup de políticas heredadas al reconstruir desde este esquema maestro
--- (20260920043500_training_policy_bootstrap_cleanup).
+-- (20260920043353_training_policy_bootstrap_cleanup).
 BEGIN;
 
 DROP POLICY IF EXISTS training_modules_select ON public.training_modules;
@@ -4681,7 +4720,7 @@ VALUES ('finance-documents', 'finance-documents', false, 10485760,
 ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 10485760;
 
 
--- Operational request boundaries (20261006185658):
+-- Operational request boundaries (20261006192053):
 -- Requests preserve identity, tenant boundaries and lifecycle; notifications commit atomically.
 BEGIN;
 ALTER TABLE public.service_requests DROP CONSTRAINT service_requests_status_check;
@@ -4792,3 +4831,1155 @@ DROP TRIGGER IF EXISTS z_participation_identity_guard ON public.community_partic
 CREATE TRIGGER z_participation_identity_guard BEFORE INSERT OR UPDATE ON public.community_participation_requests
 FOR EACH ROW EXECUTE FUNCTION public.guard_participation_request_identity();
 COMMIT;
+-- Cancelar una emisión y sus asientos derivados en una sola transacción.
+-- Bloquear los cobros impide que entre un abono con destino explícito entre
+-- la comprobación y el borrado (la FK de unit_payments espera el bloqueo).
+CREATE OR REPLACE FUNCTION public.cancel_billing_run_safe(
+  p_community_id uuid,
+  p_run_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_run public.billing_runs%ROWTYPE;
+  v_expense_ids uuid[];
+BEGIN
+  SELECT * INTO v_run
+  FROM public.billing_runs
+  WHERE id = p_run_id AND community_id = p_community_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('status', 'not_found');
+  END IF;
+  IF v_run.status <> 'issued' THEN
+    RETURN jsonb_build_object('status', 'not_issued');
+  END IF;
+
+  -- FOR UPDATE serializa pagos asignados, cambios de estado y cancelación.
+  PERFORM 1 FROM public.expenses WHERE billing_run_id = p_run_id FOR UPDATE;
+  SELECT array_agg(id) INTO v_expense_ids
+  FROM public.expenses WHERE billing_run_id = p_run_id;
+
+  IF EXISTS (
+    SELECT 1 FROM public.expenses
+    WHERE billing_run_id = p_run_id AND status = 'paid'
+  ) THEN
+    RETURN jsonb_build_object('status', 'has_paid');
+  END IF;
+  IF v_expense_ids IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.unit_payments
+    WHERE expense_id = ANY(v_expense_ids)
+  ) THEN
+    RETURN jsonb_build_object('status', 'has_payment');
+  END IF;
+  IF v_expense_ids IS NOT NULL AND (
+    EXISTS (SELECT 1 FROM public.unit_charges WHERE source_expense_id = ANY(v_expense_ids))
+    OR EXISTS (SELECT 1 FROM public.solidarity_contributions WHERE expense_id = ANY(v_expense_ids))
+  ) THEN
+    RETURN jsonb_build_object('status', 'has_related_records');
+  END IF;
+
+  DELETE FROM public.expenses WHERE billing_run_id = p_run_id;
+  DELETE FROM public.reserve_fund_movements
+  WHERE billing_run_id = p_run_id AND kind = 'contribution';
+  UPDATE public.billing_runs SET status = 'cancelled' WHERE id = p_run_id;
+
+  RETURN jsonb_build_object('status', 'cancelled', 'month', v_run.month);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cancel_billing_run_safe(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_billing_run_safe(uuid, uuid) TO service_role;
+
+-- Revisión del comité del gasto común (migración 20261010150842)
+-- Revisión independiente del prorrateo antes de emitir el gasto común.
+-- Cada solicitud conserva una foto de la propuesta; una nueva solicitud no
+-- sobreescribe decisiones anteriores.
+CREATE TABLE IF NOT EXISTS public.finance_committee_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  month text NOT NULL CHECK (month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  reviewer_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  requested_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'approved', 'rejected')),
+  due_date date NOT NULL,
+  quota_amount numeric(14, 2),
+  quota_method text CHECK (quota_method IN ('share', 'equal')),
+  snapshot_digest text NOT NULL CHECK (snapshot_digest ~ '^[0-9a-f]{64}$'),
+  snapshot jsonb NOT NULL,
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  reviewed_at timestamptz,
+  review_note text CHECK (length(review_note) <= 1000),
+  CONSTRAINT finance_committee_review_distinct_actors CHECK (reviewer_id <> requested_by)
+);
+
+CREATE INDEX IF NOT EXISTS finance_committee_reviews_latest
+  ON public.finance_committee_reviews(community_id, month, requested_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS finance_committee_reviews_reviewer
+  ON public.finance_committee_reviews(reviewer_id, requested_at DESC);
+
+ALTER TABLE public.finance_committee_reviews ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.finance_committee_reviews FROM anon, authenticated;
+GRANT ALL ON public.finance_committee_reviews TO service_role;
+
+ALTER TABLE public.billing_runs
+  ADD COLUMN IF NOT EXISTS committee_review_id uuid REFERENCES public.finance_committee_reviews(id) ON DELETE SET NULL;
+
+-- 20261011004910_finance_committee_governance_and_closures.sql
+
+-- Gobierno financiero: integrantes vigentes, convenios sujetos a aprobación y
+-- estados financieros cerrados por período. Solo el servidor usa estas tablas.
+CREATE TABLE public.finance_committee_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  resident_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  appointed_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  appointed_at timestamptz NOT NULL DEFAULT now(),
+  starts_on date NOT NULL DEFAULT CURRENT_DATE,
+  ended_at timestamptz,
+  ended_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  CHECK (ended_at IS NULL OR ended_at::date >= starts_on)
+);
+CREATE UNIQUE INDEX finance_committee_one_open_membership
+  ON public.finance_committee_members(community_id, resident_id)
+  WHERE ended_at IS NULL;
+CREATE INDEX finance_committee_members_active
+  ON public.finance_committee_members(community_id, starts_on, ended_at);
+ALTER TABLE public.finance_committee_members ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.finance_committee_members FROM anon, authenticated;
+GRANT ALL ON public.finance_committee_members TO service_role;
+
+ALTER TABLE public.payment_agreements
+  DROP CONSTRAINT IF EXISTS payment_agreements_status_check;
+ALTER TABLE public.payment_agreements
+  ADD CONSTRAINT payment_agreements_status_check
+  CHECK (status IN ('pending_committee', 'active', 'completed', 'cancelled', 'rejected'));
+ALTER TABLE public.payment_agreements
+  ADD COLUMN committee_reviewer_id uuid REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  ADD COLUMN committee_reviewed_at timestamptz,
+  ADD COLUMN committee_review_note text CHECK (length(committee_review_note) <= 1000);
+DROP INDEX IF EXISTS public.payment_agreements_one_active;
+CREATE UNIQUE INDEX payment_agreements_one_open
+  ON public.payment_agreements(community_id, unit_id)
+  WHERE status IN ('pending_committee', 'active');
+
+CREATE TABLE public.finance_period_closures (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  month text NOT NULL CHECK (month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  opening_cash bigint NOT NULL CHECK (opening_cash >= 0),
+  statements jsonb NOT NULL,
+  closed_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  closed_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (community_id, month)
+);
+CREATE INDEX finance_period_closures_latest
+  ON public.finance_period_closures(community_id, month DESC);
+ALTER TABLE public.finance_period_closures ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.finance_period_closures FROM anon, authenticated;
+REVOKE ALL ON public.finance_period_closures FROM service_role;
+GRANT SELECT, INSERT ON public.finance_period_closures TO service_role;
+
+-- Un corte bloquea también períodos anteriores. Las correcciones se registran
+-- en un período abierto, preservando la foto contable del mes cerrado.
+CREATE FUNCTION public.assert_finance_period_open() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+  subject jsonb;
+  subject_month text;
+  subject_community uuid;
+BEGIN
+  IF TG_OP <> 'INSERT' THEN
+    subject := to_jsonb(OLD);
+    subject_month := left(subject ->> TG_ARGV[0], 7);
+    subject_community := (subject ->> 'community_id')::uuid;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El período % está cerrado; registra el ajuste en un mes abierto.', subject_month USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    subject := to_jsonb(NEW);
+    subject_month := left(subject ->> TG_ARGV[0], 7);
+    subject_community := (subject ->> 'community_id')::uuid;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El período % está cerrado; registra el ajuste en un mes abierto.', subject_month USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assert_finance_period_open() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.assert_finance_period_open() TO service_role;
+
+CREATE TRIGGER expenses_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.expenses
+  FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('month');
+CREATE TRIGGER community_expenses_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.community_expenses
+  FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('month');
+CREATE TRIGGER unit_charges_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.unit_charges
+  FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('month');
+CREATE TRIGGER unit_payments_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.unit_payments
+  FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('paid_at');
+CREATE TRIGGER reserve_fund_movements_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.reserve_fund_movements
+  FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('month');
+CREATE TRIGGER journal_entries_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.journal_entries
+  FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('entry_date');
+
+CREATE FUNCTION public.assert_journal_line_period_open() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+  subject_entry uuid;
+  subject_community uuid;
+  subject_month text;
+BEGIN
+  IF TG_OP <> 'INSERT' THEN
+    subject_entry := OLD.entry_id;
+    SELECT community_id, left(entry_date::text, 7) INTO subject_community, subject_month
+      FROM public.journal_entries WHERE id = subject_entry;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El asiento pertenece a un período cerrado.' USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    subject_entry := NEW.entry_id;
+    SELECT community_id, left(entry_date::text, 7) INTO subject_community, subject_month
+      FROM public.journal_entries WHERE id = subject_entry;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El asiento pertenece a un período cerrado.' USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assert_journal_line_period_open() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.assert_journal_line_period_open() TO service_role;
+CREATE TRIGGER journal_lines_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.journal_lines
+  FOR EACH ROW EXECUTE FUNCTION public.assert_journal_line_period_open();
+
+
+-- 20261011005322_allow_settlement_updates_after_finance_close.sql
+
+-- Un pago posterior puede saldar una deuda de un mes ya cerrado. Esto solo
+-- cambia su estado de cobranza; el monto emitido y el corte permanecen iguales.
+CREATE OR REPLACE FUNCTION public.assert_finance_period_open() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+  subject jsonb;
+  subject_month text;
+  subject_community uuid;
+BEGIN
+  IF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'expenses'
+     AND to_jsonb(NEW) - 'status' - 'paid_at' - 'payment_metadata'
+         = to_jsonb(OLD) - 'status' - 'paid_at' - 'payment_metadata' THEN
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'unit_charges'
+     AND OLD.status <> 'cancelled' AND NEW.status <> 'cancelled'
+     AND to_jsonb(NEW) - 'status' = to_jsonb(OLD) - 'status' THEN
+    RETURN NEW;
+  END IF;
+  IF TG_OP <> 'INSERT' THEN
+    subject := to_jsonb(OLD);
+    subject_month := left(subject ->> TG_ARGV[0], 7);
+    subject_community := (subject ->> 'community_id')::uuid;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El período % está cerrado; registra el ajuste en un mes abierto.', subject_month USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    subject := to_jsonb(NEW);
+    subject_month := left(subject ->> TG_ARGV[0], 7);
+    subject_community := (subject ->> 'community_id')::uuid;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El período % está cerrado; registra el ajuste en un mes abierto.', subject_month USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+
+-- 20261011194026_finance_payment_atomic_journal.sql
+-- Registrar la entrada de dinero en el libro dentro de la misma transacción
+-- que crea o elimina el pago. No sustituye el saldo de apertura ni la
+-- clasificación contable pendiente de validación profesional.
+BEGIN;
+
+-- La versión anterior evaluaba OLD.status de unit_charges incluso durante
+-- INSERT de unit_payments. PL/pgSQL no garantiza cortocircuito entre AND y el
+-- pago fallaba con «record old has no field status».
+CREATE OR REPLACE FUNCTION public.assert_finance_period_open() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  subject jsonb;
+  subject_month text;
+  subject_community uuid;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF TG_TABLE_NAME = 'expenses' THEN
+      IF to_jsonb(NEW) - 'status' - 'paid_at' - 'payment_metadata'
+         = to_jsonb(OLD) - 'status' - 'paid_at' - 'payment_metadata' THEN
+        RETURN NEW;
+      END IF;
+    ELSIF TG_TABLE_NAME = 'unit_charges' THEN
+      IF OLD.status <> 'cancelled' AND NEW.status <> 'cancelled'
+         AND to_jsonb(NEW) - 'status' = to_jsonb(OLD) - 'status' THEN
+        RETURN NEW;
+      END IF;
+    END IF;
+  END IF;
+  IF TG_OP <> 'INSERT' THEN
+    subject := to_jsonb(OLD);
+    subject_month := left(subject ->> TG_ARGV[0], 7);
+    subject_community := (subject ->> 'community_id')::uuid;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El período % está cerrado; registra el ajuste en un mes abierto.', subject_month USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    subject := to_jsonb(NEW);
+    subject_month := left(subject ->> TG_ARGV[0], 7);
+    subject_community := (subject ->> 'community_id')::uuid;
+    IF EXISTS (SELECT 1 FROM public.finance_period_closures
+               WHERE community_id = subject_community AND month >= subject_month) THEN
+      RAISE EXCEPTION 'El período % está cerrado; registra el ajuste en un mes abierto.', subject_month USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+ALTER TABLE public.journal_entries
+  ADD COLUMN IF NOT EXISTS source_record_id uuid;
+ALTER TABLE public.journal_entries
+  DROP CONSTRAINT IF EXISTS journal_entries_source_check;
+ALTER TABLE public.journal_entries
+  ADD CONSTRAINT journal_entries_source_check
+  CHECK (source IN ('manual', 'agreement', 'payroll', 'payment', 'payment_reversal'));
+CREATE UNIQUE INDEX IF NOT EXISTS journal_entries_source_record_once
+  ON public.journal_entries (community_id, source, source_record_id)
+  WHERE source_record_id IS NOT NULL;
+
+-- La versión anterior de la aplicación contabilizaba una cuota de convenio
+-- como ingreso nuevo después de registrar su pago. El pago ya genera su
+-- asiento correcto, por lo que se rechaza ese segundo asiento hasta que el
+-- despliegue de la aplicación retire la llamada antigua.
+CREATE OR REPLACE FUNCTION public.finance_reject_legacy_agreement_journal()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+BEGIN
+  IF NEW.source = 'agreement' THEN
+    RAISE EXCEPTION 'Las cuotas de convenio se contabilizan con el pago de unidad.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.finance_reject_legacy_agreement_journal() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.finance_reject_legacy_agreement_journal() TO service_role;
+DROP TRIGGER IF EXISTS finance_reject_legacy_agreement_journal ON public.journal_entries;
+CREATE TRIGGER finance_reject_legacy_agreement_journal
+  BEFORE INSERT ON public.journal_entries FOR EACH ROW
+  EXECUTE FUNCTION public.finance_reject_legacy_agreement_journal();
+
+CREATE OR REPLACE FUNCTION public.finance_journal_unit_payment()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_entry uuid;
+  v_bank uuid;
+  v_receivable uuid;
+  v_amount integer;
+  v_community uuid;
+  v_payment uuid;
+  v_paid_at date;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.community_id IS DISTINCT FROM OLD.community_id
+      OR NEW.unit_id IS DISTINCT FROM OLD.unit_id
+      OR NEW.amount IS DISTINCT FROM OLD.amount
+      OR NEW.paid_at IS DISTINCT FROM OLD.paid_at THEN
+      RAISE EXCEPTION 'Corrige el pago mediante anulación y nuevo registro.';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  v_community := CASE WHEN TG_OP = 'INSERT' THEN NEW.community_id ELSE OLD.community_id END;
+  v_payment := CASE WHEN TG_OP = 'INSERT' THEN NEW.id ELSE OLD.id END;
+  v_paid_at := CASE WHEN TG_OP = 'INSERT' THEN NEW.paid_at ELSE OLD.paid_at END;
+  IF TG_OP = 'INSERT' THEN v_amount := NEW.amount; ELSE v_amount := OLD.amount; END IF;
+  IF v_amount <= 0 OR v_amount > 2147483647 OR
+    (CASE WHEN TG_OP = 'INSERT' THEN NEW.amount ELSE OLD.amount END) <> v_amount THEN
+    RAISE EXCEPTION 'El monto del pago debe ser un número entero de pesos dentro del rango contable.';
+  END IF;
+
+  INSERT INTO public.ledger_accounts (community_id, code, name, kind)
+  VALUES (v_community, '1100', 'Banco', 'asset'),
+         (v_community, '1200', 'Cuentas por cobrar a unidades', 'asset')
+  ON CONFLICT (community_id, code) DO NOTHING;
+  SELECT id INTO STRICT v_bank FROM public.ledger_accounts
+    WHERE community_id = v_community AND code = '1100';
+  SELECT id INTO STRICT v_receivable FROM public.ledger_accounts
+    WHERE community_id = v_community AND code = '1200';
+
+  INSERT INTO public.journal_entries
+    (community_id, entry_date, memo, source, source_record_id, created_by)
+  VALUES
+    (v_community, v_paid_at,
+     CASE WHEN TG_OP = 'INSERT' THEN 'Pago de unidad' ELSE 'Reversa de pago de unidad' END,
+     CASE WHEN TG_OP = 'INSERT' THEN 'payment' ELSE 'payment_reversal' END,
+     v_payment,
+     CASE WHEN TG_OP = 'INSERT' THEN NEW.recorded_by ELSE OLD.recorded_by END)
+  RETURNING id INTO v_entry;
+
+  INSERT INTO public.journal_lines (entry_id, account_id, debit, credit)
+  VALUES
+    (v_entry, v_bank,
+     CASE WHEN TG_OP = 'INSERT' THEN v_amount ELSE 0 END,
+     CASE WHEN TG_OP = 'DELETE' THEN v_amount ELSE 0 END),
+    (v_entry, v_receivable,
+     CASE WHEN TG_OP = 'DELETE' THEN v_amount ELSE 0 END,
+     CASE WHEN TG_OP = 'INSERT' THEN v_amount ELSE 0 END);
+  RETURN CASE WHEN TG_OP = 'INSERT' THEN NEW ELSE OLD END;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.finance_journal_unit_payment() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.finance_journal_unit_payment() TO service_role;
+
+DROP TRIGGER IF EXISTS finance_journal_unit_payment_insert ON public.unit_payments;
+CREATE TRIGGER finance_journal_unit_payment_insert
+  AFTER INSERT ON public.unit_payments FOR EACH ROW
+  EXECUTE FUNCTION public.finance_journal_unit_payment();
+DROP TRIGGER IF EXISTS finance_journal_unit_payment_delete ON public.unit_payments;
+CREATE TRIGGER finance_journal_unit_payment_delete
+  AFTER DELETE ON public.unit_payments FOR EACH ROW
+  EXECUTE FUNCTION public.finance_journal_unit_payment();
+DROP TRIGGER IF EXISTS finance_journal_unit_payment_update ON public.unit_payments;
+CREATE TRIGGER finance_journal_unit_payment_update
+  BEFORE UPDATE ON public.unit_payments FOR EACH ROW
+  EXECUTE FUNCTION public.finance_journal_unit_payment();
+
+-- Pago de convenio: pago, asiento, cuota y estado del convenio se confirman
+-- juntos. Un fallo en cualquiera de ellos revierte la operación completa.
+CREATE OR REPLACE FUNCTION public.pay_agreement_installment_atomic(
+  p_community_id uuid, p_installment_id uuid, p_paid_at date,
+  p_method text, p_reference text, p_recorded_by uuid
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  v_installment record;
+  v_payment uuid;
+  v_reference text;
+BEGIN
+  SELECT i.id, i.agreement_id, i.amount, i.status AS installment_status,
+         i.sequence_number, a.unit_id, a.title, a.status AS agreement_status
+  INTO v_installment
+  FROM public.payment_agreement_installments i
+  JOIN public.payment_agreements a ON a.id = i.agreement_id
+  WHERE i.id = p_installment_id AND i.community_id = p_community_id
+    AND a.community_id = p_community_id
+  FOR UPDATE OF i, a;
+  IF NOT FOUND THEN RETURN jsonb_build_object('status', 'not_found'); END IF;
+  IF v_installment.agreement_status <> 'active' THEN
+    RETURN jsonb_build_object('status', 'closed');
+  END IF;
+  IF v_installment.installment_status = 'paid' THEN
+    RETURN jsonb_build_object('status', 'already_paid');
+  END IF;
+  v_reference := coalesce(nullif(trim(p_reference), ''),
+    'convenio-' || left(p_installment_id::text, 8) || '-' || v_installment.sequence_number);
+  INSERT INTO public.unit_payments
+    (community_id, unit_id, amount, paid_at, method, reference, notes, recorded_by)
+  VALUES
+    (p_community_id, v_installment.unit_id, v_installment.amount,
+     p_paid_at, p_method, v_reference,
+     'Cuota ' || v_installment.sequence_number || ' del convenio «' || v_installment.title || '».',
+     p_recorded_by)
+  RETURNING id INTO v_payment;
+  UPDATE public.payment_agreement_installments
+    SET status = 'paid', paid_at = p_paid_at, payment_id = v_payment
+    WHERE id = p_installment_id;
+  UPDATE public.payment_agreements
+    SET status = CASE WHEN EXISTS (
+      SELECT 1 FROM public.payment_agreement_installments
+      WHERE agreement_id = v_installment.agreement_id AND status = 'pending'
+    ) THEN 'active' ELSE 'completed' END,
+    updated_at = now()
+    WHERE id = v_installment.agreement_id;
+  RETURN jsonb_build_object('status', 'paid', 'paymentId', v_payment,
+    'unitId', v_installment.unit_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.pay_agreement_installment_atomic(uuid, uuid, date, text, text, uuid)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.pay_agreement_installment_atomic(uuid, uuid, date, text, text, uuid)
+  TO service_role;
+
+-- Los pagos anteriores al trigger quedan trazados sin modificar su fecha.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM public.unit_payments
+             WHERE amount <> trunc(amount) OR amount > 2147483647) THEN
+    RAISE EXCEPTION 'Hay pagos históricos fuera del rango de pesos enteros; revisa antes de migrar.';
+  END IF;
+END $$;
+INSERT INTO public.ledger_accounts (community_id, code, name, kind)
+SELECT DISTINCT community_id, '1100', 'Banco', 'asset' FROM public.unit_payments
+ON CONFLICT (community_id, code) DO NOTHING;
+INSERT INTO public.ledger_accounts (community_id, code, name, kind)
+SELECT DISTINCT community_id, '1200', 'Cuentas por cobrar a unidades', 'asset' FROM public.unit_payments
+ON CONFLICT (community_id, code) DO NOTHING;
+
+WITH inserted AS (
+  INSERT INTO public.journal_entries
+    (community_id, entry_date, memo, source, source_record_id, created_by)
+  SELECT p.community_id, p.paid_at, 'Pago de unidad (histórico)', 'payment', p.id, p.recorded_by
+  FROM public.unit_payments p
+  WHERE p.amount = trunc(p.amount) AND p.amount <= 2147483647
+  ON CONFLICT DO NOTHING
+  RETURNING id, community_id, source_record_id
+)
+INSERT INTO public.journal_lines (entry_id, account_id, debit, credit)
+SELECT i.id, a.id,
+  CASE WHEN a.code = '1100' THEN p.amount::integer ELSE 0 END,
+  CASE WHEN a.code = '1200' THEN p.amount::integer ELSE 0 END
+FROM inserted i
+JOIN public.unit_payments p ON p.id = i.source_record_id
+JOIN public.ledger_accounts a ON a.community_id = i.community_id AND a.code IN ('1100', '1200');
+
+COMMIT;
+
+-- Migration: 20261012020322_finance_payroll_atomic_payment.sql
+
+-- Confirmar remuneración, egreso y asiento en una única transacción.
+-- La clasificación final de cuentas sigue pendiente de validación profesional.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.finance_reject_unlinked_payroll_journal()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+BEGIN
+  IF NEW.source = 'payroll' AND NEW.source_record_id IS NULL THEN
+    RAISE EXCEPTION 'El asiento de remuneraciones debe registrarse junto con la liquidación.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.finance_reject_unlinked_payroll_journal() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.finance_reject_unlinked_payroll_journal() TO service_role;
+DROP TRIGGER IF EXISTS finance_reject_unlinked_payroll_journal ON public.journal_entries;
+CREATE TRIGGER finance_reject_unlinked_payroll_journal
+  BEFORE INSERT ON public.journal_entries FOR EACH ROW
+  EXECUTE FUNCTION public.finance_reject_unlinked_payroll_journal();
+
+CREATE OR REPLACE FUNCTION public.pay_payroll_run_atomic(
+  p_community_id uuid, p_run_id uuid, p_paid_at date,
+  p_reference text, p_actor_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  v_run record;
+  v_line_total bigint;
+  v_expense_id uuid;
+  v_entry_id uuid;
+  v_salary_account uuid;
+  v_bank_account uuid;
+BEGIN
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'Indica la fecha del pago.';
+  END IF;
+  SELECT id, month, status, total_amount, journal_entry_id, expense_id
+    INTO v_run FROM public.payroll_runs
+    WHERE id = p_run_id AND community_id = p_community_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('status', 'not_found'); END IF;
+  IF v_run.status = 'paid' THEN RETURN jsonb_build_object('status', 'already_paid'); END IF;
+  IF v_run.journal_entry_id IS NOT NULL OR v_run.expense_id IS NOT NULL THEN
+    RAISE EXCEPTION 'La liquidación tiene registros parciales; revísala antes de pagar.';
+  END IF;
+  SELECT sum(amount)::bigint INTO v_line_total FROM public.payroll_lines
+    WHERE run_id = p_run_id;
+  IF v_run.total_amount <= 0 OR v_line_total IS NULL
+     OR v_line_total <> v_run.total_amount OR v_line_total > 2147483647 THEN
+    RAISE EXCEPTION 'El total de las liquidaciones no coincide con el pago.';
+  END IF;
+
+  INSERT INTO public.community_expenses
+    (community_id, month, category, label, amount, notes, prorate_method, created_by)
+  VALUES
+    (p_community_id, v_run.month, 'salaries', 'Remuneraciones ' || v_run.month,
+     v_line_total, nullif(left(trim(coalesce(p_reference, '')), 500), ''),
+     'share', p_actor_id)
+  RETURNING id INTO v_expense_id;
+
+  INSERT INTO public.ledger_accounts (community_id, code, name, kind)
+  VALUES (p_community_id, '1100', 'Banco', 'asset'),
+         (p_community_id, '5100', 'Remuneraciones', 'expense')
+  ON CONFLICT (community_id, code) DO NOTHING;
+  SELECT id INTO STRICT v_bank_account FROM public.ledger_accounts
+    WHERE community_id = p_community_id AND code = '1100';
+  SELECT id INTO STRICT v_salary_account FROM public.ledger_accounts
+    WHERE community_id = p_community_id AND code = '5100';
+
+  INSERT INTO public.journal_entries
+    (community_id, entry_date, memo, source, source_record_id, created_by)
+  VALUES
+    (p_community_id, p_paid_at, 'Remuneraciones ' || v_run.month,
+     'payroll', p_run_id, p_actor_id)
+  RETURNING id INTO v_entry_id;
+  INSERT INTO public.journal_lines (entry_id, account_id, debit, credit)
+  VALUES (v_entry_id, v_salary_account, v_line_total::integer, 0),
+         (v_entry_id, v_bank_account, 0, v_line_total::integer);
+
+  UPDATE public.payroll_runs
+    SET status = 'paid', paid_at = p_paid_at,
+        payment_reference = nullif(left(trim(coalesce(p_reference, '')), 120), ''),
+        journal_entry_id = v_entry_id, expense_id = v_expense_id,
+        expense_note = 'Incluido en los egresos del mes.'
+    WHERE id = p_run_id;
+  RETURN jsonb_build_object('status', 'paid', 'id', p_run_id,
+    'expenseId', v_expense_id, 'journalEntryId', v_entry_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.pay_payroll_run_atomic(uuid, uuid, date, text, uuid)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.pay_payroll_run_atomic(uuid, uuid, date, text, uuid)
+  TO service_role;
+
+COMMIT;
+
+-- Migration: 20261012020841_finance_manual_journal_atomic.sql
+
+-- Un asiento manual solo existe si todas sus líneas quedan guardadas y cuadradas.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.post_manual_journal_atomic(
+  p_community_id uuid, p_entry_date date, p_memo text,
+  p_actor_id uuid, p_lines jsonb
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  v_entry record;
+  v_line jsonb;
+  v_account_id uuid;
+  v_debit integer;
+  v_credit integer;
+  v_debits bigint := 0;
+  v_credits bigint := 0;
+BEGIN
+  IF p_entry_date IS NULL OR nullif(trim(p_memo), '') IS NULL THEN
+    RAISE EXCEPTION 'El asiento necesita fecha y glosa.';
+  END IF;
+  IF jsonb_typeof(p_lines) IS DISTINCT FROM 'array'
+     OR jsonb_array_length(p_lines) NOT BETWEEN 2 AND 8 THEN
+    RAISE EXCEPTION 'El asiento necesita entre 2 y 8 líneas.';
+  END IF;
+  FOR v_line IN SELECT value FROM jsonb_array_elements(p_lines) LOOP
+    v_account_id := (v_line ->> 'account_id')::uuid;
+    v_debit := (v_line ->> 'debit')::integer;
+    v_credit := (v_line ->> 'credit')::integer;
+    IF v_account_id IS NULL OR v_debit IS NULL OR v_credit IS NULL
+       OR v_debit < 0 OR v_credit < 0
+       OR (v_debit = 0 AND v_credit = 0)
+       OR (v_debit > 0 AND v_credit > 0)
+       OR NOT EXISTS (SELECT 1 FROM public.ledger_accounts
+                      WHERE id = v_account_id AND community_id = p_community_id) THEN
+      RAISE EXCEPTION 'Hay una línea inválida o una cuenta ajena a la comunidad.';
+    END IF;
+    v_debits := v_debits + v_debit;
+    v_credits := v_credits + v_credit;
+  END LOOP;
+  IF v_debits <= 0 OR v_debits <> v_credits THEN
+    RAISE EXCEPTION 'El asiento no está cuadrado.';
+  END IF;
+
+  INSERT INTO public.journal_entries
+    (community_id, entry_date, memo, source, created_by)
+  VALUES (p_community_id, p_entry_date, left(trim(p_memo), 240), 'manual', p_actor_id)
+  RETURNING id, entry_date, memo, source, created_at INTO v_entry;
+  FOR v_line IN SELECT value FROM jsonb_array_elements(p_lines) LOOP
+    INSERT INTO public.journal_lines (entry_id, account_id, debit, credit)
+    VALUES (v_entry.id, (v_line ->> 'account_id')::uuid,
+            (v_line ->> 'debit')::integer, (v_line ->> 'credit')::integer);
+  END LOOP;
+  RETURN jsonb_build_object('id', v_entry.id, 'entry_date', v_entry.entry_date,
+    'memo', v_entry.memo, 'source', v_entry.source,
+    'created_at', v_entry.created_at, 'total', v_debits);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.post_manual_journal_atomic(uuid, date, text, uuid, jsonb)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.post_manual_journal_atomic(uuid, date, text, uuid, jsonb)
+  TO service_role;
+
+COMMIT;
+
+-- Migration: 20261012024209_finance_atomic_billing_issue.sql
+
+-- La corrida, sus cobros, desgloses y aporte de reserva se confirman juntos.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.issue_billing_run_atomic(
+  p_community_id uuid, p_month text, p_due_date date, p_issued_by uuid,
+  p_fallback_equal_split boolean, p_committee_review_id uuid, p_units jsonb
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  v_unit jsonb;
+  v_item jsonb;
+  v_unit_id uuid;
+  v_seen_units uuid[] := '{}';
+  v_total numeric := 0;
+  v_unit_total numeric;
+  v_item_total numeric;
+  v_item_amount numeric;
+  v_source_id uuid;
+  v_run_id uuid;
+  v_expense_id uuid;
+  v_reserve_rate numeric;
+  v_reserve_amount numeric := 0;
+BEGIN
+  IF p_month !~ '^\d{4}-(0[1-9]|1[0-2])$' OR p_due_date IS NULL THEN
+    RAISE EXCEPTION 'Indica un mes y vencimiento válidos.';
+  END IF;
+  IF jsonb_typeof(p_units) IS DISTINCT FROM 'array'
+     OR jsonb_array_length(p_units) NOT BETWEEN 1 AND 10000 THEN
+    RAISE EXCEPTION 'La emisión necesita unidades con cobro.';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.communities WHERE id=p_community_id) THEN
+    RAISE EXCEPTION 'La comunidad no existe.';
+  END IF;
+  IF p_committee_review_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.finance_committee_reviews
+    WHERE id=p_committee_review_id AND community_id=p_community_id
+      AND month=p_month AND status='approved'
+  ) THEN
+    RAISE EXCEPTION 'La revisión del comité ya no está aprobada.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.billing_runs
+             WHERE community_id=p_community_id AND month=p_month AND status='issued') THEN
+    RETURN jsonb_build_object('status','already_issued');
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.expenses
+             WHERE community_id=p_community_id AND month=p_month) THEN
+    RETURN jsonb_build_object('status','existing_charges');
+  END IF;
+
+  FOR v_unit IN SELECT value FROM jsonb_array_elements(p_units) LOOP
+    v_unit_id := (v_unit ->> 'unitId')::uuid;
+    IF v_unit_id IS NULL OR v_unit_id = ANY(v_seen_units)
+       OR NOT EXISTS (SELECT 1 FROM public.units
+                      WHERE id=v_unit_id AND community_id=p_community_id) THEN
+      RAISE EXCEPTION 'Hay una unidad duplicada o ajena a la comunidad.';
+    END IF;
+    v_seen_units := array_append(v_seen_units, v_unit_id);
+    IF (v_unit ->> 'total') !~ '^[1-9][0-9]*$' THEN
+      RAISE EXCEPTION 'Hay un cobro sin monto entero positivo.';
+    END IF;
+    v_unit_total := (v_unit ->> 'total')::numeric;
+    IF jsonb_typeof(v_unit -> 'items') IS DISTINCT FROM 'array'
+       OR jsonb_array_length(v_unit -> 'items') = 0 THEN
+      RAISE EXCEPTION 'Un cobro no tiene desglose.';
+    END IF;
+    v_item_total := 0;
+    FOR v_item IN SELECT value FROM jsonb_array_elements(v_unit -> 'items') LOOP
+      IF (v_item ->> 'amount') !~ '^[0-9]+$'
+         OR nullif(trim(v_item ->> 'label'), '') IS NULL THEN
+        RAISE EXCEPTION 'Hay un ítem de cobro inválido.';
+      END IF;
+      v_item_amount := (v_item ->> 'amount')::numeric;
+      IF v_item_amount >= 100000000 THEN
+        RAISE EXCEPTION 'Un ítem supera el rango permitido.';
+      END IF;
+      v_item_total := v_item_total + v_item_amount;
+      IF nullif(v_item ->> 'sourceExpenseId', '') IS NOT NULL THEN
+        v_source_id := (v_item ->> 'sourceExpenseId')::uuid;
+        IF NOT EXISTS (SELECT 1 FROM public.community_expenses
+                       WHERE id=v_source_id AND community_id=p_community_id
+                         AND month=p_month) THEN
+          RAISE EXCEPTION 'Un ítem apunta a un egreso ajeno al período.';
+        END IF;
+      END IF;
+    END LOOP;
+    IF v_item_total <> v_unit_total THEN
+      RAISE EXCEPTION 'El desglose no coincide con el cobro de la unidad.';
+    END IF;
+    v_total := v_total + v_unit_total;
+  END LOOP;
+
+  INSERT INTO public.billing_runs
+    (community_id,month,status,total_amount,units_count,due_date,
+     fallback_equal_split,issued_by,committee_review_id)
+  VALUES
+    (p_community_id,p_month,'issued',v_total,array_length(v_seen_units,1),
+     p_due_date,coalesce(p_fallback_equal_split,false),p_issued_by,
+     p_committee_review_id)
+  RETURNING id INTO v_run_id;
+
+  FOR v_unit IN SELECT value FROM jsonb_array_elements(p_units) LOOP
+    INSERT INTO public.expenses
+      (unit_id,community_id,month,amount,status,due_date,billing_run_id)
+    VALUES
+      (v_unit ->> 'unitId',p_community_id,p_month,
+       (v_unit ->> 'total')::numeric,'pending',p_due_date,v_run_id)
+    RETURNING id INTO v_expense_id;
+    FOR v_item IN SELECT value FROM jsonb_array_elements(v_unit -> 'items') LOOP
+      INSERT INTO public.expense_items
+        (expense_id,source_expense_id,category,label,amount)
+      VALUES
+        (v_expense_id,nullif(v_item ->> 'sourceExpenseId','')::uuid,
+         v_item ->> 'category',v_item ->> 'label',
+         (v_item ->> 'amount')::numeric);
+    END LOOP;
+  END LOOP;
+
+  SELECT coalesce(reserve_fund_rate,0) INTO v_reserve_rate
+    FROM public.communities WHERE id=p_community_id;
+  IF v_reserve_rate > 0 THEN
+    v_reserve_amount := round(v_total * v_reserve_rate / 100);
+    IF v_reserve_amount > 0 THEN
+      INSERT INTO public.reserve_fund_movements
+        (community_id,kind,amount,month,label,billing_run_id,created_by)
+      VALUES
+        (p_community_id,'contribution',v_reserve_amount,p_month,
+         'Aporte del gasto común ' || p_month || ' (' || v_reserve_rate || '%)',
+         v_run_id,p_issued_by);
+    END IF;
+  END IF;
+  RETURN jsonb_build_object('status','issued','runId',v_run_id,
+    'issuedUnits',array_length(v_seen_units,1),
+    'totalCharged',v_total,'reserveContribution',v_reserve_amount);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.issue_billing_run_atomic(uuid,text,date,uuid,boolean,uuid,jsonb)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.issue_billing_run_atomic(uuid,text,date,uuid,boolean,uuid,jsonb)
+  TO service_role;
+
+COMMIT;
+
+-- Migration: 20261012024737_finance_atomic_single_charge.sql
+
+-- El cobro puntual del Agent Center y su desglose se confirman juntos.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.create_unit_expense_atomic(
+  p_community_id uuid, p_unit_id uuid, p_month text,
+  p_amount numeric, p_due_date date, p_label text
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  v_expense record;
+  v_unit_number text;
+BEGIN
+  IF p_month !~ '^\d{4}-(0[1-9]|1[0-2])$' OR p_due_date IS NULL THEN
+    RAISE EXCEPTION 'Indica un mes y vencimiento válidos.';
+  END IF;
+  IF p_amount IS NULL OR p_amount <> trunc(p_amount)
+     OR p_amount <= 0 OR p_amount >= 100000000 THEN
+    RAISE EXCEPTION 'El monto debe ser entero, positivo y estar dentro del rango permitido.';
+  END IF;
+  IF nullif(trim(p_label),'') IS NULL THEN
+    RAISE EXCEPTION 'El cobro necesita una descripción.';
+  END IF;
+  SELECT number::text INTO v_unit_number FROM public.units
+    WHERE id=p_unit_id AND community_id=p_community_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('status','unit_not_found'); END IF;
+  IF EXISTS (SELECT 1 FROM public.expenses
+             WHERE community_id=p_community_id AND unit_id=p_unit_id::text
+               AND month=p_month) THEN
+    RETURN jsonb_build_object('status','already_charged','unitNumber',v_unit_number);
+  END IF;
+
+  INSERT INTO public.expenses
+    (unit_id,community_id,month,amount,status,due_date)
+  VALUES (p_unit_id::text,p_community_id,p_month,p_amount,'pending',p_due_date)
+  RETURNING id,month,amount,status,due_date INTO v_expense;
+  INSERT INTO public.expense_items (expense_id,category,label,amount)
+  VALUES (v_expense.id,'other',left(trim(p_label),160),p_amount);
+  RETURN jsonb_build_object('status','created','unitNumber',v_unit_number,
+    'expense',jsonb_build_object('id',v_expense.id,'month',v_expense.month,
+      'amount',v_expense.amount,'status',v_expense.status,'due_date',v_expense.due_date));
+EXCEPTION WHEN unique_violation THEN
+  RETURN jsonb_build_object('status','already_charged','unitNumber',v_unit_number);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.create_unit_expense_atomic(uuid,uuid,text,numeric,date,text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_unit_expense_atomic(uuid,uuid,text,numeric,date,text)
+  TO service_role;
+
+COMMIT;
+
+-- Informes de transferencia del residente, pendientes de revisión administrativa.
+-- Aplicada en producción por 20261002030221_resident_transfer_reports.sql; el
+-- código que la usa vive en la rama codex/resident-transfer-review, sin mergear.
+create table if not exists public.transfer_reports (
+  id uuid primary key default gen_random_uuid(),
+  community_id uuid not null references public.communities(id) on delete cascade,
+  unit_id uuid not null references public.units(id) on delete cascade,
+  expense_id uuid not null references public.expenses(id) on delete cascade,
+  reported_by uuid not null references public.profiles(id),
+  amount numeric(12,2) not null check (amount > 0),
+  paid_at date not null,
+  reference text not null check (char_length(btrim(reference)) between 4 and 120),
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'rejected')),
+  reviewed_by uuid references public.profiles(id),
+  reviewed_at timestamptz,
+  review_note text,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists transfer_reports_active_reference_uniq
+  on public.transfer_reports (community_id, unit_id, lower(btrim(reference)))
+  where status in ('pending', 'confirmed');
+create index if not exists transfer_reports_review_queue_idx
+  on public.transfer_reports (community_id, status, created_at desc);
+alter table public.transfer_reports enable row level security;
+revoke all on public.transfer_reports from anon, authenticated;
+grant all on public.transfer_reports to service_role;
+alter table public.unit_payments
+  add column if not exists transfer_report_id uuid references public.transfer_reports(id) on delete set null;
+
+-- Liquidación legal chilena (20261012160000_payroll_chile_liquidations.sql).
+CREATE TABLE IF NOT EXISTS public.payroll_indicators (
+  month text PRIMARY KEY CHECK (month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+  "values" jsonb NOT NULL,
+  source text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.payroll_indicators ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.payroll_indicators FROM anon, authenticated;
+GRANT ALL ON public.payroll_indicators TO service_role;
+-- Las personas existentes quedan en 'fixed': siguen pagándose igual que antes.
+ALTER TABLE public.community_employees
+  ADD COLUMN IF NOT EXISTS calculation text NOT NULL DEFAULT 'fixed'
+    CHECK (calculation IN ('fixed', 'chile')),
+  ADD COLUMN IF NOT EXISTS rut text,
+  ADD COLUMN IF NOT EXISTS afp text,
+  ADD COLUMN IF NOT EXISTS health_system text NOT NULL DEFAULT 'fonasa'
+    CHECK (health_system IN ('fonasa', 'isapre')),
+  ADD COLUMN IF NOT EXISTS isapre_name text,
+  ADD COLUMN IF NOT EXISTS isapre_plan_uf numeric(8,4) CHECK (isapre_plan_uf IS NULL OR isapre_plan_uf > 0),
+  ADD COLUMN IF NOT EXISTS contract_type text NOT NULL DEFAULT 'indefinido'
+    CHECK (contract_type IN ('indefinido', 'plazo_fijo', 'indefinido_11')),
+  ADD COLUMN IF NOT EXISTS gratification boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS taxable_bonus integer NOT NULL DEFAULT 0 CHECK (taxable_bonus >= 0),
+  ADD COLUMN IF NOT EXISTS meal_allowance integer NOT NULL DEFAULT 0 CHECK (meal_allowance >= 0),
+  ADD COLUMN IF NOT EXISTS transport_allowance integer NOT NULL DEFAULT 0 CHECK (transport_allowance >= 0),
+  ADD COLUMN IF NOT EXISTS family_dependents smallint NOT NULL DEFAULT 0 CHECK (family_dependents BETWEEN 0 AND 20),
+  ADD COLUMN IF NOT EXISTS hire_date date,
+  -- Datos que exige el archivo de 105 campos de Previred.
+  ADD COLUMN IF NOT EXISTS first_names text,
+  ADD COLUMN IF NOT EXISTS father_last_name text,
+  ADD COLUMN IF NOT EXISTS mother_last_name text,
+  ADD COLUMN IF NOT EXISTS sex text CHECK (sex IS NULL OR sex IN ('M', 'F')),
+  ADD COLUMN IF NOT EXISTS foreign_national boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS isapre_code text CHECK (isapre_code IS NULL OR isapre_code ~ '^\d{2}$'),
+  ADD COLUMN IF NOT EXISTS part_time boolean NOT NULL DEFAULT false;
+
+-- Seguro de accidentes del trabajo (Ley 16.744): tasa básica 0,90% + 0,03% Ley SANNA.
+-- Cambia por comunidad cuando la mutual asigna cotización adicional.
+ALTER TABLE public.communities
+  ADD COLUMN IF NOT EXISTS payroll_accident_rate numeric(6,4) NOT NULL DEFAULT 0.0093
+    CHECK (payroll_accident_rate >= 0 AND payroll_accident_rate < 0.2),
+  -- Códigos Previred: '00' = sin CCAF; mutual '00' = cotiza accidentes al ISL.
+  ADD COLUMN IF NOT EXISTS payroll_ccaf_code text NOT NULL DEFAULT '00'
+    CHECK (payroll_ccaf_code IN ('00', '01', '02', '03', '04')),
+  ADD COLUMN IF NOT EXISTS payroll_mutual_code text NOT NULL DEFAULT '00'
+    CHECK (payroll_mutual_code IN ('00', '01', '02', '03'));
+ALTER TABLE public.payroll_lines
+  ADD COLUMN IF NOT EXISTS gross_amount integer,
+  ADD COLUMN IF NOT EXISTS net_amount integer,
+  ADD COLUMN IF NOT EXISTS breakdown jsonb;
+ALTER TABLE public.payroll_runs
+  ADD COLUMN IF NOT EXISTS indicators_month text;
+
+-- Citófono digital (20261012170000_digital_intercom.sql).
+CREATE TABLE IF NOT EXISTS public.intercom_calls (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  unit_id uuid NOT NULL REFERENCES public.units(id) ON DELETE CASCADE,
+  visitor_name text NOT NULL CHECK (char_length(btrim(visitor_name)) BETWEEN 2 AND 120),
+  visit_kind text NOT NULL DEFAULT 'visit' CHECK (visit_kind IN ('visit', 'delivery', 'service', 'other')),
+  note text CHECK (note IS NULL OR char_length(note) <= 200),
+  status text NOT NULL DEFAULT 'ringing'
+    CHECK (status IN ('ringing', 'approved', 'rejected', 'cancelled', 'expired', 'admitted')),
+  requested_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  answered_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  answered_at timestamptz,
+  expires_at timestamptz NOT NULL,
+  visitor_log_id uuid REFERENCES public.visitor_logs(id) ON DELETE SET NULL,
+  gate_status text CHECK (gate_status IS NULL OR gate_status IN ('opened', 'failed', 'not_configured')),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS intercom_calls_community_recent_idx
+  ON public.intercom_calls (community_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS intercom_calls_unit_ringing_idx
+  ON public.intercom_calls (unit_id) WHERE status = 'ringing';
+ALTER TABLE public.intercom_calls ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.intercom_calls FROM anon, authenticated;
+GRANT ALL ON public.intercom_calls TO service_role;
+
+-- Portón o barrera: cualquier controlador que reciba un POST firmado (HMAC
+-- SHA-256) puede abrir al aprobar una visita. El secreto nunca vuelve al cliente.
+ALTER TABLE public.communities
+  ADD COLUMN IF NOT EXISTS access_webhook_url text
+    CHECK (access_webhook_url IS NULL OR access_webhook_url ~ '^https://'),
+  ADD COLUMN IF NOT EXISTS access_webhook_secret text;
+
+-- API pública y portal del fiscalizador (20261013010000_public_api_and_oversight.sql).
+CREATE TABLE IF NOT EXISTS public.community_api_keys (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  name text NOT NULL CHECK (char_length(btrim(name)) BETWEEN 2 AND 80),
+  key_prefix text NOT NULL,
+  key_hash text NOT NULL UNIQUE,
+  scopes text[] NOT NULL CHECK (
+    cardinality(scopes) > 0 AND scopes <@ ARRAY['units', 'finance', 'access']::text[]
+  ),
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz,
+  revoked_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS community_api_keys_community_idx
+  ON public.community_api_keys (community_id, created_at DESC);
+ALTER TABLE public.community_api_keys ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.community_api_keys FROM anon, authenticated;
+GRANT ALL ON public.community_api_keys TO service_role;
+
+-- Enlace de solo lectura para un fiscalizador, auditor o comité de vigilancia.
+CREATE TABLE IF NOT EXISTS public.oversight_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  label text NOT NULL CHECK (char_length(btrim(label)) BETWEEN 2 AND 120),
+  token_hash text NOT NULL UNIQUE,
+  expires_at timestamptz NOT NULL,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  revoked_at timestamptz,
+  last_viewed_at timestamptz,
+  view_count integer NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS oversight_links_community_idx
+  ON public.oversight_links (community_id, created_at DESC);
+ALTER TABLE public.oversight_links ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.oversight_links FROM anon, authenticated;
+GRANT ALL ON public.oversight_links TO service_role;
+
+-- Facturación electrónica (20261013020000_electronic_invoicing.sql).
+CREATE TABLE IF NOT EXISTS public.invoicing_settings (
+  community_id uuid PRIMARY KEY REFERENCES public.communities(id) ON DELETE CASCADE,
+  provider text NOT NULL DEFAULT 'openfactura' CHECK (provider IN ('openfactura')),
+  environment text NOT NULL DEFAULT 'test' CHECK (environment IN ('test', 'production')),
+  api_key_sealed text NOT NULL,
+  api_key_hint text NOT NULL,
+  emitter jsonb NOT NULL,
+  updated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.invoicing_settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.invoicing_settings FROM anon, authenticated;
+GRANT ALL ON public.invoicing_settings TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.tax_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  environment text NOT NULL CHECK (environment IN ('test', 'production')),
+  dte_type smallint NOT NULL CHECK (dte_type IN (33, 34)),
+  idempotency_key text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'issued', 'failed')),
+  folio integer,
+  provider_token text,
+  receiver jsonb NOT NULL,
+  items jsonb NOT NULL,
+  net_amount integer NOT NULL DEFAULT 0 CHECK (net_amount >= 0),
+  exempt_amount integer NOT NULL DEFAULT 0 CHECK (exempt_amount >= 0),
+  tax_amount integer NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
+  total_amount integer NOT NULL CHECK (total_amount > 0),
+  issue_date date NOT NULL,
+  pdf_path text,
+  warnings jsonb,
+  error text,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS tax_documents_community_idx
+  ON public.tax_documents (community_id, created_at DESC);
+ALTER TABLE public.tax_documents ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.tax_documents FROM anon, authenticated;
+GRANT ALL ON public.tax_documents TO service_role;
+
+-- Libro de cobros de estacionamientos (20261013160000_parking_charges_ledger.sql).
+-- Un cobro por reserva; por defecto se carga como unit_charges (kind 'service')
+-- en la cuenta de la unidad del residente. Triggers y RPCs en la migración.
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS parking_billing_method text NOT NULL DEFAULT 'common_expenses'
+  CHECK (parking_billing_method IN ('common_expenses', 'haulmer'));
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS parking_free_cancellation_hours integer NOT NULL DEFAULT 2
+  CHECK (parking_free_cancellation_hours BETWEEN 0 AND 168);
+ALTER TABLE public.parking_bookings ADD COLUMN IF NOT EXISTS cancelled_by_party text
+  CHECK (cancelled_by_party IS NULL OR cancelled_by_party IN ('driver', 'owner', 'admin', 'system'));
+
+CREATE TABLE IF NOT EXISTS public.parking_charges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  booking_id uuid NOT NULL UNIQUE REFERENCES public.parking_bookings(id) ON DELETE CASCADE,
+  driver_id uuid NOT NULL REFERENCES public.parking_drivers(id) ON DELETE CASCADE,
+  payer_profile_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  unit_id uuid REFERENCES public.units(id) ON DELETE SET NULL,
+  amount integer NOT NULL CHECK (amount >= 0),
+  currency text NOT NULL DEFAULT 'CLP' CHECK (currency = 'CLP'),
+  method text NOT NULL CHECK (method IN ('common_expenses', 'haulmer', 'none')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'charged', 'paid', 'failed', 'voided', 'refunded')),
+  unit_charge_id uuid UNIQUE REFERENCES public.unit_charges(id) ON DELETE SET NULL,
+  provider_reference text,
+  payment_url text,
+  failure_reason text,
+  needs_review boolean NOT NULL DEFAULT false,
+  charged_at timestamptz,
+  paid_at timestamptz,
+  voided_at timestamptz,
+  refunded_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS parking_charges_community_status_idx
+  ON public.parking_charges (community_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS parking_charges_driver_idx ON public.parking_charges (driver_id);
+CREATE INDEX IF NOT EXISTS parking_charges_review_idx ON public.parking_charges (community_id) WHERE needs_review;
+ALTER TABLE public.parking_charges ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_charges FROM anon, authenticated;
+GRANT SELECT ON public.parking_charges TO authenticated;
+GRANT ALL ON public.parking_charges TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.parking_charge_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  seq bigint GENERATED ALWAYS AS IDENTITY,
+  charge_id uuid NOT NULL REFERENCES public.parking_charges(id) ON DELETE CASCADE,
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  event_type text NOT NULL CHECK (char_length(event_type) BETWEEN 3 AND 60),
+  from_status text,
+  to_status text,
+  amount integer,
+  actor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX IF NOT EXISTS parking_charge_events_charge_idx ON public.parking_charge_events (charge_id, seq);
+CREATE INDEX IF NOT EXISTS parking_charge_events_community_idx ON public.parking_charge_events (community_id, created_at DESC);
+ALTER TABLE public.parking_charge_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_charge_events FROM anon, authenticated;
+GRANT SELECT ON public.parking_charge_events TO authenticated;
+GRANT SELECT, INSERT ON public.parking_charge_events TO service_role;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_charges_parking_booking_once
+  ON public.unit_charges (notes)
+  WHERE notes LIKE 'parking_booking:%' AND status <> 'cancelled';

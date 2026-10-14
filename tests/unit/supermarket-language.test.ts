@@ -3,6 +3,7 @@ import {
   matchAnchor,
   matchAnchors,
   productIntent,
+  reviewSearchSuggestions,
   termMatchesProductName,
 } from '@/lib/supermarketText';
 
@@ -12,6 +13,13 @@ describe('supermarket catalog language variants', () => {
     expect(matchAnchors('pañales')).toEqual(['panal', 'pañal']);
     expect(matchAnchors('azúcar')).toEqual(['azucar', 'azúcar']);
     expect(matchAnchors('té')).toEqual(['te', 'té']);
+  });
+
+  it('offers manual searches for broad list terms without auto-substituting them', () => {
+    expect(reviewSearchSuggestions('pasta larga')).toEqual(['espagueti', 'tallarines']);
+    expect(reviewSearchSuggestions('pasta corta')).toEqual(['espirales', 'corbatitas']);
+    expect(reviewSearchSuggestions('carne para parrilla')).toEqual(['asado carnicero', 'asado de tira']);
+    expect(reviewSearchSuggestions('arroz')).toEqual([]);
   });
 
   it('treats food for pets as alimento in catalog names', () => {

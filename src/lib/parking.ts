@@ -7,6 +7,9 @@
 import type {
     ParkingAccessRequestStatus,
     ParkingBookingStatus,
+    ParkingCharge,
+    ParkingChargeMethod,
+    ParkingChargeStatus,
     ParkingFloorLevel,
     ParkingSpotStatus,
 } from './types';
@@ -52,6 +55,73 @@ export const BOOKING_STATUS_TONES: Record<ParkingBookingStatus, 'neutral' | 'sag
     cancelled: 'rose',
     no_show: 'rose',
 };
+
+/** Estados del libro de cobros (CHECK de parking_charges.status). */
+export const PARKING_CHARGE_STATUS_LABELS: Record<ParkingChargeStatus, string> = {
+    pending: 'Cobro pendiente',
+    charged: 'Cargado a gastos comunes',
+    paid: 'Pagado',
+    failed: 'Cobro fallido',
+    voided: 'Cobro anulado',
+    refunded: 'Reembolsado',
+};
+
+export const PARKING_CHARGE_STATUS_TONES: Record<ParkingChargeStatus, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
+    pending: 'amber',
+    charged: 'copper',
+    paid: 'sage',
+    failed: 'rose',
+    voided: 'neutral',
+    refunded: 'neutral',
+};
+
+export const PARKING_CHARGE_METHOD_LABELS: Record<ParkingChargeMethod, string> = {
+    common_expenses: 'Gastos comunes',
+    haulmer: 'Pago en línea',
+    none: 'Sin costo',
+};
+
+/** Regla por defecto si la comunidad no configuró otra (igual que la base). */
+export const DEFAULT_FREE_CANCELLATION_HOURS = 2;
+
+/** Hasta cuándo se puede cancelar sin costo. */
+export function freeCancellationDeadline(startsAt: string, freeHours = DEFAULT_FREE_CANCELLATION_HOURS): Date {
+    return new Date(new Date(startsAt).getTime() - Math.max(0, freeHours) * 3_600_000);
+}
+
+/**
+ * ¿Cancelar ahora sale sin costo? Replica la regla de parking_charge_on_cancel
+ * para avisarle al conductor antes de que confirme; la decisión real la toma la
+ * base al cancelar.
+ */
+export function isFreeCancellation(startsAt: string, freeHours = DEFAULT_FREE_CANCELLATION_HOURS, now: Date = new Date()): boolean {
+    return now.getTime() <= freeCancellationDeadline(startsAt, freeHours).getTime();
+}
+
+/** Una línea legible del cobro para el detalle de la reserva. */
+export function describeParkingCharge(charge: Pick<ParkingCharge, 'status' | 'method' | 'unitLabel' | 'failureReason' | 'needsReview'>): string {
+    const unit = charge.unitLabel ? ` · Unidad ${charge.unitLabel}` : '';
+    switch (charge.status) {
+        case 'charged':
+            return `Cargado a la cuenta de gastos comunes${unit}`;
+        case 'paid':
+            return charge.method === 'haulmer'
+                ? 'Pagado en línea'
+                : charge.method === 'none' ? 'Arriendo sin costo' : `Pagado con los gastos comunes${unit}`;
+        case 'pending':
+            return charge.method === 'haulmer'
+                ? 'Pendiente de pago en línea'
+                : charge.needsReview ? 'Pendiente: la administración lo revisará' : 'Pendiente de cargo';
+        case 'failed':
+            return 'No se pudo cobrar: la administración lo revisará';
+        case 'voided':
+            return 'Anulado sin costo';
+        case 'refunded':
+            return 'Reembolsado';
+        default:
+            return '';
+    }
+}
 
 /** Estado de la autorización del conductor para un condominio concreto. */
 export const ACCESS_STATUS_LABELS: Record<ParkingAccessRequestStatus, string> = {
@@ -347,4 +417,46 @@ export function calculateCommercialSavings(communityAmount: number): {
 export function formatMinuteRate(hourlyRate: number): string {
     const minRate = Math.round(hourlyRate / 60);
     return `$${minRate.toLocaleString('es-CL')}/min`;
+}
+
+/** Columnas del libro de cobros que leen la app y el servidor. */
+export const PARKING_CHARGE_COLUMNS =
+    'id,booking_id,community_id,driver_id,payer_profile_id,unit_id,amount,method,status,needs_review,' +
+    'failure_reason,payment_url,provider_reference,charged_at,paid_at,voided_at,refunded_at,created_at';
+
+type ParkingChargeRow = Record<string, unknown>;
+
+const optional = (value: unknown) => (value === null || value === undefined || value === '' ? undefined : String(value));
+
+export function mapParkingChargeRow(row: ParkingChargeRow): ParkingCharge {
+    const booking = (Array.isArray(row.parking_bookings) ? row.parking_bookings[0] : row.parking_bookings) as ParkingChargeRow | undefined;
+    const spot = booking ? ((Array.isArray(booking.parking_spots) ? booking.parking_spots[0] : booking.parking_spots) as ParkingChargeRow | undefined) : undefined;
+    const driver = (Array.isArray(row.parking_drivers) ? row.parking_drivers[0] : row.parking_drivers) as ParkingChargeRow | undefined;
+    const unit = (Array.isArray(row.units) ? row.units[0] : row.units) as ParkingChargeRow | undefined;
+    const unitLabel = unit ? [unit.tower, unit.number].filter(Boolean).join('-') : undefined;
+
+    return {
+        id: String(row.id),
+        bookingId: String(row.booking_id),
+        communityId: String(row.community_id),
+        amount: Math.round(Number(row.amount) || 0),
+        status: String(row.status) as ParkingChargeStatus,
+        method: String(row.method) as ParkingChargeMethod,
+        unitId: optional(row.unit_id),
+        unitLabel: unitLabel || undefined,
+        needsReview: Boolean(row.needs_review),
+        failureReason: optional(row.failure_reason),
+        checkoutUrl: optional(row.payment_url),
+        chargedAt: optional(row.charged_at),
+        paidAt: optional(row.paid_at),
+        voidedAt: optional(row.voided_at),
+        refundedAt: optional(row.refunded_at),
+        createdAt: String(row.created_at ?? ''),
+        spotLabel: optional(spot?.label),
+        driverName: optional(driver?.full_name),
+        driverPlate: optional(driver?.plate),
+        startsAt: optional(booking?.starts_at),
+        endsAt: optional(booking?.ends_at),
+        bookingStatus: booking?.status ? (String(booking.status) as ParkingBookingStatus) : undefined,
+    };
 }

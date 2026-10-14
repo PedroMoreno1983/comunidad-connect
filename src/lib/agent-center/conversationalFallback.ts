@@ -132,6 +132,8 @@ export async function upgradeClarificationWithCoCo(
 ): Promise<AgentAction> {
     if (action.toolName !== 'clarify_intent') return action;
     if (Boolean(action.args.capabilities)) return action;
+    // La respuesta del ciclo agentico ya es la de Claude con datos reales.
+    if (Boolean(action.args.agentLoop)) return action;
     try {
         const turn = await runCoCoTurn(message, profile);
         if (turn.pending.length > 0) return buildCoCoAction(turn);

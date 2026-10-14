@@ -7,6 +7,7 @@ import {
     parseTrainingSlides,
     trainingActivityCount,
     trainingQualityReport,
+    trainingSourceEvidence,
     visibleSlideBullets,
 } from '@/lib/training/courseContent';
 
@@ -124,8 +125,8 @@ describe('training course content', () => {
         expect(sql).not.toContain('Ley 21.442');
     });
 
-    it('adds practice to a valid AI outline that omitted interactions', () => {
-        const slides = ensureInteractiveTrainingCourse(
+    it('rejects an AI outline that omits activities instead of inventing generic practice', () => {
+        expect(() => ensureInteractiveTrainingCourse(
             Array.from({ length: 6 }, (_, index) => ({
                 id: `slide-${index + 1}`,
                 title: `Sección ${index + 1}`,
@@ -134,10 +135,17 @@ describe('training course content', () => {
                 notes: 'Explicar el criterio con un caso del edificio.',
             })),
             'Registrar, escalar y cerrar cada situación con evidencia.',
-            'admin',
-        );
-        expect(slides).toHaveLength(6);
-        expect(trainingActivityCount(slides)).toBeGreaterThanOrEqual(3);
-        expect(isPublishableTrainingCourse(slides)).toBe(true);
+        )).toThrow(/incompleto/);
+    });
+
+    it('requires source excerpts for activity sections and most of the course', () => {
+        const source = 'Primero se comprueba la identidad del visitante. Luego se registra la hora y la unidad de destino. La conserjería avisa a la unidad antes de autorizar el ingreso.';
+        const slides = buildStructuredTrainingFallback(source, 'concierge');
+        expect(trainingSourceEvidence(slides, source).sufficient).toBe(false);
+        const supported = slides.map(slide => ({ ...slide, source_note: 'Primero se comprueba la identidad del visitante.' }));
+        expect(trainingSourceEvidence(supported, source).sufficient).toBe(true);
+        expect(ensureInteractiveTrainingCourse(supported, source)).toHaveLength(8);
+        supported[1].source_note = 'Una norma inventada que no aparece en la fuente';
+        expect(trainingSourceEvidence(supported, source).sufficient).toBe(false);
     });
 });

@@ -1,7 +1,12 @@
 /**
  * Ordena canastas con el total que la tienda publica cuando existe.
- * Lider y aCuenta no tienen esa consulta: su monto sigue siendo el de catálogo
- * y no se declara ganador contra un total publicado.
+ * Lider y aCuenta no tienen esa consulta: su monto es el de catálogo.
+ *
+ * Issue #96: un total de catálogo que ya incluye las promociones por volumen
+ * (`pricingBasis: 'promo_aware'`) compite contra los totales publicados. Uno
+ * estimado sobre precio unitario sigue sin declararse ganador contra ellos.
+ * Una canasta bajo el pedido mínimo, publicado o conocido por catálogo, no se
+ * recomienda: se muestra, pero no gana.
  */
 
 export const PUBLISHED_TOTAL_STORES = ['Jumbo', 'Santa Isabel', 'Unimarc'] as const;
@@ -15,6 +20,10 @@ export interface BasketRankInput {
   subtotal: number;
   complete: boolean;
   coveredCount: number;
+  /** `promo_aware` si el subtotal ya incluye promociones por volumen. */
+  pricingBasis?: 'promo_aware' | 'unit_price';
+  /** Pedido mínimo conocido por catálogo (supermarket_store_policies). */
+  minimumOrder?: number;
 }
 
 export interface PublishedBasketTotal {
@@ -32,6 +41,8 @@ export interface BasketStanding {
   belowMinimum: boolean;
   minimumOrder?: number;
   shortfall?: number;
+  /** El monto incluye promociones por volumen (total publicado o catálogo con promos). */
+  promoAware: boolean;
 }
 
 export interface PurchaseRanking {
@@ -40,6 +51,24 @@ export interface PurchaseRanking {
   runnerUpStore: string | null;
   savings: number;
   basis: 'published' | 'estimate' | 'mixed' | 'none';
+  /**
+   * Tiendas completas y pagables que quedaron fuera de la comparación contra
+   * totales publicados porque su monto es estimado sin promociones.
+   */
+  excludedEstimates: string[];
+}
+
+function validMinimum(value: number | undefined): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function minimumStatus(amount: number, minimumOrder: number | undefined) {
+  const belowMinimum = minimumOrder !== undefined && amount + 0.5 < minimumOrder;
+  return {
+    belowMinimum,
+    minimumOrder,
+    shortfall: belowMinimum && minimumOrder !== undefined ? minimumOrder - amount : undefined,
+  };
 }
 
 function publishedAmount(quote: PublishedBasketTotal | undefined): { total: number; minimumOrder?: number } | null {
@@ -57,44 +86,55 @@ export function rankPurchases(
   quotes: Record<string, PublishedBasketTotal | undefined>,
 ): PurchaseRanking {
   const standings: BasketStanding[] = baskets.map(basket => {
+    const catalogMinimum = validMinimum(basket.minimumOrder);
+    const promoAware = basket.pricingBasis === 'promo_aware';
     if (!basket.complete || basket.coveredCount <= 0) {
-      return { store: basket.store, amount: basket.subtotal, kind: 'estimate', payable: false, belowMinimum: false };
+      return { store: basket.store, amount: basket.subtotal, kind: 'estimate', payable: false, belowMinimum: false, promoAware };
     }
     if (!publishesBasketTotal(basket.store)) {
-      return { store: basket.store, amount: basket.subtotal, kind: 'estimate', payable: true, belowMinimum: false };
+      const minimum = minimumStatus(basket.subtotal, catalogMinimum);
+      return {
+        store: basket.store,
+        amount: basket.subtotal,
+        kind: 'estimate',
+        payable: !minimum.belowMinimum,
+        ...minimum,
+        promoAware,
+      };
     }
     const quote = quotes[basket.store];
     if (!quote) {
-      return { store: basket.store, amount: basket.subtotal, kind: 'pending', payable: false, belowMinimum: false };
+      return { store: basket.store, amount: basket.subtotal, kind: 'pending', payable: false, belowMinimum: false, promoAware };
     }
     const published = publishedAmount(quote);
     if (!published) {
-      return { store: basket.store, amount: basket.subtotal, kind: 'unverified', payable: false, belowMinimum: false };
+      return { store: basket.store, amount: basket.subtotal, kind: 'unverified', payable: false, belowMinimum: false, promoAware };
     }
-    const belowMinimum = published.minimumOrder !== undefined && published.total + 0.5 < published.minimumOrder;
+    const minimum = minimumStatus(published.total, published.minimumOrder ?? catalogMinimum);
     return {
       store: basket.store,
       amount: published.total,
       kind: 'published',
-      payable: !belowMinimum,
-      belowMinimum,
-      minimumOrder: published.minimumOrder,
-      shortfall: belowMinimum && published.minimumOrder !== undefined
-        ? published.minimumOrder - published.total
-        : undefined,
+      payable: !minimum.belowMinimum,
+      ...minimum,
+      promoAware: true,
     };
   });
 
+  const byAmount = (left: BasketStanding, right: BasketStanding) => left.amount - right.amount || left.store.localeCompare(right.store);
   const pending = standings.some(row => row.kind === 'pending');
   const payable = standings.filter(row => row.payable);
-  const published = payable.filter(row => row.kind === 'published').sort((left, right) => left.amount - right.amount || left.store.localeCompare(right.store));
-  const estimates = payable.filter(row => row.kind === 'estimate').sort((left, right) => left.amount - right.amount || left.store.localeCompare(right.store));
+  const published = payable.filter(row => row.kind === 'published').sort(byAmount);
+  const estimates = payable.filter(row => row.kind === 'estimate').sort(byAmount);
+  const promoAwareEstimates = estimates.filter(row => row.promoAware);
 
   let pool: BasketStanding[] = [];
   let basis: PurchaseRanking['basis'] = 'none';
+  let excludedEstimates: string[] = [];
   if (!pending && published.length > 0 && estimates.length > 0) {
     basis = 'mixed';
-    pool = published;
+    pool = [...published, ...promoAwareEstimates].sort(byAmount);
+    excludedEstimates = estimates.filter(row => !row.promoAware).map(row => row.store);
   } else if (!pending && published.length > 0) {
     basis = 'published';
     pool = published;
@@ -116,5 +156,6 @@ export function rankPurchases(
     runnerUpStore: runnerUp?.store ?? null,
     savings: winner && runnerUp ? Math.max(0, runnerUp.amount - winner.amount) : 0,
     basis,
+    excludedEstimates,
   };
 }

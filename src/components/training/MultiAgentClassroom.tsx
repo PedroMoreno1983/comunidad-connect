@@ -445,6 +445,8 @@ function SlideCanvas({ slide, accent }: { slide: TrainingSlide; accent: string }
     const opening = slide.layout === "opening";
     const process = slide.layout === "process";
     const scenario = slide.layout === "scenario";
+    const checklist = slide.layout === "checklist";
+    const summary = slide.layout === "summary";
     const roles = Boolean(slide.role_cards?.length);
     const kicker = slide.eyebrow || (process ? "Procedimiento" : scenario ? "Caso" : roles ? "Responsabilidades" : "Criterio");
 
@@ -464,6 +466,7 @@ function SlideCanvas({ slide, accent }: { slide: TrainingSlide; accent: string }
                         </div>
                     ))}
                 </div>
+                {slide.source_note && <details className="border-t px-7 py-4 text-xs text-white/75 sm:px-12" style={{ borderColor: "rgba(255,255,255,.12)" }}><summary className="cursor-pointer font-semibold">Ver fragmento del material base</summary><p className="mt-2 italic">{slide.source_note}</p></details>}
             </section>
         );
     }
@@ -497,6 +500,20 @@ function SlideCanvas({ slide, accent }: { slide: TrainingSlide; accent: string }
                             </li>
                         ))}
                     </ol>
+                ) : checklist ? (
+                    <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+                        {bullets.map((bullet, index) => (
+                            <li key={`${slide.id}-${index}`} className="flex items-start gap-3 rounded-2xl border p-4 text-sm leading-6 cc-text-primary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><Check className="h-4 w-4" /></span>
+                                <span>{bullet}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : summary ? (
+                    <div className="mt-8 rounded-2xl border-l-4 p-6 sm:p-8" style={{ borderColor: accent, background: "var(--cc-paper-warm)" }}>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: accent }}>Para el próximo turno</p>
+                        <ol className="mt-4 space-y-3">{bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="flex gap-3 text-base leading-7 cc-text-primary"><span className="font-semibold" style={{ color: accent }}>{String(index + 1).padStart(2, "0")}</span>{bullet}</li>)}</ol>
+                    </div>
                 ) : (
                     <ul className="mt-8 space-y-4">
                         {bullets.map((bullet, index) => (
@@ -519,6 +536,7 @@ function SlideCanvas({ slide, accent }: { slide: TrainingSlide; accent: string }
                         ))}
                     </div>
                 )}
+                {slide.source_note && <details className="mt-8 border-t pt-4 text-xs leading-5 cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}><summary className="cursor-pointer font-semibold">Ver fragmento del material base</summary><p className="mt-2 border-l-2 pl-3 italic" style={{ borderColor: accent }}>{slide.source_note}</p></details>}
             </div>
         </section>
     );

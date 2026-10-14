@@ -19,9 +19,9 @@ const classroom = read('src/components/training/MultiAgentClassroom.tsx');
 const builder = read('src/components/training/TrainingCourseBuilder.tsx');
 const courseContent = read('src/lib/training/courseContent.ts');
 const migration = read('supabase/migrations/043_training_multitenant_progress.sql');
-const professionalMigration = read('supabase/migrations/20260916210840_training_professional_learning.sql');
-const operationsMigration = read('supabase/migrations/20260917143000_training_learning_operations.sql');
-const policyCleanupMigration = read('supabase/migrations/20260920043500_training_policy_bootstrap_cleanup.sql');
+const professionalMigration = read('supabase/migrations/20260916210954_training_professional_learning.sql');
+const operationsMigration = read('supabase/migrations/20260917162913_training_learning_operations.sql');
+const policyCleanupMigration = read('supabase/migrations/20260920043353_training_policy_bootstrap_cleanup.sql');
 const rootSchema = read('schema.sql');
 
 expect('Course API resolves authenticated profile', modulesRoute.includes('getAuthenticatedAgentProfile'));
@@ -46,7 +46,7 @@ expect('External completion validates origin and nonce', attemptsRoute.includes(
 expect('Assignments support audience eligibility and due dates', assignmentsRoute.includes('due_at') && assignmentsRoute.includes('target_audience'));
 expect('Admin dashboard reports overdue and completion rate', dashboardRoute.includes('completionRate') && dashboardRoute.includes('overdue'));
 expect('Certificates are generated as authenticated PDFs', certificateRoute.includes('PDFDocument.create') && certificateRoute.includes('application/pdf'));
-expect('Course builder publishes normalized slides instead of raw source text', builder.includes('JSON.stringify(slides)') && builder.includes('Diseñar curso con CoCo'));
+expect('Course builder publishes normalized slides instead of raw source text', builder.includes('normalizeTrainingSlides(slides)') && builder.includes('JSON.stringify(publishableSlides)') && builder.includes('Diseñar curso con CoCo'));
 expect('Training quality gate requires six sections and the three activity types', courseContent.includes('slides.length >= 6') && courseContent.includes("['knowledge_check', 'scenario', 'checklist']"));
 expect('Professional slides include layouts, leads and role cards', courseContent.includes('TrainingSlideLayout') && courseContent.includes('role_cards') && courseContent.includes('trainingQualityReport'));
 expect('Catalog no longer pushes courses below the decorative module flow', !staffPage.includes('ModuleFlow'));

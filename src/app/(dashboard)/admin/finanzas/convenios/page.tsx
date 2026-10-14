@@ -7,16 +7,18 @@ import { AdminFinanceService } from "@/lib/api";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
-import type { FinanceUnitOption, PaymentAgreement } from "@/lib/types";
+import type { FinanceCommitteeResidentOption, FinanceUnitOption, PaymentAgreement } from "@/lib/types";
 import { todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const today = todayInChile;
 
 const STATUS_LABEL: Record<PaymentAgreement["status"], string> = {
+    pending_committee: "Pendiente del comité",
     active: "Vigente",
     completed: "Cumplido",
     cancelled: "Cerrado",
+    rejected: "Rechazado por el comité",
 };
 
 const METHODS = [
@@ -38,6 +40,8 @@ export default function ConveniosPage() {
     const { toast } = useToast();
     const [agreements, setAgreements] = useState<PaymentAgreement[]>([]);
     const [units, setUnits] = useState<FinanceUnitOption[]>([]);
+    const [reviewers, setReviewers] = useState<FinanceCommitteeResidentOption[]>([]);
+    const [reviewerId, setReviewerId] = useState("");
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [unitId, setUnitId] = useState("");
@@ -57,6 +61,8 @@ export default function ConveniosPage() {
             const data = await AdminFinanceService.getPaymentAgreements();
             setAgreements(data.agreements);
             setUnits(data.units);
+            setReviewers(data.reviewers);
+            setReviewerId(current => current || data.reviewers[0]?.id || "");
             setUnitId(current => current || data.units[0]?.id || "");
         } catch (error) {
             toast({
@@ -83,8 +89,9 @@ export default function ConveniosPage() {
                 installmentCount: Number(installmentCount),
                 startDate,
                 notes,
+                reviewerId: reviewers.length ? reviewerId : undefined,
             });
-            toast({ title: "Convenio abierto", description: "Las cuotas quedaron en la unidad.", variant: "success" });
+            toast({ title: reviewers.length ? "Convenio enviado al comité" : "Convenio abierto", description: reviewers.length ? "El integrante designado debe aprobarlo antes de activar las cuotas." : "Las cuotas quedaron en la unidad.", variant: "success" });
             setTitle("");
             setTotalAmount("");
             setNotes("");
@@ -103,13 +110,15 @@ export default function ConveniosPage() {
     async function payInstallment(installmentId: string) {
         setBusy(true);
         try {
-            await AdminFinanceService.payAgreementInstallment({
+            const result = await AdminFinanceService.payAgreementInstallment({
                 installmentId,
                 paidAt: payDate,
                 method: payMethod,
                 reference: payReference,
             });
-            toast({ title: "Cuota registrada", description: "El pago quedó en cobranza y en el libro.", variant: "success" });
+            toast({ title: "Cuota registrada", description: result.warnings.length
+                ? result.warnings.join(" ") : "El pago quedó en cobranza y en el libro.",
+                variant: result.warnings.length ? "destructive" : "success" });
             setPayReference("");
             await load();
         } catch (error) {
@@ -154,6 +163,10 @@ export default function ConveniosPage() {
                     </p>
                 </header>
 
+                {!loading && reviewers.length === 0 && <p className="rounded-xl border border-warning-border bg-warning-bg p-3 text-sm cc-text-secondary">
+                    No hay integrantes del comité designados. Los convenios nuevos se activarán sin revisión. <Link href="/admin/finanzas/comite" className="underline">Configurar comité</Link>
+                </p>}
+
                 <form onSubmit={event => void createAgreement(event)} className="grid gap-3 rounded-2xl border p-5 sm:grid-cols-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <label className="text-sm cc-text-secondary">
                         Unidad
@@ -183,9 +196,14 @@ export default function ConveniosPage() {
                         Nota
                         <input className={`${fieldClass} mt-1`} style={fieldStyle} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Acordado con el comité" />
                     </label>
+                    {reviewers.length > 0 && <label className="text-sm cc-text-secondary">Integrante que revisará
+                        <select className={`${fieldClass} mt-1`} style={fieldStyle} value={reviewerId} onChange={event => setReviewerId(event.target.value)}>
+                            {reviewers.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
+                        </select>
+                    </label>}
                     <div className="sm:col-span-2">
                         <button type="submit" disabled={busy || !unitId} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
-                            Abrir convenio
+                            {reviewers.length > 0 ? "Enviar convenio al comité" : "Abrir convenio"}
                         </button>
                     </div>
                 </form>
@@ -200,6 +218,7 @@ export default function ConveniosPage() {
                             <span>
                                 <span className="block font-semibold cc-text-primary">{agreement.unitLabel} · {agreement.title}</span>
                                 <span className="mt-1 block text-sm cc-text-secondary">{money(agreement.paidAmount)} de {money(agreement.totalAmount)} · {STATUS_LABEL[agreement.status]}</span>
+                                {agreement.committeeReviewNote && <span className="mt-1 block text-xs cc-text-tertiary">Comité: {agreement.committeeReviewNote}</span>}
                             </span>
                             <span className="text-xs font-semibold cc-text-tertiary">{agreement.installmentCount} cuotas</span>
                         </button>
@@ -221,7 +240,7 @@ export default function ConveniosPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                {agreement.status === "active" && (
+                                {(agreement.status === "active" || agreement.status === "pending_committee") && (
                                     <div className="mt-4 flex flex-wrap items-end gap-3">
                                         <label className="text-xs cc-text-secondary">
                                             Fecha del pago
@@ -238,7 +257,7 @@ export default function ConveniosPage() {
                                             <input className={`${fieldClass} mt-1`} style={fieldStyle} value={payReference} onChange={event => setPayReference(event.target.value)} placeholder="Opcional" />
                                         </label>
                                         <button type="button" disabled={busy} className="text-xs font-semibold underline cc-text-tertiary" onClick={() => void cancel(agreement.id)}>
-                                            Cerrar convenio
+                                            {agreement.status === "pending_committee" ? "Anular solicitud" : "Cerrar convenio"}
                                         </button>
                                     </div>
                                 )}

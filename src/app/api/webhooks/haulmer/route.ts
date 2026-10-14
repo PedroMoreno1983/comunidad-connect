@@ -155,6 +155,22 @@ async function processMarketplacePayment(recordId: string, params: CallbackParam
     return { status: completed ? 'processed' : 'recorded' };
 }
 
+/**
+ * Arriendo de estacionamiento (referencia PARKING_<id del cobro>). La base
+ * compara el monto pagado con el del libro y solo entonces marca el cobro como
+ * pagado; reintentos del webhook son idempotentes.
+ */
+async function processParkingPayment(chargeId: string, params: CallbackParams) {
+    const { data, error } = await supabaseAdmin.rpc('parking_charge_apply_provider_result', {
+        p_charge_id: chargeId,
+        p_result: params.x_result || '',
+        p_paid_amount: Math.round(Number(params.x_amount || 0)),
+        p_gateway_reference: String(params.x_gateway_reference || params.x_reference || '').slice(0, 200),
+    });
+    if (error) throw error;
+    return { status: String(data || 'recorded') };
+}
+
 export async function POST(req: Request) {
     const limited = await enforceDistributedRateLimit(req, 'webhooks.haulmer', { limit: 180, windowMs: 60_000 });
     if (limited) return limited;
@@ -192,6 +208,8 @@ export async function POST(req: Request) {
             result = await processExpensePayment(recordId, params, completed);
         } else if (type === 'MARKET' && recordId) {
             result = await processMarketplacePayment(recordId, params, completed);
+        } else if (type === 'PARKING' && recordId) {
+            result = await processParkingPayment(recordId, params);
         } else {
             result = { status: 'ignored' };
         }

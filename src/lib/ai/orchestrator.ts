@@ -17,14 +17,12 @@ type AgentRole = 'system' | 'tutor' | 'classmate' | 'user';
 const DEFAULT_TUTOR_MODELS = [
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
 ];
 
 // Los compañeros IA solo dan una opinión corta (1-2 frases) en personaje: tarea
 // simple, así que usan siempre el modelo más barato.
 const DEFAULT_CLASSMATE_MODELS = [
     "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
 ];
 
 export interface ChatMessage {
@@ -122,6 +120,10 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
         generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 1000,
+            // En los modelos 2.5 el razonamiento interno consume el mismo tope de
+            // salida y la respuesta se cortaba a mitad de frase. Un turno de chat
+            // de dos oraciones no lo necesita.
+            thinkingConfig: { thinkingBudget: 0 },
         },
     };
 
@@ -155,7 +157,11 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
             if (res.ok) {
                 const data = await res.json();
                 const candidate = data?.candidates?.[0];
-                const text = (candidate?.content?.parts?.[0]?.text || "").trim();
+                const text = ((candidate?.content?.parts || []) as Array<{ text?: string; thought?: boolean }>)
+                    .filter(part => !part.thought)
+                    .map(part => part.text || "")
+                    .join("")
+                    .trim();
                 if (text) {
                     const completionTokens = data?.usageMetadata?.candidatesTokenCount ?? estimateTokensFromText(text);
                     const actualPromptTokens = data?.usageMetadata?.promptTokenCount ?? promptTokens;

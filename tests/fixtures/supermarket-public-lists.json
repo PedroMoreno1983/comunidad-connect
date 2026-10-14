@@ -1,0 +1,47 @@
+[
+  {
+    "name": "CasaNutri proteínas",
+    "source": "https://casanutri.cl/blog/minuta-semanal-saludable-chile",
+    "lines": ["pechuga de pollo 1,5 kg", "filete de merluza 600 g", "salmón 600 g", "asado de tira 800 g", "18 huevos", "quesillo 300 g", "6 yogur natural"]
+  },
+  {
+    "name": "CasaNutri verduras",
+    "source": "https://casanutri.cl/blog/minuta-semanal-saludable-chile",
+    "lines": ["tomates 1 kg", "2 lechugas", "zanahoria 500 g", "brócoli 500 g", "papas 1,5 kg", "zapallo 500 g", "cebolla 500 g"]
+  },
+  {
+    "name": "CasaNutri frutas y abarrotes",
+    "source": "https://casanutri.cl/blog/minuta-semanal-saludable-chile",
+    "lines": ["6 plátanos", "6 manzanas", "6 naranjas", "arroz 1 kg", "avena 500 g", "quínoa 300 g", "lentejas 500 g", "porotos 400 g"]
+  },
+  {
+    "name": "FondasChile parrilla",
+    "source": "https://www.fondaschile.cl/guia/asado/lista-de-compras/",
+    "lines": ["1,6 kg carne para parrilla", "longanizas", "prietas", "2 kg carbón", "sal gruesa", "papel aluminio"]
+  },
+  {
+    "name": "FondasChile ensalada y pan",
+    "source": "https://www.fondaschile.cl/guia/asado/lista-de-compras/",
+    "lines": ["4 papas", "tomate", "cebolla", "cilantro", "ají verde", "limones", "8 marraquetas"]
+  },
+  {
+    "name": "FondasChile bebidas y limpieza",
+    "source": "https://www.fondaschile.cl/guia/asado/lista-de-compras/",
+    "lines": ["agua", "vino", "cerveza", "hielo", "bolsas de basura", "servilletas", "vasos desechables"]
+  },
+  {
+    "name": "AhorrandoAndo verduras",
+    "source": "https://www.haceloconhuevos.com/wp-content/uploads/2022/04/AhorrandoAndoHCH.pdf",
+    "lines": ["tomate", "papas", "espinacas", "cebolla", "apio", "zanahoria", "lechuga", "aguacate", "repollo"]
+  },
+  {
+    "name": "AhorrandoAndo despensa",
+    "source": "https://www.haceloconhuevos.com/wp-content/uploads/2022/04/AhorrandoAndoHCH.pdf",
+    "lines": ["arroz", "frijoles", "garbanzos", "avena", "pasta larga", "pasta corta", "leche descremada", "pan integral", "mantequilla"]
+  },
+  {
+    "name": "Lista real del proyecto",
+    "source": "tests/unit/supermarket-messy-list.test.ts",
+    "lines": ["12 yogurth colun", "5 leces sin lactosa surlat", "pan ayuyitas", "1 pampita ideal", "1 galletas salma", "1 quinoa", "30 huevos santa marta café", "1 cif", "paquete de 8 confort"]
+  }
+]

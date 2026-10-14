@@ -4,22 +4,20 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, isMonthlyBillingRequest, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
-import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
-import { executeCreateUnitExpense, executeSendUnitPaymentReminder } from '@/lib/agent-center/unitFinanceActions';
 import { buildClarificationAction, buildIndividualDebtAction, preventReadOnlyMutation } from '@/lib/agent-center/intentActions';
 import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
 import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-center/persistenceSafety';
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
-import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
-import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/agent-center/planner';
+import { getAgentPlannerModel, type PlannerTurn } from '@/lib/agent-center/planner';
 import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
-import { upgradeClarificationWithCoCo, resumeCoCoAction, rejectCoCoAction } from '@/lib/agent-center/conversationalFallback';
+import { upgradeClarificationWithCoCo, rejectCoCoAction } from '@/lib/agent-center/conversationalFallback';
 import { buildCapabilitiesAction, isCapabilityOrGreeting } from '@/lib/agent-center/capabilities';
 import { cocoActionAuditLabel, cocoActionRequiresConfirmation, cocoActionRisk, type CoCoActionStep } from '@/lib/agent-center/cocoRisk';
-import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
-import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
-import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { detectMultiIntent } from '@/lib/agent-center/orchestrator';
+import { executeAgentAction } from '@/lib/agent-center/actionExecutor';
+import { attachLoopProposal, cancelAgentLoopTask, continueAgentLoopAfterWrite, runAgentLoop, type AgentLoopOutcome } from '@/lib/agent-center/agentLoop';
+import { traceToSteps } from '@/lib/agent-center/agentLoopStore';
 import { dateFromText, dueDateForExpense, moneyFromText, monthFromText, normalizeText, timeFromText } from '@/lib/agent-center/textParsing';
 import { bestEffortInsert } from '@/lib/agent-center/utils';
 import {
@@ -102,6 +100,14 @@ const TOOL_LABELS: Record<ToolName, string> = {
     run_playbook: 'Preparar revision',
     run_mission: 'Mision multi-agente',
     coco_action: 'Ejecutar accion preparada por CoCo',
+    get_parking_status: 'Revisar estacionamientos',
+    get_supermarket_orders_summary: 'Revisar compras grupales del super',
+    get_active_polls: 'Revisar votaciones activas',
+    get_maintenance_backlog: 'Revisar backlog de mantencion',
+    find_resident_or_unit: 'Buscar residente o unidad',
+    create_poll: 'Crear votacion',
+    update_maintenance_ticket: 'Actualizar ticket de mantencion',
+    create_parking_booking: 'Reservar estacionamiento',
 };
 
 function humanizeArgKey(key: string) {
@@ -125,6 +131,16 @@ function humanizeArgKey(key: string) {
         title: 'Titulo',
         unitNumber: 'Departamento',
         visitorName: 'Visitante',
+        options: 'Opciones',
+        closesAt: 'Cierre',
+        ticketId: 'Ticket',
+        providerId: 'Proveedor',
+        status: 'Estado',
+        spotId: 'Estacionamiento',
+        startsAt: 'Desde',
+        endsAt: 'Hasta',
+        residentId: 'Residente',
+        note: 'Nota',
     };
     return labels[key] || key;
 }
@@ -517,24 +533,6 @@ function buildHeuristicMission(message: string, profile: AgentProfile): AgentAct
     };
 }
 
-async function getUserUnit(profile: AgentProfile) {
-    if (profile.unit_id) {
-        const { data } = await getSupabaseAdmin()
-            .from('units')
-            .select('id, number, unit_number, tower, community_id')
-            .eq('id', profile.unit_id)
-            .maybeSingle();
-        if (data) return data as Record<string, unknown>;
-    }
-
-    const { data } = await getSupabaseAdmin()
-        .from('units')
-        .select('id, number, unit_number, tower, community_id')
-        .eq('owner_id', profile.id)
-        .maybeSingle();
-    return (data as Record<string, unknown> | null) || null;
-}
-
 function normalizeAutonomyLevel(value: unknown): AutonomyLevel {
     return value === 'semi_autonomous' || value === 'autonomous' ? value : 'manual';
 }
@@ -822,13 +820,13 @@ function finalizeInferredAction(message: string, candidate: AgentAction) {
     }
 }
 
-async function inferAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
-    const action = await inferActionUnenriched(message, profile, history);
+async function inferAction(message: string, profile: AgentProfile, history: PlannerTurn[] = [], loopOptions: LoopOptions = {}): Promise<AgentAction> {
+    const action = await inferActionUnenriched(message, profile, history, loopOptions);
     return enrichPlaybookPreview(action, profile);
 }
 
-async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
-    const action = await resolveRawAction(message, profile, history);
+async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = [], loopOptions: LoopOptions = {}): Promise<AgentAction> {
+    const action = await resolveRawAction(message, profile, history, loopOptions);
     // Un cerebro, no dos: cuando el router operativo no reconoce una accion
     // concreta y cae en clarify_intent (saludo, pregunta abierta, meta como
     // "que puedes hacer"), en vez del stonewall generico delegamos en el mismo
@@ -838,36 +836,64 @@ async function inferActionUnenriched(message: string, profile: AgentProfile, his
     return upgradeClarificationWithCoCo(message, profile, action);
 }
 
-async function resolveRawAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
+type LoopOptions = { isAgentActive?: (agentKey: AgentKey) => boolean };
+
+async function resolveRawAction(message: string, profile: AgentProfile, history: PlannerTurn[] = [], loopOptions: LoopOptions = {}): Promise<AgentAction> {
     // Saludos y preguntas por capacidades ("hola", "que puedes hacer") reciben una
-    // tarjeta curada e instantanea antes de gastar una llamada al planner/LLM.
+    // tarjeta curada e instantanea antes de gastar una llamada a Claude.
     if (isCapabilityOrGreeting(message)) {
         return finalizeInferredAction(message, buildCapabilitiesAction(message));
     }
 
+    // Camino principal: el ciclo agentico. Claude encadena lecturas, decide si
+    // el objetivo es de uno o varios pasos/dominios y pausa en las escrituras.
+    try {
+        const outcome = await runAgentLoop({ message, profile, history, filter: loopOptions });
+        if (outcome) return loopOutcomeToAction(message, outcome);
+    } catch (error) {
+        console.warn('[AgentCenterLoop] Claude agent loop failed; using deterministic fallback.', error);
+    }
+
+    // Respaldo deterministico (sin Claude): las mismas heuristicas de antes.
     if (isIndividualDebtQuery(message)) {
         return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
     }
-
     if (detectMultiIntent(message)) {
-        try {
-            const missionPlan = await planAgentMission(message, profile);
-            if (missionPlan) return finalizeInferredAction(message, buildMissionAction(missionPlan));
-        } catch (error) {
-            console.warn('[AgentCenterMission] Claude mission planning failed; falling back to single planner.', error);
-        }
         const heuristicMission = buildHeuristicMission(message, profile);
         if (heuristicMission) return finalizeInferredAction(message, heuristicMission);
     }
-
-    try {
-        const plannedAction = await planAgentAction(message, profile, history);
-        if (plannedAction) return finalizeInferredAction(message, plannedAction);
-    } catch (error) {
-        console.warn('[AgentCenterPlanner] Claude planning failed; using deterministic heuristic.', error);
-    }
-
     return finalizeInferredAction(message, inferActionHeuristic(message, profile));
+}
+
+/**
+ * Traduce el resultado del ciclo al contrato de siempre de la ruta:
+ * - respuesta final -> `clarify_intent` conversacional (se muestra como texto);
+ * - pausa -> la escritura real como tarjeta de aprobacion, ligada a su tarea.
+ */
+function loopOutcomeToAction(message: string, outcome: AgentLoopOutcome): AgentAction {
+    if (outcome.kind === 'pause') {
+        const action = normalizeAction(outcome.action);
+        return { ...action, args: validateAgentActionArgs(action) };
+    }
+    const lastAgent = [...outcome.trace].reverse().find(entry => entry.status === 'executed')?.agentKey || 'community';
+    const sources = outcome.trace.filter(entry => entry.status === 'executed').map(entry => entry.title);
+    return normalizeAction({
+        agentKey: lastAgent,
+        toolName: 'clarify_intent',
+        args: { requestedText: cleanText(message, 700), agentLoop: true },
+        requiresConfirmation: false,
+        title: outcome.stepLimitReached ? 'Limite de pasos alcanzado' : 'Respuesta de CoCo',
+        summary: outcome.text,
+        targetHref: '/agent-center',
+        decision: {
+            intent: 'Ciclo agentico',
+            confidence: outcome.stepLimitReached ? 0.4 : 0.9,
+            explanation: sources.length ? `Consulte ${sources.length} fuente(s): ${sources.join(', ')}.` : 'Respondi sin necesidad de consultar herramientas.',
+        },
+        // La corrida del ciclo ya existe: la respuesta se audita dentro de ella.
+        runId: outcome.runId,
+        loopTrace: traceToSteps(outcome.trace),
+    });
 }
 
 /**
@@ -919,6 +945,8 @@ function normalizeAction(action: AgentAction): AgentAction {
         } : undefined,
         proposalId: action.proposalId || null,
         runId: action.runId || null,
+        agentTaskId: action.agentTaskId || null,
+        ...(action.loopTrace?.length ? { loopTrace: action.loopTrace } : {}),
     };
 }
 
@@ -952,6 +980,9 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
             displayAction,
             displaySummary,
             targetHref: action.targetHref,
+            // Liga la tarjeta con la tarea del ciclo agentico que la espera. Se
+            // lee de aqui al confirmar: el cliente no puede elegir la tarea.
+            ...(action.agentTaskId ? { agentTaskId: action.agentTaskId } : {}),
             // Para una accion de CoCo, deja consultables las herramientas que
             // realmente se ejecutaron y cuanto pesaban. `tool_name` en
             // agent_tool_calls dice 'coco_action' para todas por igual, asi que
@@ -1105,6 +1136,7 @@ async function loadPersistedProposal(incomingAction: AgentAction | null, profile
         targetHref: cleanText(metadata.targetHref, 120) || incomingAction?.targetHref || '/agent-center',
         proposalId: String(toolCall.id),
         runId: String(run.id),
+        agentTaskId: typeof metadata.agentTaskId === 'string' && /^[0-9a-f-]{36}$/i.test(metadata.agentTaskId) ? metadata.agentTaskId : null,
     });
 
     await admin
@@ -1116,238 +1148,51 @@ async function loadPersistedProposal(incomingAction: AgentAction | null, profile
 }
 
 
-async function executeAction(action: AgentAction, profile: AgentProfile) {
-    const admin = getSupabaseAdmin();
-    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
-    action = { ...action, args: validateAgentActionArgs(action) };
+/** Persiste la tarjeta de aprobacion y, si viene del ciclo agentico, la liga a su tarea. */
+async function persistProposal(profile: AgentProfile, action: AgentAction): Promise<AgentAction> {
+    const audit = await logActivity(profile, action, 'preview');
+    if (!audit.runId || !audit.toolCallId) {
+        throw new Error('La auditoria agéntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
+    }
+    if (action.agentTaskId) await attachLoopProposal(profile, action.agentTaskId, audit.toolCallId);
+    return { ...action, proposalId: audit.toolCallId, runId: audit.runId };
+}
 
-    if (action.toolName === 'clarify_intent') {
+async function continueLoopAfterConfirmation(
+    profile: AgentProfile,
+    action: AgentAction,
+    result: Awaited<ReturnType<typeof executeAgentAction>>,
+): Promise<{ reply: string; steps: AgentStep[]; nextAction: AgentAction | null }> {
+    try {
+        const policies = await getAgentPolicies(profile);
+        const outcome = await continueAgentLoopAfterWrite({
+            profile,
+            taskId: action.agentTaskId!,
+            proposalId: action.proposalId!,
+            result,
+            filter: { isAgentActive: agentKey => policies[agentKey]?.active !== false },
+        });
+        if (outcome.kind === 'answer') {
+            return { reply: outcome.text, steps: [{ kind: 'reasoning', title: 'CoCo continuo la tarea', detail: outcome.text.slice(0, 600) }], nextAction: null };
+        }
+        const next = normalizeAction(outcome.action);
+        next.args = validateAgentActionArgs(next);
+        next.requiresConfirmation = true;
+        const persisted = await persistProposal(profile, next);
         return {
-            entityType: 'agent_clarification',
-            entityId: null,
-            title: 'Necesito mas detalle',
-            message: action.summary || 'Necesito que aclares la consulta. No realice ningun cambio.',
+            reply: `Siguiente paso listo para tu revision: ${next.title}.`,
+            steps: [{ kind: 'confirmation', title: 'Revision humana requerida', detail: next.summary }],
+            nextAction: persisted,
         };
-    }
-
-    if (action.toolName === 'run_playbook') {
-        return runAgentPlaybook(action, profile);
-    }
-
-    if (action.toolName === 'get_my_expenses') {
-        const unit = await getUserUnit(profile);
-        if (!unit?.id) throw new Error('No encontre una unidad asociada a tu perfil.');
-        const { data, error } = await admin
-            .from('expenses')
-            .select('id, month, amount, status, due_date')
-            .eq('unit_id', String(unit.id))
-            .eq('community_id', communityId)
-            .order('due_date', { ascending: false })
-            .limit(6);
-        if (error) throw error;
-        const rows = (data || []) as Array<{ amount?: number | string | null; status?: string | null }>;
-        const pending = rows.filter(row => row.status !== 'paid');
-        const amount = pending.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    } catch (error) {
+        console.error('[agent-center] No se pudo continuar el ciclo agentico', error);
+        const detail = error instanceof Error ? error.message : 'error desconocido';
         return {
-            entityType: 'expenses',
-            entityId: null,
-            title: 'Gastos revisados',
-            message: `Hay ${pending.length} gasto(s) no pagado(s) por $${amount.toLocaleString('es-CL')}.`,
-            data: rows,
+            reply: `La accion quedo ejecutada, pero no pude continuar el resto del objetivo (${detail.slice(0, 160)}). La tarea quedo en Tareas vivas y puedes retomarla.`,
+            steps: [{ kind: 'warning', title: 'Ciclo agentico detenido', detail }],
+            nextAction: null,
         };
     }
-
-    if (action.toolName === 'get_resident_expenses') {
-        return getResidentExpenseSummary(profile, action.args.residentQuery, action.args.unitNumber);
-    }
-
-    if (action.toolName === 'create_unit_expense') {
-        return executeCreateUnitExpense(action, profile, communityId);
-    }
-
-    if (action.toolName === 'send_unit_payment_reminder') {
-        return executeSendUnitPaymentReminder(action, profile, communityId);
-    }
-    if (action.toolName === 'get_community_snapshot') {
-        const today = chileTodayISO();
-        const [expenseQuery, serviceQuery, bookingQuery, residentQuery] = await Promise.all([
-            admin.from('expenses').select('unit_id, amount, status').eq('community_id', communityId).in('status', ['pending', 'overdue']).limit(2000),
-            admin.from('service_requests').select('id, status').eq('community_id', communityId).in('status', ['pending', 'in_progress']).limit(1000),
-            admin.from('bookings').select('id, status').eq('community_id', communityId).gte('date', today).in('status', ['pending', 'confirmed']).limit(1000),
-            admin.from('profiles').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('role', 'resident'),
-        ]);
-        if (expenseQuery.error) throw expenseQuery.error;
-        if (serviceQuery.error) throw serviceQuery.error;
-        if (bookingQuery.error) throw bookingQuery.error;
-        if (residentQuery.error) throw residentQuery.error;
-
-        const expenses = expenseQuery.data || [];
-        const pendingAmount = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-        const metrics = {
-            delinquentUnits: new Set(expenses.map(row => row.unit_id).filter(Boolean)).size,
-            pendingExpenses: expenses.length,
-            pendingAmount,
-            openServiceRequests: (serviceQuery.data || []).length,
-            upcomingBookings: (bookingQuery.data || []).length,
-            residents: residentQuery.count || 0,
-        };
-        const focus = String(action.args.focus || 'all');
-        const message = focus === 'finance'
-            ? `Hay ${metrics.delinquentUnits} unidad(es) con deuda, ${metrics.pendingExpenses} gasto(s) pendiente(s) por $${pendingAmount.toLocaleString('es-CL')}.`
-            : focus === 'maintenance'
-                ? `Hay ${metrics.openServiceRequests} solicitud(es) de servicio abierta(s).`
-                : focus === 'community'
-                    ? `La comunidad tiene ${metrics.residents} residente(s) y ${metrics.upcomingBookings} reserva(s) proximas.`
-                    : `Resumen: ${metrics.residents} residentes, ${metrics.delinquentUnits} unidades con deuda por $${pendingAmount.toLocaleString('es-CL')}, ${metrics.openServiceRequests} solicitudes abiertas y ${metrics.upcomingBookings} reservas proximas.`;
-        return { entityType: 'community_snapshot', entityId: communityId, title: 'Estado del edificio revisado', message, data: metrics };
-    }
-
-    if (action.toolName === 'answer_community_question') {
-        const research = await researchCommunityQuestion(String(action.args.question || ''), profile);
-        return {
-            entityType: 'community_research',
-            entityId: communityId,
-            title: 'Investigacion completada',
-            message: research.answer,
-            data: { sources: research.trace },
-        };
-    }
-
-    if (action.toolName === 'create_marketplace_item') {
-        const { data, error } = await admin
-            .from('marketplace_items')
-            .insert({
-                seller_id: profile.id,
-                title: cleanText(action.args.title, 120),
-                description: cleanText(action.args.description, 1200),
-                price: Number(action.args.price || 0),
-                category: cleanText(action.args.category, 30) || 'other',
-                allow_sale: true,
-                allow_swap: false,
-                allow_barter: false,
-                payment_status: 'none',
-                community_id: communityId,
-            })
-            .select('id, title, price')
-            .single();
-        if (error) throw error;
-        return { entityType: 'marketplace_item', entityId: data.id, title: 'Publicacion creada', message: `${data.title} quedo publicado en Marketplace.`, data };
-    }
-
-    if (action.toolName === 'create_booking') {
-        const hint = cleanText(action.args.amenityHint, 80).toLowerCase();
-        let amenitiesQuery = admin.from('amenities').select('id, name').eq('community_id', communityId).eq('is_active', true).limit(10);
-        if (hint) amenitiesQuery = amenitiesQuery.ilike('name', `%${hint}%`);
-        const { data: amenities, error: amenitiesError } = await amenitiesQuery;
-        if (amenitiesError) throw amenitiesError;
-        const amenity = amenities?.[0];
-        if (!amenity) throw new Error('No encontre un espacio comun activo que calce con la solicitud.');
-        const { data: conflict, error: conflictError } = await admin
-            .from('bookings')
-            .select('id')
-            .eq('amenity_id', amenity.id)
-            .eq('date', String(action.args.date))
-            .in('status', ['pending', 'confirmed'])
-            .lt('start_time', String(action.args.endTime))
-            .gt('end_time', String(action.args.startTime))
-            .limit(1)
-            .maybeSingle();
-        if (conflictError) throw conflictError;
-        if (conflict) throw new Error('El espacio ya tiene una reserva que se cruza con ese horario.');
-        const { data, error } = await admin
-            .from('bookings')
-            .insert({
-                amenity_id: amenity.id,
-                user_id: profile.id,
-                date: cleanText(action.args.date, 20),
-                start_time: cleanText(action.args.startTime, 10),
-                end_time: cleanText(action.args.endTime, 10),
-                status: 'confirmed',
-                notes: 'Reserva creada desde Agent Center',
-                community_id: communityId,
-            })
-            .select('id, date, start_time, end_time')
-            .single();
-        if (error) throw error;
-        return { entityType: 'booking', entityId: data.id, title: 'Reserva confirmada', message: `${amenity.name} reservado para ${data.date} a las ${data.start_time}.`, data };
-    }
-
-    if (action.toolName === 'create_announcement') {
-        if (!['admin', 'concierge'].includes(profile.role || '')) throw new Error('Solo administracion o conserjeria pueden publicar comunicados.');
-        const { data, error } = await admin
-            .from('announcements')
-            .insert({
-                title: cleanText(action.args.title, 120),
-                content: cleanText(action.args.content, 2000),
-                priority: cleanText(action.args.priority, 20) || 'info',
-                author_id: profile.id,
-                author_name: profile.name || profile.email || 'Administracion',
-                community_id: communityId,
-            })
-            .select('id, title')
-            .single();
-        if (error) throw error;
-        return { entityType: 'announcement', entityId: data.id, title: 'Comunicado publicado', message: `${data.title} ya esta visible para la comunidad.`, data };
-    }
-
-    if (action.toolName === 'register_visitor') {
-        if (!['admin', 'concierge', 'resident'].includes(profile.role || '')) throw new Error('No tienes permiso para registrar visitas.');
-        const unit = await getUserUnit(profile);
-        const { data, error } = await admin
-            .from('visitor_logs')
-            .insert({
-                visitor_name: cleanText(action.args.visitorName, 100),
-                unit_id: unit?.id || null,
-                purpose: cleanText(action.args.purpose, 200) || 'Visita registrada desde Agent Center',
-                registered_by: profile.id,
-                community_id: communityId,
-            })
-            .select('id, visitor_name')
-            .single();
-        if (error) throw error;
-        return { entityType: 'visitor_log', entityId: data.id, title: 'Visita registrada', message: `${data.visitor_name} quedo en bitacora.`, data };
-    }
-
-    if (action.toolName === 'create_service_request') {
-        const { data: provider, error: providerError } = await admin
-            .from('service_providers')
-            .select('id, name')
-            .eq('community_id', communityId)
-            .eq('verified', true)
-            .eq('name', 'Mesa de ayuda interna')
-            .limit(1)
-            .maybeSingle();
-        if (providerError) throw providerError;
-        if (!provider) throw new Error('No hay una mesa de ayuda interna verificada. Configurala antes de crear tickets desde Agent Center.');
-
-        const { data, error } = await admin
-            .from('service_requests')
-            .insert({
-                provider_id: provider.id,
-                user_id: profile.id,
-                preferred_date: cleanText(action.args.preferredDate, 20),
-                preferred_time: cleanText(action.args.preferredTime, 20),
-                description: cleanText(action.args.description, 1200),
-                status: 'pending',
-                community_id: communityId,
-            })
-            .select('id, description, status')
-            .single();
-        if (error) throw error;
-        return { entityType: 'service_request', entityId: data.id, title: 'Ticket creado', message: `Solicitud enviada a ${provider.name}.`, data };
-    }
-
-    if (action.toolName === 'run_mission') {
-        return executeAgentMission(action, profile, executeAction);
-    }
-
-    if (action.toolName === 'coco_action') {
-        // Puente al cerebro de CoCo: reanuda su sesion con la confirmacion humana
-        // y CoCo ejecuta la accion con sus propias tools y guardas.
-        return resumeCoCoAction(action, profile);
-    }
-
-    throw new Error('Herramienta no soportada.');
 }
 
 export async function GET(req: NextRequest) {
@@ -1398,7 +1243,7 @@ export async function GET(req: NextRequest) {
         engine: {
             provider: 'anthropic',
             model: getAgentPlannerModel(),
-            reasoning: 'claude_tool_planning_with_authorized_sources',
+            reasoning: 'claude_agentic_tool_loop_with_human_approval',
         },
     };
     return NextResponse.json(payload);
@@ -1490,11 +1335,15 @@ export async function POST(req: NextRequest) {
                 .map(turn => ({ role: turn.role, content: turn.content })))
             : [];
 
+        // El ciclo agentico solo ofrece a Claude herramientas de agentes activos.
+        const loopPolicies = isFreeMessage ? await getAgentPolicies(profile) : null;
+        const loopOptions: LoopOptions = { isAgentActive: agentKey => loopPolicies?.[agentKey]?.active !== false };
+
         const action = confirmed || rejected
             ? await loadPersistedProposal(incomingAction, profile)
             : requestedPlaybook
                 ? await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile)
-            : await inferAction(message, profile, agentHistory);
+            : await inferAction(message, profile, agentHistory, loopOptions);
 
         // Persiste el turno para dar memoria a la próxima consulta. Best-effort:
         // si falla, la conversación sigue, solo pierde contexto.
@@ -1517,6 +1366,11 @@ export async function POST(req: NextRequest) {
             await recordApproval(profile, action, 'rejected', 'Usuario rechazo desde Agent Center');
             await markPersistedProposal(action, 'rejected');
             await logActivity(profile, action, 'rejected');
+            // Si la escritura venia de un ciclo agentico, su tarea se cancela.
+            if (action.agentTaskId && action.proposalId) {
+                await cancelAgentLoopTask(profile, action.agentTaskId, action.proposalId)
+                    .catch(error => console.error('[agent-center] No se pudo cancelar la tarea agentica', error));
+            }
             const steps: AgentStep[] = [
                 {
                     kind: 'reasoning',
@@ -1551,41 +1405,41 @@ export async function POST(req: NextRequest) {
         // el del paso mas pesado. Tratarla como una caja opaca obligaba a asumir
         // `write_high` siempre, y eso dejaba el modelo de autonomia graduada sin
         // efecto para todo lo que pasara por CoCo.
-        const needsConfirmation = action.toolName === 'run_mission'
+        // Una escritura propuesta por el ciclo agentico SIEMPRE pasa por una
+        // persona: es la pausa en waiting_human de su tarea.
+        const needsConfirmation = action.agentTaskId
+            ? true
+            : action.toolName === 'run_mission'
             ? missionRequiresConfirmation((action.args.steps as AgentMissionStep[]) || [], policies)
             : action.toolName === 'coco_action'
                 ? cocoActionRequiresConfirmation((action.args.pending as CoCoActionStep[]) || [], policy)
                 : effectiveRequiresConfirmation(action.toolName, policy);
         action.requiresConfirmation = needsConfirmation;
-        const steps: AgentStep[] = traceStepsForAction(action);
+        // Las lecturas que el ciclo agentico ya hizo se muestran antes que la accion.
+        const steps: AgentStep[] = [...(action.loopTrace || []), ...traceStepsForAction(action)];
 
         if (needsConfirmation && !confirmed) {
-            const audit = await logActivity(profile, action, 'preview');
-            if (!audit.runId || !audit.toolCallId) {
-                throw new Error('La auditoria agéntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
-            }
-            const persistedAction = {
-                ...action,
-                proposalId: audit.toolCallId,
-                runId: audit.runId,
-            };
+            const persistedAction = await persistProposal(profile, action);
             steps.push({
                 kind: 'confirmation',
                 title: 'Revision humana requerida',
                 detail: action.summary,
             });
+            const reads = (action.loopTrace || []).filter(step => step.kind === 'tool').length;
             return NextResponse.json({
                 status: 'awaiting_confirmation',
-                reply: 'Tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla con trazabilidad.',
+                reply: reads
+                    ? `Revise ${reads} fuente(s) y tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla; despues sigo con el resto del objetivo.`
+                    : 'Tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla con trazabilidad.',
                 action: persistedAction,
                 steps,
             });
         }
 
-        let result: Awaited<ReturnType<typeof executeAction>>;
+        let result: Awaited<ReturnType<typeof executeAgentAction>>;
         try {
             if (confirmed) await claimPersistedProposal(action, 'executed');
-            result = await executeAction(action, profile);
+            result = await executeAgentAction(action, profile);
         } catch (error) {
             await markPersistedProposal(action, 'failed', {
                 error: error instanceof Error ? error.message : 'No se pudo ejecutar la accion.',
@@ -1604,6 +1458,20 @@ export async function POST(req: NextRequest) {
             detail: result.message,
             metadata: result,
         });
+
+        // La escritura confirmada pertenecia a un ciclo agentico: se reanuda con
+        // su resultado. Claude puede responder, o proponer la siguiente escritura.
+        if (confirmed && action.agentTaskId && action.proposalId) {
+            const continuation = await continueLoopAfterConfirmation(profile, action, result);
+            steps.push(...continuation.steps);
+            return NextResponse.json({
+                status: continuation.nextAction ? 'awaiting_confirmation' : 'executed',
+                reply: `${result.message}\n\n${continuation.reply}`,
+                action: continuation.nextAction || action,
+                result,
+                steps,
+            });
+        }
 
         return NextResponse.json({
             status: 'executed',

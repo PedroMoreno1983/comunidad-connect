@@ -1,6 +1,12 @@
 import { buildResilientPurchasePlan } from '@/lib/supermarketPurchasePlan';
-import { foldAccents, matchAnchor, significantWords } from '@/lib/supermarketText';
-import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
+import { foldAccents, matchAnchor, productIntent, productMatchScore, significantWords } from '@/lib/supermarketText';
+import type {
+  SupermarketBasketCandidate,
+  SupermarketMeasurementUnit,
+  SupermarketPricingBasis,
+  SupermarketStorePolicy,
+  SupermarketVolumePromo,
+} from '@/lib/types';
 
 
 /**
@@ -62,7 +68,7 @@ function inferredCountPackUnits(name: string, requestedTerm: string): number {
   // "12 huevos" means twelve units, not twelve trays. Keep this inference
   // narrow when the product name does not explicitly declare a pack, so
   // "2 arroz" still means two products, not units inside a package.
-  if (!/\bhuevos?\b/.test(normalizedTerm)) return 1;
+  if (!/\b(?:huevos?|marraquetas?)\b/.test(normalizedTerm)) return 1;
   if (/\bdocena\b/.test(normalizedName)) return 12;
   const match = normalizedName.match(/\b(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/);
   return match ? Math.max(1, Number(match[1])) : 1;
@@ -145,6 +151,10 @@ export function isProductSuitableForRequest(
   const measurement = productMeasurementInBaseUnits(name);
   const family = matchAnchor(requestedTerm);
 
+  // Database search can return every word separately, including a different
+  // food that merely mentions the requested ingredient in its description.
+  if (productMatchScore(requestedTerm, name) < 0) return false;
+
   if (family === 'coca' && /\b(sprite|fanta)\b/.test(normalizedName)) return false;
   if (
     family === 'cerveza'
@@ -216,6 +226,19 @@ export function isProductSuitableForRequest(
   return true;
 }
 
+/** A count of fresh produce cannot safely be converted into kilos of a bag. */
+export function needsProduceQuantityReview(
+  name: string,
+  requestedTerm: string,
+  requestedQuantity: number,
+  requestedUnit: SupermarketMeasurementUnit | undefined,
+): boolean {
+  if (requestedQuantity <= 1 || requestedUnit || productIntent(requestedTerm) !== 'fresh_produce') return false;
+  if (/\b\d+(?:[.,]\d+)?\s*(?:kg|g|gr|un|unidad|unidades)\b/.test(foldAccents(requestedTerm))) return false;
+  return productMeasurementInBaseUnits(name)?.dimension === 'mass'
+    && !/\b\d+\s*(?:un|unidad|unidades)\b/.test(foldAccents(name));
+}
+
 export function isProductMeasurementCompatible(
   name: string,
   requestedUnit: SupermarketMeasurementUnit | undefined,
@@ -267,6 +290,131 @@ export function formatSignature(name: string): string {
   if (!match) return '';
   const unit = match[2] === 'gr' ? 'g' : match[2] === 'lt' ? 'l' : match[2];
   return `${match[1].replace(',', '.')}${unit}`;
+}
+
+/**
+ * Una promoción revisada hace más de esto respecto del último precio visto se
+ * considera desconocida: la fila la refrescó un scraper que no mira badges.
+ */
+const PROMO_CHECK_MAX_LAG_MS = 36 * 60 * 60 * 1000;
+
+function parseTime(value: unknown): number | null {
+  if (typeof value !== 'string' || !value) return null;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : null;
+}
+
+/**
+ * Lee la promoción por volumen guardada en la fila (issue #96).
+ * `checked` es falso cuando el scraper nunca revisó el badge o lo revisó en una
+ * pasada anterior al precio vigente; en ese caso el total queda "estimado".
+ */
+export function readVolumePromo(
+  row: Record<string, unknown>,
+  unitPrice: number,
+): { promo?: SupermarketVolumePromo; checked: boolean } {
+  const checkedAt = parseTime(row.promo_checked_at);
+  const seenAt = parseTime(row.last_seen_at);
+  const checked = checkedAt !== null && (seenAt === null || seenAt - checkedAt <= PROMO_CHECK_MAX_LAG_MS);
+  if (!checked) return { checked: false };
+  const minQuantity = Math.round(asNumber(row.promo_min_qty));
+  const totalPrice = Math.round(asNumber(row.promo_total_price));
+  if (minQuantity < 2 || totalPrice <= 0 || unitPrice <= 0 || totalPrice >= minQuantity * unitPrice) {
+    return { checked: true };
+  }
+  const label = asString(row.promo_label).trim();
+  const group = asString(row.promo_group).trim();
+  return {
+    checked: true,
+    promo: {
+      minQuantity,
+      totalPrice,
+      label: label || undefined,
+      group: group || undefined,
+    },
+  };
+}
+
+/**
+ * Total de una línea con promoción por volumen: bloques completos a precio de
+ * promoción y el resto a precio normal. Nunca devuelve más que precio × cantidad.
+ */
+export function volumePromoLineTotal(
+  unitPrice: number,
+  quantity: number,
+  promo?: SupermarketVolumePromo,
+): number {
+  const regular = unitPrice * quantity;
+  if (!promo || promo.minQuantity < 2 || quantity < promo.minQuantity) return regular;
+  const blocks = Math.floor(quantity / promo.minQuantity);
+  const rest = quantity - blocks * promo.minQuantity;
+  return Math.min(regular, blocks * promo.totalPrice + rest * unitPrice);
+}
+
+type PromoLine = {
+  price: number;
+  quantity: number;
+  lineTotal: number;
+  volumePromo?: SupermarketVolumePromo;
+  promoSavings?: number;
+};
+
+/**
+ * "Combina N x $P": productos distintos con la misma clave de promoción suman
+ * unidades para completar bloques. Las unidades que sobran se cobran a precio
+ * normal empezando por las más caras, para no prometer más ahorro del real.
+ * Solo reemplaza los totales de línea si el grupo sale más barato que por
+ * separado.
+ */
+export function applyCombinedVolumePromos<T extends PromoLine>(items: T[]): T[] {
+  const groups = new Map<string, number[]>();
+  items.forEach((item, index) => {
+    const promo = item.volumePromo;
+    if (!promo?.group) return;
+    const key = `${promo.group}|${promo.minQuantity}|${promo.totalPrice}`;
+    groups.set(key, [...(groups.get(key) ?? []), index]);
+  });
+
+  const result = [...items];
+  for (const indexes of groups.values()) {
+    if (indexes.length < 2) continue;
+    const promo = items[indexes[0]].volumePromo as SupermarketVolumePromo;
+    const units = indexes.reduce((sum, index) => sum + items[index].quantity, 0);
+    const blocks = Math.floor(units / promo.minQuantity);
+    if (blocks === 0) continue;
+    let restUnits = units - blocks * promo.minQuantity;
+    const byPriceDesc = [...indexes].sort((left, right) => items[right].price - items[left].price);
+    const restByIndex = new Map<number, number>();
+    for (const index of byPriceDesc) {
+      const take = Math.min(restUnits, items[index].quantity);
+      restByIndex.set(index, take);
+      restUnits -= take;
+    }
+    const promoUnitPrice = promo.totalPrice / promo.minQuantity;
+    const raw = indexes.map(index => {
+      const rest = restByIndex.get(index) ?? 0;
+      return (items[index].quantity - rest) * promoUnitPrice + rest * items[index].price;
+    });
+    const groupTotal = blocks * promo.totalPrice
+      + indexes.reduce((sum, index) => sum + (restByIndex.get(index) ?? 0) * items[index].price, 0);
+    const separateTotal = indexes.reduce((sum, index) => sum + items[index].lineTotal, 0);
+    if (groupTotal >= separateTotal) continue;
+
+    // Redondeo a pesos sin perder ni ganar un peso en el total del grupo.
+    const rounded = raw.map(value => Math.round(value));
+    const drift = groupTotal - rounded.reduce((sum, value) => sum + value, 0);
+    rounded[rounded.length - 1] += drift;
+    indexes.forEach((index, position) => {
+      const item = items[index];
+      const lineTotal = rounded[position];
+      result[index] = {
+        ...item,
+        lineTotal,
+        promoSavings: Math.max(0, item.price * item.quantity - lineTotal),
+      };
+    });
+  }
+  return result;
 }
 
 function selectComparableRows(rows: Record<string, unknown>[]) {
@@ -337,6 +485,8 @@ export function buildSupermarketCandidate(
   );
   const store = asString(row.store);
   const matchRelevance = asNumber(row.match_relevance);
+  const { promo: volumePromo, checked: promoChecked } = readVolumePromo(row, price);
+  const lineTotal = volumePromoLineTotal(price, selection.packs, volumePromo);
 
   return {
     id: asString(row.id),
@@ -349,7 +499,10 @@ export function buildSupermarketCandidate(
     packUnits,
     suppliedQuantity: selection.suppliedQuantity,
     price,
-    lineTotal: price * selection.packs,
+    lineTotal,
+    volumePromo,
+    promoChecked,
+    promoSavings: price * selection.packs - lineTotal,
     store,
     sku: asString(row.sku) || undefined,
     offerId: asString(row.offer_id) || undefined,
@@ -370,7 +523,13 @@ export function buildBasketComparison(
   rowsByTerm: Record<string, Record<string, unknown>[]>,
   requestedQuantities: Record<string, number> = {},
   requestedUnits: Record<string, SupermarketMeasurementUnit | undefined> = {},
+  storePolicies: SupermarketStorePolicy[] = [],
 ) {
+  const minimumByStore = new Map(storePolicies.flatMap(policy => (
+    typeof policy.minimumOrder === 'number' && Number.isFinite(policy.minimumOrder) && policy.minimumOrder > 0
+      ? [[policy.store, policy.minimumOrder] as const]
+      : []
+  )));
   const comparableByTerm = terms.map(term => {
     const requestedUnit = requestedUnits[term];
     const rows = (rowsByTerm[term] ?? []).filter(row => isProductSuitableForRequest(
@@ -392,6 +551,8 @@ export function buildBasketComparison(
           asString(row.name),
           term,
           requestedUnits[term],
+        ) && !needsProduceQuantityReview(
+          asString(row.name), term, requestedQuantities[term] || 1, requestedUnits[term],
         ))
         .map(row => buildSupermarketCandidate(
           row,
@@ -406,24 +567,39 @@ export function buildBasketComparison(
         ))[0];
       return candidate ? [candidate] : [];
     });
-    const coveredTerms = new Set(items.map(item => item.requestedTerm));
+    const pricedItems = applyCombinedVolumePromos(items);
+    const coveredTerms = new Set(pricedItems.map(item => item.requestedTerm));
     const missingTerms = terms.filter(term => !coveredTerms.has(term));
+    const subtotal = pricedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const pricingBasis: SupermarketPricingBasis = pricedItems.length > 0 && pricedItems.every(item => item.promoChecked)
+      ? 'promo_aware'
+      : 'unit_price';
+    const minimumOrder = minimumByStore.get(store);
+    const belowMinimum = pricedItems.length > 0 && minimumOrder !== undefined && subtotal + 0.5 < minimumOrder;
 
     return {
       store,
       channelType: WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail',
-      items,
-      subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
-      coveredCount: items.length,
+      items: pricedItems,
+      subtotal,
+      coveredCount: pricedItems.length,
       requestedCount: terms.length,
-      coveragePercent: terms.length > 0 ? Math.round(items.length * 100 / terms.length) : 0,
+      coveragePercent: terms.length > 0 ? Math.round(pricedItems.length * 100 / terms.length) : 0,
       missingTerms,
       complete: missingTerms.length === 0 && terms.length > 0,
-      fetchedAt: items.map(item => item.fetchedAt).filter(Boolean).sort().at(0),
+      fetchedAt: pricedItems.map(item => item.fetchedAt).filter(Boolean).sort().at(0),
+      pricingBasis,
+      promoSavings: pricedItems.reduce((sum, item) => sum + (item.promoSavings ?? 0), 0),
+      minimumOrder,
+      belowMinimum,
+      shortfall: belowMinimum && minimumOrder !== undefined ? minimumOrder - subtotal : undefined,
     };
   }).sort((left, right) => (
       Number(right.complete) - Number(left.complete)
       || right.coveredCount - left.coveredCount
+      // Una canasta que la tienda no deja cursar no se recomienda por sobre
+      // una que sí, aunque sea más barata (issue #96, causa 2).
+      || Number(left.belowMinimum) - Number(right.belowMinimum)
       || left.subtotal - right.subtotal
     ));
 

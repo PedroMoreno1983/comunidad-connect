@@ -6,6 +6,13 @@ export type GroupSettlementBasketItem = { requestedTerm: string; lineTotal: numb
 export const MAX_SHOPPING_LIST_CHARS = 12_000;
 export const MAX_SHOPPING_LIST_ITEMS = 200;
 
+/** Parenthetical aliases help a person read a list but can make every word mandatory in catalog matching. */
+export function stripOptionalProductClarifications(value: string): string {
+  return value.replace(/\s*\(([^)]+)\)/g, (whole, note: string) => (
+    /\d|\b(sin|con|descremad[ao]|enter[ao]|light|integral|gluten|az[uú]car|lactosa|sal|bajo|alta?|lata|bolsa|pack|caja)\b/i.test(note)
+      ? whole : ''
+  ));
+}
 
 function collapseDuplicatedList(value: string): string {
   const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -17,7 +24,7 @@ function collapseDuplicatedList(value: string): string {
 }
 
 function normalizeTerm(value: string): string {
-  return value
+  return stripOptionalProductClarifications(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -77,10 +84,10 @@ export function parseGroupShoppingList(value: string, preservePackageSize = fals
       /^(?:paquetes?|packs?|cajas?|bolsas?)\s+de\s+(\d{1,3})\s+(.+)$/i,
     );
     const leadingMeasure = entry.match(
-      /^(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
+      /^(\d{1,5}(?:\.\d{1,3})?)\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
     );
     const trailingMeasure = entry.match(
-      /^(.+?)\s+(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
+      /^(.+?)\s+(\d{1,5}(?:\.\d{1,3})?)\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
     );
     const leadingPackageSize = preservePackageSize ? entry.match(LEADING_PACKAGE_SIZE) : null;
     const trailingPackageSize = preservePackageSize ? entry.match(TRAILING_PACKAGE_SIZE) : null;
@@ -128,6 +135,10 @@ export function parseGroupShoppingList(value: string, preservePackageSize = fals
       rawTerm = trailingQuantity[1];
     }
 
+    if (unit && !Number.isInteger(quantity)) {
+      quantity = Math.round(quantity * (unit === 'kg' || unit === 'l' ? 1000 : 1));
+      unit = unit === 'kg' ? 'g' : unit === 'l' ? 'ml' : unit;
+    }
     const term = normalizeTerm(rawTerm);
     const existing = consolidated.get(term);
     const effectiveUnit = existing?.unit ?? unit;

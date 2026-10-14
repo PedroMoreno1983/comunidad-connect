@@ -2,33 +2,183 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, FileText, Loader2 } from "lucide-react";
 import { AdminFinanceService } from "@/lib/api";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
-import type { CommunityEmployeeRecord, PayrollRunRecord } from "@/lib/types";
+import type {
+    CommunityEmployeeRecord,
+    PayrollCalculation,
+    PayrollContractType,
+    PayrollEmployeeInput,
+    PayrollHealthSystem,
+    PayrollRunRecord,
+    PayrollSettings,
+} from "@/lib/types";
+import { PREVIRED_HEALTH_INSTITUTIONS } from "@/lib/finance/previredFile";
 import { currentMonthInChile, todayInChile } from "@/lib/finance/chileDates";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
+const digits = (value: string) => Number(value.replace(/[^\d]/g, "")) || 0;
 const today = todayInChile;
 const currentMonth = currentMonthInChile;
 
 const fieldClass = "w-full rounded-xl border px-3 py-2 text-sm cc-text-primary";
 const fieldStyle = { borderColor: "var(--cc-line)", background: "var(--cc-paper)" };
+const cardStyle = { borderColor: "var(--cc-line)", background: "var(--cc-paper)" };
+
+const CONTRACT_LABELS: Record<PayrollContractType, string> = {
+    indefinido: "Indefinido",
+    plazo_fijo: "Plazo fijo",
+    indefinido_11: "Indefinido, 11 años o más",
+};
+
+const CCAF_OPTIONS = [
+    { code: "00", name: "Sin caja de compensación" },
+    { code: "01", name: "Los Andes" },
+    { code: "02", name: "La Araucana" },
+    { code: "03", name: "Los Héroes" },
+    { code: "04", name: "18 de Septiembre" },
+];
+
+const MUTUAL_OPTIONS = [
+    { code: "00", name: "ISL (sin mutual)" },
+    { code: "01", name: "ACHS" },
+    { code: "02", name: "Mutual de Seguridad CChC" },
+    { code: "03", name: "IST" },
+];
+
+const AFP_LABELS: Record<string, string> = {
+    capital: "Capital", cuprum: "Cuprum", habitat: "Habitat", planvital: "PlanVital",
+    provida: "ProVida", modelo: "Modelo", uno: "Uno",
+};
+
+interface FormState {
+    id?: string;
+    fullName: string;
+    roleTitle: string;
+    monthlyAmount: string;
+    calculation: PayrollCalculation;
+    rut: string;
+    afp: string;
+    healthSystem: PayrollHealthSystem;
+    isapreName: string;
+    isaprePlanUf: string;
+    contractType: PayrollContractType;
+    gratification: boolean;
+    taxableBonus: string;
+    mealAllowance: string;
+    transportAllowance: string;
+    familyDependents: string;
+    firstNames: string;
+    fatherLastName: string;
+    motherLastName: string;
+    sex: "" | "M" | "F";
+    foreignNational: boolean;
+    isapreCode: string;
+    partTime: boolean;
+}
+
+const EMPTY_FORM: FormState = {
+    fullName: "", roleTitle: "", monthlyAmount: "", calculation: "chile", rut: "", afp: "",
+    healthSystem: "fonasa", isapreName: "", isaprePlanUf: "", contractType: "indefinido",
+    gratification: true, taxableBonus: "", mealAllowance: "", transportAllowance: "", familyDependents: "",
+    firstNames: "", fatherLastName: "", motherLastName: "", sex: "", foreignNational: false, isapreCode: "", partTime: false,
+};
+
+function formFromEmployee(person: CommunityEmployeeRecord): FormState {
+    return {
+        id: person.id,
+        fullName: person.full_name,
+        roleTitle: person.role_title,
+        monthlyAmount: String(person.monthly_amount),
+        calculation: person.calculation,
+        rut: person.rut || "",
+        afp: person.afp || "",
+        healthSystem: person.health_system,
+        isapreName: person.isapre_name || "",
+        isaprePlanUf: person.isapre_plan_uf ? String(person.isapre_plan_uf) : "",
+        contractType: person.contract_type,
+        gratification: person.gratification,
+        taxableBonus: person.taxable_bonus ? String(person.taxable_bonus) : "",
+        mealAllowance: person.meal_allowance ? String(person.meal_allowance) : "",
+        transportAllowance: person.transport_allowance ? String(person.transport_allowance) : "",
+        familyDependents: person.family_dependents ? String(person.family_dependents) : "",
+        firstNames: person.first_names || "",
+        fatherLastName: person.father_last_name || "",
+        motherLastName: person.mother_last_name || "",
+        sex: person.sex || "",
+        foreignNational: person.foreign_national,
+        isapreCode: person.isapre_code || "",
+        partTime: person.part_time,
+    };
+}
+
+function inputFromForm(form: FormState, active = true): PayrollEmployeeInput {
+    return {
+        id: form.id,
+        fullName: form.fullName,
+        roleTitle: form.roleTitle,
+        monthlyAmount: digits(form.monthlyAmount),
+        active,
+        calculation: form.calculation,
+        rut: form.rut,
+        afp: form.afp,
+        healthSystem: form.healthSystem,
+        isapreName: form.isapreName,
+        isaprePlanUf: form.healthSystem === "isapre" ? Number(form.isaprePlanUf.replace(",", ".")) || null : null,
+        contractType: form.contractType,
+        gratification: form.gratification,
+        taxableBonus: digits(form.taxableBonus),
+        mealAllowance: digits(form.mealAllowance),
+        transportAllowance: digits(form.transportAllowance),
+        familyDependents: digits(form.familyDependents),
+        firstNames: form.firstNames,
+        fatherLastName: form.fatherLastName,
+        motherLastName: form.motherLastName,
+        sex: form.sex || null,
+        foreignNational: form.foreignNational,
+        isapreCode: form.isapreCode,
+        partTime: form.partTime,
+    };
+}
+
+async function downloadPrevired(run: PayrollRunRecord) {
+    const response = await fetch(`/api/admin/payroll/runs/${run.id}/previred`);
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || "No se pudo generar el archivo Previred.");
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `previred-${run.month}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
 
 export default function RemuneracionesPage() {
     const { toast } = useToast();
     const [employees, setEmployees] = useState<CommunityEmployeeRecord[]>([]);
     const [runs, setRuns] = useState<PayrollRunRecord[]>([]);
+    const [afps, setAfps] = useState<string[]>([]);
+    const [indicatorsMonth, setIndicatorsMonth] = useState<string | null>(null);
+    const [settings, setSettings] = useState<PayrollSettings>({ ccafCode: "00", mutualCode: "00", accidentRate: 0.0093 });
+    const [accidentRateText, setAccidentRateText] = useState("0,93");
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
-    const [fullName, setFullName] = useState("");
-    const [roleTitle, setRoleTitle] = useState("");
-    const [monthlyAmount, setMonthlyAmount] = useState("");
+    const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [month, setMonth] = useState(currentMonth);
     const [paidAt, setPaidAt] = useState(today);
     const [reference, setReference] = useState("");
+
+    const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm(prev => ({ ...prev, [key]: value }));
+    // El nombre completo se arma con los nombres separados que pide Previred.
+    const setName = (key: "firstNames" | "fatherLastName" | "motherLastName", value: string) => setForm(prev => {
+        const next = { ...prev, [key]: value };
+        return { ...next, fullName: [next.firstNames, next.fatherLastName, next.motherLastName].filter(Boolean).join(" ") };
+    });
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -36,6 +186,10 @@ export default function RemuneracionesPage() {
             const data = await AdminFinanceService.getPayroll();
             setEmployees(data.employees);
             setRuns(data.runs);
+            setAfps(data.afps);
+            setIndicatorsMonth(data.indicatorsMonth);
+            setSettings(data.settings);
+            setAccidentRateText((data.settings.accidentRate * 100).toFixed(2).replace(".", ","));
         } catch (error) {
             toast({
                 title: "No se cargó la remuneración",
@@ -53,16 +207,13 @@ export default function RemuneracionesPage() {
         event.preventDefault();
         setBusy(true);
         try {
-            await AdminFinanceService.saveEmployee({
-                fullName,
-                roleTitle,
-                monthlyAmount: Number(monthlyAmount.replace(/[^\d]/g, "")),
-                active: true,
+            await AdminFinanceService.saveEmployee(inputFromForm(form));
+            toast({
+                title: form.id ? "Persona actualizada" : "Persona guardada",
+                description: "Queda incluida en la próxima liquidación.",
+                variant: "success",
             });
-            toast({ title: "Persona guardada", description: "Queda incluida en la próxima liquidación.", variant: "success" });
-            setFullName("");
-            setRoleTitle("");
-            setMonthlyAmount("");
+            setForm(EMPTY_FORM);
             await load();
         } catch (error) {
             toast({
@@ -78,13 +229,7 @@ export default function RemuneracionesPage() {
     async function setActive(person: CommunityEmployeeRecord, active: boolean) {
         setBusy(true);
         try {
-            await AdminFinanceService.saveEmployee({
-                id: person.id,
-                fullName: person.full_name,
-                roleTitle: person.role_title,
-                monthlyAmount: person.monthly_amount,
-                active,
-            });
+            await AdminFinanceService.saveEmployee(inputFromForm(formFromEmployee(person), active));
             await load();
         } catch (error) {
             toast({
@@ -97,11 +242,52 @@ export default function RemuneracionesPage() {
         }
     }
 
+    async function saveSettings(event: FormEvent) {
+        event.preventDefault();
+        setBusy(true);
+        try {
+            const accidentRate = Number(accidentRateText.replace(",", ".")) / 100;
+            await AdminFinanceService.savePayrollSettings({ ...settings, accidentRate });
+            toast({ title: "Datos previsionales guardados", description: "Se usan desde la próxima liquidación.", variant: "success" });
+            await load();
+        } catch (error) {
+            toast({
+                title: "No se guardó",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function previred(run: PayrollRunRecord) {
+        setBusy(true);
+        try {
+            await downloadPrevired(run);
+        } catch (error) {
+            toast({
+                title: "Falta información para Previred",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
     async function createRun() {
         setBusy(true);
         try {
             const data = await AdminFinanceService.createPayrollRun(month);
-            toast({ title: "Liquidación armada", description: `${data.run.month} por ${money(data.run.total)}.`, variant: "success" });
+            const stale = data.run.indicatorsMonth && data.run.indicatorsMonth !== month
+                ? ` Se usaron los indicadores de ${data.run.indicatorsMonth}; Previred aún no publica ${month}.`
+                : "";
+            toast({
+                title: "Liquidación armada",
+                description: `${data.run.month}: costo total ${money(data.run.total)}.${stale}`,
+                variant: "success",
+            });
             await load();
         } catch (error) {
             toast({
@@ -132,6 +318,8 @@ export default function RemuneracionesPage() {
         }
     }
 
+    const legal = form.calculation === "chile";
+
     return (
         <ErrorBoundary name="Remuneraciones">
             <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
@@ -142,40 +330,178 @@ export default function RemuneracionesPage() {
                     <Eyebrow className="mb-2">Personal</Eyebrow>
                     <DisplayHeading size={32}>Remuneraciones</DisplayHeading>
                     <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
-                        Arma la liquidación del mes y márcala pagada. El asiento entra al libro y, si el gasto común de ese mes sigue abierto, también a los egresos.
+                        Calcula la liquidación legal de cada persona (AFP, salud, cesantía, impuesto único y aportes del empleador),
+                        descarga el PDF para firma y márcala pagada. El costo total entra al libro y a los egresos del mes.
                     </p>
+                    {indicatorsMonth && (
+                        <p className="mt-2 text-xs cc-text-tertiary">Indicadores previsionales cargados hasta {indicatorsMonth} (Previred).</p>
+                    )}
                 </header>
 
-                <form onSubmit={event => void saveEmployee(event)} className="grid gap-3 rounded-2xl border p-5 sm:grid-cols-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                    <label className="text-sm cc-text-secondary sm:col-span-2">
-                        Nombre
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} value={fullName} onChange={event => setFullName(event.target.value)} required />
-                    </label>
-                    <label className="text-sm cc-text-secondary">
-                        Cargo
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} value={roleTitle} onChange={event => setRoleTitle(event.target.value)} placeholder="Conserje" required />
-                    </label>
-                    <label className="text-sm cc-text-secondary">
-                        Sueldo mensual
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" value={monthlyAmount} onChange={event => setMonthlyAmount(event.target.value)} required />
-                    </label>
-                    <div className="sm:col-span-4">
+                <form onSubmit={event => void saveEmployee(event)} className="space-y-4 rounded-2xl border p-5" style={cardStyle}>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                        {(["chile", "fixed"] as const).map(mode => (
+                            <button
+                                key={mode}
+                                type="button"
+                                onClick={() => set("calculation", mode)}
+                                className="rounded-full border px-3 py-1 font-semibold"
+                                style={form.calculation === mode
+                                    ? { background: "var(--cc-ink)", color: "white", borderColor: "var(--cc-ink)" }
+                                    : { borderColor: "var(--cc-line)" }}
+                            >
+                                {mode === "chile" ? "Liquidación legal" : "Monto fijo (honorarios o externo)"}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-4">
+                        {legal ? (
+                            <>
+                                <label className="text-sm cc-text-secondary">
+                                    Nombres
+                                    <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.firstNames} onChange={e => setName("firstNames", e.target.value)} required />
+                                </label>
+                                <label className="text-sm cc-text-secondary">
+                                    Apellidos
+                                    <span className="mt-1 flex gap-2">
+                                        <input className={fieldClass} style={fieldStyle} value={form.fatherLastName} onChange={e => setName("fatherLastName", e.target.value)} placeholder="Paterno" required />
+                                        <input className={fieldClass} style={fieldStyle} value={form.motherLastName} onChange={e => setName("motherLastName", e.target.value)} placeholder="Materno" />
+                                    </span>
+                                </label>
+                            </>
+                        ) : (
+                            <label className="text-sm cc-text-secondary sm:col-span-2">
+                                Nombre
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.fullName} onChange={e => set("fullName", e.target.value)} required />
+                            </label>
+                        )}
+                        <label className="text-sm cc-text-secondary">
+                            Cargo
+                            <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.roleTitle} onChange={e => set("roleTitle", e.target.value)} placeholder="Conserje" required />
+                        </label>
+                        <label className="text-sm cc-text-secondary">
+                            {legal ? "Sueldo base" : "Monto mensual"}
+                            <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" value={form.monthlyAmount} onChange={e => set("monthlyAmount", e.target.value)} required />
+                        </label>
+                    </div>
+
+                    {legal && (
+                        <div className="grid gap-3 sm:grid-cols-4">
+                            <label className="text-sm cc-text-secondary">
+                                RUT
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} value={form.rut} onChange={e => set("rut", e.target.value)} placeholder="12.345.678-5" required />
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Sexo
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.sex} onChange={e => set("sex", e.target.value as FormState["sex"])} required>
+                                    <option value="">Elige…</option>
+                                    <option value="F">Femenino</option>
+                                    <option value="M">Masculino</option>
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Nacionalidad
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.foreignNational ? "1" : "0"} onChange={e => set("foreignNational", e.target.value === "1")}>
+                                    <option value="0">Chilena</option>
+                                    <option value="1">Extranjera</option>
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Jornada
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.partTime ? "2" : "1"} onChange={e => set("partTime", e.target.value === "2")}>
+                                    <option value="1">Completa</option>
+                                    <option value="2">Parcial</option>
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                AFP
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.afp} onChange={e => set("afp", e.target.value)} required>
+                                    <option value="">Elige…</option>
+                                    {afps.map(afp => <option key={afp} value={afp}>{AFP_LABELS[afp] || afp}</option>)}
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Salud
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.healthSystem} onChange={e => set("healthSystem", e.target.value as PayrollHealthSystem)}>
+                                    <option value="fonasa">Fonasa</option>
+                                    <option value="isapre">Isapre</option>
+                                </select>
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Contrato
+                                <select className={`${fieldClass} mt-1`} style={fieldStyle} value={form.contractType} onChange={e => set("contractType", e.target.value as PayrollContractType)}>
+                                    {Object.entries(CONTRACT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </select>
+                            </label>
+                            {form.healthSystem === "isapre" && (
+                                <>
+                                    <label className="text-sm cc-text-secondary sm:col-span-2">
+                                        Isapre
+                                        <select
+                                            className={`${fieldClass} mt-1`}
+                                            style={fieldStyle}
+                                            value={form.isapreCode}
+                                            onChange={e => setForm(prev => ({
+                                                ...prev,
+                                                isapreCode: e.target.value,
+                                                isapreName: PREVIRED_HEALTH_INSTITUTIONS.find(item => item.code === e.target.value)?.name || "",
+                                            }))}
+                                            required
+                                        >
+                                            <option value="">Elige…</option>
+                                            {PREVIRED_HEALTH_INSTITUTIONS.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}
+                                        </select>
+                                    </label>
+                                    <label className="text-sm cc-text-secondary sm:col-span-2">
+                                        Plan (UF)
+                                        <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="decimal" value={form.isaprePlanUf} onChange={e => set("isaprePlanUf", e.target.value)} required />
+                                    </label>
+                                </>
+                            )}
+                            <label className="text-sm cc-text-secondary">
+                                Bonos imponibles
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" value={form.taxableBonus} onChange={e => set("taxableBonus", e.target.value)} placeholder="0" />
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Colación
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" value={form.mealAllowance} onChange={e => set("mealAllowance", e.target.value)} placeholder="0" />
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Movilización
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" value={form.transportAllowance} onChange={e => set("transportAllowance", e.target.value)} placeholder="0" />
+                            </label>
+                            <label className="text-sm cc-text-secondary">
+                                Cargas familiares
+                                <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" value={form.familyDependents} onChange={e => set("familyDependents", e.target.value)} placeholder="0" />
+                            </label>
+                            <label className="flex items-center gap-2 text-sm cc-text-secondary sm:col-span-4">
+                                <input type="checkbox" checked={form.gratification} onChange={e => set("gratification", e.target.checked)} />
+                                Gratificación legal mensual (25% del sueldo, con tope de 4,75 ingresos mínimos al año)
+                            </label>
+                        </div>
+                    )}
+
+                    <div className="flex gap-3">
                         <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
-                            Agregar persona
+                            {form.id ? "Guardar cambios" : "Agregar persona"}
                         </button>
+                        {form.id && (
+                            <button type="button" className="text-sm underline cc-text-secondary" onClick={() => setForm(EMPTY_FORM)}>Cancelar</button>
+                        )}
                     </div>
                 </form>
 
                 {loading ? (
                     <p className="flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Cargando…</p>
                 ) : (
-                    <section className="overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <section className="overflow-x-auto rounded-2xl border" style={cardStyle}>
                         <table className="w-full text-sm">
                             <thead style={{ background: "var(--cc-paper-warm)" }}>
                                 <tr>
                                     <th className="px-5 py-2 text-left font-semibold cc-text-secondary">Persona</th>
-                                    <th className="px-5 py-2 text-left font-semibold cc-text-secondary">Cargo</th>
-                                    <th className="px-5 py-2 text-right font-semibold cc-text-secondary">Mensual</th>
+                                    <th className="px-5 py-2 text-left font-semibold cc-text-secondary">Cálculo</th>
+                                    <th className="px-5 py-2 text-right font-semibold cc-text-secondary">Sueldo</th>
                                     <th className="px-5 py-2 text-right font-semibold cc-text-secondary">Estado</th>
                                 </tr>
                             </thead>
@@ -184,8 +510,17 @@ export default function RemuneracionesPage() {
                                     <tr><td colSpan={4} className="px-5 py-6 text-center cc-text-secondary">Todavía no hay personal cargado.</td></tr>
                                 ) : employees.map(person => (
                                     <tr key={person.id} className="border-t" style={{ borderColor: "var(--cc-line)" }}>
-                                        <td className="px-5 py-2 font-medium cc-text-primary">{person.full_name}</td>
-                                        <td className="px-5 py-2 cc-text-secondary">{person.role_title}</td>
+                                        <td className="px-5 py-2">
+                                            <button type="button" className="text-left font-medium cc-text-primary hover:underline" onClick={() => setForm(formFromEmployee(person))}>
+                                                {person.full_name}
+                                            </button>
+                                            <div className="text-xs cc-text-tertiary">{person.role_title}</div>
+                                        </td>
+                                        <td className="px-5 py-2 cc-text-secondary">
+                                            {person.calculation === "chile"
+                                                ? `Legal · ${AFP_LABELS[person.afp || ""] || person.afp || "sin AFP"} · ${person.health_system === "isapre" ? "Isapre" : "Fonasa"}`
+                                                : "Monto fijo"}
+                                        </td>
                                         <td className="px-5 py-2 text-right cc-text-primary">{money(person.monthly_amount)}</td>
                                         <td className="px-5 py-2 text-right">
                                             <button type="button" disabled={busy} className="text-xs font-semibold underline cc-text-secondary" onClick={() => void setActive(person, !person.active)}>
@@ -199,49 +534,112 @@ export default function RemuneracionesPage() {
                     </section>
                 )}
 
-                <section className="flex flex-wrap items-end gap-3 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <form onSubmit={event => void saveSettings(event)} className="flex flex-wrap items-end gap-3 rounded-2xl border p-5" style={cardStyle}>
+                    <p className="w-full text-sm font-semibold cc-text-primary">Datos previsionales de la comunidad</p>
+                    <label className="text-sm cc-text-secondary">
+                        Caja de compensación
+                        <select className={`${fieldClass} mt-1`} style={fieldStyle} value={settings.ccafCode} onChange={e => setSettings(prev => ({ ...prev, ccafCode: e.target.value }))}>
+                            {CCAF_OPTIONS.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="text-sm cc-text-secondary">
+                        Seguro de accidentes
+                        <select className={`${fieldClass} mt-1`} style={fieldStyle} value={settings.mutualCode} onChange={e => setSettings(prev => ({ ...prev, mutualCode: e.target.value }))}>
+                            {MUTUAL_OPTIONS.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="text-sm cc-text-secondary">
+                        Tasa total (%)
+                        <input className={`${fieldClass} mt-1 w-24`} style={fieldStyle} inputMode="decimal" value={accidentRateText} onChange={e => setAccidentRateText(e.target.value)} />
+                    </label>
+                    <button type="submit" disabled={busy} className="rounded-xl border px-4 py-2 text-sm font-semibold cc-text-primary disabled:opacity-60" style={{ borderColor: "var(--cc-line)" }}>
+                        Guardar
+                    </button>
+                </form>
+
+                <section className="flex flex-wrap items-end gap-3 rounded-2xl border p-5" style={cardStyle}>
                     <label className="text-sm cc-text-secondary">
                         Mes
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} type="month" value={month} onChange={event => setMonth(event.target.value)} />
+                        <input className={`${fieldClass} mt-1`} style={fieldStyle} type="month" value={month} onChange={e => setMonth(e.target.value)} />
                     </label>
                     <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void createRun()}>
-                        Armar liquidación
+                        Calcular liquidaciones
                     </button>
                     <label className="text-sm cc-text-secondary">
                         Fecha de pago
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} type="date" value={paidAt} onChange={event => setPaidAt(event.target.value)} />
+                        <input className={`${fieldClass} mt-1`} style={fieldStyle} type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} />
                     </label>
                     <label className="text-sm cc-text-secondary">
                         Comprobante
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} value={reference} onChange={event => setReference(event.target.value)} placeholder="Opcional" />
+                        <input className={`${fieldClass} mt-1`} style={fieldStyle} value={reference} onChange={e => setReference(e.target.value)} placeholder="Opcional" />
                     </label>
                 </section>
 
                 <div className="space-y-4">
-                    {runs.map(run => (
-                        <article key={run.id} className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="font-semibold cc-text-primary">{run.month}</h2>
-                                    <p className="text-sm cc-text-secondary">{money(run.total_amount)} · {run.status === "paid" ? `Pagada ${run.paid_at || ""}` : "Borrador"}</p>
+                    {runs.map(run => {
+                        const netTotal = run.payroll_lines.reduce((sum, line) => sum + (line.net_amount ?? line.amount), 0);
+                        const contributions = run.payroll_lines.reduce((sum, line) => {
+                            const slip = line.breakdown;
+                            return slip?.calculation === "chile"
+                                ? sum + slip.afp!.amount + slip.health.amount + slip.unemploymentWorker + slip.incomeTax + slip.employer.total - slip.familyAllowance
+                                : sum;
+                        }, 0);
+                        return (
+                            <article key={run.id} className="rounded-2xl border p-5" style={cardStyle}>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <h2 className="font-semibold cc-text-primary">{run.month}</h2>
+                                        <p className="text-sm cc-text-secondary">
+                                            Costo total {money(run.total_amount)} · {run.status === "paid" ? `Pagada ${run.paid_at || ""}` : "Borrador"}
+                                        </p>
+                                        <p className="text-xs cc-text-tertiary">
+                                            Líquidos a transferir {money(netTotal)}
+                                            {contributions > 0 && ` · Previred e impuesto ${money(contributions)}`}
+                                            {run.indicators_month && ` · Indicadores ${run.indicators_month}`}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {run.indicators_month && (
+                                            <button type="button" disabled={busy} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold cc-text-primary disabled:opacity-60" style={{ borderColor: "var(--cc-line)" }} onClick={() => void previred(run)}>
+                                                <Download className="h-4 w-4" /> Archivo Previred
+                                            </button>
+                                        )}
+                                        {run.status === "draft" && (
+                                            <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void payRun(run.id)}>
+                                                Marcar pagada
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                {run.status === "draft" && (
-                                    <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void payRun(run.id)}>
-                                        Marcar pagada
-                                    </button>
-                                )}
-                            </div>
-                            <ul className="mt-3 space-y-1 text-sm cc-text-secondary">
-                                {(run.payroll_lines || []).map(line => (
-                                    <li key={line.id} className="flex justify-between gap-3">
-                                        <span>{line.full_name} · {line.role_title}</span>
-                                        <span>{money(line.amount)}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            {run.expense_note && <p className="mt-3 text-xs cc-text-tertiary">{run.expense_note}</p>}
-                        </article>
-                    ))}
+                                <ul className="mt-3 divide-y text-sm cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>
+                                    {run.payroll_lines.map(line => (
+                                        <li key={line.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                                            <span>{line.full_name} · {line.role_title}</span>
+                                            <span className="flex items-center gap-4">
+                                                {line.breakdown?.calculation === "chile" ? (
+                                                    <>
+                                                        <span>Líquido {money(line.net_amount ?? 0)}</span>
+                                                        <span className="cc-text-tertiary">Costo {money(line.amount)}</span>
+                                                        <a
+                                                            href={`/api/admin/payroll/lines/${line.id}/pdf`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="inline-flex items-center gap-1 text-xs font-semibold underline"
+                                                        >
+                                                            <FileText className="h-3.5 w-3.5" /> PDF
+                                                        </a>
+                                                    </>
+                                                ) : (
+                                                    <span>{money(line.amount)}</span>
+                                                )}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                {run.expense_note && <p className="mt-3 text-xs cc-text-tertiary">{run.expense_note}</p>}
+                            </article>
+                        );
+                    })}
                 </div>
             </div>
         </ErrorBoundary>

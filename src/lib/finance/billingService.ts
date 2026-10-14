@@ -23,6 +23,8 @@ import {
 import { applyWaterConsumption, waterPeriodFromBillingMonth, previousBillingMonth, type WaterReadingSnapshot } from './waterBilling';
 import { sendExpenseNotices } from './expenseNoticeEmail';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { committeeReviewDigest, sourceExpenseSnapshot } from './committeeReviewDigest';
+import { todayInChile } from './chileDates';
 
 export class BillingError extends Error {
     code: string;
@@ -102,13 +104,14 @@ export interface BillingIssueResult {
 
 /** Lanza BillingError 409 si el mes ya tiene una emisión vigente. */
 async function assertNotIssued(communityId: string, month: string): Promise<void> {
-    const { data } = await getSupabaseAdmin()
+    const { data, error } = await getSupabaseAdmin()
         .from('billing_runs')
         .select('id')
         .eq('community_id', communityId)
         .eq('month', month)
         .eq('status', 'issued')
         .maybeSingle();
+    if (error) throw error;
     if (data) {
         throw new BillingError(
             'already_issued',
@@ -388,13 +391,47 @@ export async function issueBilling(
         );
     }
 
+    const { data: latestReview, error: reviewError } = await admin
+        .from('finance_committee_reviews')
+        .select('id, status, snapshot_digest')
+        .eq('community_id', communityId)
+        .eq('month', month)
+        .order('requested_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (reviewError) throw reviewError;
+    const { data: committeeMembers, error: membersError } = await admin.from('finance_committee_members')
+        .select('id, profiles!finance_committee_members_resident_id_fkey!inner(role, community_id)')
+        .eq('community_id', communityId).eq('profiles.role', 'resident').eq('profiles.community_id', communityId)
+        .is('ended_at', null)
+        .lte('starts_on', todayInChile())
+        .limit(1);
+    if (membersError) throw membersError;
+    if ((committeeMembers?.length ?? 0) > 0 && !latestReview) {
+        throw new BillingError('committee_review_required', 'Antes de emitir, solicita aprobación a un integrante vigente del comité.', 409);
+    }
+    if (latestReview) {
+        if (latestReview.status !== 'approved') {
+            throw new BillingError('committee_review_pending', 'La revisión del comité está pendiente o fue rechazada. Solicita una nueva aprobación antes de emitir.', 409);
+        }
+        const { data: sourceRows, error: sourceError } = await admin.from('community_expenses')
+            .select('id, label, category, amount, document_url, document_sha256').eq('community_id', communityId).eq('month', month);
+        if (sourceError) throw sourceError;
+        const sources = sourceExpenseSnapshot(sourceRows ?? []);
+        if (latestReview.snapshot_digest !== committeeReviewDigest(month, dueDate, quota, result, sources)) {
+            throw new BillingError('committee_review_stale', 'El prorrateo, la cuota o el vencimiento cambiaron desde la aprobación. Solicita una nueva revisión.', 409);
+        }
+    }
+
     // Un cobro preexistente para esa unidad y mes (por ejemplo creado a mano
     // desde el Agent Center) se respeta: se omite y se informa, sin duplicar.
-    const { data: existing } = await admin
+    const { data: existing, error: existingError } = await admin
         .from('expenses')
         .select('unit_id')
         .eq('community_id', communityId)
         .eq('month', month);
+    if (existingError) throw existingError;
     const alreadyCharged = new Set((existing ?? []).map(row => String(row.unit_id)));
     if (alreadyCharged.size > 0) {
         throw new BillingError('existing_charges', 'Ya existen cobros para algunas unidades de este mes. Revisa y resuelve esos cobros antes de emitir el gasto común completo.', 409);
@@ -407,62 +444,39 @@ export async function issueBilling(
         throw new BillingError('all_charged', 'Todas las unidades ya tienen un cobro registrado para ese mes.', 409);
     }
 
-    const { data: run, error: runError } = await admin
-        .from('billing_runs')
-        .insert({
-            community_id: communityId,
-            month,
-            status: 'issued',
-            total_amount: pending.reduce((sum, unit) => sum + unit.total, 0),
-            units_count: pending.length,
-            due_date: dueDate,
-            fallback_equal_split: result.fellBackToEqualSplit,
-            issued_by: issuedBy,
-        })
-        .select('id')
-        .single();
-    if (runError) throw runError;
-
-    const { data: inserted, error: insertError } = await admin
-        .from('expenses')
-        .insert(pending.map(unit => ({
-            unit_id: unit.unitId,
-            community_id: communityId,
-            month,
-            amount: unit.total,
-            status: 'pending',
-            due_date: dueDate,
-            billing_run_id: run.id,
-        })))
-        .select('id, unit_id');
-    if (insertError) {
-        // Sin la corrida huérfana el mes queda bloqueado para reintentar.
-        await admin.from('billing_runs').delete().eq('id', run.id);
-        throw insertError;
-    }
-
-    const expenseIdByUnit = new Map((inserted ?? []).map(row => [String(row.unit_id), String(row.id)]));
-    const items = pending.flatMap(unit => {
-        const expenseId = expenseIdByUnit.get(unit.unitId);
-        if (!expenseId) return [];
-        return unit.items.map(item => ({
-            expense_id: expenseId,
-            source_expense_id: item.expenseId === FIXED_QUOTA_EXPENSE_ID ? null : item.expenseId,
-            category: item.category,
-            label: item.label,
-            amount: item.amount,
-        }));
+    const { data: committed, error: issueError } = await admin.rpc('issue_billing_run_atomic', {
+        p_community_id: communityId,
+        p_month: month,
+        p_due_date: dueDate,
+        p_issued_by: issuedBy,
+        p_fallback_equal_split: result.fellBackToEqualSplit,
+        p_committee_review_id: latestReview?.id ?? null,
+        p_units: pending.map(unit => ({
+            unitId: unit.unitId,
+            total: unit.total,
+            items: unit.items.map(item => ({
+                sourceExpenseId: item.expenseId === FIXED_QUOTA_EXPENSE_ID ? null : item.expenseId,
+                category: item.category,
+                label: item.label,
+                amount: item.amount,
+            })),
+        })),
     });
-    if (items.length > 0) {
-        const { error: itemsError } = await admin.from('expense_items').insert(items);
-        if (itemsError) {
-            const { error: rollbackError } = await admin.from('expenses').delete().eq('billing_run_id', run.id);
-            if (!rollbackError) await admin.from('billing_runs').delete().eq('id', run.id);
-            throw new BillingError('breakdown_failed', rollbackError
-                ? 'Falló el desglose y no se pudo revertir la emisión. Revisa los cobros antes de reintentar.'
-                : 'Falló el desglose de los cobros. Se revirtió la emisión; puedes reintentar.', 500);
-        }
+    if (issueError) throw issueError;
+    const issue = committed as {
+        status?: string; runId?: string; issuedUnits?: number;
+        totalCharged?: number; reserveContribution?: number;
+    } | null;
+    if (issue?.status === 'already_issued') {
+        throw new BillingError('already_issued', `El gasto común de ${month} ya fue emitido.`, 409);
     }
+    if (issue?.status === 'existing_charges') {
+        throw new BillingError('existing_charges', 'Ya existen cobros para algunas unidades de este mes. Revisa esos cobros antes de emitir.', 409);
+    }
+    if (issue?.status !== 'issued' || !issue.runId || issue.issuedUnits !== pending.length || issue.totalCharged !== result.totalCharged) {
+        throw new BillingError('issue_failed', 'No se pudo confirmar la emisión completa. Revisa el mes antes de reintentar.', 500);
+    }
+    const run = { id: issue.runId };
 
     const notifications = pending.flatMap(unit => {
         const ownerId = unitRows.find(row => String(row.id) === unit.unitId)?.owner_id;
@@ -478,45 +492,19 @@ export async function issueBilling(
         }];
     });
     let notified = 0;
+    const deliveryWarnings: string[] = [];
     if (notifications.length > 0) {
         const { data: insertedNotifications, error: notificationError } = await admin
             .from('notifications').insert(notifications).select('id');
-        if (notificationError) console.warn('[billingService] notifications insert failed:', notificationError);
+        if (notificationError) {
+            console.warn('[billingService] notifications insert failed:', notificationError);
+            deliveryWarnings.push('Los cobros se emitieron, pero no se pudieron crear los avisos en la app. Revisa la notificación a residentes.');
+        }
         else notified = insertedNotifications?.length ?? 0;
     }
 
-    const totalCharged = pending.reduce((sum, unit) => sum + unit.total, 0);
-
-    // Aporte al fondo de reserva (Ley 21.442). Solo si la comunidad configuró
-    // una tasa: sin decisión explícita del administrador no se mueve plata a
-    // un fondo aparte. El índice único por billing_run_id lo hace idempotente.
-    let reserveContribution = 0;
-    const { data: communityRow } = await admin
-        .from('communities')
-        .select('reserve_fund_rate')
-        .eq('id', communityId)
-        .maybeSingle();
-    const reserveRate = Number(communityRow?.reserve_fund_rate || 0);
-    if (reserveRate > 0) {
-        reserveContribution = Math.round(totalCharged * (reserveRate / 100));
-        if (reserveContribution > 0) {
-            const { error: fundError } = await admin.from('reserve_fund_movements').insert({
-                community_id: communityId,
-                kind: 'contribution',
-                amount: reserveContribution,
-                month,
-                label: `Aporte del gasto común ${month} (${reserveRate}%)`,
-                billing_run_id: run.id,
-                created_by: issuedBy,
-            });
-            // El aporte es un asiento derivado: si falla, la emisión sigue
-            // siendo válida y se avisa, en vez de revertir todos los cobros.
-            if (fundError) {
-                console.warn('[billingService] reserve fund contribution failed:', fundError);
-                reserveContribution = 0;
-            }
-        }
-    }
+    const totalCharged = issue.totalCharged;
+    const reserveContribution = issue.reserveContribution ?? 0;
 
     const issued: BillingIssueResult = {
         runId: run.id,
@@ -526,7 +514,7 @@ export async function issueBilling(
         totalCharged,
         notified,
         fellBackToEqualSplit: result.fellBackToEqualSplit,
-        warnings: [...waterWarnings, ...billable.warnings, ...result.warnings],
+        warnings: [...waterWarnings, ...billable.warnings, ...result.warnings, ...deliveryWarnings],
         reserveContribution,
         emailed: 0,
         emailFailed: 0,
@@ -557,9 +545,27 @@ export async function issueBilling(
             });
             issued.emailed = email.sent;
             issued.emailFailed = email.failed;
+            if (email.failed > 0) {
+                issued.warnings.push(`${email.failed} correo(s) no se pudieron enviar. Revisa los destinatarios y reintenta los avisos.`);
+            }
         } catch (emailError) {
             console.warn('[billingService] mass notice failed:', emailError);
+            issued.warnings.push('Los cobros se emitieron, pero falló el envío masivo de correos. Revisa los destinatarios antes de reintentar los avisos.');
         }
+    }
+
+    const issueAudit = await recordOperationEvent({
+        communityId,
+        actorId: issuedBy,
+        actorRole: 'admin',
+        action: 'billing.issued',
+        entityType: 'billing_run',
+        entityId: run.id,
+        summary: `Gasto común ${month} emitido para ${pending.length} unidades por $${totalCharged.toLocaleString('es-CL')}`,
+        metadata: { month, dueDate, totalCharged, issuedUnits: pending.length, committeeReviewId: latestReview?.id ?? null },
+    });
+    if (!issueAudit.ok) {
+        issued.warnings.push('La emisión se guardó, pero falló su registro en la bitácora de operaciones. Revisa la auditoría.');
     }
 
     return issued;
@@ -663,106 +669,78 @@ export async function createUnitExpense(
         throw new BillingError('bad_amount', 'El monto debe ser mayor que cero.');
     }
 
-    const admin = getSupabaseAdmin();
-
-    const { data: unit } = await admin
-        .from('units')
-        .select('id, number, tower')
-        .eq('id', input.unitId)
-        .eq('community_id', communityId)
-        .maybeSingle();
-    if (!unit) throw new BillingError('unit_not_found', 'Esa unidad no existe en tu comunidad.', 404);
-
     const label = (input.label || '').trim() || `Gasto común ${input.month}`;
-
-    const { data: existing, error: existingError } = await admin
-        .from('expenses')
-        .select('id')
-        .eq('community_id', communityId)
-        .eq('unit_id', input.unitId)
-        .eq('month', input.month)
-        .limit(1)
-        .maybeSingle();
-    if (existingError) throw existingError;
-    if (existing) {
-        throw new BillingError(
-            'already_charged',
-            `El Depto ${unit.number} ya tiene un cobro registrado para ${input.month}.`,
-            409,
-        );
-    }
-
-    const { data: expense, error: expenseError } = await admin
-        .from('expenses')
-        .insert({
-            unit_id: input.unitId,
-            community_id: communityId,
-            month: input.month,
-            amount,
-            status: 'pending',
-            due_date: input.dueDate,
-        })
-        .select('id, month, amount, status, due_date')
-        .single();
-    if (expenseError) throw expenseError;
-
-    const { error: itemError } = await admin.from('expense_items').insert({
-        expense_id: expense.id,
-        category: 'other',
-        label,
-        amount,
+    const { data, error } = await getSupabaseAdmin().rpc('create_unit_expense_atomic', {
+        p_community_id: communityId,
+        p_unit_id: input.unitId,
+        p_month: input.month,
+        p_amount: amount,
+        p_due_date: input.dueDate,
+        p_label: label,
     });
-    if (itemError) {
-        const { error: rollbackError } = await admin.from('expenses').delete().eq('id', expense.id);
-        throw new BillingError('breakdown_failed', rollbackError
-            ? 'Falló el desglose y no se pudo revertir el cobro. Revisa la unidad antes de reintentar.'
-            : 'Falló el desglose. Se revirtió el cobro; puedes reintentar.', 500);
+    if (error) throw error;
+    const outcome = data as {
+        status?: string; unitNumber?: string;
+        expense?: { id: string; month: string; amount: number; status: string; due_date: string };
+    } | null;
+    if (outcome?.status === 'unit_not_found') {
+        throw new BillingError('unit_not_found', 'Esa unidad no existe en tu comunidad.', 404);
     }
-
+    if (outcome?.status === 'already_charged') {
+        throw new BillingError('already_charged',
+            `El Depto ${outcome.unitNumber || ''} ya tiene un cobro registrado para ${input.month}.`, 409);
+    }
+    if (outcome?.status !== 'created' || !outcome.expense || !outcome.unitNumber) {
+        throw new BillingError('charge_failed', 'No se pudo confirmar el cobro. Revisa la unidad antes de reintentar.', 500);
+    }
     void createdBy;
-    return { expense, unitNumber: String(unit.number) };
+    return { expense: outcome.expense, unitNumber: outcome.unitNumber };
 }
 
-/** Anula una emisión, borrando los cobros generados salvo los ya pagados. */
-export async function cancelBilling(communityId: string, runId: string) {
+/** Anula cobros y fondo en una transacción; un abono parcial bloquea la anulación. */
+export async function cancelBilling(communityId: string, runId: string, actorId: string | null) {
     const admin = getSupabaseAdmin();
-    const { data: run } = await admin
-        .from('billing_runs')
-        .select('id, month, status')
-        .eq('id', runId)
-        .eq('community_id', communityId)
-        .maybeSingle();
+    const { data: run, error: runError } = await admin.from('billing_runs')
+        .select('month').eq('community_id', communityId).eq('id', runId).maybeSingle();
+    if (runError) throw runError;
     if (!run) throw new BillingError('not_found', 'Emisión no encontrada.', 404);
-    if (run.status !== 'issued') throw new BillingError('not_issued', 'Esa emisión ya estaba anulada.', 409);
-
-    // Un cobro ya pagado no se puede borrar sin descuadrar la caja.
-    const { data: paid } = await admin
-        .from('expenses')
-        .select('id')
-        .eq('billing_run_id', runId)
-        .eq('status', 'paid');
-    if ((paid?.length ?? 0) > 0) {
-        throw new BillingError(
-            'has_paid',
-            `No se puede anular: ${paid!.length} unidad(es) ya pagaron este gasto común. Corrige esos cobros individualmente.`,
-            409,
-        );
+    const { data: closure, error: closureError } = await admin.from('finance_period_closures')
+        .select('month').eq('community_id', communityId).gte('month', run.month)
+        .order('month', { ascending: true }).limit(1).maybeSingle();
+    if (closureError) throw closureError;
+    if (closure) {
+        throw new BillingError('closed_period', `No se puede anular: el período ${run.month} ya está incluido en un corte financiero.`, 409);
     }
-
-    const { error: deleteError } = await admin.from('expenses').delete().eq('billing_run_id', runId);
-    if (deleteError) throw deleteError;
-
-    const { error: updateError } = await admin.from('billing_runs').update({ status: 'cancelled' }).eq('id', runId);
-    if (updateError) throw updateError;
-
-    // El aporte al fondo de reserva de esta emisión también se revierte: si no,
-    // el fondo quedaría inflado por plata que nunca se cobró.
-    const { error: fundError } = await admin
-        .from('reserve_fund_movements')
-        .delete()
-        .eq('billing_run_id', runId)
-        .eq('kind', 'contribution');
-    if (fundError) console.warn('[billingService] reserve fund reversal failed:', fundError);
-
-    return { ok: true, month: run.month };
+    const { data, error } = await admin.rpc('cancel_billing_run_safe', {
+        p_community_id: communityId,
+        p_run_id: runId,
+    });
+    if (error) throw error;
+    const outcome = data as { status?: string; month?: string } | null;
+    if (outcome?.status === 'not_found') throw new BillingError('not_found', 'Emisión no encontrada.', 404);
+    if (outcome?.status === 'not_issued') throw new BillingError('not_issued', 'Esa emisión ya estaba anulada.', 409);
+    if (outcome?.status === 'has_paid' || outcome?.status === 'has_payment') {
+        throw new BillingError('has_payment', 'No se puede anular: hay cobros pagados o abonos parciales vinculados a esta emisión.', 409);
+    }
+    if (outcome?.status === 'has_related_records') {
+        throw new BillingError('has_related_records', 'No se puede anular: esta emisión tiene cargos o aportes asociados. Revisa esos movimientos primero.', 409);
+    }
+    if (outcome?.status !== 'cancelled' || !outcome.month) {
+        throw new BillingError('cancel_failed', 'No se pudo confirmar la anulación. Revisa el estado de la emisión.', 500);
+    }
+    const audit = await recordOperationEvent({
+        communityId,
+        actorId,
+        actorRole: 'admin',
+        action: 'billing.cancelled',
+        entityType: 'billing_run',
+        entityId: runId,
+        summary: `Emisión de gasto común ${outcome.month} anulada`,
+        metadata: { month: outcome.month },
+    });
+    return {
+        ok: true,
+        month: outcome.month,
+        warnings: audit.ok ? [] : ['La anulación se completó, pero falló su registro en la bitácora de operaciones. Revisa la auditoría.'],
+    };
 }

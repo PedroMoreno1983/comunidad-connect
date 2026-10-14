@@ -20,6 +20,7 @@ import {
     parseTrainingSlides,
     trainingActivityCount,
     trainingQualityReport,
+    trainingSourceEvidence,
 } from "@/lib/training/courseContent";
 import type {
     TrainingCourseBuilderProps,
@@ -75,9 +76,12 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
     const [fileName, setFileName] = useState<string | null>(null);
     const [busy, setBusy] = useState<"file" | "generate" | "publish" | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [reviewed, setReviewed] = useState(false);
 
-    const activities = useMemo(() => trainingActivityCount(slides), [slides]);
-    const quality = useMemo(() => trainingQualityReport(slides), [slides]);
+    const publishableSlides = useMemo(() => normalizeTrainingSlides(slides), [slides]);
+    const activities = useMemo(() => trainingActivityCount(publishableSlides), [publishableSlides]);
+    const quality = useMemo(() => trainingQualityReport(publishableSlides), [publishableSlides]);
+    const sourceEvidence = useMemo(() => trainingSourceEvidence(publishableSlides, draft.content), [publishableSlides, draft.content]);
     const isStructured = quality.publishable;
     const objectives = useMemo(
         () => objectivesText.split("\n").map(item => item.trim()).filter(Boolean).slice(0, 8),
@@ -87,7 +91,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
         draft.title.trim()
         && draft.description.trim()
         && objectives.length
-        && (isStructured || draft.embedUrl.trim()),
+        && ((isStructured && reviewed && (initialCourse || sourceEvidence.sufficient)) || draft.embedUrl.trim()),
     );
 
     const setField = <K extends keyof TrainingCourseDraft>(key: K, value: TrainingCourseDraft[K]) => {
@@ -98,6 +102,13 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
     const updateSource = (content: string) => {
         setField("content", content);
         setSlides([]);
+        setReviewed(false);
+    };
+
+    const editSlide = (index: number, change: Partial<TrainingSlide>) => {
+        setSlides(previous => previous.map((slide, position) => position === index ? { ...slide, ...change } : slide));
+        setReviewed(false);
+        setErrorMessage(null);
     };
 
     const loadFile = async (file: File) => {
@@ -142,16 +153,10 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                 throw new Error(data.error || "No se pudo construir un curso interactivo válido.");
             }
             setSlides(normalized);
-            if (!objectivesText.trim()) {
-                setObjectivesText([
-                    "Reconocer los criterios esenciales del protocolo.",
-                    "Aplicar el procedimiento correcto en situaciones reales.",
-                    "Registrar, escalar y cerrar cada gestión con evidencia.",
-                ].join("\n"));
-            }
+            setReviewed(false);
             toast({
                 title: "Curso diseñado",
-                description: `${normalized.length} secciones y ${trainingActivityCount(normalized)} actividades listas para revisar.`,
+                description: `${normalized.length} secciones y ${trainingActivityCount(normalized)} actividades. Revisa la fuente y las respuestas antes de publicar.`,
                 variant: "success",
             });
         } catch (error) {
@@ -180,7 +185,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                     title: draft.title,
                     description: draft.description,
                     targetAudience: draft.targetAudience,
-                    content: slides.length ? JSON.stringify(slides) : "",
+                    content: publishableSlides.length ? JSON.stringify(publishableSlides) : "",
                     embedUrl: draft.embedUrl,
                     completionMode: draft.embedUrl ? draft.completionMode : "interactive",
                     learningObjectives: objectives,
@@ -216,7 +221,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                     <ArrowLeft className="h-4 w-4" /> Volver al catálogo
                 </button>
                 <Eyebrow>Administración · autoría</Eyebrow>
-                <h2 className="mt-2 text-2xl font-semibold cc-text-primary">{editingOwnCourse ? `Editar y publicar versión ${Number(initialCourse?.version_number || 1) + 1}` : personalizingOfficial ? "Personalizar curso oficial" : "Crear una capacitación profesional"}</h2>
+                <h2 className="mt-2 text-2xl font-semibold cc-text-primary">{editingOwnCourse ? `Editar y publicar versión ${Number(initialCourse?.version_number || 1) + 1}` : personalizingOfficial ? "Adaptar curso base a tu comunidad" : "Crear una capacitación profesional"}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 cc-text-secondary">
                     {editingOwnCourse ? "Revisa el contenido vigente, mejora la fuente o los metadatos y publica una versión trazable sin borrar la anterior." : "Parte de un protocolo, reglamento o manual. CoCo lo transforma en secciones breves, decisiones prácticas y comprobaciones antes de publicarlo."}
                 </p>
@@ -311,7 +316,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                             <Eyebrow>Vista previa</Eyebrow>
                             <h3 className="mt-2 text-lg font-semibold cc-text-primary">Estructura del curso</h3>
                         </div>
-                        {isStructured && <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><ShieldCheck className="h-3.5 w-3.5" />Calidad {quality.score}/100</span>}
+                        {isStructured && <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}><ShieldCheck className="h-3.5 w-3.5" />Estructura {quality.score}/100</span>}
                     </div>
 
                     {slides.length === 0 ? (
@@ -327,20 +332,38 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                                 <PreviewMetric value={activities} label="actividades" />
                             </div>
                             <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                                <div className="flex items-center justify-between text-xs font-semibold"><span className="cc-text-primary">Control editorial</span><span style={{ color: quality.publishable ? "var(--cc-sage)" : "var(--cc-copper)" }}>{quality.score}/100</span></div>
+                                <div className="flex items-center justify-between text-xs font-semibold"><span className="cc-text-primary">Control de estructura</span><span style={{ color: quality.publishable ? "var(--cc-sage)" : "var(--cc-copper)" }}>{quality.score}/100</span></div>
                                 <div className="mt-2 grid gap-1.5">{quality.checks.map(check => <div key={check.id} className="flex items-center gap-2 text-[11px] cc-text-secondary">{check.passed ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "var(--cc-sage)" }} /> : <span className="h-3.5 w-3.5 rounded-full border" style={{ borderColor: "var(--cc-line-strong)" }} />}{check.label}</div>)}</div>
                             </div>
-                            <ol className="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-1">
+                            {!draft.embedUrl && <p className="mt-3 text-xs leading-5 cc-text-secondary">{sourceEvidence.supportedCount} de {sourceEvidence.total} secciones citan literalmente el material cargado. {sourceEvidence.sufficient ? "Comprueba que la cita realmente respalde cada instrucción." : "Faltan citas en secciones o actividades; revisa la fuente antes de publicar."}</p>}
+                            <ol className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-1">
                                 {slides.map((slide, index) => (
                                     <li key={slide.id} className="flex gap-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white" style={{ background: "var(--cc-ink)" }}>{index + 1}</span>
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold cc-text-primary">{slide.title}</p>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold cc-text-primary">{slide.title}</p>
                                             <p className="mt-1 text-xs cc-text-secondary">{slide.activity ? activityLabel(slide.activity.type) : `${slide.bullets.length} ideas clave`}</p>
+                                            <details className="mt-2 text-xs leading-5 cc-text-secondary">
+                                                <summary className="cursor-pointer font-semibold">Revisar contenido y fuente</summary>
+                                                <div className="mt-3 space-y-3">
+                                                    <Field label="Título"><input className="input-premium w-full p-2 text-xs" value={slide.title} onChange={event => editSlide(index, { title: event.target.value })} /></Field>
+                                                    <Field label="Idea central"><textarea className="input-premium min-h-20 w-full p-2 text-xs" value={slide.lead || ""} onChange={event => editSlide(index, { lead: event.target.value })} /></Field>
+                                                    <Field label="Ideas clave, una por línea"><textarea className="input-premium min-h-28 w-full p-2 text-xs" value={slide.bullets.join("\n")} onChange={event => editSlide(index, { bullets: event.target.value.split("\n") })} /></Field>
+                                                    {slide.activity && <div className="space-y-2 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)" }}>
+                                                        <p className="font-semibold cc-text-primary">{activityLabel(slide.activity.type)}</p>
+                                                        <Field label="Pregunta o consigna"><textarea className="input-premium min-h-16 w-full p-2 text-xs" value={slide.activity.prompt} onChange={event => editSlide(index, { activity: { ...slide.activity!, prompt: event.target.value } })} /></Field>
+                                                        {slide.activity.type === "checklist" ? <Field label="Acciones, una por línea"><textarea className="input-premium min-h-24 w-full p-2 text-xs" value={(slide.activity.items || []).join("\n")} onChange={event => editSlide(index, { activity: { ...slide.activity!, items: event.target.value.split("\n") } })} /></Field> : <><Field label="Opciones, una por línea"><textarea className="input-premium min-h-28 w-full p-2 text-xs" value={(slide.activity.options || []).join("\n")} onChange={event => editSlide(index, { activity: { ...slide.activity!, options: event.target.value.split("\n") } })} /></Field><Field label="Respuesta correcta"><select className="input-premium w-full p-2 text-xs" value={slide.activity.correctIndex ?? 0} onChange={event => editSlide(index, { activity: { ...slide.activity!, correctIndex: Number(event.target.value) } })}>{(slide.activity.options || []).map((option, optionIndex) => <option key={optionIndex} value={optionIndex}>{String.fromCharCode(65 + optionIndex)} · {option}</option>)}</select></Field></>}
+                                                        <Field label="Explicación de la respuesta"><textarea className="input-premium min-h-20 w-full p-2 text-xs" value={slide.activity.explanation || ""} onChange={event => editSlide(index, { activity: { ...slide.activity!, explanation: event.target.value } })} /></Field>
+                                                    </div>}
+                                                    <Field label="Fragmento literal de la fuente"><textarea className="input-premium min-h-20 w-full p-2 text-xs" value={slide.source_note || ""} onChange={event => editSlide(index, { source_note: event.target.value })} placeholder="Copia aquí la frase que respalda esta sección" /></Field>
+                                                    <Field label="Guion de la tutora"><textarea className="input-premium min-h-24 w-full p-2 text-xs" value={slide.notes} onChange={event => editSlide(index, { notes: event.target.value })} /></Field>
+                                                </div>
+                                            </details>
                                         </div>
                                     </li>
                                 ))}
                             </ol>
+                            {!draft.embedUrl && <label className="mt-4 flex items-start gap-2 text-xs leading-5 cc-text-secondary"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} className="mt-1" />Revisé cada sección, las respuestas correctas y los fragmentos de la fuente. Confirmo que el contenido corresponde a mi procedimiento.</label>}
                         </>
                     )}
 

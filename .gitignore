@@ -74,3 +74,19 @@ android/output*.txt
 # habria publicado.
 lab_results/
 *_Con_Celular.xlsx
+
+# --- estandar DataWise (Hark 2026-10-12) ---
+.env
+.env.*
+!.env.example
+.claude/*.local.json
+.codex*
+.vercel/
+*.tsbuildinfo
+node_modules/
+__pycache__/
+.venv/
+venv/
+*.log
+*.pid
+.DS_Store

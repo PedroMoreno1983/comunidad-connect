@@ -46,6 +46,7 @@ export function canonicalCatalogTerm(value: string): string {
         .replace(/\bleces\b/g, 'leche')
         .replace(/\bayuyitas?\b/g, 'hallulla')
         .replace(/\bpampitas?\b/g, 'pita')
+        .replace(/\baguacates?\b/g, 'palta')
         .replace(/\bgalletas?\s+salmas?\b/g, 'salmas')
         .replace(/\bsin\s+marinar\b/g, '')
         .replace(/\bsuperpollo\b/g, 'super pollo')
@@ -56,6 +57,16 @@ export function canonicalCatalogTerm(value: string): string {
         .replace(/\s+/g, ' ')
         .trim();
     return normalized;
+}
+
+/** Browsing prompts for broad list terms; these never auto-select a product. */
+export function reviewSearchSuggestions(value: string): string[] {
+    const term = canonicalCatalogTerm(value);
+    if (term === 'pasta larga') return ['espagueti', 'tallarines'];
+    if (term === 'pasta corta') return ['espirales', 'corbatitas'];
+    if (term === 'carne para parrilla') return ['asado carnicero', 'asado de tira'];
+    if (term === 'papas') return ['papas granel', 'papas malla'];
+    return [];
 }
 
 /** Palabras significativas del término: 3+ letras, sin conectores, sin acentos. */
@@ -131,7 +142,7 @@ const PACKAGE_PREFIXES = new Set([
 ]);
 
 const FRESH_PRODUCE = new Set([
-    'ajo', 'apio', 'brocoli', 'cebolla', 'lechuga', 'limon', 'mandarina',
+    'aji', 'ajo', 'apio', 'brocoli', 'cebolla', 'lechuga', 'limon', 'mandarina',
     'manzana', 'naranja', 'palta', 'papa', 'pepino', 'pera', 'pimenton', 'platano',
     'repollo', 'tomate', 'zanahoria',
 ]);
@@ -141,7 +152,7 @@ const PROCESSED_PRODUCE_MARKERS = new Set([
     'congelado', 'conserva', 'crema', 'crispy', 'deshidratada', 'deshidratado',
     'duquesa', 'especia', 'frita', 'gajo', 'galleta', 'jugo', 'mermelada', 'paprika',
     'polvo', 'prefrita', 'pure', 'rellena', 'rodaja', 'sal', 'salsa', 'sabor',
-    'sazonador', 'snack', 'sopa', 'souffle', 'specia',
+    'sazonador', 'snack', 'sopa', 'souffle', 'soufle', 'specia',
 ]);
 
 /** El páprika se vende como pimentón dulce, picante o ahumado, no como la verdura. */
@@ -262,14 +273,15 @@ export function productMatchScore(term: string, productName: string): number {
     const firstPosition = termWordIndex(termWords, nameWords, firstTerm);
     if (firstPosition < 0) return -1;
 
+    if (FRESH_PRODUCE.has(firstTerm)
+        && !produceIsProcessed(firstTerm, allTermWords)
+        && produceIsProcessed(firstTerm, nameWords)) return -1;
+    if (firstTerm === 'aji' && nameWords.some(word => ['aceituna', 'jalapeno', 'rellena'].includes(word))) return -1;
     if (termWords.length === 1) {
         const packagePrefixed = firstPosition > 0
             && nameWords.slice(0, firstPosition).every(word => PACKAGE_PREFIXES.has(word));
         const brandAnywhere = BRAND_ANYWHERE.has(firstTerm);
         if (firstPosition !== 0 && !packagePrefixed && !brandAnywhere) return -1;
-        if (FRESH_PRODUCE.has(firstTerm) && produceIsProcessed(firstTerm, nameWords)) {
-            return -1;
-        }
     }
 
     const phrasePosition = nameWords.findIndex((_, index) => (

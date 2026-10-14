@@ -15,6 +15,7 @@ const today = todayInChile;
 
 const FALLBACK_ACCOUNTS = [
     { code: "1100", name: "Banco" },
+    { code: "1200", name: "Cuentas por cobrar a unidades" },
     { code: "4100", name: "Ingresos por gastos comunes" },
     { code: "5100", name: "Remuneraciones" },
     { code: "5200", name: "Gastos de operación" },
@@ -24,6 +25,8 @@ const SOURCE_LABEL: Record<string, string> = {
     manual: "Manual",
     agreement: "Convenio",
     payroll: "Remuneración",
+    payment: "Pago de unidad",
+    payment_reversal: "Reversa de pago",
 };
 
 interface DraftLine {
@@ -51,6 +54,7 @@ export default function ContabilidadPage() {
     const [appliedOpeningCash, setAppliedOpeningCash] = useState(0);
     const [statements, setStatements] = useState<FinancialStatements | null>(null);
     const [statementsLoading, setStatementsLoading] = useState(false);
+    const [closing, setClosing] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -73,11 +77,16 @@ export default function ContabilidadPage() {
         setStatementsLoading(true);
         try {
             const year = Number(cutoffMonth.slice(0, 4));
-            setStatements(await AdminFinanceService.getFinancialStatements({
+            const result = await AdminFinanceService.getFinancialStatements({
                 year,
                 cutoffMonth,
                 openingCash: appliedOpeningCash,
-            }));
+            });
+            setStatements(result);
+            if (result.closure) {
+                setOpeningCash(String(result.openingCash));
+                setAppliedOpeningCash(result.openingCash);
+            }
         } catch (error) {
             toast({
                 title: "No se armaron los estados",
@@ -90,6 +99,17 @@ export default function ContabilidadPage() {
     }, [appliedOpeningCash, cutoffMonth, toast]);
 
     useEffect(() => { void loadStatements(); }, [loadStatements]);
+
+    async function closePeriod() {
+        setClosing(true);
+        try {
+            const closed = await AdminFinanceService.closeFinancialPeriod({ month: cutoffMonth, openingCash: appliedOpeningCash });
+            setStatements(closed);
+            toast({ title: "Corte guardado", description: `El estado de ${cutoffMonth} quedó conservado. Los movimientos de ese mes y los anteriores ya no se pueden modificar.`, variant: "success" });
+        } catch (error) {
+            toast({ title: "No se guardó el corte", description: error instanceof Error ? error.message : "Error inesperado.", variant: "destructive" });
+        } finally { setClosing(false); }
+    }
 
     const accounts = journal?.accounts.length
         ? journal.accounts.map(account => ({ code: account.code, name: account.name }))
@@ -140,13 +160,19 @@ export default function ContabilidadPage() {
                     <ArrowLeft className="h-4 w-4" /> Finanzas
                 </Link>
                 <header>
-                    <Eyebrow className="mb-2">Libro diario</Eyebrow>
+                    <Eyebrow className="mb-2">Libro auxiliar</Eyebrow>
                     <DisplayHeading size={32}>Contabilidad</DisplayHeading>
                     <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
-                        Cada asiento queda con el debe igual al haber. Los convenios y las remuneraciones escriben los suyos solos.
-                        Más abajo, el estado de resultado, el flujo de caja y la situación patrimonial se arman con la recaudación y los egresos.
+                        Los asientos manuales, los pagos de unidades y las remuneraciones quedan cuadrados. Los estados de abajo
+                        se calculan desde los cobros, pagos y egresos operativos.
                     </p>
                 </header>
+
+                <p className="rounded-xl border border-warning-border bg-warning-bg p-4 text-sm text-warning-fg">
+                    Libro auxiliar en integración: aún faltan asientos automáticos para la emisión de cobros, cargos individuales,
+                    egresos y fondo de reserva. El saldo inicial y el plan de cuentas requieren revisión contable antes de usar
+                    estos estados como contabilidad oficial.
+                </p>
 
                 {loading ? (
                     <p className="flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Cargando libro…</p>
@@ -220,9 +246,9 @@ export default function ContabilidadPage() {
                 <section className="space-y-4 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
-                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Estados financieros</h2>
+                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Estados operativos</h2>
                             <p className="mt-1 text-xs cc-text-tertiary">
-                                Se arman con cobros, pagos y egresos. El libro de 4 cuentas no se toca: el saldo Banco (1100) se muestra para comparar.
+                                Se arman con cobros, pagos y egresos; el saldo Banco (1100) del libro auxiliar se muestra para comparar.
                             </p>
                         </div>
                         <div className="flex flex-wrap items-end gap-2">
@@ -232,9 +258,10 @@ export default function ContabilidadPage() {
                                     className="mt-1 block rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                             </label>
                             <label className="text-xs cc-text-secondary">
-                                Caja inicial
+                                Caja inicial del año
                                 <input
                                     value={openingCash}
+                                    disabled={Boolean(statements?.closure)}
                                     onChange={event => setOpeningCash(event.target.value)}
                                     onBlur={() => setAppliedOpeningCash(Number(openingCash.replace(/[^\d]/g, "")) || 0)}
                                     inputMode="numeric"
@@ -248,6 +275,14 @@ export default function ContabilidadPage() {
                         <p className="flex items-center gap-2 text-sm cc-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> Armando estados…</p>
                     ) : (
                         <>
+                            {statements.closure ? <div className="rounded-xl border border-success-border bg-success-bg p-3 text-sm">
+                                Corte de {cutoffMonth} guardado el {new Date(statements.closure.closedAt).toLocaleDateString('es-CL')}.
+                                {statements.closure.hasLaterChanges && <p className="mt-1 font-semibold text-warning-fg">Los registros difieren del corte guardado. Revisa movimientos externos o permisos de la base.</p>}
+                            </div> : <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--cc-line)" }}>
+                                <span>{cutoffMonth >= currentMonthInChile() ? 'Vista previa: el mes debe terminar antes de guardar su corte.' : 'Vista previa: revisa caja inicial, saldos y respaldos antes de guardar el corte.'}</span>
+                                <button type="button" disabled={closing || statementsLoading || cutoffMonth >= currentMonthInChile()} onClick={() => void closePeriod()}
+                                    className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-white disabled:opacity-50">{closing ? 'Guardando…' : 'Guardar corte del período'}</button>
+                            </div>}
                             <div className="grid gap-3 sm:grid-cols-3">
                                 <article className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>
                                     <p className="text-xs font-semibold uppercase tracking-wider cc-text-tertiary">Resultado del año</p>

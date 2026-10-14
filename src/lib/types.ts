@@ -278,6 +278,31 @@ export interface SupermarketGroupComparison {
   retailerUrl: string;
 }
 
+/**
+ * Promoción por volumen ("4 x $990", "Combina 4 x $5.990"): `totalPrice` pesos
+ * por cada bloque de `minQuantity` unidades. Issue #96.
+ */
+export interface SupermarketVolumePromo {
+  minQuantity: number;
+  totalPrice: number;
+  label?: string;
+  /** Productos con la misma clave se suman para completar el bloque ("Combina"). */
+  group?: string;
+}
+
+/**
+ * `promo_aware`: todos los productos de la canasta tienen la promoción por
+ * volumen revisada por el scraper. `unit_price`: al menos uno no, así que el
+ * total es un estimado sobre precio unitario.
+ */
+export type SupermarketPricingBasis = 'promo_aware' | 'unit_price';
+
+/** Reglas de compra por tienda que el catálogo no trae. */
+export interface SupermarketStorePolicy {
+  store: string;
+  minimumOrder?: number;
+}
+
 export interface SupermarketSearchCandidate {
   id: string;
   name: string;
@@ -308,6 +333,12 @@ export interface SupermarketSearchCandidate {
   /** Por qué CoCo eligió esta marca/presentación (visible para el usuario). */
   selectionReason?: string;
   fetchedAt?: string;
+  /** Promoción por volumen vigente para este producto, si la tienda la publica. */
+  volumePromo?: SupermarketVolumePromo;
+  /** El scraper revisó el badge de promoción en su última pasada. */
+  promoChecked?: boolean;
+  /** Ahorro de la promoción por volumen ya descontado en `lineTotal`. */
+  promoSavings?: number;
 }
 
   export interface SupermarketCatalogProduct {
@@ -368,6 +399,16 @@ export interface SupermarketBasketCandidate extends SupermarketBasketSummary {
   channelType: SupermarketChannelType;
   items: SupermarketSearchCandidate[];
   fetchedAt?: string;
+  /** Si el subtotal incluye promociones por volumen o es estimado sobre precio unitario. */
+  pricingBasis?: SupermarketPricingBasis;
+  /** Ahorro total por promociones por volumen incluido en `subtotal`. */
+  promoSavings?: number;
+  /** Pedido mínimo conocido de la tienda. */
+  minimumOrder?: number;
+  /** La canasta no alcanza el pedido mínimo: la tienda no deja cursarla. */
+  belowMinimum?: boolean;
+  /** Cuánto falta para el pedido mínimo. */
+  shortfall?: number;
 }
 
 export type SupermarketComparisonSourceStatus = 'ok' | 'no_results' | 'degraded';
@@ -1523,6 +1564,8 @@ export interface SolidarityResolutionResult {
 export interface Notification {
   id: string;
   type: 'info' | 'success' | 'warning' | 'alert';
+  /** Para reaccionar a avisos puntuales, como 'intercom_call'. */
+  category?: string;
   title: string;
   message: string;
   timestamp: Date;
@@ -1567,7 +1610,17 @@ export interface ConciergeOperationsResponse {
 export type ParkingVehicleSize = 'moto' | 'auto' | 'suv' | 'camioneta';
 export type ParkingSpotStatus = 'draft' | 'pending_approval' | 'published' | 'paused' | 'rejected';
 export type ParkingBookingStatus = 'confirmed' | 'active' | 'completed' | 'cancelled' | 'no_show';
-export type ParkingPaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed';
+/** Espejo del libro de cobros en la reserva. 'voided' = el cobro se anuló. */
+export type ParkingPaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed' | 'voided';
+/**
+ * Estado de un cobro del libro parking_charges. Replica el CHECK de la base:
+ * pending -> charged -> paid / failed / voided / refunded.
+ */
+export type ParkingChargeStatus = 'pending' | 'charged' | 'paid' | 'failed' | 'voided' | 'refunded';
+/** Cómo se cobró: cargo en gastos comunes, pago en línea o nada (arriendo gratuito). */
+export type ParkingChargeMethod = 'common_expenses' | 'haulmer' | 'none';
+/** Método que la comunidad elige para cobrar los arriendos. */
+export type ParkingBillingMethod = 'common_expenses' | 'haulmer';
 /**
  * Autorización de un conductor para operar en un condominio concreto.
  * Es por comunidad y no un estado global del conductor: que un comité lo acepte
@@ -1730,6 +1783,76 @@ export interface ParkingBooking {
   rating?: number;
   ratingComment?: string;
   createdAt: string;
+  /** Cobro del libro; ausente si la migración del libro no está aplicada. */
+  charge?: ParkingCharge;
+}
+
+/** Un cobro del libro de estacionamientos (uno por reserva). */
+export interface ParkingCharge {
+  id: string;
+  bookingId: string;
+  communityId: string;
+  amount: number;
+  status: ParkingChargeStatus;
+  method: ParkingChargeMethod;
+  unitId?: string;
+  unitLabel?: string;
+  needsReview: boolean;
+  failureReason?: string;
+  /** Link de pago en línea, solo cuando el método es Haulmer y está pendiente. */
+  checkoutUrl?: string;
+  chargedAt?: string;
+  paidAt?: string;
+  voidedAt?: string;
+  refundedAt?: string;
+  createdAt: string;
+  /** Datos de la reserva, para la vista de administración. */
+  spotLabel?: string;
+  driverName?: string;
+  driverPlate?: string;
+  startsAt?: string;
+  endsAt?: string;
+  bookingStatus?: ParkingBookingStatus;
+}
+
+/** Resultado de procesar el cobro de una reserva en el servidor. */
+export interface ParkingChargeProcessResult {
+  charge: ParkingCharge | null;
+  /** Proveedor que quedó a cargo del cobro. */
+  provider: ParkingChargeMethod | null;
+  /** Si el cobro se paga en línea, el link al que hay que llevar al conductor. */
+  checkoutUrl: string | null;
+  /** Por qué no se usó Haulmer, cuando la comunidad lo tenía elegido. */
+  fallbackReason?: string;
+}
+
+/** Lo que un proveedor necesita para cobrar un arriendo. El monto viene del libro, nunca del cliente. */
+export interface ParkingChargeProviderInput {
+  chargeId: string;
+  bookingId: string;
+  communityId: string;
+  amount: number;
+  description: string;
+  payer: { name: string; email: string | null; phone?: string | null };
+  returnUrl: string;
+  /** Por qué se usa este proveedor (queda en la bitácora del cobro). */
+  note?: string;
+}
+
+export type ParkingChargeProviderOutcome =
+  | { kind: 'checkout'; checkoutUrl: string; providerReference: string }
+  | { kind: 'posted_to_unit'; status: ParkingChargeStatus };
+
+/**
+ * Proveedor de cobro de arriendos de estacionamiento. Hoy hay dos: gastos
+ * comunes (siempre disponible) y Haulmer (apagado por defecto).
+ */
+export interface PaymentProvider {
+  id: ParkingChargeMethod;
+  /** null si está disponible; si no, por qué no (para la bitácora del cobro). */
+  unavailableReason(): string | null;
+  createCharge(input: ParkingChargeProviderInput): Promise<ParkingChargeProviderOutcome>;
+  refund(input: { chargeId: string; amount: number; providerReference: string | null }): Promise<{ refunded: boolean; reason: string }>;
 }
 
 /** Lo que ve conserjería al validar un código o una patente en la barrera. */
@@ -1764,6 +1887,10 @@ export interface ParkingAccessEvent {
 export interface ParkingCommunitySettings {
   externalEnabled: boolean;
   commissionPercent: number;
+  /** Ausente si la migración del libro de cobros no está aplicada. */
+  billingMethod?: ParkingBillingMethod;
+  /** Horas antes del inicio hasta las que se cancela sin costo. */
+  freeCancellationHours?: number;
 }
 
 export interface ParkingEarningsTransaction {
@@ -2113,27 +2240,188 @@ export interface PaymentAgreement {
     title: string;
     totalAmount: number;
     installmentCount: number;
-    status: "active" | "completed" | "cancelled";
+    status: "pending_committee" | "active" | "completed" | "cancelled" | "rejected";
+    committeeReviewerId: string | null;
+    committeeReviewedAt: string | null;
+    committeeReviewNote: string | null;
     notes: string;
     createdAt: string;
     paidAmount: number;
     installments: PaymentAgreementInstallment[];
 }
 
+/** 'fixed' paga el monto tal cual; 'chile' calcula la liquidación legal. */
+export type PayrollCalculation = "fixed" | "chile";
+export type PayrollContractType = "indefinido" | "plazo_fijo" | "indefinido_11";
+export type PayrollHealthSystem = "fonasa" | "isapre";
+
 export interface CommunityEmployeeRecord {
     id: string;
     full_name: string;
     role_title: string;
+    /** Sueldo base en modo 'chile'; monto a pagar en modo 'fixed'. */
     monthly_amount: number;
     active: boolean;
     created_at: string;
+    calculation: PayrollCalculation;
+    rut: string | null;
+    afp: string | null;
+    health_system: PayrollHealthSystem;
+    isapre_name: string | null;
+    isapre_plan_uf: number | null;
+    contract_type: PayrollContractType;
+    gratification: boolean;
+    taxable_bonus: number;
+    meal_allowance: number;
+    transport_allowance: number;
+    family_dependents: number;
+    hire_date: string | null;
+    first_names: string | null;
+    father_last_name: string | null;
+    mother_last_name: string | null;
+    sex: "M" | "F" | null;
+    foreign_national: boolean;
+    isapre_code: string | null;
+    part_time: boolean;
+}
+
+export interface PayrollEmployeeInput {
+    id?: string;
+    fullName: string;
+    roleTitle: string;
+    monthlyAmount: number;
+    active?: boolean;
+    calculation?: PayrollCalculation;
+    rut?: string;
+    afp?: string;
+    healthSystem?: PayrollHealthSystem;
+    isapreName?: string;
+    isaprePlanUf?: number | null;
+    contractType?: PayrollContractType;
+    gratification?: boolean;
+    taxableBonus?: number;
+    mealAllowance?: number;
+    transportAllowance?: number;
+    familyDependents?: number;
+    hireDate?: string;
+    firstNames?: string;
+    fatherLastName?: string;
+    motherLastName?: string;
+    sex?: "M" | "F" | null;
+    foreignNational?: boolean;
+    isapreCode?: string;
+    partTime?: boolean;
+}
+
+/** Indicadores previsionales de un mes de remuneraciones, tal como los publica Previred. */
+export interface PayrollIndicators {
+    uf: number;
+    utm: number;
+    /** Ingreso mínimo mensual, base del tope de gratificación. */
+    minimumWage: number;
+    afpCapUf: number;
+    unemploymentCapUf: number;
+    /** Tasa total del trabajador por AFP (10% + comisión), en fracción. */
+    afpWorkerRates: Record<string, number>;
+    employerAfpRate: number;
+    sisRate: number;
+    /** Aportes del empleador al Seguro Social (Ley 21.735), por concepto. */
+    socialInsuranceRates: Record<string, number>;
+    unemployment: Record<PayrollContractType, { employer: number; worker: number }>;
+    healthRate: number;
+    familyAllowance: { upTo: number | null; amount: number }[];
+}
+
+export interface PayslipInput {
+    calculation: PayrollCalculation;
+    baseSalary: number;
+    afp: string | null;
+    healthSystem: PayrollHealthSystem;
+    isaprePlanUf: number | null;
+    contractType: PayrollContractType;
+    gratification: boolean;
+    taxableBonus: number;
+    mealAllowance: number;
+    transportAllowance: number;
+    familyDependents: number;
+    accidentRate: number;
+}
+
+export interface Payslip {
+    calculation: PayrollCalculation;
+    baseSalary: number;
+    gratification: number;
+    taxableBonus: number;
+    taxableIncome: number;
+    mealAllowance: number;
+    transportAllowance: number;
+    familyAllowance: number;
+    grossPay: number;
+    afp: { name: string; rate: number; amount: number } | null;
+    health: { system: PayrollHealthSystem; amount: number; legalAmount: number };
+    unemploymentWorker: number;
+    taxBase: number;
+    incomeTax: number;
+    totalDeductions: number;
+    netPay: number;
+    employer: {
+        sis: number;
+        afp: number;
+        socialInsurance: number;
+        /** Por concepto (rentabilidadProtegida, expectativaDeVida), como van a Previred. */
+        socialInsuranceDetail: Record<string, number>;
+        unemployment: number;
+        accidentInsurance: number;
+        total: number;
+    };
+    /** Lo que la comunidad gasta: haberes más aportes del empleador. */
+    employerCost: number;
+}
+
+export interface PayslipDocument {
+    communityName: string;
+    communityAddress: string | null;
+    month: string;
+    employee: { fullName: string; roleTitle: string; rut: string | null };
+    slip: Payslip;
+    indicatorsMonth: string | null;
+}
+
+/** Un trabajador del mes, tal como lo necesita el archivo de 105 campos de Previred. */
+export interface PreviredWorker {
+    fullName: string;
+    rut: string | null;
+    firstNames: string | null;
+    fatherLastName: string | null;
+    motherLastName: string | null;
+    sex: "M" | "F" | null;
+    foreignNational: boolean;
+    contractType: PayrollContractType;
+    hireDate: string | null;
+    familyDependents: number;
+    isapreCode: string | null;
+    isaprePlanUf: number | null;
+    partTime: boolean;
+    slip: Payslip;
+}
+
+/** Datos previsionales del empleador (la comunidad). Códigos de las tablas 18 y 19 de Previred. */
+export interface PayrollSettings {
+    ccafCode: string;
+    mutualCode: string;
+    /** Tasa total de la Ley 16.744, en fracción (0.0093 = 0,93%). */
+    accidentRate: number;
 }
 
 export interface PayrollLineRecord {
     id: string;
     full_name: string;
     role_title: string;
+    /** Costo total para la comunidad. */
     amount: number;
+    gross_amount: number | null;
+    net_amount: number | null;
+    breakdown: Payslip | null;
 }
 
 export interface PayrollRunRecord {
@@ -2145,6 +2433,7 @@ export interface PayrollRunRecord {
     payment_reference: string | null;
     expense_note: string | null;
     created_at: string;
+    indicators_month: string | null;
     payroll_lines: PayrollLineRecord[];
 }
 
@@ -2205,6 +2494,64 @@ export interface BillingPreview {
     warnings: string[];
     units: BillingPreviewUnit[];
     billingMode?: "proration" | "fixed";
+}
+
+export interface FinanceCommitteeReviewSnapshot {
+    totalExpenses: number;
+    totalCharged: number;
+    unitCount: number;
+    warnings: string[];
+    sourceExpenses: Array<{ id: string; label: string; category: string; amount: number; hasDocument: boolean; documentFingerprint: string | null }>;
+    units: Array<{
+        unitId: string;
+        label: string;
+        sharePermille: number | null;
+        total: number;
+        items: Array<{ expenseId: string; category: string; label: string; amount: number }>;
+    }>;
+}
+
+export interface FinanceCommitteeReview {
+    id: string;
+    communityId: string;
+    month: string;
+    reviewerId: string;
+    reviewerName: string;
+    requestedBy: string;
+    status: 'pending' | 'approved' | 'rejected';
+    dueDate: string;
+    quotaAmount: number | null;
+    quotaMethod: 'share' | 'equal' | null;
+    requestedAt: string;
+    reviewedAt: string | null;
+    reviewNote: string | null;
+    snapshot: FinanceCommitteeReviewSnapshot;
+    isCurrent?: boolean;
+}
+
+export interface FinanceCommitteeResidentOption {
+    id: string;
+    name: string;
+    email: string;
+}
+
+export interface FinanceCommitteeMember {
+    id: string;
+    residentId: string;
+    name: string;
+    email: string;
+    appointedAt: string;
+    startsOn: string;
+    endedAt: string | null;
+}
+
+export interface CommitteeReviewPanelProps {
+    month: string;
+    dueDate: string;
+    quotaAmount?: number;
+    quotaMethod: 'share' | 'equal';
+    issued: boolean;
+    refreshKey: number;
 }
 
 /** Totales del condominio que el art. 31 de la Ley 21.442 exige en el aviso de cobro. */
@@ -2289,6 +2636,7 @@ export interface FinancialStatements {
     year: number;
     cutoffMonth: string;
     openingCash: number;
+    closure?: { closedAt: string; hasLaterChanges: boolean };
     income: {
         lines: FinancialStatementLine[];
         totalIncome: number;
@@ -3133,4 +3481,132 @@ export interface FinanceLegacyExpense {
     amount: number;
     status: string;
     payment_metadata?: unknown;
+}
+
+export type IntercomVisitKind = "visit" | "delivery" | "service" | "other";
+export type IntercomCallStatus = "ringing" | "approved" | "rejected" | "cancelled" | "expired" | "admitted";
+
+/** Llamada del citófono digital: conserjería pregunta, la unidad aprueba o rechaza. */
+export interface IntercomCall {
+    id: string;
+    unitId: string;
+    unitNumber: string | null;
+    visitorName: string;
+    visitKind: IntercomVisitKind;
+    note: string | null;
+    status: IntercomCallStatus;
+    createdAt: string;
+    answeredAt: string | null;
+    expiresAt: string;
+    gateStatus: "opened" | "failed" | "not_configured" | null;
+    admitted: boolean;
+}
+
+export type ApiKeyScope = "units" | "finance" | "access";
+
+/** Clave de la API pública tal como se muestra: nunca incluye el secreto. */
+export interface CommunityApiKey {
+    id: string;
+    name: string;
+    prefix: string;
+    scopes: ApiKeyScope[];
+    createdAt: string;
+    lastUsedAt: string | null;
+    revokedAt: string | null;
+}
+
+/** Enlace de solo lectura para un fiscalizador, auditor o comité de vigilancia. */
+export interface OversightLink {
+    id: string;
+    label: string;
+    expiresAt: string;
+    createdAt: string;
+    revokedAt: string | null;
+    lastViewedAt: string | null;
+    viewCount: number;
+}
+
+export interface OversightReport {
+    community: { name: string; address: string | null };
+    label: string;
+    expiresAt: string;
+    generatedAt: string;
+    months: import("@/lib/finance/reportingService").MonthlyReport[];
+    reserveFundBalance: number;
+    debt: {
+        totalDebt: number;
+        totalOverdue: number;
+        unitsWithDebt: number;
+        unitsOverdue: number;
+        totalUnits: number;
+    };
+}
+
+/** 33 = factura electrónica afecta a IVA; 34 = factura electrónica exenta. */
+export type TaxDocumentType = 33 | 34;
+
+/** Datos del emisor tal como los pide el SII. */
+export interface InvoicingEmitter {
+    rut: string;
+    businessName: string;
+    activity: string;
+    /** Código de actividad económica del SII (Acteco). */
+    activityCode: string;
+    address: string;
+    commune: string;
+    /** Código de sucursal del SII, si la tiene. */
+    branchCode?: string;
+}
+
+export interface TaxDocumentReceiver {
+    rut: string;
+    businessName: string;
+    activity: string;
+    address: string;
+    commune: string;
+}
+
+export interface TaxDocumentItem {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+}
+
+export interface TaxDocumentDraft {
+    type: TaxDocumentType;
+    issueDate: string;
+    receiver: TaxDocumentReceiver;
+    items: TaxDocumentItem[];
+}
+
+export interface TaxDocumentTotals {
+    net: number;
+    exempt: number;
+    tax: number;
+    total: number;
+}
+
+export interface TaxDocument {
+    id: string;
+    environment: "test" | "production";
+    type: TaxDocumentType;
+    status: "pending" | "issued" | "failed";
+    folio: number | null;
+    receiver: TaxDocumentReceiver;
+    items: TaxDocumentItem[];
+    totals: TaxDocumentTotals;
+    issueDate: string;
+    hasPdf: boolean;
+    warnings: string[];
+    error: string | null;
+    createdAt: string;
+}
+
+export interface InvoicingSettingsView {
+    configured: boolean;
+    environment: "test" | "production";
+    emitter: InvoicingEmitter | null;
+    /** Últimos 4 caracteres de la API key, para reconocerla sin mostrarla. */
+    apiKeyHint: string | null;
+    encryptionReady: boolean;
 }
