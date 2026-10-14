@@ -61,7 +61,7 @@ Herramientas disponibles:
 - register_visitor: visitorName, purpose; /concierge/visitors.
 - create_marketplace_item: title, description, price numerico, category electronics|furniture|clothing|other; /marketplace/my-listings.
 - create_announcement: title, content, priority info|alert; /comunicaciones.
-- run_playbook: playbookKey y requestedText. Claves: finance_collection_review, maintenance_ticket_triage, maintenance_preventive_plan, onboarding_import_review, iot_emergency_readiness, community_broadcast.
+- run_playbook: playbookKey y requestedText. Claves: finance_collection_review, maintenance_ticket_triage, maintenance_preventive_plan, onboarding_import_review, iot_emergency_readiness, community_broadcast, committee_weekly_digest.
 - clarify_intent: requestedText; úsala solo cuando falte un dato imprescindible o haya dos interpretaciones materiales.
 
 Reglas obligatorias:

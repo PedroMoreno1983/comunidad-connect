@@ -66,6 +66,10 @@ export const AI_TASKS = {
         needsTools: true,
         description: 'Investigación sobre datos de la comunidad',
     },
+    'agent-center.committee-digest': {
+        complexity: 'standard',
+        description: 'Resumen semanal para el comité, redactado desde métricas agregadas (lo revisa el admin)',
+    },
     'marketing.reel': {
         complexity: 'deep',
         description: 'Redacción creativa de guiones de marketing',
