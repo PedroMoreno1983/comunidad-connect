@@ -3433,7 +3433,11 @@ export interface AgentCollectionExpense {
     amount: number;
     status: string;
     due_date: string | null;
+    source?: 'expense' | 'charge';
+    label?: string | null;
 }
+
+export type AgentCollectionStage = 'reminder' | 'second_notice' | 'agreement';
 
 export interface AgentCollectionNotification {
     id: string;
@@ -3451,6 +3455,8 @@ export interface AgentCollectionPlan {
     adminNotifications?: AgentCollectionNotification[];
     missingRecipients: { expenseId: string; unitId: string | null; unitLabel: string; reason: string }[];
     recipientCount: number;
+    agreementCandidates?: { unitId: string; unitLabel: string; daysOverdue: number }[];
+    skippedWithAgreement?: number;
 }
 
 export interface AgentCollectionUnit {
