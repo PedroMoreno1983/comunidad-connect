@@ -260,6 +260,7 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     const wantsResidentOnboarding = lower.includes('onboarding') || lower.includes('nomina') || lower.includes('residentes') || lower.includes('cargar usuarios') || lower.includes('cargar edificio') || lower.includes('activar edificio');
     const wantsCollection = lower.includes('moros') || lower.includes('cobran') || lower.includes('impago') || lower.includes('deudor') || lower.includes('cobros pendientes');
     const wantsIotReadiness = lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion');
+    const wantsPreventiveMaintenance = lower.includes('preventiv') || lower.includes('plan de mantencion') || lower.includes('plan de mantenimiento') || lower.includes('agenda de mantencion');
     const wantsMaintenanceReview = lower.includes('tickets abiertos') || lower.includes('triage') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor');
     const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
     const wantsOperationalSnapshot = looksReadOnlyRequest(message) && /\b(resumen|estado|indicadores|cuantos|cuantas|total|morosos|deudas|tickets|reservas|residentes)\b/i.test(normalizeText(message));
@@ -362,6 +363,10 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
     if (wantsIotReadiness) {
         const playbook = getPlaybook('iot_emergency_readiness');
+        if (playbook) return playbookAction(playbook, message);
+    }
+    if (wantsPreventiveMaintenance) {
+        const playbook = getPlaybook('maintenance_preventive_plan');
         if (playbook) return playbookAction(playbook, message);
     }
     if (wantsMaintenanceReview && wantsWorkflow) {
