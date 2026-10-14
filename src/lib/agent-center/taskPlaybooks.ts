@@ -29,7 +29,7 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string, exi
     requireAdmin(profile);
     const definition = playbook('finance_collection_review');
     const taskId = existingTaskId || await createAgentTask(profile, definition, goal, [
-        { key: 'detect_expenses', title: 'Detectar gastos impagos' },
+        { key: 'detect_expenses', title: 'Detectar gastos y cargos impagos' },
         { key: 'resolve_recipients', title: 'Resolver unidades y residentes' },
         { key: 'notify_residents', title: 'Notificar residentes vinculados' },
         { key: 'verify_delivery', title: 'Verificar registro en la app y auditoria' },
@@ -64,13 +64,13 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string, exi
             return { verifiedNotifications: count, auditRecorded: true };
         }, { verify: result => result.auditRecorded && result.verifiedNotifications === notificationIds.length, output: result => result });
 
-        const result = { pendingExpenses: expenses.length, notifications: resolution.notifications.length, adminNotifications: resolution.adminNotifications?.length || 0, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app', taskId };
+        const result = { pendingExpenses: expenses.length, notifications: resolution.notifications.length, agreementCandidates: resolution.agreementCandidates || [], skippedWithAgreement: resolution.skippedWithAgreement || 0, adminNotifications: resolution.adminNotifications?.length || 0, missingResidents: resolution.missingRecipients.length, missingRecipients: resolution.missingRecipients, channel: 'in_app', taskId };
         const waitingHuman = resolution.missingRecipients.length > 0;
         if (waitingHuman) await waitAgentTaskForHuman(taskId, 3, result);
         else await completeAgentTask(taskId, result);
         return {
             entityType: 'agent_task', entityId: taskId, title: waitingHuman ? 'Cobranza pendiente de revision' : 'Cobranza registrada en la app',
-            message: `Revise ${expenses.length} cobro(s) y registre ${resolution.notifications.length} notificacion(es) para residentes en la app. ${waitingHuman ? `${resolution.missingRecipients.length} cobro(s) requieren vincular un destinatario; la tarea queda pendiente.` : 'La tarea esta completa.'} No se enviaron correos ni WhatsApp; no se confirma lectura.`,
+            message: `Revise ${expenses.length} cobro(s) y registre ${resolution.notifications.length} aviso(s) por unidad para residentes en la app.${resolution.skippedWithAgreement ? ` ${resolution.skippedWithAgreement} unidad(es) con convenio vigente no recibieron aviso.` : ''}${resolution.agreementCandidates?.length ? ` ${resolution.agreementCandidates.length} unidad(es) con mas de 30 dias quedan propuestas para convenio, sujeto a tu aprobacion.` : ''} ${waitingHuman ? `${resolution.missingRecipients.length} cobro(s) requieren vincular un destinatario; la tarea queda pendiente.` : 'La tarea esta completa.'} No se enviaron correos ni WhatsApp; no se confirma lectura.`,
             targetHref: waitingHuman ? '/admin/units' : definition.targetHref,
             data: { ...result, taskStatus: waitingHuman ? 'waiting_human' : 'completed' },
         };
