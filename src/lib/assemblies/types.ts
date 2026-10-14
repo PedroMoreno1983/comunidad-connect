@@ -163,6 +163,8 @@ export interface LiveQuorum {
     constitutionMet: boolean;
     constitutionRule: string;
     pendingVerification: number;
+    /** Totales del certificado de habilidad (nunca qué unidades). null si aún no se emite. */
+    eligibility: EligibilityCertificate | null;
 }
 
 export interface RepresentableUnit {
@@ -190,6 +192,14 @@ export interface AssemblyView {
     minutes: AssemblyMinutes | null;
     representable: RepresentableUnit[];
     minutesDeadline: { dueOn: string; daysLeft: number; overdue: boolean } | null;
+    /** Estado de habilidad de las unidades que representa quien mira (solo las suyas). */
+    myEligibility: MyEligibility[];
+    /**
+     * Solo para administración, que conduce y acredita: unidades no habilitadas
+     * para votar ("asiste con voz"). Se muestra en el formulario de acreditación,
+     * nunca en pantallas compartidas ni en el acta. null para cualquier otro rol.
+     */
+    conductor: { ineligibleUnitIds: string[]; certified: boolean } | null;
 }
 
 export interface AssemblySummary {
@@ -212,4 +222,78 @@ export interface AssemblyMatter {
     requiresNotary: boolean;
     /** "Si la naturaleza del acuerdo lo requiere" (art. 15): se advierte, no se exige. */
     mayRequirePublicDeed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Copropietarios hábiles (Ley 21.442, arts. 2 N°13, 6 y 15; DS 7, arts. 9 y 14)
+// ---------------------------------------------------------------------------
+
+/**
+ * Por qué una unidad quedó (o no) habilitada. Solo lo ve administración: la
+ * unidad ve "puede votar" o "para votar, ponte al día o conversa un convenio",
+ * y las pantallas compartidas y el acta, solo totales.
+ */
+export type EligibilityBasis =
+    | 'up_to_date'          // sin saldo vencido a la fecha de corte
+    | 'agreement'           // convenio vigente y al día (DS 7, art. 9)
+    | 'overdue'             // saldo vencido a la fecha de corte
+    | 'agreement_lapsed'    // convenio con cuotas vencidas, o sin la primera cuota pagada
+    | 'other_unit';         // el mismo copropietario tiene otra unidad no habilitada (DS 7, art. 14)
+
+/** Cobro sin pagar de la cobranza unificada (expenses + unit_charges). */
+export interface EligibilityDebt {
+    unitId: string;
+    dueDate: string | null;
+    status: string;
+}
+
+export interface EligibilityAgreement {
+    unitId: string;
+    status: string;
+    /** Fecha (YYYY-MM-DD o ISO) en que se suscribió el convenio. */
+    createdAt: string;
+    installments: { sequence: number; dueDate: string; status: string }[];
+}
+
+export interface EligibilityUnitInput {
+    unitId: string;
+    ownerId: string | null;
+    weight: number;
+}
+
+export interface UnitEligibility {
+    unitId: string;
+    eligible: boolean;
+    basis: EligibilityBasis;
+    weight: number;
+}
+
+export interface EligibilityTotals {
+    cutoffDate: string;
+    totalUnits: number;
+    eligibleUnits: number;
+    totalWeight: number;
+    eligibleWeight: number;
+}
+
+export interface EligibilityResult extends EligibilityTotals {
+    units: UnitEligibility[];
+}
+
+/** Certificado de habilidad: solo totales. El detalle por unidad queda aparte, solo para admin. */
+export interface EligibilityCertificate extends EligibilityTotals {
+    id: string;
+    rightsMethod: RightsMethod;
+    issuedAt: string;
+    issuedByName: string;
+    eligibleShare: number;
+}
+
+/** Lo que ve una unidad de sí misma: nada más que si puede votar. */
+export interface MyEligibility {
+    unitId: string;
+    label: string;
+    eligible: boolean;
+    /** true: sale del certificado emitido; false: estimación previa a la fecha de corte. */
+    certified: boolean;
 }
