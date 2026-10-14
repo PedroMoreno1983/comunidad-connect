@@ -243,7 +243,7 @@ npm run lint             # ESLint
 
 ## Agente Operador (Agent Center) — reglas de fondo
 
-El Agent Center (`src/lib/agent-center/`) opera la cobranza y la mantención del condominio con herramientas (`agentTools.ts`), riesgos (`domain.ts`, `TOOL_RISK_LEVELS`) y playbooks (`taskPlaybooks.ts`). Se construyó por fases (PR #161 a #166, octubre 2026). Respeta estas reglas al tocarlo:
+El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el resumen semanal para el comité del condominio con herramientas (`agentTools.ts`), riesgos (`domain.ts`, `TOOL_RISK_LEVELS`) y playbooks (`taskPlaybooks.ts`). Se construyó por fases (PR #161 a #166, octubre 2026). Respeta estas reglas al tocarlo:
 
 **Principios generales**
 - **Humano en el circuito.** Toda escritura pasa por la confirmación del administrador según la política de autonomía (`riskRequiresConfirmation`). Lo que mueve plata, notifica a terceros o corre en lote es `write_high`.
@@ -276,6 +276,15 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza y la mantención del
   - El trigger `trg_maintenance_task_requires_photo` rechaza completar una tarea sin `completion_photo_path`, así que **no actualices `maintenance_tasks.status` a `completed` directo desde el cliente.**
   - Al completar, `trg_maintenance_task_completed_update_asset` actualiza `last_maintenance`.
   - `MaintenanceService.completeTask` en `src/lib/api.ts` quedó obsoleto: usa la ruta.
+
+**Resumen semanal para el comité** (`src/lib/committeeDigest/`, playbook `committee_weekly_digest`, tabla `committee_digests`)
+- Cada lunes a las 8:00 de Chile (cron `/api/agent-center/committee-digest/cron`, agendado a las 11:00 y 12:00 UTC con guarda de hora local para cubrir el horario de verano; `CRON_SECRET`) o a pedido (botón en la tarjeta "Resumen semanal" del Agent Center, o el playbook), se arma **un solo resumen por comunidad y semana** (`UNIQUE (community_id, week_start)`, con `week_start` = lunes chileno).
+- Datos **solo agregados** (`metrics.ts`, función pura): % de unidades al día y convenios vigentes, nuevos o por revisar; tareas abiertas, atrasadas y cerradas, preventivas que vienen, activos de riesgo alto (`scoreAssetRisks`) y cotizaciones pendientes; solicitudes y casos abiertos o resueltos y temas que se repiten; reservas, avisos, votaciones en curso y lo que viene en 7 días.
+- Redacción con Anthropic (`aiWriter.ts`, tarea `agent-center.committee-digest` del `modelRouter`, con presupuesto de IA) y **fallback determinista** (`compose.ts`) si la IA falla, no está configurada o su texto no pasa las reglas. Siempre termina con 2 o 3 "Decisiones sugeridas para el comité".
+- Privacidad (`privacy.ts`, `checkDigestPrivacy`): nunca unidades, personas (incluye los nombres de los perfiles de la comunidad), montos, datos de contacto, lenguaje de deudor ni amenazas. Se aplica a los títulos que entran, al texto de la IA y a la edición del admin (la API responde 422).
+- Flujo: borrador → tarjeta en la cola de aprobaciones del Agent Center (`run_playbook` con `digestId`) y aviso en la app a los admins → el admin edita y aprueba (`POST /api/agent-center/committee-digest`, bloqueo optimista por `updated_at`) → lo ve el comité vigente (`finance_committee_members`) en `/expenses/committee-digest`, o los admins si no hay comité. Solo avisos en la app (`notifications`, categoría `committee_digest`).
+- RLS: lectura para admins de la comunidad y, ya publicado, para integrantes vigentes del comité (`is_active_committee_member`); escrituras solo por el servidor. Auditoría `agent.committee_digest.*`.
+- Los tipos del resumen viven en `src/lib/committeeDigest/types.ts` y el cliente en `src/lib/services/committeeDigestService.ts`, porque `src/lib/api.ts` y `src/lib/types.ts` ya no se pueden publicar por la API de GitHub. No los muevas ahí.
 
 **Al agregar una herramienta**, regístrala en `ToolName`, `AGENT_TOOL_NAMES`, `TOOL_AGENT_KEYS`, `TOOL_RISK_LEVELS` (y `READ_ONLY_AGENT_TOOLS` si solo lee) en `domain.ts`, y también en la etiqueta de `src/app/api/agent-center/route.ts` y en el arreglo de herramientas de `agentTools.ts`.
 
