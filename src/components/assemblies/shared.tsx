@@ -121,8 +121,23 @@ export function QuorumMeter({ quorum, rightsMethod }: { quorum: LiveQuorum; righ
         {quorum.presentUnits} de {quorum.totalUnits} unidades acreditadas · {fmt(quorum.presentWeight)} de {fmt(quorum.totalWeight)} {rightsMethod === "share" ? "‰ de derechos" : "votos (1 unidad = 1 voto)"}
       </p>
       <p className="mt-1 text-xs cc-text-tertiary">{quorum.constitutionRule}</p>
+      <EligibilityTotals quorum={quorum} rightsMethod={rightsMethod} />
       {quorum.pendingVerification > 0 && <p className="mt-1 text-xs" style={{ color: "var(--cc-amber)" }}>{quorum.pendingVerification} asistencia(s) esperan verificación.</p>}
     </div>
+  );
+}
+
+/**
+ * Totales del certificado de habilidad. Pantalla compartida: solo cuántas
+ * unidades y cuántos derechos están habilitados, nunca cuáles.
+ */
+export function EligibilityTotals({ quorum, rightsMethod }: { quorum: LiveQuorum; rightsMethod: "share" | "equal" }) {
+  const certificate = quorum.eligibility;
+  if (!certificate) return <p className="mt-1 text-xs cc-text-tertiary">Certificado de habilidad: lo emite el administrador antes de la primera votación.</p>;
+  return (
+    <p className="mt-1 text-xs cc-text-tertiary">
+      Habilitadas para votar: {certificate.eligibleUnits} de {certificate.totalUnits} unidades · {fmt(certificate.eligibleWeight)}{rightsMethod === "share" ? "‰" : ""} de {fmt(certificate.totalWeight)}{rightsMethod === "share" ? "‰ de derechos" : " votos"} ({certificate.eligibleShare.toLocaleString("es-CL")}%) · corte {certificate.cutoffDate}
+    </p>
   );
 }
 
