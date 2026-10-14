@@ -1,48 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
     ArrowLeft,
     ArrowRight,
-    BookOpen,
     Check,
     CheckCircle2,
     Circle,
     Clapperboard,
     Clock3,
-    DoorOpen,
     Download,
-    Droplets,
-    Flame,
     GraduationCap,
     HelpCircle,
     Info,
     ListChecks,
     Loader2,
     MessageCircleQuestion,
-    MessagesSquare,
-    NotebookPen,
-    Package,
     RotateCcw,
     Send,
     ShieldCheck,
-    Siren,
     Sparkles,
     Star,
     ThumbsDown,
     ThumbsUp,
     UserRound,
-    Users,
-    Wrench,
     X,
-    Zap,
-    type LucideIcon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/cc/Button";
 import { parseTrainingSlides, visibleSlideBullets } from "@/lib/training/courseContent";
-import { slideTopic, splitComparison, splitLabeled, type TrainingTopic } from "@/lib/training/slideVisual";
+import { slideTopic, splitComparison, splitLabeled, topicImage, type TrainingTopic } from "@/lib/training/slideVisual";
 import type { TrainingAttemptRecord, TrainingAttemptResponse, TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
 
 const themeStyles: Record<TrainingSlide["visual_theme"], { accent: string; soft: string; label: string }> = {
@@ -438,24 +426,17 @@ export function MultiAgentClassroom({
     );
 }
 
-const TOPIC_ICONS: Record<TrainingTopic, LucideIcon> = {
-    logbook: NotebookPen, emergency: Siren, water: Droplets, electric: Zap, fire: Flame, people: Users,
-    access: DoorOpen, parcel: Package, cleaning: Sparkles, maintenance: Wrench, communication: MessagesSquare,
-    shift: Clock3, security: ShieldCheck, general: BookOpen,
-};
 const SCALE_COLORS = ["var(--cc-sage)", "#9a5b16", "var(--cc-rose)", "var(--cc-ink)"];
 
-/** Ilustración de la sección: el ícono del tema sobre un fondo con forma, sin imágenes externas. */
-function TopicArt({ topic, accent, soft, size = "md" }: { topic: TrainingTopic; accent: string; soft: string; size?: "md" | "lg" }) {
-    const Icon = TOPIC_ICONS[topic];
-    const box = size === "lg" ? "h-44 w-44 sm:h-56 sm:w-56" : "h-20 w-20";
+/** Ilustración de la sección: una escena del tema con el título encima. */
+function SceneHero({ topic, tall = false, children }: { topic: TrainingTopic; tall?: boolean; children: ReactNode }) {
     return (
-        <div aria-hidden className={`relative shrink-0 ${box}`}>
-            <div className="absolute inset-0 rounded-[38%] rotate-6" style={{ background: soft }} />
-            <div className="absolute inset-[14%] rounded-full opacity-60" style={{ border: `2px dashed ${accent}` }} />
-            <div className="absolute inset-0 flex items-center justify-center">
-                <Icon className={size === "lg" ? "h-20 w-20 sm:h-24 sm:w-24" : "h-9 w-9"} strokeWidth={1.4} style={{ color: accent }} />
-            </div>
+        <div className={`relative overflow-hidden rounded-3xl ${tall ? "min-h-[420px] sm:min-h-[480px]" : "min-h-[240px] sm:min-h-[280px]"}`} style={{ background: "var(--cc-ink)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={topicImage(topic)} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: tall ? "center 40%" : "center 62%", animation: "cc-scene-in 900ms ease-out both" }} />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(28,22,18,0) 25%, rgba(28,22,18,.55) 60%, rgba(28,22,18,.88) 100%)" }} />
+            <div className={`relative flex h-full flex-col justify-end px-6 pb-7 sm:px-10 sm:pb-9 ${tall ? "min-h-[420px] sm:min-h-[480px]" : "min-h-[240px] sm:min-h-[280px]"}`}>{children}</div>
+            <style>{"@keyframes cc-scene-in{from{transform:scale(1.06);opacity:.4}to{transform:scale(1);opacity:1}}"}</style>
         </div>
     );
 }
@@ -471,14 +452,11 @@ function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: st
     if (slide.layout === "opening") {
         return (
             <section className="mt-3">
-                <div className="flex flex-col-reverse items-start gap-8 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="max-w-2xl">
-                        {kicker && <p className="text-[11px] font-semibold uppercase tracking-[0.2em] cc-text-tertiary">{kicker}</p>}
-                        <h2 className="mt-2 text-4xl font-semibold leading-[1.05] cc-text-primary sm:text-5xl" style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
-                        {slide.lead && <p className="mt-5 text-lg leading-8 cc-text-secondary">{slide.lead}</p>}
-                    </div>
-                    <TopicArt topic={topic} accent={accent} soft={soft} size="lg" />
-                </div>
+                <SceneHero topic={topic} tall>
+                    {kicker && <p className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: "#f1c9ab" }}>{kicker}</p>}
+                    <h2 className="mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] text-white sm:text-6xl" style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
+                    {slide.lead && <p className="mt-4 max-w-2xl text-lg leading-8 text-white/85">{slide.lead}</p>}
+                </SceneHero>
                 {bullets.length > 0 && (
                     <div className="mt-10 grid gap-4 sm:grid-cols-3">
                         {bullets.map((bullet, index) => (
@@ -500,14 +478,11 @@ function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: st
 
     return (
         <section className="mt-3">
-            <div className="flex items-start gap-5">
-                <TopicArt topic={topic} accent={accent} soft={soft} />
-                <div className="min-w-0">
-                    {kicker && <p className="text-[11px] font-semibold uppercase tracking-[0.2em] cc-text-tertiary">{kicker}</p>}
-                    <h2 className="mt-1 text-3xl font-semibold leading-tight cc-text-primary sm:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
-                </div>
-            </div>
-            {slide.lead && <p className="mt-5 text-lg leading-8 cc-text-secondary">{slide.lead}</p>}
+            <SceneHero topic={topic}>
+                {kicker && <p className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: "#f1c9ab" }}>{kicker}</p>}
+                <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-white sm:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>{slide.title}</h2>
+            </SceneHero>
+            {slide.lead && <p className="mt-6 text-lg leading-8 cc-text-secondary">{slide.lead}</p>}
 
             {slide.layout === "process" ? (
                 <ol className="mt-8 grid gap-3">
