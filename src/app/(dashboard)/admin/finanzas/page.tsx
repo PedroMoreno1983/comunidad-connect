@@ -9,7 +9,6 @@ import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AlertCircle, ArrowRight, ArrowLeftRight, BellRing, BookOpen, Calculator, FileText, Handshake, Landmark, Loader2, Send, ShieldCheck, Target, Users, Wallet, Receipt } from "lucide-react";
 import Link from "next/link";
-import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useAuth } from "@/lib/authContext";
 import { currentMonthInChile } from "@/lib/finance/chileDates";
@@ -300,22 +299,27 @@ export default function AdminFinanzasPage() {
                     <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
                 </Link>
 
-                <ModuleFlow
-                    title="Cierre financiero del periodo"
-                    description="El flujo financiero debe partir en cobranza, cruzar ingresos y egresos, y terminar con reporte y recordatorios enviados."
-                    statusLabel={`${finances.collectionRate}% cobranza`}
-                    completedSteps={finances.collectionRate >= 95 ? 4 : finances.collectionRate >= 85 ? 2 : 0}
-                    currentStep={finances.collectionRate >= 95 ? 4 : finances.collectionRate >= 85 ? 3 : 1}
-                    primaryActionLabel={finances.collectionRate >= 85 ? "Preparar reporte" : "Gestionar cobranza"}
-                    primaryActionHref={finances.collectionRate >= 85 ? "#control-financiero" : "#cobranzas"}
-                    steps={[
-                        "Revisar pagos pendientes",
-                        "Validar ingresos y egresos",
-                        "Preparar reporte de comité",
-                        "Enviar recordatorios",
-                    ]}
-                    outcome="Cierre esperado: la administración sabe quién debe, cuánto se recaudó, qué gastos explicar y qué comunicaciones faltan."
-                />
+                <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <Eyebrow className="mb-2">Recorrido del mes</Eyebrow>
+                    <h2 className="text-xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Del gasto común al cierre</h2>
+                    <p className="mt-2 text-sm leading-6 cc-text-secondary">
+                        Revisa cada etapa antes de guardar el corte. La tasa de cobranza no confirma que los pagos estén conciliados ni que el mes esté cerrado.
+                    </p>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            { title: "1. Emitir el cobro", detail: "Revisa egresos y publica el gasto común del mes.", href: "/admin/finanzas/egresos" },
+                            { title: "2. Conciliar pagos", detail: "Cruza los abonos informados con la cartola disponible.", href: "/admin/finanzas/conciliacion" },
+                            { title: "3. Gestionar saldos", detail: "Consulta deudas, avisos y convenios por unidad.", href: "/admin/finanzas/cobranza" },
+                            { title: "4. Guardar el corte", detail: "Comprueba los estados y conserva la foto mensual.", href: "/admin/finanzas/contabilidad" },
+                        ].map(step => (
+                            <Link key={step.href} href={step.href} className="group flex flex-col rounded-xl border p-4 transition hover:shadow-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                <h3 className="text-sm font-semibold cc-text-primary">{step.title}</h3>
+                                <p className="mt-2 flex-1 text-xs leading-5 cc-text-secondary">{step.detail}</p>
+                                <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--cc-copper)" }}>Abrir <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" /></span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
                 <section id="control-financiero">
                     <FinanceDashboard data={finances} />
                 </section>
