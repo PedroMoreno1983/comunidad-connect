@@ -22,8 +22,6 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/cc/Button";
-import { useAuth } from "@/lib/authContext";
-import { practicePeersForRole } from "@/lib/training/tutorGuidance";
 import { parseTrainingSlides, visibleSlideBullets } from "@/lib/training/courseContent";
 import type { TrainingAttemptRecord, TrainingAttemptResponse, TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
 
@@ -45,9 +43,6 @@ export function MultiAgentClassroom({
     onSlideChange,
     onComplete,
 }: TrainingClassroomProps) {
-    const { user } = useAuth();
-    const sessionRole = user?.role === "admin" || user?.role === "concierge" ? user.role : null;
-    const peers = sessionRole ? practicePeersForRole(sessionRole) : [];
     const slides = useMemo(() => parseTrainingSlides(courseContent), [courseContent]);
     const safeInitialIndex = slides.length ? Math.min(Math.max(initialSlideIndex, 0), slides.length - 1) : 0;
     const [currentIndex, setCurrentIndex] = useState(safeInitialIndex);
@@ -62,8 +57,8 @@ export function MultiAgentClassroom({
             id: "welcome",
             role: "system",
             text: opening
-                ? `La tutora abre «${opening.title}». La presentación ya está en pantalla: pregúntale cómo aplicarías esta sección. Tus compañeros de práctica pueden intervenir.`
-                : "La tutora acompaña la sección que está en pantalla.",
+                ? `Estás en «${opening.title}». Puedes consultar cómo aplicar esta sección en tu trabajo.`
+                : "Puedes consultar cualquier duda sobre esta sección.",
         }];
     });
     const [question, setQuestion] = useState("");
@@ -104,8 +99,8 @@ export function MultiAgentClassroom({
             id: "welcome",
             role: "system",
             text: opening
-                ? `La tutora abre «${opening.title}». La presentación ya está en pantalla: pregúntale cómo aplicarías esta sección. Tus compañeros de práctica pueden intervenir.`
-                : "La tutora acompaña la sección que está en pantalla.",
+                ? `Estás en «${opening.title}». Puedes consultar cómo aplicar esta sección en tu trabajo.`
+                : "Puedes consultar cualquier duda sobre esta sección.",
         }]);
     }, [courseContent, initialSlideIndex, moduleId, moduleVersion, slides]);
 
@@ -168,7 +163,7 @@ export function MultiAgentClassroom({
             : [...previous, {
                 id: `section-${current.id}`,
                 role: "system",
-                text: `Ahora la presentación muestra «${current.title}». Pregúntale a la tutora sobre esta sección.`,
+                text: `Ahora estás en «${current.title}». Puedes hacer una pregunta sobre esta sección.`,
             }]);
     }, [current]);
 
@@ -178,7 +173,7 @@ export function MultiAgentClassroom({
     const coursePercent = completed
         ? 100
         : slides.length > 1
-            ? Math.round((currentIndex / (slides.length - 1)) * 100)
+            ? Math.min(95, Math.round((currentIndex / (slides.length - 1)) * 100))
             : 0;
 
     const goTo = (nextIndex: number) => {
@@ -310,12 +305,12 @@ export function MultiAgentClassroom({
                             <span className="inline-flex items-center gap-1.5"><GraduationCap className="h-4 w-4" /> Aula virtual CoCo</span>
                             <span>·</span>
                             <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {estimatedMinutes} min</span>
-                            <span>·</span><span>Versión {moduleVersion}</span>
+                            <span>·</span><span>{completed ? "Curso completado" : `Sección ${currentIndex + 1} de ${slides.length}`}</span>
                         </div>
                         <h1 className="mt-1 truncate text-xl font-semibold cc-text-primary sm:text-2xl">{courseTitle}</h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold cc-text-secondary">{coursePercent}%</span>
+                        <span className="text-sm font-semibold cc-text-secondary">{completed ? "100%" : `${coursePercent}% leído`}</span>
                         <div className="h-2 w-36 overflow-hidden rounded-full" style={{ background: "var(--cc-line)" }}>
                             <div className="h-full rounded-full transition-all" style={{ width: `${coursePercent}%`, background: completed ? "var(--cc-sage)" : "var(--cc-copper)" }} />
                         </div>
@@ -325,10 +320,16 @@ export function MultiAgentClassroom({
 
             {attemptError && <div role="alert" className="border-b px-5 py-3 text-sm" style={{ borderColor: "var(--cc-rose)", background: "var(--cc-rose-tint)", color: "var(--cc-rose)" }}>{attemptError}</div>}
 
-            <div className="grid min-h-[680px] xl:grid-cols-[220px_minmax(0,1fr)_320px]">
-                <nav className="border-b p-4 xl:border-b-0 xl:border-r" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
+            <div className="grid min-h-[680px] lg:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+                <div className="border-b p-4 lg:hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                    <label htmlFor="training-section" className="mb-2 block text-xs font-semibold cc-text-secondary">Ir a una sección</label>
+                    <select id="training-section" value={currentIndex} onChange={event => goTo(Number(event.target.value))} className="input-premium w-full px-3 py-2.5 text-sm">
+                        {slides.map((slide, index) => <option key={slide.id} value={index} disabled={index > maxVisited + 1}>{index + 1}. {slide.title}</option>)}
+                    </select>
+                </div>
+                <nav className="hidden border-r p-4 lg:block" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} aria-label="Secciones del curso">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Contenido</p>
-                    <ol className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
+                    <ol className="grid gap-1.5">
                         {slides.map((slide, index) => {
                             const isCurrent = index === currentIndex;
                             const isAvailable = index <= maxVisited + 1;
@@ -365,7 +366,7 @@ export function MultiAgentClassroom({
                 <main className="flex min-w-0 flex-col p-5 sm:p-7 lg:p-8">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <span className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ background: theme.soft, color: theme.accent }}>{current.eyebrow || theme.label}</span>
-                        <span className="text-xs font-semibold cc-text-tertiary">Sección {currentIndex + 1} de {slides.length}</span>
+                        <div className="flex items-center gap-3"><span className="text-xs font-semibold cc-text-tertiary">Sección {currentIndex + 1} de {slides.length}</span><a href="#training-help" className="text-xs font-semibold underline underline-offset-4" style={{ color: "var(--cc-copper)" }}>Consultar</a></div>
                     </div>
 
                     <SlideCanvas slide={current} accent={theme.accent} />
@@ -403,15 +404,11 @@ export function MultiAgentClassroom({
                     </div>
                 </main>
 
-                <aside className="flex min-h-[520px] flex-col border-t xl:border-l xl:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                <aside id="training-help" className="flex min-h-[300px] scroll-mt-6 flex-col border-t lg:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                     <div className="border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
-                            <div><p className="text-sm font-semibold cc-text-primary">Equipo multiagente CoCo</p><p className="text-xs cc-text-secondary">En «{current.title}»</p></div>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                            <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ background: "var(--cc-ink)", color: "white" }}>Tutora</span>
-                            {peers.map(peer => <span key={peer.id} className="rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>{peer.name}</span>)}
+                            <div><p className="text-sm font-semibold cc-text-primary">Consulta sobre el curso</p><p className="text-xs cc-text-secondary">En «{current.title}»</p></div>
                         </div>
                     </div>
                     <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -420,7 +417,7 @@ export function MultiAgentClassroom({
                                 <p key={message.id} className="px-1 text-center text-xs leading-5 cc-text-secondary">{message.text}</p>
                             ) : (
                             <div key={message.id} className={`rounded-xl px-3 py-2.5 text-sm leading-6 ${message.role === "user" ? "ml-6 text-white" : "mr-3"}`} style={{ background: message.role === "user" ? "var(--cc-ink)" : "var(--cc-paper)", border: message.role === "user" ? undefined : "1px solid var(--cc-line)" }}>
-                                {message.role !== "user" && <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{message.role === "tutor" ? "Tutora CoCo" : message.name || "Compañero de práctica"}</p>}
+                                {message.role !== "user" && <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{message.role === "tutor" ? "Orientación" : "Punto de práctica"}</p>}
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <p>{children}</p>, ul: ({ children }) => <ul className="list-disc pl-4">{children}</ul>, ol: ({ children }) => <ol className="list-decimal pl-4">{children}</ol> }}>{message.text}</ReactMarkdown>
                             </div>
                             )
