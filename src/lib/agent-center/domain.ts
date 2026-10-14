@@ -24,6 +24,10 @@ export type ToolName =
     | 'get_active_polls'
     | 'get_maintenance_backlog'
     | 'get_maintenance_risk'
+    | 'get_maintenance_quotes'
+    | 'request_maintenance_quotes'
+    | 'record_maintenance_quote'
+    | 'select_maintenance_quote'
     | 'find_resident_or_unit'
     | 'preview_payment_agreement'
     // Escrituras (siempre con confirmacion humana dentro del ciclo):
@@ -56,6 +60,10 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'get_active_polls',
     'get_maintenance_backlog',
     'get_maintenance_risk',
+    'get_maintenance_quotes',
+    'request_maintenance_quotes',
+    'record_maintenance_quote',
+    'select_maintenance_quote',
     'find_resident_or_unit',
     'create_poll',
     'update_maintenance_ticket',
@@ -81,6 +89,10 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     get_active_polls: 'community',
     get_maintenance_backlog: 'maintenance',
     get_maintenance_risk: 'maintenance',
+    get_maintenance_quotes: 'maintenance',
+    request_maintenance_quotes: 'maintenance',
+    record_maintenance_quote: 'maintenance',
+    select_maintenance_quote: 'maintenance',
     find_resident_or_unit: 'community',
     create_poll: 'community',
     update_maintenance_ticket: 'maintenance',
@@ -102,6 +114,7 @@ export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_active_polls',
     'get_maintenance_backlog',
     'get_maintenance_risk',
+    'get_maintenance_quotes',
     'find_resident_or_unit',
     'preview_payment_agreement',
 ];
@@ -131,6 +144,10 @@ export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
     get_active_polls: 'read',
     get_maintenance_backlog: 'read',
     get_maintenance_risk: 'read',
+    get_maintenance_quotes: 'read',
+    request_maintenance_quotes: 'write_high',
+    record_maintenance_quote: 'write_low',
+    select_maintenance_quote: 'write_high',
     find_resident_or_unit: 'read',
     preview_payment_agreement: 'read',
     propose_payment_agreement: 'write_high',
