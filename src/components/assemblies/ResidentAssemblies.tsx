@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { AssemblyService } from "@/lib/services/assemblyService";
+import { MY_STATUS_COPY, STATEMENT_LINK } from "@/lib/assemblies/eligibilityCopy";
 import type { AssemblySummary, AssemblyView, AttendanceMode, VoteChoice } from "@/lib/assemblies/types";
 import {
   CAPACITY_LABEL,
@@ -90,6 +91,13 @@ function AssemblyDetail({ view, onView }: { view: AssemblyView; onView: (view: A
     setBusy(true); setMessage("");
     try { onView(await action()); if (success) setMessage(success); } catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo completar la acción."); } finally { setBusy(false); }
   };
+  const runRequest = async (unitId: string) => {
+    setBusy(true); setMessage("");
+    try { const result = await AssemblyService.requestAgreement(a.id, unitId); onView(result.view); setMessage(result.message); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo completar la acción."); }
+    finally { setBusy(false); }
+  };
+  const eligibleOf = (unitId: string) => view.myEligibility.find(entry => entry.unitId === unitId)?.eligible !== false;
   const defaultMode: AttendanceMode = a.modality === "in_person" ? "in_person" : "remote";
   const [mode, setMode] = React.useState<AttendanceMode>(defaultMode);
   const live = a.status === "in_progress";
@@ -138,6 +146,8 @@ function AssemblyDetail({ view, onView }: { view: AssemblyView; onView: (view: A
         </Card>
       )}
 
+      {(a.status === "cited" || live) && view.myEligibility.length > 0 && <MyEligibilityCard view={view} busy={busy} onRequest={unitId => runRequest(unitId)} />}
+
       {live && <Card><SectionTitle eyebrow="En vivo" title="Quórum" /><QuorumMeter quorum={view.quorum} rightsMethod={view.rights.method} /></Card>}
 
       <Card>
@@ -158,7 +168,10 @@ function AssemblyDetail({ view, onView }: { view: AssemblyView; onView: (view: A
                 {live && item.votingStatus === "open" && (
                   <div className="mt-3 space-y-2">
                     {votableUnits.length === 0 && <p className="text-xs cc-text-tertiary">Podrás votar cuando la mesa verifique tu asistencia.</p>}
-                    {votableUnits.map(unit => {
+                    {votableUnits.filter(unit => !eligibleOf(unit.unitId)).map(unit => (
+                      <p key={unit.unitId} className="text-xs cc-text-tertiary">{unit.label}: participas con tu voz; para votar, la unidad debe estar al día o con un convenio vigente. Revisa arriba cómo hacerlo, con total reserva.</p>
+                    ))}
+                    {votableUnits.filter(unit => eligibleOf(unit.unitId)).map(unit => {
                       const vote = view.votes.find(v => v.agendaItemId === item.id && v.unitId === unit.unitId);
                       return (
                         <div key={unit.unitId} className="flex flex-wrap items-center gap-2 text-sm">
@@ -210,6 +223,36 @@ function AssemblyDetail({ view, onView }: { view: AssemblyView; onView: (view: A
         </Card>
       )}
     </div>
+  );
+}
+
+/** Lo que ve cada unidad de sí misma: si puede votar y, si no, sus dos salidas. Nadie más lo ve. */
+function MyEligibilityCard({ view, busy, onRequest }: { view: AssemblyView; busy: boolean; onRequest: (unitId: string) => void }) {
+  return (
+    <Card>
+      <SectionTitle eyebrow="Solo tú ves esto" title="Tu voto" />
+      <ul className="space-y-3">
+        {view.myEligibility.map(entry => {
+          const copy = entry.eligible ? MY_STATUS_COPY.eligible : MY_STATUS_COPY.notEligible;
+          return (
+            <li key={entry.unitId} className="rounded-xl border p-3 text-sm" style={{ borderColor: entry.eligible ? "var(--cc-sage)" : "var(--cc-amber)" }}>
+              <div className="flex flex-wrap items-center gap-2">
+                <Tag tone={entry.eligible ? "sage" : "amber"} solid>{copy.title}</Tag>
+                <span className="cc-text-secondary">{entry.label}</span>
+              </div>
+              <p className="mt-2 cc-text-secondary">{copy.body}</p>
+              {!entry.eligible && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={STATEMENT_LINK} className="inline-flex items-center rounded-full border px-3 py-1.5 text-sm" style={{ borderColor: "var(--cc-line)", color: "var(--cc-copper)" }}>Ver mi estado de cuenta</Link>
+                  <Button size="sm" variant="dark" disabled={busy} onClick={() => onRequest(entry.unitId)}>Pedir un convenio</Button>
+                </div>
+              )}
+              {!entry.certified && <p className="mt-2 text-xs cc-text-tertiary">{MY_STATUS_COPY.estimate}</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 
