@@ -241,18 +241,32 @@ export function ordinarySessionOverdue(lastOrdinaryOn: string | null, today: str
 
 export const QUORUM_RULES: Record<QuorumClass, { constitution: string; agreement: string }> = {
     ordinary: {
-        constitution: `Asistentes con al menos el ${ORDINARY_CONSTITUTION_PERCENT}% de los derechos del condominio (Ley 21.442, art. 15, cuadro 1).`,
-        agreement: 'Mayoría absoluta de los derechos de los asistentes (más de la mitad; art. 15, cuadro 1).',
+        constitution: `Asistentes hábiles con al menos el ${ORDINARY_CONSTITUTION_PERCENT}% de los derechos del condominio (Ley 21.442, art. 15, cuadro 1).`,
+        agreement: 'Mayoría absoluta de los derechos de los asistentes (más de la mitad; art. 15, cuadro 1). Solo votan los copropietarios hábiles (art. 15).',
     },
     absolute: {
-        constitution: 'Asistentes con la mayoría absoluta de los derechos del condominio (más de la mitad; art. 15, cuadro 2).',
-        agreement: 'Mayoría absoluta de los derechos del condominio (más de la mitad; art. 15, cuadro 2).',
+        constitution: 'Asistentes hábiles con la mayoría absoluta de los derechos del condominio (más de la mitad; art. 15, cuadro 2).',
+        agreement: 'Mayoría absoluta de los derechos del condominio (más de la mitad; art. 15, cuadro 2). Solo votan los copropietarios hábiles (art. 15).',
     },
     reinforced: {
-        constitution: `Asistentes con al menos el ${REINFORCED_PERCENT}% de los derechos del condominio (art. 15, cuadro 3).`,
-        agreement: `Votos a favor con al menos el ${REINFORCED_PERCENT}% de los derechos del condominio (art. 15, cuadro 3).`,
+        constitution: `Asistentes hábiles con al menos el ${REINFORCED_PERCENT}% de los derechos del condominio (art. 15, cuadro 3).`,
+        agreement: `Votos a favor con al menos el ${REINFORCED_PERCENT}% de los derechos del condominio (art. 15, cuadro 3). Solo votan los copropietarios hábiles (art. 15).`,
     },
 };
+
+/*
+ * Quórums con copropietarios hábiles. El cuadro del art. 15 calcula sobre "los
+ * derechos en el condominio" o "del condominio" (todos, no solo los hábiles) y,
+ * en la ordinaria, sobre "los asistentes". El art. 15 solo dice que los no
+ * hábiles no "concurren con su voto". La ley no dice si un asistente no hábil
+ * cuenta para constituir: se toma la lectura conservadora, que deja válido el
+ * acuerdo bajo cualquiera de las dos:
+ *   - Denominador: SIEMPRE los derechos de todo el condominio.
+ *   - Constitución: solo los derechos HÁBILES presentes (como el ocupante que
+ *     asiste sin representar: "no serán considerados en los quórums", DS 7 art. 12).
+ *   - Acuerdo ordinario: más de la mitad de los derechos de TODOS los asistentes
+ *     (hábiles o no); los votos a favor solo vienen de hábiles.
+ */
 
 /** ¿Los derechos presentes constituyen la sesión? */
 export function constitutionMet(quorumClass: QuorumClass, presentWeight: number, totalWeight: number): boolean {
@@ -296,10 +310,17 @@ export function evaluateAgendaItem(input: {
     matterClass: QuorumClass;
     tally: VoteTally;
     pendingVerification?: number;
+    /**
+     * Derechos HÁBILES presentes (certificado de habilidad). Constituye la sesión;
+     * no se guarda en el resultado para no exponer cuánto pesan los no hábiles.
+     * Si falta, se usa `tally.present` (todos los presentes).
+     */
+    eligiblePresent?: number;
 }): AgendaResult {
     const sessionClass = sessionQuorumClass(input.sessionType);
     const constitutionClass: QuorumClass = CLASS_RANK[sessionClass] >= CLASS_RANK[input.matterClass] ? sessionClass : input.matterClass;
-    const constituted = constitutionMet(constitutionClass, input.tally.present, input.tally.total);
+    const constitutionPresent = input.eligiblePresent === undefined ? input.tally.present : Math.min(input.eligiblePresent, input.tally.present);
+    const constituted = constitutionMet(constitutionClass, constitutionPresent, input.tally.total);
     const agreed = constituted && agreementMet(input.matterClass, input.tally);
     const base = input.matterClass === 'ordinary' ? 'present' : 'total';
     const rule = `${QUORUM_CLASS_LABEL[input.matterClass]}. Constitución: ${QUORUM_RULES[constitutionClass].constitution} Acuerdo: ${QUORUM_RULES[input.matterClass].agreement}`;
@@ -347,9 +368,12 @@ export function tallyVotes(votes: WeightedVote[], presentWeight: number, totalWe
 /**
  * Un voto cuenta si la asistencia de la unidad está acreditada y, cuando se
  * vota en línea, si además se identificó a la persona con imagen y voz al
- * votar (DS 7, art. 16 N°3). En sala basta la acreditación.
+ * votar (DS 7, art. 16 N°3). En sala basta la acreditación. Además, la unidad
+ * debe estar habilitada en el certificado (Ley 21.442, art. 15): quien
+ * representa a la unidad (poder u ocupante) vota con la habilidad de ella.
  */
-export function voteCounts(input: { attendanceVerified: boolean; attendancePresent: boolean; mode: AttendanceMode; voteVerified: boolean }): boolean {
+export function voteCounts(input: { attendanceVerified: boolean; attendancePresent: boolean; mode: AttendanceMode; voteVerified: boolean; unitEligible?: boolean }): boolean {
+    if (input.unitEligible === false) return false;
     if (!input.attendanceVerified || !input.attendancePresent) return false;
     return input.mode === 'in_person' ? true : input.voteVerified;
 }

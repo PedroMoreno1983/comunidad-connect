@@ -13,6 +13,7 @@ import {
     createAssembly,
     draftCitation,
     getAssemblyView,
+    issueEligibilityCertificate,
     listAssemblies,
     listCommunityResidents,
     markLeft,
@@ -21,6 +22,7 @@ import {
     recordVote,
     regenerateMinutes,
     registerProxy,
+    requestAgreementConversation,
     reviewProxy,
     rsvp,
     saveMinutes,
@@ -131,6 +133,8 @@ export async function POST(req: NextRequest) {
             }));
             case 'verify_attendance': return NextResponse.json(await verifyAttendance(actor, assemblyId, id(body.attendanceId)));
             case 'mark_left': return NextResponse.json(await markLeft(actor, assemblyId, id(body.attendanceId)));
+            case 'certify_eligibility': return NextResponse.json(await issueEligibilityCertificate(actor, assemblyId));
+            case 'request_agreement': return NextResponse.json(await requestAgreementConversation(actor, assemblyId, id(body.unitId)));
             case 'open_vote': return NextResponse.json(await openVote(actor, assemblyId, id(body.itemId)));
             case 'cast_vote': return NextResponse.json(await castVote(actor, assemblyId, id(body.itemId), id(body.unitId), text(body.choice, 10) as VoteChoice));
             case 'record_vote': return NextResponse.json(await recordVote(actor, assemblyId, id(body.itemId), id(body.unitId), text(body.choice, 10) as VoteChoice));
