@@ -191,6 +191,7 @@ export function effectiveRequiresConfirmation(
 export type PlaybookKey =
     | 'finance_collection_review'
     | 'maintenance_ticket_triage'
+    | 'maintenance_preventive_plan'
     | 'onboarding_import_review'
     | 'iot_emergency_readiness'
     | 'community_broadcast'
@@ -477,6 +478,15 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
         targetHref: '/admin/mantenimiento',
         requiresAdmin: true,
         steps: ['Detectar tickets abiertos', 'Revisar proveedores verificados', 'Priorizar seguimiento', 'Registrar bitacora'],
+    },
+    {
+        key: 'maintenance_preventive_plan',
+        agentKey: 'maintenance',
+        name: 'Mantención preventiva',
+        description: 'Agenda la próxima mantención de cada activo según su tipo (ascensores, bombas, generador, extintores, portones), marca tareas vencidas y alerta activos atrasados. Una tarea abierta por activo.',
+        targetHref: '/admin/mantenimiento',
+        requiresAdmin: true,
+        steps: ['Leer activos y tareas', 'Calcular plan preventivo', 'Agendar tareas y fechas', 'Registrar auditoria'],
     },
     {
         key: 'onboarding_import_review',

@@ -9,6 +9,8 @@ import {
 } from '@/lib/agent-center/taskEngine';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { planPreventiveMaintenance, type PlanAsset, type PlanTask, type PreventivePlan } from '@/lib/maintenance/preventivePlan';
 
 function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -315,11 +317,106 @@ async function runBroadcastTask(profile: AgentProfile, goal: string, requestedTe
     }
 }
 
+async function readPreventiveInputs(communityId: string) {
+    const admin = getSupabaseAdmin();
+    const [assets, tasks] = await Promise.all([
+        admin.from('building_assets').select('id, name, category, health_status, last_maintenance, next_maintenance')
+            .eq('community_id', communityId).order('id').limit(1000),
+        admin.from('maintenance_tasks').select('id, asset_id, status, due_date')
+            .eq('community_id', communityId).in('status', ['pending', 'in_progress', 'overdue']).order('id').limit(2000),
+    ]);
+    if (assets.error) throw assets.error;
+    if (tasks.error) throw tasks.error;
+    return { assets: (assets.data || []) as PlanAsset[], tasks: (tasks.data || []) as PlanTask[] };
+}
+
+/**
+ * Aplica el plan. Antes de crear la tarea de cada activo vuelve a verificar que
+ * no tenga una abierta: si otra persona la creó entretanto, no se duplica.
+ */
+async function applyPreventivePlan(communityId: string, plan: PreventivePlan) {
+    const admin = getSupabaseAdmin();
+    const createdTaskIds: string[] = [];
+    let skippedExisting = 0;
+    for (const task of plan.newTasks) {
+        const { data: open, error: openError } = await admin.from('maintenance_tasks').select('id')
+            .eq('community_id', communityId).eq('asset_id', task.assetId).in('status', ['pending', 'in_progress', 'overdue']).limit(1);
+        if (openError) throw openError;
+        if (open?.length) { skippedExisting += 1; continue; }
+        const { data, error } = await admin.from('maintenance_tasks').insert({
+            community_id: communityId, asset_id: task.assetId, title: task.title.slice(0, 140),
+            description: task.description, frequency: task.frequency, due_date: task.dueDate,
+            priority: task.priority, status: 'pending',
+        }).select('id').single();
+        if (error || !data) throw error || new Error('No se pudo crear la tarea preventiva.');
+        createdTaskIds.push(String(data.id));
+    }
+    if (plan.overdueTaskIds.length) {
+        const { error } = await admin.from('maintenance_tasks').update({ status: 'overdue' })
+            .eq('community_id', communityId).eq('status', 'pending').in('id', plan.overdueTaskIds);
+        if (error) throw error;
+    }
+    for (const update of plan.assetUpdates) {
+        const patch: Record<string, unknown> = {};
+        if (update.nextMaintenance) patch.next_maintenance = update.nextMaintenance;
+        if (update.healthStatus) patch.health_status = update.healthStatus;
+        const { error } = await admin.from('building_assets').update(patch).eq('community_id', communityId).eq('id', update.assetId);
+        if (error) throw error;
+    }
+    return { createdTaskIds, skippedExisting };
+}
+
+async function runPreventiveMaintenanceTask(profile: AgentProfile, goal: string, existingTaskId?: string) {
+    requireAdmin(profile);
+    const definition = playbook('maintenance_preventive_plan');
+    const taskId = existingTaskId || await createAgentTask(profile, definition, goal, [
+        { key: 'read_assets', title: 'Leer activos y tareas abiertas' },
+        { key: 'plan', title: 'Calcular plan preventivo' },
+        { key: 'apply', title: 'Agendar tareas y fechas' },
+        { key: 'audit', title: 'Registrar auditoria' },
+    ]);
+    const communityId = profile.community_id!;
+    try {
+        const inputs = await runVerifiedTaskStep(taskId, 0, () => readPreventiveInputs(communityId),
+            { output: value => ({ assets: value.assets.length, openTasks: value.tasks.length }) });
+        const plan = await runVerifiedTaskStep(taskId, 1,
+            async () => planPreventiveMaintenance({ ...inputs, today: chileTodayISO() }),
+            { output: value => ({ newTasks: value.newTasks.length, overdue: value.overdueTaskIds.length, assetUpdates: value.assetUpdates.length, scheduledLater: value.scheduledLater }) });
+        const applied = await runVerifiedTaskStep(taskId, 2, () => applyPreventivePlan(communityId, plan),
+            { verify: value => value.createdTaskIds.length + value.skippedExisting === plan.newTasks.length, output: value => value });
+        const warnings = plan.assetUpdates.filter(update => update.healthStatus === 'warning').length;
+        await runVerifiedTaskStep(taskId, 3, async () => {
+            const audit = await recordOperationEvent({
+                communityId, actorId: profile.id, actorRole: profile.role,
+                action: 'agent.task.maintenance_preventive_plan', entityType: 'agent_task', entityId: taskId,
+                severity: warnings ? 'warning' : 'success', status: 'success',
+                summary: `Plan preventivo: ${applied.createdTaskIds.length} tarea(s) agendada(s), ${plan.overdueTaskIds.length} vencida(s), ${warnings} activo(s) en alerta`,
+                metadata: { taskId, createdTaskIds: applied.createdTaskIds, overdueTaskIds: plan.overdueTaskIds, assetUpdates: plan.assetUpdates, scheduledLater: plan.scheduledLater },
+            });
+            if (!audit.ok) throw new Error('No fue posible guardar la auditoria del plan preventivo.');
+            return { auditRecorded: true };
+        }, { verify: value => value.auditRecorded, output: value => value });
+
+        const result = { taskId, created: applied.createdTaskIds.length, skippedExisting: applied.skippedExisting, overdue: plan.overdueTaskIds.length, warnings, scheduledLater: plan.scheduledLater, tasks: plan.newTasks.map(task => ({ asset: task.assetName, title: task.title, dueDate: task.dueDate, priority: task.priority, catchUp: task.catchUp })) };
+        await completeAgentTask(taskId, result);
+        const catchUp = plan.newTasks.filter(task => task.catchUp).length;
+        return {
+            entityType: 'agent_task', entityId: taskId, title: 'Plan preventivo agendado', targetHref: definition.targetHref,
+            message: `Agende ${applied.createdTaskIds.length} mantención(es) preventiva(s)${catchUp ? `, ${catchUp} atrasada(s) para hoy` : ''}. ${plan.overdueTaskIds.length ? `${plan.overdueTaskIds.length} tarea(s) quedaron marcadas como vencidas. ` : ''}${warnings ? `${warnings} activo(s) pasaron a alerta por atraso. ` : ''}${plan.scheduledLater ? `${plan.scheduledLater} activo(s) tienen su próxima fecha fijada más adelante. ` : ''}No se contrató ni se gastó nada.`,
+            data: { ...result, taskStatus: 'completed' },
+        };
+    } catch (error) {
+        await failAgentTask(taskId, error);
+        throw error;
+    }
+}
+
 export async function runAgentPlaybook(action: AgentAction, profile: AgentProfile) {
     const playbookKey = cleanText(action.args.playbookKey, 80) as PlaybookKey;
     const goal = cleanText(action.args.requestedText, 700) || action.summary;
     if (playbookKey === 'finance_collection_review') return runFinanceCollectionTask(profile, goal);
     if (playbookKey === 'maintenance_ticket_triage') return runMaintenanceTriageTask(profile, goal);
+    if (playbookKey === 'maintenance_preventive_plan') return runPreventiveMaintenanceTask(profile, goal);
     if (playbookKey === 'onboarding_import_review') return runOnboardingTask(profile, goal);
     if (playbookKey === 'iot_emergency_readiness') return runIotReadinessTask(profile, goal);
     if (playbookKey === 'community_broadcast') return runBroadcastTask(profile, goal, cleanText(action.args.requestedText, 700));
