@@ -37,6 +37,20 @@ export function isAcknowledgement(message: string) {
     return /^(ok(ay)?|ya|s[ií]|dale|listo|gracias|entendido|perfecto|bien|vale|claro)[\s.!]*$/i.test(message.trim());
 }
 
+/** In a live hazard, the learner needs the action before a practice question. */
+export function electricWaterSafetyTurn(input: ClassroomTurnInput): TrainingChatMessage[] | null {
+    if (input.role !== 'concierge' || !input.course.title.toLowerCase().includes('conserjería')) return null;
+    const mentionsWater = /(agua|filtraci[oó]n|inundaci[oó]n|charco)/i.test(input.message);
+    const mentionsElectricity = /(tablero|electricidad|el[eé]ctric|enchufe|cable)/i.test(input.message);
+    if (!mentionsWater || !mentionsElectricity) return null;
+
+    return [{
+        id: `tutor-safety-${Date.now()}`,
+        role: 'tutor',
+        text: 'Aléjate y aparta a las personas del sector desde un lugar seguro; no toques el agua ni la instalación eléctrica. Activa de inmediato el protocolo y llama al contacto de emergencia del edificio; avisa también a administración. Comunica el lugar, que hay agua junto a electricidad y si hay personas expuestas. Registra la hora y las acciones en cuanto sea seguro, sin retrasar el aviso.',
+    }];
+}
+
 function courseDocument(course: ClassroomCourse) {
     const sections = course.slides.map((slide, index) => [
         `### Sección ${index + 1}: ${slide.title}`,
@@ -136,6 +150,9 @@ function conversation(input: ClassroomTurnInput): Anthropic.MessageParam[] {
 }
 
 export async function runClassroomTurn(input: ClassroomTurnInput): Promise<TrainingChatMessage[]> {
+    const safetyTurn = electricWaterSafetyTurn(input);
+    if (safetyTurn) return safetyTurn;
+
     const model = anthropicModelFor(TASK);
     const peers = practicePeersForRole(input.role);
     const system = classroomSystemPrompt(input.role, input.course);
