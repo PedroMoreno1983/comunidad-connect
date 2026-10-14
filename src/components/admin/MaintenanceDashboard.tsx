@@ -75,7 +75,13 @@ export function MaintenanceDashboard() {
         }
         setIsClosing(true);
         try {
-            await MaintenanceService.completeTask(taskId, { photo: closurePhoto, cost: closureCost, note: closureNote });
+            const form = new FormData();
+            form.append('photo', closurePhoto);
+            if (closureCost) form.append('cost', closureCost);
+            if (closureNote) form.append('note', closureNote);
+            const response = await fetch(getApiUrl(`/api/admin/maintenance/tasks/${taskId}/complete`), { method: 'POST', body: form });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'No se pudo cerrar la tarea.');
             setTasks(prev => prev.map(t =>
                 t.id === taskId ? { ...t, status: 'completed' } : t
             ));
