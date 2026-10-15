@@ -1,7 +1,9 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, DATE_PATTERN } from './billingService';
 import { PAYMENT_METHODS, reconcileUnitStatuses } from './collectionService';
-import { splitInstallments } from './operationalFlows';
+import { agreementDueDates, splitInstallments } from './operationalFlows';
+import { AGREEMENT_SIGNED_ADMIN_COPY, AGREEMENT_SIGNING_COPY } from './agreementCopy';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { activeCommitteeMembers, requireActiveCommitteeMember } from './committeeMembers';
 import { recordOperationEvent } from '@/lib/operations/audit';
 
@@ -68,11 +70,14 @@ export async function listAgreementsForReviewer(communityId: string, reviewerId:
 export async function createAgreement(
   communityId: string,
   createdBy: string | null,
-  input: { unitId: string; title: string; totalAmount: number; installmentCount: number; startDate: string; notes?: string; reviewerId?: string },
+  input: { unitId: string; title: string; totalAmount: number; installmentCount: number; notes?: string; reviewerId?: string },
 ) {
   const title = input.title.trim().slice(0, 140);
   if (!title) throw new BillingError('bad_label', 'El convenio necesita un título.');
-  const installments = splitInstallments(input.totalAmount, input.installmentCount, input.startDate);
+  // La primera cuota vence el día de la firma. Sin comité, el convenio queda
+  // firmado (vigente) hoy. Con comité, estas fechas son provisorias: se vuelven
+  // a calcular el día en que el comité lo aprueba (`decideAgreementReview`).
+  const installments = splitInstallments(input.totalAmount, input.installmentCount, chileTodayISO());
   const admin = getSupabaseAdmin();
   const { data: unit } = await admin
     .from('units')
@@ -141,8 +146,8 @@ export async function createAgreement(
       user_id: String(unit.owner_id),
       type: 'info',
       category: 'finance_agreement',
-      title: 'Convenio de pago',
-      body: `La administración abrió el convenio «${title}» en ${installments.length} cuotas.`,
+      title: 'Tu convenio de pago está vigente',
+      body: `La administración abrió el convenio «${title}» en ${installments.length} cuotas y hoy quedó firmado. ${AGREEMENT_SIGNING_COPY}`,
       link: '/expenses',
       community_id: communityId,
     }).then(() => undefined, () => undefined);
@@ -153,6 +158,30 @@ export async function createAgreement(
   return created;
 }
 
+/**
+ * El convenio con comité se firma el día en que el comité lo aprueba: ahí vence
+ * la primera cuota y desde ahí corren las siguientes (`agreementDueDates`). Se
+ * hace ANTES de pasar el convenio a `active`: si falla, no se aprueba con las
+ * fechas provisorias (que dejarían la primera cuota vencida desde el inicio).
+ */
+async function redateOnSigning(communityId: string, reviewerId: string, agreementId: string, signedOn: string) {
+  const admin = getSupabaseAdmin();
+  const { data: agreement, error } = await admin.from('payment_agreements')
+    .select('id, payment_agreement_installments(id, sequence_number, status)')
+    .eq('id', agreementId).eq('community_id', communityId).eq('committee_reviewer_id', reviewerId)
+    .eq('status', 'pending_committee').maybeSingle();
+  if (error) throw error;
+  if (!agreement) throw new BillingError('review_not_found', 'El convenio no está pendiente para tu revisión.', 409);
+  const lines = [...(agreement.payment_agreement_installments || [])].sort((a, b) => a.sequence_number - b.sequence_number);
+  const dueDates = agreementDueDates(signedOn, lines.length);
+  for (const [index, line] of lines.entries()) {
+    const { error: lineError } = await admin.from('payment_agreement_installments')
+      .update({ due_date: dueDates[index] })
+      .eq('id', line.id).eq('agreement_id', agreementId).eq('community_id', communityId).eq('status', 'pending');
+    if (lineError) throw lineError;
+  }
+}
+
 export async function decideAgreementReview(
   communityId: string, reviewerId: string, agreementId: string,
   decision: 'approved' | 'rejected', note: string,
@@ -161,6 +190,7 @@ export async function decideAgreementReview(
   if (decision === 'rejected' && !note.trim()) throw new BillingError('missing_reason', 'Indica por qué rechazas el convenio.');
   const admin = getSupabaseAdmin();
   const status = decision === 'approved' ? 'active' : 'rejected';
+  if (decision === 'approved') await redateOnSigning(communityId, reviewerId, agreementId, chileTodayISO());
   const { data, error } = await admin.from('payment_agreements').update({
     status, committee_reviewed_at: new Date().toISOString(),
     committee_review_note: note.trim().slice(0, 1000) || null, updated_at: new Date().toISOString(),
@@ -174,7 +204,9 @@ export async function decideAgreementReview(
     await admin.from('notifications').insert({ community_id: communityId, user_id: recipient,
       type: decision === 'approved' ? 'success' : 'warning', category: 'finance_agreement',
       title: `Convenio ${decision === 'approved' ? 'aprobado' : 'rechazado'}`,
-      body: `El comité ${decision === 'approved' ? 'aprobó' : 'rechazó'} «${data.title}».`,
+      body: decision === 'approved'
+        ? `El comité aprobó «${data.title}» y hoy quedó firmado. ${recipient === data.created_by ? AGREEMENT_SIGNED_ADMIN_COPY : AGREEMENT_SIGNING_COPY}`
+        : `El comité rechazó «${data.title}».`,
       link: recipient === data.created_by ? '/admin/finanzas/convenios' : '/expenses',
     }).then(() => undefined, () => undefined);
   }
