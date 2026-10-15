@@ -6,6 +6,7 @@ import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { AssemblyService, type AssemblyDraftPayload } from "@/lib/services/assemblyService";
 import { CONDUCTOR_BADGE } from "@/lib/assemblies/eligibilityCopy";
+import { UnitRightsEditor } from "./UnitRightsEditor";
 import type {
   AssemblyAgendaItem,
   AssemblyMatter,
@@ -146,6 +147,8 @@ export function AdminAssemblies() {
           {!editing && !view && <Card><p className="text-sm cc-text-secondary">Elige una asamblea o crea una nueva.</p></Card>}
         </div>
       </div>
+
+      <UnitRightsEditor />
     </main>
   );
 }
