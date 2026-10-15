@@ -1,9 +1,14 @@
 import {
+    convertRightsColumn,
+    normalizeRightsHeader,
     normalizeUnitLabel,
+    parsePercentToPermille,
     parsePermilleText,
-    RIGHTS_TOLERANCE_PERMILLE,
+    percentToPermille,
+    permilleToPercentText,
+    rightsHeaderScale,
     RIGHTS_TOTAL_PERMILLE,
-    roundPermille,
+    RIGHTS_TOTAL_PERCENT,
     sourceNoteOf,
     validateUnitRights,
 } from '@/lib/assemblies/unitRights';
@@ -17,16 +22,23 @@ import type {
 } from './types';
 
 /**
- * Derechos de cada unidad (‰) en el onboarding de comunidades. Módulo **puro**.
+ * Derechos de cada unidad en el onboarding de comunidades. Módulo **puro**.
  *
- * La nómina de unidades puede traer una columna opcional `derechos_permil`
- * (también "prorrateo", "alícuota", "‰" o "%"). Si viene en %, se multiplica
- * por 10. La validación (todas las unidades, cada una > 0 y ≤ 1000, suma en
- * 1000‰ ± 0,5) es la de `validateUnitRights` de `assemblies/unitRights.ts`: no
- * se duplica aquí. Nada de esto bloquea el resto del onboarding.
+ * La nómina de unidades puede traer una columna opcional `derechos_porcentaje`
+ * (en %, deben sumar 100 %). También acepta `derechos_permil` y los encabezados
+ * con ‰ (en ese caso no se convierte), y "prorrateo", "alícuota" o "derechos":
+ * con un encabezado ambiguo manda el símbolo de las celdas y, si no hay, la suma
+ * (≈100 → %, ≈1000 → ‰). Al usuario se le muestra y se le pide siempre en %;
+ * internamente se guarda en ‰ (‰ = % × 10). La validación (todas las unidades,
+ * cada una > 0 y ≤ 100 %, suma en 100 % ± 0,05) es la de `validateUnitRights`
+ * de `assemblies/unitRights.ts`: no se duplica aquí. Nada de esto bloquea el
+ * resto del onboarding.
  */
 
-export const RIGHTS_COLUMN = 'derechos_permil';
+/** Columna de la plantilla y campo de las filas: derechos en % como texto ("0,532"). */
+export const RIGHTS_COLUMN = 'derechos_porcentaje';
+/** Columna anterior (en ‰). Se sigue aceptando en archivos y en lotes ya guardados. */
+export const LEGACY_RIGHTS_COLUMN = 'derechos_permil';
 
 export const RIGHTS_WHY = 'Con esto las votaciones de asamblea y el prorrateo de gastos comunes quedan según el reglamento.';
 
@@ -40,79 +52,22 @@ export function rightsPendingTask(reason: 'missing' | 'partial'): OnboardingPend
         id: 'unit_rights',
         title: 'Cargar derechos de cada unidad',
         detail: reason === 'partial'
-            ? 'Los derechos del archivo no estaban completos o no sumaban 1000‰, así que las unidades se crearon sin ellos. Cárgalos según el reglamento de copropiedad.'
+            ? `Los derechos del archivo no estaban completos o no sumaban ${RIGHTS_TOTAL_PERCENT} %, así que las unidades se crearon sin ellos. Cárgalos según el reglamento de copropiedad.`
             : 'Mientras falten, las asambleas cuentan 1 unidad = 1 voto. Cárgalos según el reglamento de copropiedad.',
         href: RIGHTS_TASK_HREF,
     };
 }
 
-const stripAccents = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const normalizeHeader = (header: string) => stripAccents(header.toLowerCase()).replace(/[\s_\-().:/]+/g, '');
-
-/**
- * ¿Es este encabezado la columna de derechos? Devuelve la escala que indica,
- * 'auto' si no la indica ("prorrateo", "alícuota", "derechos") o null si no es.
- */
-export function rightsHeaderScale(header: string): RightsScale | 'auto' | null {
-    const h = normalizeHeader(header);
-    if (!h) return null;
-    if (h.includes('‰') || h.includes('permil') || h.includes('pormil')) return 'permille';
-    if (h.includes('%') || h.includes('porcentaje') || h.includes('porciento')) return 'percent';
-    if (/prorrateo|alicuota|derecho/.test(h)) return 'auto';
-    return null;
-}
+export { convertRightsColumn, percentToPermille, permilleToPercentText, rightsHeaderScale };
+export type { ConvertedRightsColumn } from '@/lib/assemblies/unitRights';
 
 const UNIT_HEADER = /^(unidad|unidades|depto|departamento|dpto|numero|nro|n°|nº|casa|oficina|unit|unitid|unitnumber)/;
 
-/** Celda → número y el símbolo que traía (si lo traía). */
-export function parseRightsCell(raw: string): { value: number | null | undefined; symbol: RightsScale | null } {
-    const text = raw.trim();
-    const symbol: RightsScale | null = text.includes('%') ? 'percent' : text.includes('‰') ? 'permille' : null;
-    return { value: parsePermilleText(text), symbol };
-}
-
-/** % → ‰ (×10). */
-export function percentToPermille(value: number): number {
-    return roundPermille(value * 10);
-}
-
-/** ‰ como texto editable, sin separador de miles: 12.5 → "12,5"; 1000 → "1000". */
-export function permilleToText(value: number | null): string {
-    return value === null ? '' : String(roundPermille(value)).replace('.', ',');
-}
-
-export interface ConvertedRightsColumn {
-    /** Por celda: ‰ convertido, null si venía vacía, undefined si no se pudo leer. */
-    values: (number | null | undefined)[];
-    scale: RightsScale;
-    scaleInferred: boolean;
-}
-
-/**
- * Convierte una columna de derechos a ‰. Escala: la del encabezado; si es
- * ambiguo, el símbolo de las celdas; si no hay símbolo, la suma (≈100 → %,
- * si no ‰). Una celda con su propio símbolo (% o ‰) manda sobre la columna.
- */
-export function convertRightsColumn(raws: string[], headerScale: RightsScale | 'auto'): ConvertedRightsColumn {
-    const cells = raws.map(parseRightsCell);
-    let scale: RightsScale;
-    let scaleInferred = false;
-    if (headerScale !== 'auto') scale = headerScale;
-    else {
-        scaleInferred = true;
-        const symbol = cells.find(cell => cell.symbol)?.symbol;
-        if (symbol) scale = symbol;
-        else {
-            const sum = cells.reduce((acc, cell) => acc + (typeof cell.value === 'number' ? cell.value : 0), 0);
-            const percentTolerance = RIGHTS_TOLERANCE_PERMILLE / 10;
-            scale = sum > 0 && Math.abs(sum - RIGHTS_TOTAL_PERMILLE / 10) <= percentTolerance ? 'percent' : 'permille';
-        }
-    }
-    const values = cells.map(cell => {
-        if (cell.value === null || cell.value === undefined) return cell.value;
-        return (cell.symbol ?? scale) === 'percent' ? percentToPermille(cell.value) : cell.value;
-    });
-    return { values, scale, scaleInferred };
+/** Texto en ‰ (formato antiguo de los lotes) → texto en %. Si no se puede leer, queda tal cual. */
+export function legacyPermilleTextToPercent(raw: string): string {
+    const text = String(raw ?? '').trim();
+    const value = parsePermilleText(text);
+    return typeof value === 'number' ? permilleToPercentText(value) : text;
 }
 
 /** Divide una línea CSV respetando comillas. */
@@ -141,7 +96,7 @@ export function parseDelimitedTable(text: string): string[][] {
 
 export interface TableRights {
     meta: OnboardingRightsMeta;
-    /** Rótulo normalizado de la unidad → ‰ en texto ("" si no se pudo leer: queda el texto original). */
+    /** Rótulo normalizado de la unidad → % en texto ("" si venía vacía; ilegible: queda el texto original). */
     byUnit: Map<string, string>;
 }
 
@@ -155,7 +110,7 @@ export function extractRightsFromTable(rows: string[][]): TableRights | null {
     const rightsIndex = header.findIndex(cell => rightsHeaderScale(cell) !== null);
     if (rightsIndex < 0) return null;
     const headerScale = rightsHeaderScale(header[rightsIndex]) as RightsScale | 'auto';
-    const unitHeaderIndex = header.findIndex((cell, index) => index !== rightsIndex && UNIT_HEADER.test(normalizeHeader(cell)));
+    const unitHeaderIndex = header.findIndex((cell, index) => index !== rightsIndex && UNIT_HEADER.test(normalizeRightsHeader(cell)));
     const unitIndex = unitHeaderIndex >= 0 ? unitHeaderIndex : rightsIndex === 0 ? 1 : 0;
     const body = rows.slice(1).filter(row => (row[unitIndex] || '').trim());
     const raws = body.map(row => (row[rightsIndex] || '').trim());
@@ -164,7 +119,7 @@ export function extractRightsFromTable(rows: string[][]): TableRights | null {
     body.forEach((row, index) => {
         const key = normalizeUnitLabel(row[unitIndex] || '');
         const value = converted.values[index];
-        const text = value === undefined ? raws[index] : permilleToText(value);
+        const text = value === undefined ? raws[index] : permilleToPercentText(value);
         if (key && (text || !byUnit.has(key))) byUnit.set(key, text);
     });
     return {
@@ -179,7 +134,7 @@ export function extractRightsFromTable(rows: string[][]): TableRights | null {
 /** Rótulo normalizado de la unidad de una fila (para agrupar residentes por unidad). */
 export const rightsUnitKey = (label: string) => normalizeUnitLabel(label);
 
-interface RightsInputRow { unit_id: string; derechos_permil?: string }
+interface RightsInputRow { unit_id: string; derechos_porcentaje?: string }
 
 interface GroupedRights {
     units: { id: string; label: string }[];
@@ -188,9 +143,9 @@ interface GroupedRights {
     unitsWithValue: number;
 }
 
-/** Texto de una celda → ‰; ilegible → NaN (validateUnitRights lo informa como no válido). */
+/** Texto en % de una celda → ‰; ilegible → NaN (validateUnitRights lo informa como no válido). */
 function cellValue(text: string): number | null {
-    const value = parsePermilleText(text);
+    const value = parsePercentToPermille(text);
     return value === undefined ? Number.NaN : value;
 }
 
@@ -204,7 +159,7 @@ function groupByUnit(rows: RightsInputRow[]): GroupedRights {
         const key = rightsUnitKey(row.unit_id || '');
         if (!key) continue;
         if (!(key in values)) { units.push({ id: key, label: row.unit_id.trim() }); values[key] = null; }
-        const text = (row.derechos_permil || '').trim();
+        const text = (row.derechos_porcentaje || '').trim();
         if (!text) continue;
         const value = cellValue(text);
         if (texts.has(key)) {
@@ -222,7 +177,7 @@ const conflictMessage = (conflicts: string[]) =>
 
 /**
  * Vista previa con lo que trae el lote. Completa = todas las unidades del lote
- * con derechos y suma en 1000‰ ± 0,5 (`validateUnitRights`). Al sincronizar se
+ * con derechos y suma en 100 % ± 0,05 (`validateUnitRights`). Al sincronizar se
  * vuelve a validar contra todas las unidades de la comunidad.
  */
 export function previewOnboardingRights(rows: RightsInputRow[], sourceNote: string): OnboardingRightsPreview {
@@ -250,6 +205,7 @@ export function previewOnboardingRights(rows: RightsInputRow[], sourceNote: stri
     };
 }
 
+/** Derechos de una fila al sincronizar: `raw` es el texto en % ("0,532"). */
 export interface ProvidedRight { unitId: string; label: string; raw: string }
 
 export type OnboardingRightsPlan =
@@ -302,11 +258,19 @@ export function planOnboardingRights(
     };
 }
 
-/** `derechos_permil` guardado en `onboarding_import_rows.raw_data` (texto en ‰; "" si no hay). */
+const textOf = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? String(value).trim().slice(0, 40) : '';
+
+/**
+ * Derechos de una fila guardada en `onboarding_import_rows.raw_data`, como texto
+ * en % ("" si no hay). Lee `derechos_porcentaje`; los lotes anteriores guardaban
+ * `derechos_permil` (texto en ‰) y se convierten (÷ 10).
+ */
 export function rightsFromRawData(raw: unknown): string {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return '';
-    const value = (raw as Record<string, unknown>)[RIGHTS_COLUMN];
-    return typeof value === 'string' || typeof value === 'number' ? String(value).trim().slice(0, 40) : '';
+    const data = raw as Record<string, unknown>;
+    if (RIGHTS_COLUMN in data) return textOf(data[RIGHTS_COLUMN]);
+    const legacy = textOf(data[LEGACY_RIGHTS_COLUMN]);
+    return legacy ? legacyPermilleTextToPercent(legacy).slice(0, 40) : '';
 }
 
 /** Plantilla descargable de la nómina (CSV con punto y coma, como lo abre Excel en Chile). */
