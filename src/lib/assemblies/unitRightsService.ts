@@ -1,8 +1,9 @@
 import 'server-only';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { equalSplitPermille } from '@/lib/finance/prorration';
 import { permilleFromAmounts, rightsLockMessage, sourceNoteOf, unitRightsStatus, validateUnitRights } from './unitRights';
-import type { ExpenseProrateSource, UnitRightsMethod, UnitRightsRevision, UnitRightsRevisionValue, UnitRightsStatus, UnitRightsUnit, UnitRightsView } from './types';
+import type { ExpenseProrateSource, UnitRightsMethod, UnitRightsRevision, UnitRightsRevisionValue, UnitRightsStatus, UnitRightsUnit, UnitRightsValidation, UnitRightsView } from './types';
 
 /**
  * Derechos de cada unidad (en ‰ aquí; la interfaz los muestra en %): lecturas y escrituras del servidor (service_role).
@@ -149,6 +150,8 @@ export interface SaveUnitRightsInput {
     values: Record<string, number | null>;
     method: Extract<UnitRightsMethod, 'manual' | 'csv' | 'expense_prorate' | 'onboarding'>;
     sourceNote: string;
+    /** Por dónde llegó la carga (p. ej. 'coco'), para la auditoría. */
+    channel?: 'coco';
 }
 
 async function callSave(actor: UnitRightsActor, method: UnitRightsMethod, values: { unit_id: string; permille: number }[], sourceNote: string) {
@@ -173,9 +176,76 @@ export async function saveUnitRights(actor: UnitRightsActor, input: SaveUnitRigh
         communityId: actor.communityId, actorId: actor.id, actorRole: 'admin', action: 'assembly.unit_rights_saved', entityType: 'unit_rights',
         entityId: revision.id || undefined, severity: revision.verified ? 'info' : 'warning', status: 'success',
         summary: revision.verified ? 'Derechos de las unidades cargados con fuente' : 'Derechos de las unidades cargados como provisorios',
-        metadata: { method: input.method, units: units.length, verified: revision.verified },
+        metadata: { method: input.method, units: units.length, verified: revision.verified, ...(input.channel ? { channel: input.channel } : {}) },
     });
     return getUnitRightsView(actor);
+}
+
+/** Mensaje de bloqueo si hay una votación abierta en la comunidad (o null). */
+export async function unitRightsLock(communityId: string): Promise<string | null> {
+    return rightsLockMessage(await openVoteTitle(communityId));
+}
+
+export interface UnitShareResult {
+    unitId: string;
+    label: string;
+    /** Valor guardado, en ‰. */
+    permille: number;
+    /** true: con este valor quedaron todas las unidades sumando 100 % y se guardó como carga completa (save_unit_rights). */
+    complete: boolean;
+    status: UnitRightsStatus;
+    /** Validación de todas las unidades después del cambio (suma, faltantes). */
+    validation: UnitRightsValidation;
+}
+
+/**
+ * Fija los derechos de **una** unidad (en ‰). Valida con `validateUnitRights`
+ * (> 0 % y ≤ 100 %) y bloquea si hay una votación abierta.
+ * - Si con este valor todas las unidades quedan con derechos que suman 100 % ± 0,05,
+ *   se guarda como carga completa por `save_unit_rights` (método `manual`):
+ *   verificada con fuente, provisoria sin ella.
+ * - Si no (faltan unidades o la suma aún no cuadra), se escribe solo esa unidad;
+ *   el trigger `units_share_permille_audit` la registra como `direct`, provisoria.
+ */
+export async function setUnitShare(actor: UnitRightsActor, unitId: string, permille: number, rawSourceNote = '', channel?: 'coco'): Promise<UnitShareResult> {
+    requireAdmin(actor);
+    const units = await loadUnits(actor.communityId);
+    const unit = units.find(row => row.id === unitId);
+    if (!unit) throw new UnitRightsError('La unidad no existe en tu comunidad.', 404);
+    const single = validateUnitRights([unit], { [unit.id]: permille });
+    if (single.invalid.length) throw new UnitRightsError(single.errors.join(' '), 422);
+    const lock = rightsLockMessage(await openVoteTitle(actor.communityId));
+    if (lock) throw new UnitRightsError(lock, 409);
+
+    const values: Record<string, number | null> = Object.fromEntries(units.map(row => [row.id, row.id === unitId ? permille : row.sharePermille]));
+    const validation = validateUnitRights(units, values);
+    if (validation.ok) {
+        const view = await saveUnitRights(actor, { values, method: 'manual', sourceNote: rawSourceNote, channel });
+        return { unitId, label: unit.label, permille, complete: true, status: view.status, validation };
+    }
+    await check(db().from('units').update({ share_permille: permille })
+        .eq('id', unitId).eq('community_id', actor.communityId).select('id').maybeSingle());
+    await recordOperationEvent({
+        communityId: actor.communityId, actorId: actor.id, actorRole: 'admin', action: 'assembly.unit_rights_saved', entityType: 'unit_rights',
+        entityId: unitId, severity: 'warning', status: 'success', summary: 'Derechos de una unidad cambiados (provisorios)',
+        metadata: { method: 'direct', units: 1, verified: false, ...(channel ? { channel } : {}) },
+    });
+    const status = unitRightsStatus(units.map(row => ({ sharePermille: values[row.id] ?? null })), { verified: false });
+    return { unitId, label: unit.label, permille, complete: false, status, validation };
+}
+
+/**
+ * Reparte el 100 % en partes iguales entre todas las unidades (suma exacta,
+ * `equalSplitPermille`) y lo guarda por `save_unit_rights` (método `manual`):
+ * verificada solo si se indica la fuente; si no, provisoria.
+ */
+export async function distributeUnitRightsEqually(actor: UnitRightsActor, rawSourceNote = '', channel?: 'coco'): Promise<UnitRightsView> {
+    requireAdmin(actor);
+    const units = await loadUnits(actor.communityId);
+    if (units.length === 0) throw new UnitRightsError('La comunidad no tiene unidades registradas.', 422);
+    const shares = equalSplitPermille(units.length);
+    const values = Object.fromEntries(units.map((unit, index) => [unit.id, shares[index]]));
+    return saveUnitRights(actor, { values, method: 'manual', sourceNote: rawSourceNote, channel });
 }
 
 /** Registra la fuente (reglamento, escritura) de los derechos vigentes, sin cambiar valores. */
