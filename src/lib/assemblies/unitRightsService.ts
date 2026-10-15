@@ -5,7 +5,7 @@ import { permilleFromAmounts, rightsLockMessage, sourceNoteOf, unitRightsStatus,
 import type { ExpenseProrateSource, UnitRightsMethod, UnitRightsRevision, UnitRightsRevisionValue, UnitRightsStatus, UnitRightsUnit, UnitRightsView } from './types';
 
 /**
- * Derechos de cada unidad (‰): lecturas y escrituras del servidor (service_role).
+ * Derechos de cada unidad (en ‰ aquí; la interfaz los muestra en %): lecturas y escrituras del servidor (service_role).
  * Las cargas pasan por la función `save_unit_rights` de la migración
  * 20261015020000, que valida de nuevo (todas las unidades, 1000‰ ± 0,5, sin
  * votación abierta) y deja la revisión auditable en la misma transacción.
