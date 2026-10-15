@@ -48,7 +48,6 @@ export default function ConveniosPage() {
     const [title, setTitle] = useState("");
     const [totalAmount, setTotalAmount] = useState("");
     const [installmentCount, setInstallmentCount] = useState("3");
-    const [startDate, setStartDate] = useState(today);
     const [notes, setNotes] = useState("");
     const [openId, setOpenId] = useState<string | null>(null);
     const [payDate, setPayDate] = useState(today);
@@ -87,11 +86,12 @@ export default function ConveniosPage() {
                 title,
                 totalAmount: amount,
                 installmentCount: Number(installmentCount),
-                startDate,
+                // La primera cuota vence al firmar: el servidor fija las fechas.
+                startDate: today(),
                 notes,
                 reviewerId: reviewers.length ? reviewerId : undefined,
             });
-            toast({ title: reviewers.length ? "Convenio enviado al comité" : "Convenio abierto", description: reviewers.length ? "El integrante designado debe aprobarlo antes de activar las cuotas." : "Las cuotas quedaron en la unidad.", variant: "success" });
+            toast({ title: reviewers.length ? "Convenio enviado al comité" : "Convenio abierto", description: reviewers.length ? "El integrante designado debe aprobarlo. El convenio se firma ese día y ahí vence la primera cuota." : "Quedó firmado hoy: la primera cuota vence hoy y, si se paga en el acto, la unidad queda habilitada para votar en asambleas.", variant: "success" });
             setTitle("");
             setTotalAmount("");
             setNotes("");
@@ -188,10 +188,9 @@ export default function ConveniosPage() {
                         Cuotas
                         <input className={`${fieldClass} mt-1`} style={fieldStyle} inputMode="numeric" min={2} max={36} value={installmentCount} onChange={event => setInstallmentCount(event.target.value)} required />
                     </label>
-                    <label className="text-sm cc-text-secondary">
-                        Primera cuota
-                        <input className={`${fieldClass} mt-1`} style={fieldStyle} type="date" value={startDate} onChange={event => setStartDate(event.target.value)} required />
-                    </label>
+                    <p className="text-sm cc-text-secondary sm:col-span-2">
+                        La primera cuota vence al firmar el convenio{reviewers.length > 0 ? " (el día en que el comité lo aprueba)" : " (hoy)"}; las siguientes, el día 5 de cada mes, con al menos 15 días entre la primera y la segunda. Al firmar se paga la primera cuota y la unidad queda habilitada para votar en asambleas.
+                    </p>
                     <label className="text-sm cc-text-secondary">
                         Nota
                         <input className={`${fieldClass} mt-1`} style={fieldStyle} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Acordado con el comité" />
