@@ -5,8 +5,15 @@
  * para que la carga mensual siga siendo llevable: el gasto común del mes más
  * cerca de media cuota extra. Nada se crea aquí; esto solo calcula la propuesta
  * que la administración (y el comité, si existe) aprueba.
+ *
+ * Fechas: la primera cuota vence el día en que el convenio se firma (queda
+ * vigente: al abrirlo si no hay comité, o cuando el comité lo aprueba). Así,
+ * quien firma y paga en el acto queda hábil para votar en asambleas (Ley 21.442
+ * art. 6; DS 7 art. 9). Las siguientes, el día 5 de cada mes, con al menos 15
+ * días entre la primera y la segunda (`agreementDueDates`).
  */
 import { BillingError } from './billingService';
+import { agreementDueDates } from './operationalFlows';
 
 export const AGREEMENT_SHARE_OF_MONTHLY_FEE = 0.5;
 export const AGREEMENT_DEFAULT_INSTALLMENTS = 6;
@@ -27,16 +34,23 @@ export interface AgreementProposal {
     totalAmount: number;
     installmentCount: number;
     installmentAmount: number;
+    /** Primera cuota: vence el día de la firma (si se firma hoy, hoy). */
     startDate: string;
+    /** Segunda cuota: primer día 5 a 15 días o más de la primera; luego, mensual. */
+    secondDueDate: string;
     reasoning: string;
 }
 
-/** Día 5 del mes siguiente: deja tiempo para conversarlo antes de la primera cuota. */
-export function firstInstallmentDate(today: string): string {
-    const [year, month] = today.slice(0, 10).split('-').map(Number);
-    const nextYear = month === 12 ? year + 1 : year;
-    const nextMonth = month === 12 ? 1 : month + 1;
-    return `${nextYear}-${String(nextMonth).padStart(2, '0')}-05`;
+export { AGREEMENT_SIGNING_COPY } from './agreementCopy';
+
+/** La primera cuota vence el mismo día en que se firma el convenio. */
+export function firstInstallmentDate(signedOn: string): string {
+    return agreementDueDates(signedOn.slice(0, 10), 1)[0];
+}
+
+/** Fecha de la segunda cuota para un convenio firmado ese día. */
+export function secondInstallmentDate(signedOn: string): string {
+    return agreementDueDates(signedOn.slice(0, 10), 2)[1];
 }
 
 export function proposeAgreementPlan(input: AgreementProposalInput): AgreementProposal {
@@ -68,6 +82,7 @@ export function proposeAgreementPlan(input: AgreementProposalInput): AgreementPr
         installmentCount,
         installmentAmount: Math.floor(totalAmount / installmentCount),
         startDate: firstInstallmentDate(input.today),
+        secondDueDate: secondInstallmentDate(input.today),
         reasoning,
     };
 }

@@ -18,7 +18,7 @@ export const MY_STATUS_COPY = {
     },
     notEligible: {
         title: 'Para votar, ponte al día o conversa un convenio',
-        body: 'Puedes asistir y dar tu opinión en la asamblea. Para votar, la ley pide estar al día con la comunidad o tener un convenio vigente. Si te pones al día, o firmas un convenio y pagas su primera cuota antes de la sesión, quedas habilitado. Revisa tu estado de cuenta privado o pide conversar un convenio, con total reserva.',
+        body: 'Puedes asistir y dar tu opinión en la asamblea. Para votar, la ley pide estar al día con la comunidad o tener un convenio vigente. Si te pones al día antes de la sesión, quedas habilitado. Y con un convenio es inmediato: al firmar pagas la primera cuota y quedas habilitado para votar en asambleas. Revisa tu estado de cuenta privado o pide conversar un convenio, con total reserva.',
     },
     estimate: 'Estado estimado hoy. El definitivo sale del certificado de habilidad que emite el administrador el día de la sesión.',
 } as const;
@@ -27,7 +27,7 @@ export const MY_STATUS_COPY = {
 export function eligibilityNoticeCopy(input: { assemblyTitle: string; sessionDate: string }) {
     return {
         title: 'Tu voz cuenta en la próxima asamblea',
-        body: `El ${input.sessionDate} es la asamblea «${input.assemblyTitle}» y nos encantaría contar contigo: puedes asistir y opinar. Para votar, la ley pide estar al día con la comunidad o tener un convenio vigente. Si lo necesitas, revisa tu estado de cuenta privado o pide conversar un convenio, con total reserva: si te pones al día o firmas un convenio antes de la sesión, quedas habilitado para votar.`,
+        body: `El ${input.sessionDate} es la asamblea «${input.assemblyTitle}» y nos encantaría contar contigo: puedes asistir y opinar. Para votar, la ley pide estar al día con la comunidad o tener un convenio vigente. Si lo necesitas, revisa tu estado de cuenta privado o pide conversar un convenio, con total reserva: si te pones al día antes de la sesión, quedas habilitado para votar; y con un convenio, al firmar pagas la primera cuota y quedas habilitado para votar en asambleas.`,
         link: ASSEMBLY_LINK,
     };
 }
@@ -47,7 +47,7 @@ export const AGREEMENT_REQUEST_SENT = 'Listo: le avisamos a administración que 
 export function agreementRequestAdminCopy(unitLabel: string, assemblyTitle: string) {
     return {
         title: 'Un vecino quiere conversar un convenio',
-        body: `La unidad ${unitLabel} pidió conversar un convenio antes de la asamblea «${assemblyTitle}». Contáctala con reserva; si se firma y se paga la primera cuota antes de la sesión, queda habilitada para votar.`,
+        body: `La unidad ${unitLabel} pidió conversar un convenio antes de la asamblea «${assemblyTitle}». Contáctala con reserva. La primera cuota vence al firmar el convenio: si la paga en el acto, antes de la sesión, queda habilitada para votar.`,
         link: '/admin/finanzas/convenios',
     };
 }

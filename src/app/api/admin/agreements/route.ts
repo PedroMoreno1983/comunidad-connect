@@ -69,12 +69,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     }
 
+    // `startDate` del cuerpo ya no se usa: la primera cuota vence al firmar.
     const agreement = await createAgreement(auth.communityId, auth.profile.id, {
       unitId: cleanText(body.unitId, 60),
       title: cleanText(body.title, 140),
       totalAmount: Number(body.totalAmount),
       installmentCount: Number(body.installmentCount),
-      startDate: cleanText(body.startDate, 10),
       notes: cleanText(body.notes, 500),
       reviewerId: cleanText(body.reviewerId, 60),
     });
