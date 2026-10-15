@@ -5,10 +5,15 @@ import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { UnitRightsService } from "@/lib/services/unitRightsService";
 import {
-  formatPermille,
-  parsePermilleText,
+  formatDecimalEsCl,
+  formatPercent,
+  formatRightsPercent,
+  parsePercentToPermille,
   parseRightsCsv,
+  RIGHTS_PERCENT_DECIMALS,
+  RIGHTS_TOLERANCE_PERCENT,
   RIGHTS_TOLERANCE_PERMILLE,
+  RIGHTS_TOTAL_PERCENT,
   RIGHTS_TOTAL_PERMILLE,
   rightsLockMessage,
   validateUnitRights,
@@ -35,18 +40,35 @@ const METHOD_LABEL: Record<UnitRightsMethod, string> = {
 
 const SOURCE_PLACEHOLDER = "Reglamento de copropiedad, art. X / escritura";
 
-function draftsFrom(view: UnitRightsView): Record<string, string> {
-  return Object.fromEntries(view.units.map(unit => [unit.id, unit.sharePermille === null ? "" : formatPermille(unit.sharePermille)]));
+/** Texto que ve el usuario y el valor exacto en ‰ que representa (para no perder decimales al mostrar 4 en %). */
+type Exact = Record<string, { text: string; permille: number }>;
+
+/** ‰ → texto en % para la tabla (hasta 4 decimales) y su valor exacto. */
+function draftEntries(values: Record<string, number | null>): { drafts: Record<string, string>; exact: Exact } {
+  const drafts: Record<string, string> = {};
+  const exact: Exact = {};
+  for (const [unitId, permille] of Object.entries(values)) {
+    drafts[unitId] = formatPercent(permille);
+    if (permille !== null) exact[unitId] = { text: drafts[unitId], permille };
+  }
+  return { drafts, exact };
 }
 
+const draftsFrom = (view: UnitRightsView) => draftEntries(Object.fromEntries(view.units.map(unit => [unit.id, unit.sharePermille])));
+
+/** Diferencia con signo, en %, sin perder decimales (se compara con la tolerancia). */
+const signedPercent = (permille: number) => `${permille > 0 ? "+" : ""}${formatPercent(permille, 5) || "0"} %`;
+
 /**
- * "Derechos de cada unidad (‰)": la proporción con que vota cada unidad en
+ * "Derechos de cada unidad": la proporción con que vota cada unidad en
  * asamblea (Ley 21.442, arts. 3 y 15), según el reglamento de copropiedad.
+ * Se muestran y escriben en % (suman 100 %); se guardan en ‰ (‰ = % × 10).
  * Sin fuente, lo cargado queda provisorio y se marca como no verificado.
  */
 export function UnitRightsEditor() {
   const [view, setView] = React.useState<UnitRightsView | null>(null);
   const [drafts, setDrafts] = React.useState<Record<string, string>>({});
+  const [exact, setExact] = React.useState<Exact>({});
   const [method, setMethod] = React.useState<DraftMethod>("manual");
   const [sourceNote, setSourceNote] = React.useState("");
   const [verifyNote, setVerifyNote] = React.useState("");
@@ -59,7 +81,9 @@ export function UnitRightsEditor() {
 
   const apply = React.useCallback((next: UnitRightsView) => {
     setView(next);
-    setDrafts(draftsFrom(next));
+    const entries = draftsFrom(next);
+    setDrafts(entries.drafts);
+    setExact(entries.exact);
     setMethod("manual");
   }, []);
 
@@ -70,11 +94,13 @@ export function UnitRightsEditor() {
   const values = React.useMemo(() => {
     const parsed: Record<string, number | null> = {};
     for (const [unitId, raw] of Object.entries(drafts)) {
-      const value = parsePermilleText(raw);
+      // Celda sin tocar: se usa el valor exacto en ‰ (la tabla muestra hasta 4 decimales en %).
+      if (exact[unitId] && exact[unitId].text === raw) { parsed[unitId] = exact[unitId].permille; continue; }
+      const value = parsePercentToPermille(raw);
       parsed[unitId] = value === undefined ? Number.NaN : value;
     }
     return parsed;
-  }, [drafts]);
+  }, [drafts, exact]);
 
   const validation = React.useMemo(() => (view ? validateUnitRights(view.units, values) : null), [view, values]);
   const dirty = React.useMemo(() => Boolean(view?.units.some(unit => {
@@ -85,7 +111,7 @@ export function UnitRightsEditor() {
   if (!view) {
     return (
       <Card id="derechos">
-        <SectionTitle eyebrow="Ley 21.442 · arts. 3 y 15" title="Derechos de cada unidad (‰)" />
+        <SectionTitle eyebrow="Ley 21.442 · arts. 3 y 15" title="Derechos de cada unidad (%)" />
         <p className="text-sm cc-text-secondary">{error || "Cargando…"}</p>
       </Card>
     );
@@ -108,9 +134,14 @@ export function UnitRightsEditor() {
     if (!view) return;
     const result = parseRightsCsv(text, view.units);
     const count = Object.keys(result.values).length;
-    setDrafts(prev => ({ ...prev, ...Object.fromEntries(Object.entries(result.values).map(([id, value]) => [id, formatPermille(value)])) }));
+    const entries = draftEntries(result.values);
+    setDrafts(prev => ({ ...prev, ...entries.drafts }));
+    setExact(prev => ({ ...prev, ...entries.exact }));
     if (count) setMethod("csv");
-    const notes = [`${count} de ${view.units.length} unidades leídas.`];
+    const notes = [`${count} de ${view.units.length} unidades leídas${count ? (result.scale === "permille" ? ", venían en ‰ y se muestran en % (÷ 10)" : " en %") : ""}.`];
+    if (count && result.scaleInferred) notes.push(result.scale === "permille"
+      ? "La escala se dedujo de los valores (suman cerca de 1000): revísala."
+      : "Se leyeron en %. Si venían en ‰, agrega el encabezado unidad;derechos_permil.");
     if (result.unmatched.length) notes.push(`No calzan con ninguna unidad: ${result.unmatched.join(", ")}.`);
     if (result.duplicates.length) notes.push(`Repetidas (vale la última): ${result.duplicates.join(", ")}.`);
     if (result.invalid.length) notes.push(`Filas con valor no válido: ${result.invalid.join(", ")}.`);
@@ -128,7 +159,9 @@ export function UnitRightsEditor() {
   function useExpenseProrate() {
     if (!view?.expenseProrate) return;
     const source = view.expenseProrate;
-    setDrafts(Object.fromEntries(view.units.map(unit => [unit.id, formatPermille(source.values[unit.id] ?? null)])));
+    const entries = draftEntries(Object.fromEntries(view.units.map(unit => [unit.id, source.values[unit.id] ?? null])));
+    setDrafts(entries.drafts);
+    setExact(entries.exact);
     setMethod("expense_prorate");
     setSourceNote("");
     setMessage(`Precargado desde el prorrateo de gastos comunes de ${source.month}. Es PROVISORIO: confírmalo contra el reglamento de copropiedad antes de registrar la fuente.`);
@@ -140,7 +173,7 @@ export function UnitRightsEditor() {
   return (
     <Card id="derechos">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle eyebrow="Ley 21.442 · arts. 3 y 15" title="Derechos de cada unidad (‰)" />
+        <SectionTitle eyebrow="Ley 21.442 · arts. 3 y 15" title="Derechos de cada unidad (%)" />
         <Tag tone={status.tone} solid>{status.label}</Tag>
       </div>
       <p className="text-sm cc-text-secondary">
@@ -165,7 +198,7 @@ export function UnitRightsEditor() {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[420px] text-left text-sm">
           <thead className="text-xs uppercase tracking-[0.12em] cc-text-tertiary">
-            <tr><th className="py-2 pr-3">Unidad</th><th className="py-2 pr-3">Vigente</th><th className="py-2">Nuevo (‰)</th></tr>
+            <tr><th className="py-2 pr-3">Unidad</th><th className="py-2 pr-3">Vigente</th><th className="py-2">Nuevo (%)</th></tr>
           </thead>
           <tbody>
             {view.units.map(unit => {
@@ -174,10 +207,10 @@ export function UnitRightsEditor() {
               return (
                 <tr key={unit.id} style={{ borderTop: "1px solid var(--cc-line)" }}>
                   <td className="py-2 pr-3 font-medium cc-text-primary">{unit.label}</td>
-                  <td className="py-2 pr-3 cc-text-secondary">{unit.sharePermille === null ? "—" : `${formatPermille(unit.sharePermille)}‰`}</td>
+                  <td className="py-2 pr-3 cc-text-secondary">{unit.sharePermille === null ? "—" : formatRightsPercent(unit.sharePermille)}</td>
                   <td className="py-2">
                     <input
-                      type="text" inputMode="decimal" aria-label={`Derechos de la unidad ${unit.label}`} placeholder="—"
+                      type="text" inputMode="decimal" aria-label={`Derechos de la unidad ${unit.label} en %`} placeholder="—"
                       value={drafts[unit.id] ?? ""} disabled={Boolean(lock) || busy}
                       onChange={event => setDrafts(prev => ({ ...prev, [unit.id]: event.target.value }))}
                       className={`${inputClass} max-w-[140px]`} style={{ ...inputStyle, borderColor: invalid ? "var(--cc-rose)" : inputStyle.borderColor }}
@@ -190,20 +223,20 @@ export function UnitRightsEditor() {
           <tfoot>
             <tr style={{ borderTop: "1px solid var(--cc-line-strong)" }}>
               <td className="py-2 pr-3 font-medium cc-text-primary">Suma</td>
-              <td className="py-2 pr-3 cc-text-secondary">{formatPermille(view.total) || "0"}‰</td>
+              <td className="py-2 pr-3 cc-text-secondary">{formatRightsPercent(view.total) || "0 %"}</td>
               <td className="py-2 font-medium" style={{ color: diffTone }}>
-                {validation ? `${formatPermille(validation.total) || "0"}‰ · diferencia ${validation.difference > 0 ? "+" : ""}${formatPermille(validation.difference) || "0"}‰` : ""}
+                {validation ? `${formatPercent(validation.total, 5) || "0"} % · diferencia ${signedPercent(validation.difference)}` : ""}
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
-      <p className="mt-1 text-xs cc-text-tertiary">Deben sumar {RIGHTS_TOTAL_PERMILLE}‰ (tolerancia de redondeo ± 0,5‰). Hasta 4 decimales; acepta coma decimal.</p>
+      <p className="mt-1 text-xs cc-text-tertiary">Deben sumar {RIGHTS_TOTAL_PERCENT} % (tolerancia de redondeo ± {formatDecimalEsCl(RIGHTS_TOLERANCE_PERCENT)} %). En %, hasta {RIGHTS_PERCENT_DECIMALS} decimales con coma decimal: por ejemplo, 0,532.</p>
 
       {!lock && (
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Field label="Pegar o importar CSV" hint="Una fila por unidad: unidad;derechos (también tabulador o coma). Ej: 1204;125,5">
-            <textarea className={inputClass} style={inputStyle} rows={4} value={csvText} onChange={event => setCsvText(event.target.value)} placeholder={"unidad;derechos\n805;120,25\n1104;130"} />
+          <Field label="Pegar o importar CSV" hint="Una fila por unidad: unidad;derechos en % (también tabulador o coma). Ej: 1204;0,532. Si vienen en ‰, usa el encabezado unidad;derechos_permil.">
+            <textarea className={inputClass} style={inputStyle} rows={4} value={csvText} onChange={event => setCsvText(event.target.value)} placeholder={"unidad;derechos_porcentaje\n805;12,025\n1104;13"} />
           </Field>
           <div className="space-y-2 self-end">
             <div className="flex flex-wrap gap-2">
@@ -237,7 +270,7 @@ export function UnitRightsEditor() {
               onClick={() => run(() => UnitRightsService.save(values, method, method === "expense_prorate" ? "" : sourceNote), willBeProvisional ? "Derechos guardados como provisorios (no verificados)." : "Derechos guardados con su fuente.")}>
               {busy ? "Guardando…" : willBeProvisional ? "Guardar como provisorios" : "Guardar con fuente"}
             </Button>
-            {dirty && <Button variant="ghost" type="button" disabled={busy} onClick={() => { setDrafts(draftsFrom(view)); setMethod("manual"); }}>Descartar cambios</Button>}
+            {dirty && <Button variant="ghost" type="button" disabled={busy} onClick={() => { const entries = draftsFrom(view); setDrafts(entries.drafts); setExact(entries.exact); setMethod("manual"); }}>Descartar cambios</Button>}
           </div>
           {method === "expense_prorate" && <p className="text-xs cc-text-secondary">Lo precargado del prorrateo se guarda siempre como provisorio. Después de revisarlo contra el reglamento, registra la fuente abajo.</p>}
         </div>
@@ -289,8 +322,8 @@ function RevisionList({ revisions }: { revisions: UnitRightsRevision[] }) {
                   return (
                     <tr key={value.unitId}>
                       <td className="pr-3">{value.label}</td>
-                      <td className="pr-3">{before === null ? "—" : `${formatPermille(before)}‰`}</td>
-                      <td>→ {value.permille === null ? "—" : `${formatPermille(value.permille)}‰`}</td>
+                      <td className="pr-3">{before === null ? "—" : formatRightsPercent(before)}</td>
+                      <td>→ {value.permille === null ? "—" : formatRightsPercent(value.permille)}</td>
                     </tr>
                   );
                 })}
