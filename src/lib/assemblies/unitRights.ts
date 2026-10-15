@@ -61,7 +61,8 @@ export function validateUnitRights(units: Pick<UnitRightsUnit, 'id' | 'label'>[]
     return { ok: errors.length === 0, total, difference, missing, invalid, errors };
 }
 
-const normalizeLabel = (raw: string) => raw.toLowerCase()
+/** Normaliza el rótulo de una unidad para compararlo ("Depto 1204" → "1204"). */
+export const normalizeUnitLabel = (raw: string) => raw.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\b(depto|departamento|dpto|unidad|casa|of|oficina|n°|nº|no\.)\b/g, '')
     .replace(/[\s.#°º-]/g, '');
@@ -69,7 +70,7 @@ const normalizeLabel = (raw: string) => raw.toLowerCase()
 function unitKeys(unit: Pick<UnitRightsUnit, 'label' | 'number' | 'tower'>): string[] {
     const keys = [unit.label, unit.number];
     if (unit.tower) keys.push(`${unit.tower}-${unit.number}`, `${unit.tower}${unit.number}`);
-    return [...new Set(keys.filter(Boolean).map(normalizeLabel))];
+    return [...new Set(keys.filter(Boolean).map(normalizeUnitLabel))];
 }
 
 /** Separa una línea: punto y coma o tabulador; si solo hay comas, unidad,valor (con coma decimal opcional). */
@@ -90,9 +91,15 @@ function splitLine(line: string): [string, string] | null {
  * coma). Acepta encabezado, coma decimal y "Depto 1204". Las filas que no
  * calzan con una unidad se informan; nunca se inventan unidades.
  */
-export function parseRightsCsv(text: string, units: Pick<UnitRightsUnit, 'id' | 'label' | 'number' | 'tower'>[]): RightsCsvResult {
+/** Índice rótulo normalizado → id de unidad (acepta "1204", "Depto 1204", "B-1204"). */
+export function unitLabelIndex(units: Pick<UnitRightsUnit, 'id' | 'label' | 'number' | 'tower'>[]): Map<string, string> {
     const index = new Map<string, string>();
     for (const unit of units) for (const key of unitKeys(unit)) if (!index.has(key)) index.set(key, unit.id);
+    return index;
+}
+
+export function parseRightsCsv(text: string, units: Pick<UnitRightsUnit, 'id' | 'label' | 'number' | 'tower'>[]): RightsCsvResult {
+    const index = unitLabelIndex(units);
     const values: Record<string, number> = {};
     const unmatched: string[] = [];
     const duplicates: string[] = [];
@@ -103,8 +110,8 @@ export function parseRightsCsv(text: string, units: Pick<UnitRightsUnit, 'id' | 
         if (!pair) { invalid.push(line.slice(0, 60)); return; }
         const [label, rawValue] = pair;
         const value = parsePermilleText(rawValue);
-        if (position === 0 && value === undefined && !index.has(normalizeLabel(label))) return; // encabezado
-        const unitId = index.get(normalizeLabel(label));
+        if (position === 0 && value === undefined && !index.has(normalizeUnitLabel(label))) return; // encabezado
+        const unitId = index.get(normalizeUnitLabel(label));
         if (!unitId) { unmatched.push(label.slice(0, 40)); return; }
         if (value === undefined || value === null) { invalid.push(label.slice(0, 40)); return; }
         if (unitId in values) duplicates.push(label.slice(0, 40));
