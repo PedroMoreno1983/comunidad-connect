@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ResidentFinanceService } from "@/lib/api";
 import type { PaymentAgreement } from "@/lib/types";
+import { AGREEMENT_PENDING_COMMITTEE_COPY, AGREEMENT_SIGNING_COPY } from "@/lib/finance/agreementCopy";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 
@@ -36,12 +37,23 @@ export function PaymentAgreementCard() {
             <div className="mt-3 space-y-4">
                 {visible.map(agreement => {
                     const next = agreement.status === "active" ? agreement.installments.find(item => item.status === "pending") : null;
+                    const firstPending = agreement.installments.find(item => item.sequence === 1)?.status !== "paid";
                     return (
                         <article key={agreement.id}>
                             <p className="font-semibold cc-text-primary">{agreement.title}</p>
                             <p className="mt-1 text-sm cc-text-secondary">
                                 {STATUS_LABEL[agreement.status]} · {money(agreement.paidAmount)} de {money(agreement.totalAmount)}
                             </p>
+                            {agreement.status === "pending_committee" && (
+                                <p className="mt-1 text-sm cc-text-secondary">
+                                    {AGREEMENT_PENDING_COMMITTEE_COPY}
+                                </p>
+                            )}
+                            {agreement.status === "active" && firstPending && (
+                                <p className="mt-1 text-sm cc-text-secondary">
+                                    {AGREEMENT_SIGNING_COPY}
+                                </p>
+                            )}
                             {next && (
                                 <p className="mt-1 text-sm cc-text-secondary">
                                     Próxima cuota {next.sequence}: {money(next.amount)} el {next.dueDate}. La administración la registra cuando recibe el pago.
