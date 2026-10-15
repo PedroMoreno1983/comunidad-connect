@@ -165,7 +165,9 @@ export function composeMinutes(input: MinutesInput, narrative: string): string {
     lines.push('', '### Asistencia y quórum de constitución');
     lines.push(`Asistieron, acreditadas, ${verified.length} de ${input.rights.units.length} unidades, que representan el ${fmtPct(percentOf(presentWeight, input.rights.total))} de los derechos del condominio.`);
     lines.push(input.rights.method === 'share'
-        ? 'Los derechos se contaron según la alícuota de cada unidad.'
+        ? (input.rights.provisional
+            ? 'Los derechos se contaron según la alícuota de cada unidad, cargada en forma provisoria: no estaba verificada contra el reglamento de copropiedad.'
+            : 'Los derechos se contaron según la alícuota de cada unidad.')
         : 'Los derechos se contaron como 1 unidad = 1 voto porque no todas las unidades tenían alícuota cargada.');
     lines.push(`Quórum exigido para sesionar: ${QUORUM_RULES[sessionQuorumClass(input.sessionType)].constitution}`);
     if (typeof input.constitutionMet === 'boolean') {

@@ -472,8 +472,8 @@ export function computeRights(units: RightsSourceUnit[]): RightsSnapshot {
             units: rows,
             total: rows.length,
             warnings: [missing.length === units.length
-                ? 'Ninguna unidad tiene alícuota (derechos) cargada: se contará 1 unidad = 1 voto. La ley pide votos proporcionales a los derechos (art. 15); carga las alícuotas en Unidades antes de la sesión.'
-                : `${missing.length} de ${units.length} unidades no tienen alícuota (derechos): se contará 1 unidad = 1 voto para todas. La ley pide votos proporcionales a los derechos (art. 15); completa las alícuotas en Unidades.`],
+                ? 'Ninguna unidad tiene alícuota (derechos) cargada: se contará 1 unidad = 1 voto. La ley pide votos proporcionales a los derechos (art. 15); cárgalas en Asambleas › Derechos de cada unidad antes de la sesión.'
+                : `${missing.length} de ${units.length} unidades no tienen alícuota (derechos): se contará 1 unidad = 1 voto para todas. La ley pide votos proporcionales a los derechos (art. 15); complétalas en Asambleas › Derechos de cada unidad.`],
         };
     }
     const rows: RightsUnit[] = units.map(unit => ({ unitId: unit.id, label: unit.label, weight: Number(unit.sharePermille) }));

@@ -8,6 +8,8 @@ import { eligiblePresentWeight } from './eligibility';
 import { AGREEMENT_REQUEST_SENT, agreementRequestAdminCopy, VOTE_NOT_RECORDED } from './eligibilityCopy';
 import { evaluateEligibility, insertCertificate, loadCurrentCertificate } from './eligibilityService';
 import { findMatter } from './catalog';
+import { markProvisional } from './unitRights';
+import { unitRightsStatusFor } from './unitRightsService';
 import {
     acceptableAiProse,
     citationBody,
@@ -210,7 +212,9 @@ function snapshotOf(row: Row): RightsSnapshot | null {
 
 async function rightsFor(row: Row, communityId: string): Promise<{ rights: RightsSnapshot; units: UnitRow[] }> {
     const units = await loadUnits(communityId);
-    return { rights: snapshotOf(row) ?? computeRights(units), units };
+    const snapshot = snapshotOf(row);
+    if (snapshot) return { rights: snapshot, units };
+    return { rights: markProvisional(computeRights(units), await unitRightsStatusFor(communityId)), units };
 }
 
 async function isCommitteeMember(communityId: string, profileId: string) {
@@ -796,7 +800,8 @@ export async function startSession(actor: AssemblyActor, assemblyId: string) {
     const { assembly } = await loadAssembly(actor.communityId, assemblyId);
     requireStatus(assembly, 'cited');
     if (todayChile() < chileDateOf(assembly.scheduledAt)) throw new AssemblyError('La sesión se inicia el día citado.', 422);
-    const rights = computeRights(await loadUnits(actor.communityId));
+    // La foto guarda si los derechos eran provisorios (sin fuente del reglamento).
+    const rights = markProvisional(computeRights(await loadUnits(actor.communityId)), await unitRightsStatusFor(actor.communityId));
     if (rights.units.length === 0) throw new AssemblyError('La comunidad no tiene unidades registradas.', 422);
     const updated = await check(db().from('assemblies').update({
         status: 'in_progress', started_at: nowIso(), rights_method: rights.method, rights_snapshot: rights, rights_total: rights.total,

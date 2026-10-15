@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, CheckCircle2, Home, Loader2, Plus, Scale, Search, UserPlus, Users, Wand2 } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Building2, CheckCircle2, Home, Loader2, Plus, Scale, Search, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/Dialog";
@@ -10,7 +11,6 @@ import { Input } from "@/components/ui/Input";
 import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 import { useToast } from "@/components/ui/Toast";
 import { WaterService } from "@/lib/api";
-import { equalSplitPermille } from "@/lib/finance/prorration";
 import type { UnitProfileOption, UnitRow } from "@/lib/types";
 
 function getResidentName(unit: UnitRow) {
@@ -34,15 +34,6 @@ function fmtPermille(value: number | null): string {
     return String(Math.round(value * 10000) / 10000);
 }
 
-/** Parsea lo tecleado ("12,3456" o "12.3456"). "" -> null. Inválido/negativo -> undefined. */
-function parsePermille(raw: string): number | null | undefined {
-    const trimmed = raw.trim().replace(",", ".");
-    if (trimmed === "") return null;
-    const n = Number(trimmed);
-    if (!Number.isFinite(n) || n < 0) return undefined;
-    return Math.round(n * 10000) / 10000;
-}
-
 export default function UnitsPage() {
     const { toast } = useToast();
     const [units, setUnits] = useState<UnitRow[]>([]);
@@ -51,13 +42,8 @@ export default function UnitsPage() {
     const [query, setQuery] = useState("");
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [newUnit, setNewUnit] = useState({ tower: "", number: "", floor: "", permille: "" });
+    const [newUnit, setNewUnit] = useState({ tower: "", number: "", floor: "" });
     const [creating, setCreating] = useState(false);
-
-    // Borradores de la alícuota editable inline, por unidad (se guardan al salir del campo).
-    const [permilleDrafts, setPermilleDrafts] = useState<Record<string, string>>({});
-    const [savingPermilleId, setSavingPermilleId] = useState<string | null>(null);
-    const [equalizing, setEqualizing] = useState(false);
 
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [selectedUnit, setSelectedUnit] = useState<UnitRow | null>(null);
@@ -71,9 +57,7 @@ export default function UnitsPage() {
                 WaterService.getUnits(),
                 WaterService.getProfiles(),
             ]);
-            const rows = unitsData;
-            setUnits(rows);
-            setPermilleDrafts(Object.fromEntries(rows.map(unit => [unit.id, fmtPermille(readPermille(unit))])));
+            setUnits(unitsData);
             setProfiles(profilesData);
         } catch (error) {
             console.error("Error loading units:", error);
@@ -133,24 +117,16 @@ export default function UnitsPage() {
                 floor: parseInt(newUnit.floor, 10),
             };
 
-            const parsedPermille = parsePermille(newUnit.permille);
-            if (parsedPermille === undefined) {
-                toast({ title: "Alícuota inválida", description: "Usa un número mayor o igual a 0 (ej: 8,3333).", variant: "destructive" });
-                setCreating(false);
-                return;
-            }
-
             await WaterService.createUnit({
                 tower: createdUnit.tower,
                 number: createdUnit.number,
                 floor: createdUnit.floor,
-                share_permille: parsedPermille,
             });
             await loadData();
 
             toast({ title: "Unidad creada", description: `Depto ${createdUnit.number} quedo registrado.`, variant: "success" });
             setIsCreateOpen(false);
-            setNewUnit({ tower: "", number: "", floor: "", permille: "" });
+            setNewUnit({ tower: "", number: "", floor: "" });
         } catch (error) {
             console.error("Error creating unit:", error);
             toast({ title: "No se pudo crear la unidad", description: "Revisa los datos e intenta nuevamente.", variant: "destructive" });
@@ -179,52 +155,6 @@ export default function UnitsPage() {
             toast({ title: "No se pudo actualizar", description: "Intenta nuevamente en unos segundos.", variant: "destructive" });
         } finally {
             setAssigning(false);
-        }
-    }
-
-    // Guarda la alícuota de una unidad al salir del campo, solo si cambió.
-    async function handleSaveAlicuota(unit: UnitRow) {
-        const draft = permilleDrafts[unit.id] ?? "";
-        const parsed = parsePermille(draft);
-        const current = readPermille(unit);
-
-        if (parsed === undefined) {
-            toast({ title: "Alícuota inválida", description: "Usa un número mayor o igual a 0.", variant: "destructive" });
-            setPermilleDrafts(prev => ({ ...prev, [unit.id]: fmtPermille(current) }));
-            return;
-        }
-        if (parsed === current) return; // sin cambios
-
-        setSavingPermilleId(unit.id);
-        try {
-            await WaterService.updateUnit(unit.id, { share_permille: parsed });
-            setUnits(prev => prev.map(row => (row.id === unit.id ? { ...row, share_permille: parsed } : row)));
-            setPermilleDrafts(prev => ({ ...prev, [unit.id]: fmtPermille(parsed) }));
-        } catch (error) {
-            console.error("Error updating alícuota:", error);
-            toast({ title: "No se pudo guardar la alícuota", description: "Intenta nuevamente.", variant: "destructive" });
-            setPermilleDrafts(prev => ({ ...prev, [unit.id]: fmtPermille(current) }));
-        } finally {
-            setSavingPermilleId(null);
-        }
-    }
-
-    // Reparte 1000‰ en partes iguales entre todas las unidades (suma exacta = 1000).
-    async function handleEqualize() {
-        if (units.length === 0) return;
-        setEqualizing(true);
-        try {
-            const shares = equalSplitPermille(units.length);
-            await Promise.all(units.map((unit, index) => WaterService.updateUnit(unit.id, { share_permille: shares[index] })));
-            setUnits(prev => prev.map((unit, index) => ({ ...unit, share_permille: shares[index] })));
-            setPermilleDrafts(Object.fromEntries(units.map((unit, index) => [unit.id, fmtPermille(shares[index])])));
-            toast({ title: "Alícuotas repartidas", description: `1000‰ dividido en partes iguales entre ${units.length} unidades.`, variant: "success" });
-        } catch (error) {
-            console.error("Error equalizing alícuotas:", error);
-            toast({ title: "No se pudo repartir", description: "Intenta nuevamente en unos segundos.", variant: "destructive" });
-            await loadData();
-        } finally {
-            setEqualizing(false);
         }
     }
 
@@ -289,17 +219,6 @@ export default function UnitsPage() {
                                         required
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold cc-text-secondary">Alícuota (‰) <span className="font-normal cc-text-tertiary">— opcional</span></label>
-                                    <Input
-                                        type="text"
-                                        inputMode="decimal"
-                                        placeholder="Ej: 8,3333"
-                                        value={newUnit.permille}
-                                        onChange={event => setNewUnit({ ...newUnit, permille: event.target.value })}
-                                    />
-                                    <p className="text-xs cc-text-tertiary">Tanto por mil del gasto común. Puedes dejarla vacía y repartir 1000‰ en partes iguales después.</p>
-                                </div>
                                 <DialogFooter>
                                     <Button type="submit" disabled={creating}>
                                         {creating ? "Creando..." : "Crear unidad"}
@@ -342,17 +261,24 @@ export default function UnitsPage() {
                             </div>
                             <p className="mt-1 text-sm cc-text-secondary">
                                 {alicuota.balanced
-                                    ? "El reparto cuadra: el prorrateo del gasto común usará estas alícuotas."
+                                    ? "El reparto cuadra: las asambleas votan y el prorrateo del gasto común reparte con estas alícuotas."
                                     : alicuota.missing > 0
-                                        ? `${alicuota.missing} unidad(es) sin alícuota. Mientras falten o no sumen 1000‰, el prorrateo reparte en partes iguales.`
-                                        : `La suma es ${fmtPermille(alicuota.sum)}‰, no 1000‰. Ajusta las alícuotas o repártelas en partes iguales.`}
+                                        ? `${alicuota.missing} unidad(es) sin alícuota. Mientras falten, el prorrateo reparte en partes iguales y las asambleas cuentan 1 unidad = 1 voto.`
+                                        : `La suma es ${fmtPermille(alicuota.sum)}‰, no 1000‰. Corrígela en Derechos de cada unidad.`}
+                            </p>
+                            <p className="mt-1 text-xs cc-text-tertiary">
+                                Las alícuotas (derechos de cada unidad según el reglamento de copropiedad) se cargan y auditan en Asambleas.
                             </p>
                         </div>
                     </div>
-                    <Button variant="outline" onClick={handleEqualize} disabled={equalizing}>
-                        {equalizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                        {equalizing ? "Repartiendo..." : "Repartir 1000‰ en partes iguales"}
-                    </Button>
+                    <Link
+                        href="/admin/asambleas#derechos"
+                        className="inline-flex items-center rounded-lg border px-4 py-2 text-sm font-semibold cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                        style={{ borderColor: "var(--cc-line)" }}
+                    >
+                        <Scale className="mr-2 h-4 w-4" />
+                        Cargar derechos de cada unidad
+                    </Link>
                 </section>
             )}
 
@@ -422,24 +348,9 @@ export default function UnitsPage() {
                                                 Torre {unit.tower || "-"}, piso {unit.floor || "-"}
                                             </td>
                                             <td className="px-5 py-4">
-                                                <div className="relative w-28">
-                                                    <input
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        aria-label={`Alícuota de la unidad ${unit.number}`}
-                                                        value={permilleDrafts[unit.id] ?? ""}
-                                                        placeholder="—"
-                                                        onChange={event => setPermilleDrafts(prev => ({ ...prev, [unit.id]: event.target.value }))}
-                                                        onBlur={() => handleSaveAlicuota(unit)}
-                                                        onKeyDown={event => { if (event.key === "Enter") event.currentTarget.blur(); }}
-                                                        disabled={savingPermilleId === unit.id}
-                                                        className="h-9 w-full rounded-lg border pl-3 pr-7 text-sm font-semibold outline-none transition-colors focus:border-[var(--cc-copper)] disabled:opacity-60"
-                                                        style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
-                                                    />
-                                                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs cc-text-tertiary">
-                                                        {savingPermilleId === unit.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "‰"}
-                                                    </span>
-                                                </div>
+                                                <span className="font-semibold cc-text-secondary">
+                                                    {readPermille(unit) === null ? "—" : `${fmtPermille(readPermille(unit))}‰`}
+                                                </span>
                                             </td>
                                             <td className="px-5 py-4">
                                                 {assigned ? (

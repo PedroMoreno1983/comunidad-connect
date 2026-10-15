@@ -35,6 +35,8 @@ export interface RightsSnapshot {
     units: RightsUnit[];
     total: number;
     warnings: string[];
+    /** true: los derechos están cargados pero sin fuente del reglamento (provisorios, no verificados). */
+    provisional?: boolean;
 }
 
 export interface QuorumRuleText {
@@ -301,4 +303,76 @@ export interface MyEligibility {
     eligible: boolean;
     /** true: sale del certificado emitido; false: estimación previa a la fecha de corte. */
     certified: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Derechos de cada unidad (‰) — Ley 21.442, arts. 3 y 15
+// ---------------------------------------------------------------------------
+
+/** Cómo se cargó una revisión de derechos. `direct`: cambio fuera de la herramienta (siempre provisorio). */
+export type UnitRightsMethod = 'manual' | 'csv' | 'expense_prorate' | 'verify' | 'direct';
+
+/** missing: falta alguna unidad (cuenta 1 unidad = 1 voto); provisional: cargados sin fuente; verified: con fuente del reglamento. */
+export type UnitRightsStatus = 'missing' | 'provisional' | 'verified';
+
+export interface UnitRightsUnit {
+    id: string;
+    label: string;
+    number: string;
+    tower: string;
+    sharePermille: number | null;
+}
+
+export interface UnitRightsRevisionValue {
+    unitId: string;
+    label: string;
+    permille: number | null;
+}
+
+export interface UnitRightsRevision {
+    id: string;
+    method: UnitRightsMethod;
+    verified: boolean;
+    sourceNote: string;
+    savedByName: string;
+    savedAt: string;
+    total: number | null;
+    unitsCount: number;
+    previousValues: UnitRightsRevisionValue[];
+    newValues: UnitRightsRevisionValue[];
+}
+
+/** Prorrateo de gastos comunes que sirve de punto de partida provisorio. */
+export interface ExpenseProrateSource {
+    month: string;
+    billingRunId: string;
+    values: Record<string, number>;
+}
+
+export interface UnitRightsView {
+    units: UnitRightsUnit[];
+    total: number;
+    status: UnitRightsStatus;
+    /** Título de la asamblea con votación abierta: mientras exista, no se editan. */
+    lockedBy: string | null;
+    latest: UnitRightsRevision | null;
+    revisions: UnitRightsRevision[];
+    expenseProrate: ExpenseProrateSource | null;
+}
+
+export interface UnitRightsValidation {
+    ok: boolean;
+    total: number;
+    /** total − 1000, redondeado a 4 decimales. */
+    difference: number;
+    missing: string[];
+    invalid: string[];
+    errors: string[];
+}
+
+export interface RightsCsvResult {
+    values: Record<string, number>;
+    unmatched: string[];
+    duplicates: string[];
+    invalid: string[];
 }
