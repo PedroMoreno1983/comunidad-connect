@@ -250,9 +250,14 @@ export interface EligibilityDebt {
 export interface EligibilityAgreement {
     unitId: string;
     status: string;
-    /** Fecha (YYYY-MM-DD o ISO) en que se suscribió el convenio. */
+    /**
+     * Fecha (YYYY-MM-DD o ISO) en que se abrió el convenio: es la del saldo que
+     * cubre. Si pasó por el comité, se firma después (al aprobarlo), y ese día
+     * vence la primera cuota.
+     */
     createdAt: string;
-    installments: { sequence: number; dueDate: string; status: string }[];
+    /** `paidAt`: fecha de pago de la cuota, si se conoce (YYYY-MM-DD). */
+    installments: { sequence: number; dueDate: string; status: string; paidAt?: string | null }[];
 }
 
 export interface EligibilityUnitInput {
