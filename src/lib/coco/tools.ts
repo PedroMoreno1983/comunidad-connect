@@ -6,7 +6,8 @@
 
 import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { equalSplitPermille } from '@/lib/finance/prorration';
+import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
+import { describeAlicuotaInput } from './alicuotaInput';
 import {
     BillingError,
     addCommunityExpense,
@@ -358,37 +359,8 @@ export const TOOL_DEFINITIONS = [
     },
 
     // ── MÓDULO: ADMIN · GASTO COMÚN (unidades, alícuotas, egresos, emisión) ──
-    {
-        name: 'create_unit',
-        description: 'Crea un departamento/unidad en la comunidad, con su alícuota opcional. SOLO administradores. Requiere confirmación.',
-        input_schema: {
-            type: 'object' as const,
-            properties: {
-                number: { type: 'string', description: 'Número o identificador del depto, ej: 1204' },
-                tower: { type: 'string', description: 'Torre o bloque, ej: A. Opcional.' },
-                floor: { type: 'string', description: 'Piso (número). Opcional.' },
-                share_permille: { type: 'string', description: 'Alícuota en tanto por mil (‰), ej: 8,3333. Opcional; se puede repartir después.' },
-            },
-            required: ['number'],
-        },
-    },
-    {
-        name: 'set_unit_alicuota',
-        description: 'Fija la alícuota (‰, tanto por mil) de una unidad existente. SOLO administradores. Requiere confirmación.',
-        input_schema: {
-            type: 'object' as const,
-            properties: {
-                unit_id: { type: 'string', description: 'ID o número del depto.' },
-                permille: { type: 'string', description: 'Alícuota en ‰, ej: 8,3333.' },
-            },
-            required: ['unit_id', 'permille'],
-        },
-    },
-    {
-        name: 'distribute_alicuotas_equally',
-        description: 'Reparte 1000‰ en partes iguales entre TODAS las unidades de la comunidad (suma exacta 1000). Útil cuando todas pagan igual. SOLO administradores. Requiere confirmación.',
-        input_schema: { type: 'object' as const, properties: {}, required: [] },
-    },
+    // Alícuotas en % (‰ en la base), por el servicio de derechos: alicuotaTools.ts.
+    ...ALICUOTA_TOOL_DEFINITIONS,
     {
         name: 'add_community_expense',
         description: 'Carga un egreso del edificio para un mes (luz, agua, remuneraciones, mantención, seguridad u otro), base para armar el gasto común. SOLO administradores. Requiere confirmación.',
@@ -615,11 +587,11 @@ export function describePendingAction(name: string, input: Record<string, unknow
         case 'update_unit_data':
             return { title: 'Modificar unidad', summary: `Actualizar datos de la unidad ${unit('unit_id')}.` };
         case 'create_unit':
-            return { title: 'Crear unidad', summary: `Depto ${str('number')}${str('tower') ? `, torre ${str('tower')}` : ''}${str('share_permille') ? `, alícuota ${str('share_permille')}‰` : ''}.` };
+            return { title: 'Crear unidad', summary: `Depto ${str('number')}${str('tower') ? `, torre ${str('tower')}` : ''}${describeAlicuotaInput('create_unit', input) ? `, alícuota ${describeAlicuotaInput('create_unit', input)}` : ''}.` };
         case 'set_unit_alicuota':
-            return { title: 'Fijar alícuota', summary: `Unidad ${unit('unit_id')} → ${str('permille')}‰.` };
+            return { title: 'Fijar alícuota', summary: `Unidad ${unit('unit_id')} → ${describeAlicuotaInput('set_unit_alicuota', input) || 'alícuota no válida'}. Sin fuente queda provisoria.` };
         case 'distribute_alicuotas_equally':
-            return { title: 'Repartir alícuotas', summary: 'Dividir 1000‰ en partes iguales entre todas las unidades.' };
+            return { title: 'Repartir alícuotas', summary: 'Dividir el 100 % en partes iguales entre todas las unidades. Sin fuente queda provisorio.' };
         case 'add_community_expense':
             return { title: 'Cargar egreso', summary: `${str('label') || 'Egreso'} · $${str('amount')} · ${str('month')}.` };
         case 'issue_billing':
@@ -646,6 +618,7 @@ interface UserContext {
     unit_id?: string;
     role?: string;
     community_id?: string;
+    name?: string;
     channel?: string;
 }
 
@@ -667,15 +640,6 @@ function isIsoDate(value?: string) {
 
 function isTime(value?: string) {
     return Boolean(value && /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value));
-}
-
-/** Parsea una alícuota ("8,3333" o "8.3333"). "" -> null. Inválido/negativo -> undefined. */
-function parsePermilleInput(raw?: string): number | null | undefined {
-    const trimmed = (raw ?? '').trim().replace(',', '.');
-    if (trimmed === '') return null;
-    const n = Number(trimmed);
-    if (!Number.isFinite(n) || n < 0) return undefined;
-    return Math.round(n * 10000) / 10000;
 }
 
 /** Monto en pesos desde texto: descarta separadores y símbolos ("$150.000" -> 150000). */
@@ -1466,25 +1430,7 @@ export async function executeTool(
                 if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden crear unidades.' };
                 const communityId = scopedCommunity(userCtx);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
-                const number = (input.number || '').trim().slice(0, 80);
-                if (!number) return { error: 'Indica el número o identificador del depto.' };
-
-                const record: Record<string, unknown> = { community_id: communityId, number };
-                if (input.tower && input.tower.trim()) record.tower = input.tower.trim().slice(0, 40);
-                if (input.floor && input.floor.trim()) {
-                    const floor = Number(input.floor);
-                    if (!Number.isInteger(floor) || floor < -10 || floor > 300) return { error: 'El piso indicado no es válido.' };
-                    record.floor = floor;
-                }
-                if (input.share_permille && input.share_permille.trim()) {
-                    const permille = parsePermilleInput(input.share_permille);
-                    if (permille === undefined) return { error: 'La alícuota debe ser un número mayor o igual a 0.' };
-                    record.share_permille = permille;
-                }
-
-                const { data, error } = await supabaseAdmin.from('units').insert(record).select('id, number').single();
-                if (error) return { error: 'No se pudo crear la unidad.', detail: error.message };
-                return { success: true, unit_id: data.id, message: `Unidad ${data.number} creada.` };
+                return runCreateUnit({ communityId, userId: userCtx.user_id, name: userCtx.name }, input);
             }
 
             case 'set_unit_alicuota': {
@@ -1493,33 +1439,14 @@ export async function executeTool(
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('La unidad no existe en tu comunidad.');
-                const permille = parsePermilleInput(input.permille);
-                if (permille === undefined || permille === null) return { error: 'La alícuota debe ser un número mayor o igual a 0.' };
-                const { error } = await supabaseAdmin
-                    .from('units')
-                    .update({ share_permille: permille })
-                    .eq('id', unitId)
-                    .eq('community_id', communityId);
-                if (error) return { error: 'No se pudo fijar la alícuota.' };
-                return { success: true, message: `Alícuota de la unidad fijada en ${permille}‰.` };
+                return runSetUnitAlicuota({ communityId, userId: userCtx.user_id, name: userCtx.name }, unitId, input);
             }
 
             case 'distribute_alicuotas_equally': {
                 if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden repartir alícuotas.' };
                 const communityId = scopedCommunity(userCtx);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
-                const { data: units, error } = await supabaseAdmin
-                    .from('units')
-                    .select('id')
-                    .eq('community_id', communityId)
-                    .order('number', { ascending: true });
-                if (error) return { error: 'No se pudieron cargar las unidades.' };
-                if (!units || units.length === 0) return { error: 'La comunidad no tiene unidades registradas.' };
-                const shares = equalSplitPermille(units.length);
-                const results = await Promise.all(units.map((unitRow, index) =>
-                    supabaseAdmin.from('units').update({ share_permille: shares[index] }).eq('id', unitRow.id).eq('community_id', communityId)));
-                if (results.some(result => result.error)) return { error: 'No se pudieron actualizar todas las alícuotas.' };
-                return { success: true, message: `1000‰ repartido en partes iguales entre ${units.length} unidades (${shares[0]}‰ cada una).` };
+                return runDistributeEqually({ communityId, userId: userCtx.user_id, name: userCtx.name }, input);
             }
 
             case 'add_community_expense': {
