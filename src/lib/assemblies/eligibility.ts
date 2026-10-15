@@ -44,18 +44,39 @@ export function debtOverdueAt(debt: Pick<EligibilityDebt, 'dueDate' | 'status'>,
 
 /**
  * Convenio vigente a la fecha de corte (Ley 21.442 art. 6; DS 7 art. 9):
- * activo (aprobado por el comité si correspondía), con la primera cuota pagada
- * y sin cuotas vencidas impagas. Un convenio caído no habilita.
+ * activo (firmado; aprobado por el comité si correspondía), con la primera
+ * cuota pagada a más tardar el día del corte y sin cuotas vencidas impagas. Un
+ * convenio caído no habilita.
+ *
+ * La primera cuota vence el mismo día de la firma (`agreementDueDates`), así que
+ * quien firma y paga en el acto queda hábil ese mismo día; quien firma y aún no
+ * paga, todavía no (aunque esa cuota no esté vencida).
  */
 export function agreementInForceAt(agreement: EligibilityAgreement, cutoffDate: string): boolean {
     if (agreement.status !== 'active') return false;
     const installments = [...agreement.installments].sort((a, b) => a.sequence - b.sequence);
-    if (!installments.length || installments[0].status !== 'paid') return false;
+    const first = installments[0];
+    if (!first || first.status !== 'paid') return false;
+    if (first.paidAt && dateOnly(first.paidAt) > cutoffDate) return false;
     return !installments.some(item => item.status !== 'paid' && daysOverdue(item.dueDate, cutoffDate) > 0);
 }
 
-/** Fecha civil (YYYY-MM-DD) de un ISO o una fecha. */
-const dateOnly = (value: string) => value.slice(0, 10);
+const ISO_WITH_TIME = /^\d{4}-\d{2}-\d{2}T/;
+
+/**
+ * Fecha civil (YYYY-MM-DD) de un ISO o una fecha. Un instante con hora (como
+ * `created_at`, en UTC) se lleva al calendario de Chile: un convenio abierto a
+ * las 22:00 de Chile es de ese día, no del siguiente en UTC.
+ */
+function dateOnly(value: string): string {
+    if (ISO_WITH_TIME.test(value)) {
+        const instant = new Date(value);
+        if (!Number.isNaN(instant.getTime())) {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant);
+        }
+    }
+    return value.slice(0, 10);
+}
 
 /**
  * Habilidad de una sola unidad, antes de mirar las otras unidades del mismo

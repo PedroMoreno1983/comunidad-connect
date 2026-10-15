@@ -9,7 +9,8 @@ describe('splitInstallments', () => {
     const rows = splitInstallments(100_000, 3, '2026-03-15');
     expect(rows.map(row => row.amount)).toEqual([33_333, 33_333, 33_334]);
     expect(rows.reduce((sum, row) => sum + row.amount, 0)).toBe(100_000);
-    expect(rows.map(row => row.dueDate)).toEqual(['2026-03-15', '2026-04-15', '2026-05-15']);
+    // La primera vence al firmar; las siguientes, el día 5 (≥15 días después).
+    expect(rows.map(row => row.dueDate)).toEqual(['2026-03-15', '2026-04-05', '2026-05-05']);
   });
 
   it('ajusta el día al último del mes', () => {
