@@ -132,7 +132,7 @@ export async function POST(request: Request) {
             batchId, status, assessment: { ...assessment, warnings }, documents: documentResults, rights: rightsMeta,
             data: (storedRows || []).map(row => ({
                 id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
-                email: row.email ?? '', phone: row.phone ?? '', derechos_permil: rightsFromRawData(row.raw_data),
+                email: row.email ?? '', phone: row.phone ?? '', derechos_porcentaje: rightsFromRawData(row.raw_data),
             })),
         };
         return NextResponse.json(payload);
