@@ -13,6 +13,7 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import type { BillingPreview, CommunityExpense, FinanceDocumentReview, IssuedBillingRun } from "@/lib/types";
 import { currentMonthInChile, nextMonthFifthInChile } from "@/lib/finance/chileDates";
+import { formatRightsPercent } from "@/lib/assemblies/unitRights";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
@@ -614,7 +615,7 @@ export default function EgresosPage() {
                                         <tr key={unit.unitId}>
                                             <td className="px-5 py-2 cc-text-primary">{unit.label}</td>
                                             <td className="px-5 py-2 text-right cc-text-tertiary">
-                                                {unit.sharePermille === null ? "—" : `${unit.sharePermille}‰`}
+                                                {unit.sharePermille === null ? "—" : formatRightsPercent(unit.sharePermille)}
                                             </td>
                                             <td className="px-5 py-2 text-right font-semibold cc-text-primary">{money(unit.total)}</td>
                                         </tr>
