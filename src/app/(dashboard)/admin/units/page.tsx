@@ -12,13 +12,14 @@ import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 import { useToast } from "@/components/ui/Toast";
 import { WaterService } from "@/lib/api";
 import type { UnitProfileOption, UnitRow } from "@/lib/types";
+import { formatRightsPercent, RIGHTS_TOLERANCE_PERMILLE, RIGHTS_TOTAL_PERMILLE } from "@/lib/assemblies/unitRights";
 
 function getResidentName(unit: UnitRow) {
     return unit.profiles?.name || unit.profiles?.email || "";
 }
 
-/** Alícuota total esperada: la suma de la comunidad debe dar 1000‰. */
-const TOTAL_PERMILLE = 1000;
+/** Alícuota total esperada: la suma de la comunidad debe dar 100 % (se guarda en ‰: 1000). */
+const TOTAL_PERMILLE = RIGHTS_TOTAL_PERMILLE;
 
 /** Lee la alícuota cruda (share_permille, snake_case desde la BD) como número o null. */
 function readPermille(unit: UnitRow): number | null {
@@ -28,10 +29,9 @@ function readPermille(unit: UnitRow): number | null {
     return Number.isFinite(n) ? n : null;
 }
 
-/** Formatea ‰ para mostrar/editar: hasta 4 decimales, sin ceros de relleno. */
-function fmtPermille(value: number | null): string {
-    if (value === null) return "";
-    return String(Math.round(value * 10000) / 10000);
+/** Muestra la alícuota (guardada en ‰) en %, con coma decimal: 5.32 → "0,532 %". */
+function fmtPercent(value: number | null): string {
+    return formatRightsPercent(value);
 }
 
 export default function UnitsPage() {
@@ -87,8 +87,8 @@ export default function UnitsPage() {
         const withValue = values.filter((value): value is number => value !== null);
         const missing = values.length - withValue.length;
         const sum = Math.round(withValue.reduce((acc, value) => acc + value, 0) * 10000) / 10000;
-        // Tolerancia de media milésima para no marcar en rojo por redondeos.
-        const balanced = missing === 0 && units.length > 0 && Math.abs(sum - TOTAL_PERMILLE) < 0.5;
+        // Tolerancia de ± 0,05 % (0,5‰) para no marcar en rojo por redondeos, igual que Derechos de cada unidad.
+        const balanced = missing === 0 && units.length > 0 && Math.abs(sum - TOTAL_PERMILLE) <= RIGHTS_TOLERANCE_PERMILLE;
         return { sum, missing, balanced };
     }, [units]);
 
@@ -256,7 +256,7 @@ export default function UnitsPage() {
                             <div className="flex items-center gap-2">
                                 <Scale className="h-4 w-4 cc-text-tertiary" />
                                 <p className="font-semibold cc-text-primary">
-                                    Alícuota total: {fmtPermille(alicuota.sum) || "0"}‰ <span className="cc-text-tertiary">/ {TOTAL_PERMILLE}‰</span>
+                                    Alícuota total: {fmtPercent(alicuota.sum) || "0 %"} <span className="cc-text-tertiary">/ 100 %</span>
                                 </p>
                             </div>
                             <p className="mt-1 text-sm cc-text-secondary">
@@ -264,7 +264,7 @@ export default function UnitsPage() {
                                     ? "El reparto cuadra: las asambleas votan y el prorrateo del gasto común reparte con estas alícuotas."
                                     : alicuota.missing > 0
                                         ? `${alicuota.missing} unidad(es) sin alícuota. Mientras falten, el prorrateo reparte en partes iguales y las asambleas cuentan 1 unidad = 1 voto.`
-                                        : `La suma es ${fmtPermille(alicuota.sum)}‰, no 1000‰. Corrígela en Derechos de cada unidad.`}
+                                        : `La suma debe ser 100 % (hoy: ${formatRightsPercent(alicuota.sum, 5) || "0 %"}). Corrígela en Derechos de cada unidad.`}
                             </p>
                             <p className="mt-1 text-xs cc-text-tertiary">
                                 Las alícuotas (derechos de cada unidad según el reglamento de copropiedad) se cargan y auditan en Asambleas.
@@ -320,7 +320,7 @@ export default function UnitsPage() {
                                 <tr>
                                     <th className="px-5 py-3">Unidad</th>
                                     <th className="px-5 py-3">Ubicacion</th>
-                                    <th className="px-5 py-3">Alícuota ‰</th>
+                                    <th className="px-5 py-3">Alícuota %</th>
                                     <th className="px-5 py-3">Residente</th>
                                     <th className="px-5 py-3">Estado</th>
                                     <th className="px-5 py-3 text-right">Accion</th>
@@ -349,7 +349,7 @@ export default function UnitsPage() {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className="font-semibold cc-text-secondary">
-                                                    {readPermille(unit) === null ? "—" : `${fmtPermille(readPermille(unit))}‰`}
+                                                    {readPermille(unit) === null ? "—" : fmtPercent(readPermille(unit))}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
