@@ -113,7 +113,29 @@ beforeAll(async () => {
     await db.exec(migration('20261015020000_unit_rights_permille.sql'));
     // Idempotente: se puede volver a aplicar.
     await db.exec(migration('20261015020000_unit_rights_permille.sql'));
+    // Método 'onboarding' (20261015030000), también idempotente.
+    await db.exec(migration('20261015030000_unit_rights_onboarding.sql'));
+    await db.exec(migration('20261015030000_unit_rights_onboarding.sql'));
 }, 60_000);
+
+describe('save_unit_rights desde el onboarding', () => {
+    it("acepta el método 'onboarding' con la misma validación y auditoría", async () => {
+        const s = await seed();
+        await expect(save(s, 600, 399, 'onboarding')).rejects.toThrow(/1000/);
+        expect(await shares(s)).toEqual([null, null]);
+        const provisional = (await save(s, 600, 400, 'onboarding')).rows[0].save_unit_rights;
+        expect(provisional.method).toBe('onboarding');
+        expect(provisional.verified).toBe(false);
+        const verified = (await save(s, 600, 400, 'onboarding', 'Reglamento de copropiedad, art. 5')).rows[0].save_unit_rights;
+        expect(verified.verified).toBe(true);
+        expect(await shares(s)).toEqual([600, 400]);
+    });
+
+    it('sigue rechazando métodos desconocidos', async () => {
+        const s = await seed();
+        await expect(save(s, 600, 400, 'importado')).rejects.toThrow(/método no válido/);
+    });
+});
 
 describe('save_unit_rights', () => {
     it('guarda una carga que suma 1000‰ y deja la revisión con quién, cuándo y los valores anteriores', async () => {

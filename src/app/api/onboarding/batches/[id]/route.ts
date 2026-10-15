@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { assessResidents, extractResidentsFromBuffer, residentDedupeKey } from '@/lib/onboarding/documentExtractor';
-import type { OnboardingBatchDetailResponse, OnboardingBatchRetryResponse } from '@/lib/types';
+import type { OnboardingBatchDetailResponse } from '@/lib/types';
+import type { OnboardingRightsRetryResponse, OnboardingRightsStoredRow } from '@/lib/onboarding/types';
+import { rightsFromRawData } from '@/lib/onboarding/unitRightsImport';
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
     const profile = await getAuthenticatedAgentProfile();
@@ -12,17 +14,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const [{ data: batch, error }, { data: documents }, { data: rows }] = await Promise.all([
         admin.from('onboarding_import_batches').select('*').eq('id', id).eq('community_id', profile.community_id).maybeSingle(),
         admin.from('onboarding_import_documents').select('id, file_name, document_kind, summary, status, extracted_rows, error, size_bytes, created_at').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
-        admin.from('onboarding_import_rows').select('id, name, unit_number, email, phone, status, warnings, error, document_id').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
+        admin.from('onboarding_import_rows').select('id, name, unit_number, email, phone, status, warnings, error, document_id, raw_data').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
     ]);
     if (error || !batch) return NextResponse.json({ error: 'Lote no encontrado.' }, { status: 404 });
-    const payload: OnboardingBatchDetailResponse = {
-        batch, documents: documents || [],
-        data: (rows || []).map(row => ({
-            id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
-            email: row.email ?? '', phone: row.phone ?? '',
-            status: row.status, warnings: row.warnings, error: row.error, documentId: row.document_id,
-        })),
-    };
+    const data: OnboardingRightsStoredRow[] = (rows || []).map(row => ({
+        id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
+        email: row.email ?? '', phone: row.phone ?? '', derechos_permil: rightsFromRawData(row.raw_data),
+        status: row.status, warnings: row.warnings, error: row.error, documentId: row.document_id,
+    }));
+    const payload: OnboardingBatchDetailResponse & { data: OnboardingRightsStoredRow[] } = { batch, documents: documents || [], data };
     return NextResponse.json(payload);
 }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
             await admin.from('onboarding_import_documents').update({ error: retryError instanceof Error ? retryError.message : 'Reintento fallido.', updated_at: new Date().toISOString() }).eq('id', document.id);
         }
     }
-    const { data: storedRows } = await admin.from('onboarding_import_rows').select('id, name, unit_number, email, phone').eq('batch_id', id).order('created_at');
+    const { data: storedRows } = await admin.from('onboarding_import_rows').select('id, name, unit_number, email, phone, raw_data').eq('batch_id', id).order('created_at');
     const normalized = (storedRows || []).map(row => ({ name: row.name, unit_id: row.unit_number, email: row.email, phone: row.phone }));
     const assessment = assessResidents(normalized);
     const remaining = Math.max(0, (failedDocuments || []).length - recovered);
@@ -77,11 +77,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         status: storedRows?.length ? 'review' : 'failed', row_count: storedRows?.length || 0,
         valid_row_count: assessment.validRows, warning_count: warnings.length, warnings, updated_at: new Date().toISOString(),
     }).eq('id', id);
-    const payload: OnboardingBatchRetryResponse = {
+    const payload: OnboardingRightsRetryResponse = {
         recovered, remaining, assessment: { ...assessment, warnings },
         data: (storedRows || []).map(row => ({
             id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
-            email: row.email ?? '', phone: row.phone ?? '',
+            email: row.email ?? '', phone: row.phone ?? '', derechos_permil: rightsFromRawData(row.raw_data),
         })),
     };
     return NextResponse.json(payload);

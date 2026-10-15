@@ -58,6 +58,9 @@ async function loadUnits(communityId: string): Promise<UnitRightsUnit[]> {
     }));
 }
 
+/** Unidades de la comunidad con sus derechos actuales (lo usa el onboarding para validar antes de guardar). */
+export const listRightsUnits = (communityId: string) => loadUnits(communityId);
+
 function mapValues(raw: unknown): UnitRightsRevisionValue[] {
     return (Array.isArray(raw) ? raw : []).map(item => {
         const row = (item && typeof item === 'object' ? item : {}) as Row;
@@ -144,7 +147,7 @@ export async function getUnitRightsView(actor: UnitRightsActor): Promise<UnitRig
 
 export interface SaveUnitRightsInput {
     values: Record<string, number | null>;
-    method: Extract<UnitRightsMethod, 'manual' | 'csv' | 'expense_prorate'>;
+    method: Extract<UnitRightsMethod, 'manual' | 'csv' | 'expense_prorate' | 'onboarding'>;
     sourceNote: string;
 }
 

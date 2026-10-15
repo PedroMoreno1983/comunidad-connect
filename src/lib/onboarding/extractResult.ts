@@ -10,6 +10,8 @@ export type RosterExtractRow = {
     unit_id: string;
     email: string;
     phone: string;
+    /** Derechos de la unidad en ‰ como texto ("" si no vinieron). */
+    derechos_permil: string;
 };
 
 export type RosterExtractPayload = {
@@ -33,6 +35,7 @@ function asRow(value: unknown): RosterExtractRow | null {
         unit_id: typeof row.unit_id === "string" ? row.unit_id : "",
         email: typeof row.email === "string" ? row.email : "",
         phone: typeof row.phone === "string" ? row.phone : "",
+        derechos_permil: typeof row.derechos_permil === "string" || typeof row.derechos_permil === "number" ? String(row.derechos_permil) : "",
     };
 }
 

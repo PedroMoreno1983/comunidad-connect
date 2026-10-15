@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
     AlertCircle,
     Bot,
     CheckCircle2,
+    Download,
     FileSpreadsheet,
     ListChecks,
+    Scale,
     Save,
     ShieldCheck,
     Trash2,
@@ -20,15 +23,30 @@ import { Button } from "@/components/ui/Button";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { interpretRosterExtractResponse } from "@/lib/onboarding/extractResult";
+import {
+    previewOnboardingRights,
+    RIGHTS_SOURCE_PLACEHOLDER,
+    RIGHTS_TEMPLATE_HREF,
+    RIGHTS_WHY,
+    rightsPendingTask,
+} from "@/lib/onboarding/unitRightsImport";
+import { UnitRightsService } from "@/lib/services/unitRightsService";
+import type { UnitRightsStatus } from "@/lib/assemblies/types";
 import type {
     OnboardingAssessment,
     OnboardingBatchDetailResponse,
-    OnboardingBatchExtractResponse,
-    OnboardingBatchRetryResponse,
-    OnboardingExtractedRow,
     OnboardingSyncResult,
-    OnboardingUpsertResponse,
 } from "@/lib/types";
+import type {
+    OnboardingPendingTask,
+    OnboardingRightsExtractResponse,
+    OnboardingRightsMeta,
+    OnboardingRightsOutcome,
+    OnboardingRightsRetryResponse,
+    OnboardingRightsRow,
+    OnboardingRightsStoredRow,
+    OnboardingRightsUpsertResponse,
+} from "@/lib/onboarding/types";
 
 
 
@@ -59,7 +77,7 @@ export default function AdminOnboardingPage() {
     const { toast } = useToast();
 
     const [isExtracting, setIsExtracting] = useState(false);
-    const [extractedData, setExtractedData] = useState<OnboardingExtractedRow[] | null>(null);
+    const [extractedData, setExtractedData] = useState<OnboardingRightsRow[] | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -68,9 +86,13 @@ export default function AdminOnboardingPage() {
     const [batchId, setBatchId] = useState("");
     const [failedDocumentCount, setFailedDocumentCount] = useState(0);
     const [syncResult, setSyncResult] = useState<OnboardingSyncResult | null>(null);
-    const [syncedPreview, setSyncedPreview] = useState<OnboardingExtractedRow[]>([]);
+    const [syncedPreview, setSyncedPreview] = useState<OnboardingRightsRow[]>([]);
     const [agentAssessment, setAgentAssessment] = useState<OnboardingAssessment | null>(null);
     const [extractError, setExtractError] = useState<string | null>(null);
+    const [rightsSourceNote, setRightsSourceNote] = useState("");
+    const [rightsMeta, setRightsMeta] = useState<OnboardingRightsMeta | null>(null);
+    const [rightsOutcome, setRightsOutcome] = useState<OnboardingRightsOutcome | null>(null);
+    const [communityRightsStatus, setCommunityRightsStatus] = useState<UnitRightsStatus | null>(null);
     const activeSectionRef = useRef<HTMLElement | null>(null);
     const batchLoadedRef = useRef(false);
 
@@ -78,6 +100,17 @@ export default function AdminOnboardingPage() {
     useEffect(() => {
         if (user && user.role !== "admin") router.push("/home");
     }, [router, user]);
+
+    // Checklist del onboarding: los derechos de cada unidad quedan pendientes mientras falten.
+    const refreshRightsStatus = useCallback(() => {
+        UnitRightsService.get()
+            .then(view => setCommunityRightsStatus(view.status))
+            .catch(() => setCommunityRightsStatus(null));
+    }, []);
+
+    useEffect(() => {
+        if (user?.role === "admin") refreshRightsStatus();
+    }, [refreshRightsStatus, user?.role]);
 
     useEffect(() => {
         if (extractedData || syncSuccess) {
@@ -95,10 +128,10 @@ export default function AdminOnboardingPage() {
         setIsExtracting(true);
         fetch(`/api/onboarding/batches/${encodeURIComponent(requestedBatch)}`)
             .then(async response => {
-                const payload = await response.json() as OnboardingBatchDetailResponse;
+                const payload = await response.json() as Omit<OnboardingBatchDetailResponse, "data"> & { data?: OnboardingRightsStoredRow[] };
                 if (!response.ok) throw new Error(payload.error || "batch-load-failed");
                 setBatchId(requestedBatch);
-                setExtractedData(payload.data || []);
+                setExtractedData((payload.data || []).map(row => ({ ...row, derechos_permil: row.derechos_permil ?? "" })));
                 setLastFileName((payload.documents || []).map(item => item.file_name).filter(Boolean).join(", "));
                 setFailedDocumentCount((payload.documents || []).filter(item => item.status === "failed").length);
                 const batch = payload.batch || {};
@@ -124,6 +157,11 @@ export default function AdminOnboardingPage() {
         return { totalRows, validRows, missingNameRows, missingUnitRows, missingContactRows, score };
     }, [extractedData]);
 
+    const rightsPreview = useMemo(
+        () => extractedData ? previewOnboardingRights(extractedData.filter(row => row.name.trim() && row.unit_id.trim()), rightsSourceNote) : null,
+        [extractedData, rightsSourceNote],
+    );
+
 
     const processFiles = async (uploadedFiles: File[]) => {
         if (!uploadedFiles.length) return;
@@ -133,6 +171,7 @@ export default function AdminOnboardingPage() {
         setSyncResult(null);
         setSyncedPreview([]);
         setExtractError(null);
+        setRightsOutcome(null);
         const pendingName = uploadedFiles.map(file => file.name).join(", ");
 
         try {
@@ -140,7 +179,7 @@ export default function AdminOnboardingPage() {
             uploadedFiles.forEach(file => formData.append("files", file));
             formData.append("source", "admin_onboarding");
             const response = await fetch("/api/onboarding/batches", { method: "POST", body: formData });
-            const extraction = await response.json() as OnboardingBatchExtractResponse;
+            const extraction = await response.json() as OnboardingRightsExtractResponse;
             const interpreted = interpretRosterExtractResponse(extraction, response.ok);
             if (!interpreted.ok) {
                 const message = friendlyError(interpreted.message);
@@ -162,6 +201,7 @@ export default function AdminOnboardingPage() {
             setLastFileName(pendingName);
             setExtractedData(interpreted.rows);
             setAgentAssessment(extraction.assessment || null);
+            setRightsMeta(extraction.rights || null);
             setExtractError(null);
             toast({
                 title: "Lote procesado",
@@ -197,7 +237,7 @@ export default function AdminOnboardingPage() {
         if (droppedFiles.length) await processFiles(droppedFiles);
     };
 
-    const handleFieldChange = (id: string, field: keyof OnboardingExtractedRow, value: string) => {
+    const handleFieldChange = (id: string, field: keyof OnboardingRightsRow, value: string) => {
         setExtractedData(prev =>
             prev ? prev.map(row => row.id === id ? { ...row, [field]: value } : row) : null
         );
@@ -210,7 +250,7 @@ export default function AdminOnboardingPage() {
             const response = await fetch(`/api/onboarding/batches/${encodeURIComponent(batchId)}`, {
                 method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "retry_failed" }),
             });
-            const payload = await response.json() as OnboardingBatchRetryResponse;
+            const payload = await response.json() as OnboardingRightsRetryResponse;
             const interpreted = interpretRosterExtractResponse(payload, response.ok);
             setFailedDocumentCount(Number(payload.remaining || 0));
             if (!interpreted.ok) {
@@ -251,11 +291,11 @@ export default function AdminOnboardingPage() {
             const res = await fetch("/api/onboarding/upsert", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ residents: rowsToSync, batchId: batchId || undefined }),
+                body: JSON.stringify({ residents: rowsToSync, batchId: batchId || undefined, rightsSourceNote }),
             });
 
             if (res.ok) {
-                const result = await res.json().catch(() => ({})) as OnboardingUpsertResponse;
+                const result = await res.json().catch(() => ({})) as OnboardingRightsUpsertResponse;
                 const success = typeof result.success === "number" ? result.success : rowsToSync.length;
                 const errors = typeof result.errors === "number" ? result.errors : 0;
                 const unitOnly = typeof result.unitOnly === "number" ? result.unitOnly : 0;
@@ -267,6 +307,8 @@ export default function AdminOnboardingPage() {
                     errors,
                     unitOnly,
                 });
+                setRightsOutcome(result.rights || null);
+                refreshRightsStatus();
                 setSyncSuccess(true);
                 setExtractedData(null);
                 toast({ title: "Residentes sincronizados", description: `${success} fila(s) quedaron disponibles para operación.`, variant: "success" });
@@ -298,6 +340,9 @@ export default function AdminOnboardingPage() {
         setBatchId("");
         setFailedDocumentCount(0);
         setExtractError(null);
+        setRightsMeta(null);
+        setRightsOutcome(null);
+        setRightsSourceNote("");
     };
 
     const restoreSyncedRows = () => {
@@ -370,6 +415,13 @@ export default function AdminOnboardingPage() {
                 secondaryActionHref="/admin/units"
             />
 
+            {communityRightsStatus === "missing" && !extractedData && !syncSuccess && (
+                <section aria-label="Pendientes del onboarding" className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Pendientes del onboarding</p>
+                    <PendingTaskCard task={rightsPendingTask("missing")} />
+                </section>
+            )}
+
             {extractError && (
                 <div
                     role="alert"
@@ -412,6 +464,13 @@ export default function AdminOnboardingPage() {
                         </p>
 
                         {!isExtracting && (
+                            <p className="mt-4 max-w-xl text-xs leading-5 cc-text-secondary">
+                                <Scale className="mr-1 inline h-3.5 w-3.5" style={{ color: "var(--cc-copper)" }} />
+                                Opcional: agrega la columna <span className="font-mono">derechos_permil</span> con los derechos de cada unidad (‰, o % y lo convertimos). {RIGHTS_WHY}
+                            </p>
+                        )}
+
+                        {!isExtracting && (
                             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                                 <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-colors" style={{ background: "var(--cc-copper)" }}>
                                     <UploadCloud className="h-4 w-4" />
@@ -426,6 +485,15 @@ export default function AdminOnboardingPage() {
                                         className="hidden"
                                     />
                                 </label>
+                                <a
+                                    href={RIGHTS_TEMPLATE_HREF}
+                                    download
+                                    className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                    style={{ borderColor: "var(--cc-line)" }}
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Descargar plantilla CSV
+                                </a>
                             </div>
                         )}
                     </div>
@@ -497,6 +565,8 @@ export default function AdminOnboardingPage() {
                             )}
                         </div>
                     )}
+
+                    {rightsOutcome && <RightsOutcomeNotice outcome={rightsOutcome} />}
 
                     <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
                         <Button type="button" variant="outline" onClick={restoreSyncedRows} disabled={!syncedPreview.length}>
@@ -614,6 +684,14 @@ export default function AdminOnboardingPage() {
                                     )}
                                 </div>
                             )}
+                            {rightsPreview && (
+                                <RightsPreviewPanel
+                                    preview={rightsPreview}
+                                    meta={rightsMeta}
+                                    sourceNote={rightsSourceNote}
+                                    onSourceNoteChange={setRightsSourceNote}
+                                />
+                            )}
                             {quality.missingUnitRows > 0 && (
                                 <div className="rounded-xl border border-warning-border bg-warning-bg p-4 sm:col-span-2 md:col-span-4">
                                     <div className="flex items-start gap-3">
@@ -627,13 +705,14 @@ export default function AdminOnboardingPage() {
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[880px] text-left text-sm">
+                            <table className="w-full min-w-[1000px] text-left text-sm">
                                 <thead className="border-b text-xs font-semibold uppercase tracking-[0.08em] cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                     <tr>
                                         <th className="px-5 py-4">Nombre</th>
                                         <th className="px-5 py-4">Unidad</th>
                                         <th className="px-5 py-4">Correo</th>
                                         <th className="px-5 py-4">Teléfono</th>
+                                        <th className="px-5 py-4" title="Derechos de la unidad según el reglamento (‰). Opcional.">Derechos (‰)</th>
                                         <th className="px-5 py-4 text-right">Acción</th>
                                     </tr>
                                 </thead>
@@ -651,6 +730,9 @@ export default function AdminOnboardingPage() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <EditableCell value={row.phone} onChange={value => handleFieldChange(row.id, "phone", value)} placeholder="+56 9..." />
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <EditableCell value={row.derechos_permil} onChange={value => handleFieldChange(row.id, "derechos_permil", value)} placeholder="12,5" mono />
                                             </td>
                                             <td className="px-5 py-3 text-right">
                                                 <button
@@ -698,5 +780,113 @@ function EditableCell({
                 color: "var(--cc-ink)",
             }}
         />
+    );
+}
+
+function PendingTaskCard({ task }: { task: OnboardingPendingTask }) {
+    return (
+        <div className="mt-3 flex flex-col gap-3 rounded-xl border border-warning-border bg-warning-bg p-4 text-left sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+                <ListChecks className="mt-0.5 h-5 w-5 shrink-0 text-warning-fg" />
+                <div>
+                    <p className="text-sm font-semibold cc-text-primary">{task.title}</p>
+                    <p className="mt-1 text-xs leading-5 cc-text-secondary">{task.detail}</p>
+                </div>
+            </div>
+            <Link
+                href={task.href}
+                className="inline-flex shrink-0 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white"
+                style={{ background: "var(--cc-copper)" }}
+            >
+                Cargar derechos
+            </Link>
+        </div>
+    );
+}
+
+const fmtPermille = (value: number) => value.toLocaleString("es-CL", { maximumFractionDigits: 4 });
+
+function RightsPreviewPanel({
+    preview,
+    meta,
+    sourceNote,
+    onSourceNoteChange,
+}: {
+    preview: ReturnType<typeof previewOnboardingRights>;
+    meta: OnboardingRightsMeta | null;
+    sourceNote: string;
+    onSourceNoteChange: (value: string) => void;
+}) {
+    return (
+        <div className="rounded-xl border p-4 sm:col-span-2 md:col-span-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <div className="flex items-start gap-3">
+                <Scale className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--cc-copper)" }} />
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold cc-text-primary">Derechos de cada unidad (‰)</p>
+                    <p className="mt-1 text-xs cc-text-secondary">{RIGHTS_WHY}</p>
+                    {meta && preview.status !== "none" && (
+                        <p className="mt-2 text-xs cc-text-secondary">
+                            Columna leída: <span className="font-mono">{meta.header}</span>
+                            {meta.scale === "percent" ? " · venía en %, la convertimos a ‰ (×10)" : " · en ‰"}
+                            {meta.scaleInferred ? " (deducido de los valores: revísalo)" : ""}.
+                        </p>
+                    )}
+                    {preview.status === "complete" && (
+                        <p className="mt-2 text-sm font-semibold text-success-fg">
+                            Las {preview.units} unidades tienen derechos y suman {fmtPermille(preview.total)}‰. Se guardarán {preview.willBeVerified ? "como verificados (con fuente)" : "como provisorios hasta que registres la fuente"}.
+                        </p>
+                    )}
+                    {preview.status === "partial" && (
+                        <div className="mt-2 rounded-lg border border-warning-border bg-warning-bg p-3">
+                            <p className="text-sm font-semibold cc-text-primary">
+                                Los derechos vienen en {preview.unitsWithValue} de {preview.units} unidades o no cuadran: no se guardarán. Puedes sincronizar igual; las unidades se crean sin derechos y queda la tarea pendiente.
+                            </p>
+                            <ul className="mt-2 space-y-1 text-xs cc-text-secondary">
+                                {preview.errors.map(error => <li key={error}>• {error}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                    {preview.status === "none" && (
+                        <p className="mt-2 text-xs cc-text-secondary">
+                            El archivo no trae derechos. Puedes escribirlos en la columna &quot;Derechos (‰)&quot; o cargarlos después: quedará la tarea pendiente &quot;Cargar derechos de cada unidad&quot;.
+                        </p>
+                    )}
+                    {preview.status !== "none" && (
+                        <label className="mt-3 block text-xs font-semibold cc-text-secondary">
+                            Fuente de los derechos (opcional)
+                            <input
+                                value={sourceNote}
+                                onChange={event => onSourceNoteChange(event.target.value)}
+                                placeholder={RIGHTS_SOURCE_PLACEHOLDER}
+                                maxLength={500}
+                                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-normal outline-none focus:border-[var(--cc-copper)]"
+                                style={{ background: "var(--cc-paper-warm)", borderColor: "var(--cc-line)", color: "var(--cc-ink)" }}
+                            />
+                            <span className="mt-1 block font-normal cc-text-tertiary">Con fuente quedan verificados; sin fuente, provisorios.</span>
+                        </label>
+                    )}
+                    {preview.task && <PendingTaskCard task={preview.task} />}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function RightsOutcomeNotice({ outcome }: { outcome: OnboardingRightsOutcome }) {
+    if (outcome.status === "already_loaded") return null;
+    return (
+        <div className="mx-auto mt-5 max-w-4xl text-left">
+            {outcome.status === "saved" && (
+                <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <p className="text-sm font-semibold cc-text-primary">
+                        Derechos de cada unidad guardados {outcome.verified ? "y verificados con su fuente" : "como provisorios: registra la fuente en Asambleas › Derechos de cada unidad"}.
+                    </p>
+                </div>
+            )}
+            {outcome.status === "skipped" && outcome.errors.length > 0 && (
+                <p className="text-xs cc-text-secondary">Derechos no guardados: {outcome.errors.join(" ")}</p>
+            )}
+            {outcome.task && <PendingTaskCard task={outcome.task} />}
+        </div>
     );
 }

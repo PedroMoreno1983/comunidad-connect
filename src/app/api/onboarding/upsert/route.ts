@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import type { OnboardingSyncRowResult, OnboardingUpsertResponse } from '@/lib/types';
+import type { OnboardingSyncRowResult } from '@/lib/types';
+import type { OnboardingRightsUpsertResponse } from '@/lib/onboarding/types';
+import { applyOnboardingRights } from '@/lib/onboarding/unitRightsOnboarding';
+import type { ProvidedRight } from '@/lib/onboarding/unitRightsImport';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +15,7 @@ type IncomingResident = {
     unit_id?: string;
     email?: string;
     phone?: string;
+    derechos_permil?: string | number;
 };
 
 type NormalizedResident = {
@@ -20,6 +24,8 @@ type NormalizedResident = {
     unit_id: string;
     email: string;
     phone: string;
+    /** Derechos de la unidad en ‰, como texto (opcional). */
+    derechos_permil: string;
 };
 
 type UnitInsertPayload = {
@@ -46,6 +52,7 @@ function normalizeResidents(value: unknown): NormalizedResident[] {
             unit_id: cleanText(resident.unit_id),
             email: cleanText(resident.email).toLowerCase(),
             phone: cleanText(resident.phone),
+            derechos_permil: cleanText(resident.derechos_permil).slice(0, 40),
         }))
         .filter((resident) => resident.name && resident.unit_id);
 }
@@ -229,6 +236,7 @@ export async function POST(request: Request) {
             : undefined;
         const batchId = body && typeof body === 'object' ? cleanText((body as { batchId?: unknown }).batchId) : '';
         const residents = normalizeResidents(residentsPayload);
+        const rightsSourceNote = body && typeof body === 'object' ? cleanText((body as { rightsSourceNote?: unknown }).rightsSourceNote).slice(0, 1000) : '';
 
         if (residents.length === 0) {
             return NextResponse.json({ error: 'Payload vacio o invalido.' }, { status: 400 });
@@ -247,7 +255,7 @@ export async function POST(request: Request) {
                 if (!resident.id) continue;
                 await supabaseAdmin.from('onboarding_import_rows').update({
                     name: resident.name, unit_number: resident.unit_id, email: resident.email, phone: resident.phone,
-                    raw_data: { name: resident.name, unit_id: resident.unit_id, email: resident.email, phone: resident.phone },
+                    raw_data: { name: resident.name, unit_id: resident.unit_id, email: resident.email, phone: resident.phone, derechos_permil: resident.derechos_permil },
                     updated_at: new Date().toISOString(),
                 }).eq('id', resident.id).eq('batch_id', batchId);
             }
@@ -266,6 +274,7 @@ export async function POST(request: Request) {
         let successCount = 0;
         let unitOnlyCount = 0;
         let errorCount = 0;
+        const providedRights: ProvidedRight[] = [];
 
         for (const resident of residents) {
             try {
@@ -278,6 +287,7 @@ export async function POST(request: Request) {
                     tower: unitDetails.tower,
                     floor: unitDetails.floor,
                 });
+                providedRights.push({ unitId: finalUnitId, label: resident.unit_id, raw: resident.derechos_permil });
 
                 const residentProfileId = await ensureResidentProfile(
                     supabaseAdmin,
@@ -311,6 +321,13 @@ export async function POST(request: Request) {
             }
         }
 
+        // Derechos (‰): mismo servicio y auditoría que /admin/asambleas#derechos. No bloquea la sincronización.
+        const rights = await applyOnboardingRights(
+            { id: profile.id, role: 'admin', communityId, name: profile.name ?? null },
+            providedRights,
+            rightsSourceNote,
+        );
+
         if (batchId) {
             await supabaseAdmin.from('onboarding_import_batches').update({
                 status: errorCount > 0 || unitOnlyCount > 0 ? 'partial' : 'synced',
@@ -336,11 +353,12 @@ export async function POST(request: Request) {
                 withPhone: residents.filter(resident => resident.phone).length,
                 destinations: ['profiles', 'units', 'auth.users'],
                 rowResults: rowResults.slice(0, 30),
+                unitRights: { status: rights.status, verified: rights.verified, provided: providedRights.filter(item => item.raw).length },
             },
             requestId: getRequestId(request),
         });
 
-        const payload: OnboardingUpsertResponse = {
+        const payload: OnboardingRightsUpsertResponse = {
             message: 'Sincronizacion completada',
             processed: residents.length,
             success: successCount,
@@ -348,6 +366,7 @@ export async function POST(request: Request) {
             errors: errorCount,
             destinations: ['profiles', 'units', 'auth.users'],
             rowResults,
+            rights,
         };
         return NextResponse.json(payload);
     } catch (error: unknown) {
