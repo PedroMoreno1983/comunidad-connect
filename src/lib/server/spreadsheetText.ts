@@ -68,3 +68,16 @@ export async function spreadsheetBufferToText(buffer: Buffer, options: Spreadshe
 
     return sections.join("\n\n");
 }
+
+/** Filas de cada hoja (primera fila = encabezados), como texto. */
+export async function spreadsheetBufferToRows(buffer: Buffer, options: SpreadsheetTextOptions = {}): Promise<string[][][]> {
+    const workbook = new ExcelJS.Workbook();
+    const maxRows = options.maxRows ?? 1000;
+    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const sheets: string[][][] = [];
+    workbook.eachSheet((worksheet) => {
+        const rows = normalizeRows(worksheet, maxRows).map(row => Array.from(row, value => value ?? ""));
+        if (rows.length > 0) sheets.push(rows);
+    });
+    return sheets;
+}
