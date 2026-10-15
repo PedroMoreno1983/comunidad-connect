@@ -1,3 +1,5 @@
+import { legacyPermilleTextToPercent } from "./unitRightsImport";
+
 /**
  * Interpreta la respuesta del extractor de nómina.
  * Un HTTP 200 con data vacía o status=failed no es éxito: el lote debe
@@ -10,8 +12,8 @@ export type RosterExtractRow = {
     unit_id: string;
     email: string;
     phone: string;
-    /** Derechos de la unidad en ‰ como texto ("" si no vinieron). */
-    derechos_permil: string;
+    /** Derechos de la unidad en % como texto ("0,532"; "" si no vinieron). */
+    derechos_porcentaje: string;
 };
 
 export type RosterExtractPayload = {
@@ -35,8 +37,17 @@ function asRow(value: unknown): RosterExtractRow | null {
         unit_id: typeof row.unit_id === "string" ? row.unit_id : "",
         email: typeof row.email === "string" ? row.email : "",
         phone: typeof row.phone === "string" ? row.phone : "",
-        derechos_permil: typeof row.derechos_permil === "string" || typeof row.derechos_permil === "number" ? String(row.derechos_permil) : "",
+        derechos_porcentaje: rightsText(row),
     };
+}
+
+const asText = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value) : "";
+
+/** % como texto; si la respuesta trae el campo antiguo en ‰ (`derechos_permil`), se convierte. */
+function rightsText(row: Record<string, unknown>): string {
+    if ("derechos_porcentaje" in row) return asText(row.derechos_porcentaje);
+    const legacy = asText(row.derechos_permil);
+    return legacy ? legacyPermilleTextToPercent(legacy) : "";
 }
 
 function firstDocumentError(payload: RosterExtractPayload): string | undefined {
