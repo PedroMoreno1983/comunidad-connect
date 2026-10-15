@@ -1,0 +1,25 @@
+# Configuración de gitleaks para ConviveConnect.
+# Reglas por defecto de gitleaks + allowlist SOLO para falsos positivos
+# confirmados en la auditoría de secretos (2026-10-15). No agregues aquí
+# secretos reales: si un secreto real se filtra, rótalo y sácalo del código.
+
+title = "ConviveConnect gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "FP confirmado: en .env.example TRANSBANK_API_KEY va vacío y generic-api-key toma la línea siguiente como valor"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+regexes = ['''^TRANSBANK_API_KEY=[ \t]*\r?\n''']
+paths = ['''(^|/)\.env\.example$''']
+
+[[allowlists]]
+description = "FP confirmado: ejemplo de curl con credenciales de marcador (demo:your-...) en la guía de despliegue"
+targetRules = ["curl-auth-user"]
+condition = "AND"
+regexTarget = "match"
+regexes = ['''-u demo:your''']
+paths = ['''(^|/)deploy/DEPLOY\.md$''']
