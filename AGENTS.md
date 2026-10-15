@@ -348,6 +348,21 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el
 
 ---
 
+## Estacionamientos — cobro al arrendatario y liquidación al dueño
+
+- **Cobro** (`parking_charges`, migración `20261013160000_parking_charges_ledger.sql`): un cobro por reserva, creado por triggers de base. Por defecto se carga a gastos comunes de la unidad del arrendatario (`charged`); pasa a `paid` cuando la cartola registra el pago real de ese cargo (`paid_in_common_expenses`) o cuando Haulmer confirma el pago (`provider_paid`).
+- **Liquidación al dueño** (`parking_payouts`, migración `20261015060000_parking_owner_payouts.sql`; reglas puras en `src/lib/parkingPayouts/payouts.ts`, tipos en `src/lib/parkingPayouts/types.ts`, cliente en `src/lib/services/parkingPayoutService.ts`; UI `ParkingOwnerPayouts` en el modo propietario y `ParkingPayoutsAdmin` en la pestaña de administración). El dinero del arriendo es del dueño del cupo, no de la comunidad:
+  - **Solo se liquida un cobro `paid`.** `charged` ("cargado a gastos comunes") es deuda del arrendatario, no dinero: no se liquida hasta que lo pague. La crea el trigger `trg_parking_charges_payout` (idempotente: `UNIQUE (charge_id)`); un error al liquidar se registra como evento `payout_error` del cobro y nunca rompe el cobro (`admin_sync_parking_payouts` crea las que falten).
+  - **Comisión de la comunidad**: `communities.parking_commission_percent`, 0–100 % con hasta 2 decimales, 0 % por defecto; la fija solo el admin (`admin_set_parking_commission_percent` o el ajuste de la vista). Se usa la que quedó fijada en la reserva (`parking_bookings.community_fee_amount`); si la reserva no cuadra con el cobro, la tasa vigente. Pesos enteros, comisión redondeada al peso con la mitad hacia arriba, **bruto = comisión + neto exacto** (`parking_payout_split` en la base = `splitParkingPayout` en la app; si cambias una, cambia la otra y sus tests). La comisión queda en la comunidad; el neto va al destino del dueño.
+  - **Destino, lo decide el dueño** (`parking_owner_payout_settings`, RPC `parking_set_my_payout_settings`): `bank_transfer` (la administración transfiere fuera de la app y la marca pagada con fecha, comprobante y nota opcionales: `admin_mark_parking_payout_paid`), `common_expenses_credit` (abono automático: un `unit_payments` sin imputar con `reference = 'parking_payout:<id>'` y método `other`, que baja el saldo de su unidad) o `reserve_fund_donation` (aporte automático en `reserve_fund_movements`, fondo legal). **Sin elección**: transferencia si tiene datos bancarios completos; si no, abono a gastos comunes. El destino y los datos bancarios se **congelan** al crear la liquidación; cambiar la preferencia solo afecta a las siguientes.
+  - El abono **no es dinero que entra al banco**: `finance_journal_unit_payment` lo contabiliza contra la cuenta `2400 Liquidaciones a dueños de estacionamientos` (no `1100 Banco`), y recaudación (`reportingService`), flujo de caja (`financialStatements`) y conciliación bancaria lo excluyen con `isParkingPayoutCredit`. No lo cuentes como recaudación.
+  - **Reversas**: si el pago del arrendatario se revierte, la liquidación pendiente queda `on_hold` y se reanuda sola al volver a pagarse; si el cobro se anula o reembolsa, la pendiente se anula. Una cancelación sin costo sobre un arriendo ya pagado pausa la pendiente para revisión. Una liquidación ya transferida, abonada o donada **nunca se revierte sola**: queda `needs_review` para la administración (`admin_resolve_parking_payout_review`).
+  - Estados `pending → paid | credited | donated | retained` (neto 0 por comisión del 100 %) `| on_hold | cancelled`; los cerrados son terminales y ni la service role cambia montos, destino ni dueño (trigger `enforce_parking_payout_rules`). Bitácora `parking_payout_events`.
+  - **RLS**: liquidaciones y datos bancarios los ven solo el dueño (lo suyo) y el admin de su comunidad; conserjería no (el dinero no es dato operativo). Nadie escribe directo: todo por RPCs `SECURITY DEFINER` con `search_path` fijo; `anon` no tiene acceso.
+  - Textos al dueño en positivo, sin lenguaje de deudor ni amenazas.
+
+---
+
 ## Próximos Pasos Planificados
 
 - [ ] **Búsqueda híbrida** — pgvector + Full Text Search en Supabase para Marketplace y Directorio (Anthropic embeddings)

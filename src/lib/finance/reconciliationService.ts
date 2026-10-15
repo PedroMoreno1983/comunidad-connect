@@ -15,6 +15,7 @@ import { deletePayment, recordPayment } from './collectionService';
 import { suggestDeposits, suggestUnitMatches } from './depositMatch';
 import { allocateUnitPayments, legacySettlements } from './paymentAllocation';
 import { signedChargeAmount } from './adjustments';
+import { isParkingPayoutCredit } from '@/lib/parkingPayouts/payouts';
 import {
     summarize,
 } from './reconciliation';
@@ -84,7 +85,9 @@ export async function getReconciliation(communityId: string) {
         matched: matchedPaymentIds.has(String(p.id)),
     }));
 
-    const unmatchedPayments = allPayments.filter(p => !p.matched);
+    // El abono de una liquidación de estacionamiento no tiene movimiento en el
+    // banco: no se ofrece para conciliar.
+    const unmatchedPayments = allPayments.filter(p => !p.matched && !isParkingPayoutCredit(p.reference));
 
     const units: DepositUnitCandidate[] = (unitsResult.data ?? []).map(unit => ({
         id: String(unit.id),

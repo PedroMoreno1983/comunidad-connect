@@ -5984,6 +5984,88 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_charges_parking_booking_once
   ON public.unit_charges (notes)
   WHERE notes LIKE 'parking_booking:%' AND status <> 'cancelled';
 
+-- Liquidación al dueño de los arriendos (20261015060000_parking_owner_payouts.sql).
+-- Una liquidación por cobro pagado; bruto = comisión + neto. Destino elegido por
+-- el dueño (transferencia, abono a GC o donación al fondo de reserva) y congelado.
+-- Triggers, RPCs y el asiento 2400 del abono están en la migración.
+ALTER TABLE public.communities DROP CONSTRAINT IF EXISTS communities_parking_commission_range;
+ALTER TABLE public.communities ADD CONSTRAINT communities_parking_commission_range
+  CHECK (parking_commission_percent >= 0 AND parking_commission_percent <= 100);
+
+CREATE TABLE IF NOT EXISTS public.parking_owner_payout_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  profile_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  destination text CHECK (destination IS NULL OR destination IN ('bank_transfer', 'common_expenses_credit', 'reserve_fund_donation')),
+  credit_unit_id uuid REFERENCES public.units(id) ON DELETE SET NULL,
+  bank_name text,
+  bank_account_type text CHECK (bank_account_type IS NULL OR bank_account_type IN ('corriente', 'vista', 'ahorro')),
+  bank_account_number text,
+  holder_rut text,
+  holder_name text,
+  updated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (community_id, profile_id)
+);
+ALTER TABLE public.parking_owner_payout_settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_owner_payout_settings FROM anon, authenticated;
+GRANT SELECT ON public.parking_owner_payout_settings TO authenticated;
+
+CREATE TABLE IF NOT EXISTS public.parking_payouts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  charge_id uuid NOT NULL UNIQUE REFERENCES public.parking_charges(id) ON DELETE CASCADE,
+  booking_id uuid NOT NULL REFERENCES public.parking_bookings(id) ON DELETE CASCADE,
+  spot_id uuid REFERENCES public.parking_spots(id) ON DELETE SET NULL,
+  owner_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  gross_amount integer NOT NULL CHECK (gross_amount > 0),
+  commission_percent numeric(5, 2),
+  commission_source text NOT NULL CHECK (commission_source IN ('booking', 'community_rate')),
+  commission_amount integer NOT NULL CHECK (commission_amount >= 0),
+  net_amount integer NOT NULL CHECK (net_amount >= 0),
+  currency text NOT NULL DEFAULT 'CLP' CHECK (currency = 'CLP'),
+  destination text NOT NULL CHECK (destination IN ('bank_transfer', 'common_expenses_credit', 'reserve_fund_donation')),
+  destination_source text NOT NULL CHECK (destination_source IN ('owner_choice', 'default_bank', 'default_credit')),
+  bank_snapshot jsonb,
+  credit_unit_id uuid REFERENCES public.units(id) ON DELETE SET NULL,
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'on_hold', 'paid', 'credited', 'donated', 'retained', 'cancelled')),
+  needs_review boolean NOT NULL DEFAULT false,
+  review_reason text,
+  unit_payment_id uuid UNIQUE REFERENCES public.unit_payments(id) ON DELETE SET NULL,
+  reserve_fund_movement_id uuid UNIQUE REFERENCES public.reserve_fund_movements(id) ON DELETE SET NULL,
+  paid_on date,
+  payment_reference text,
+  payment_note text,
+  settled_at timestamptz,
+  settled_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  cancelled_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (gross_amount = commission_amount + net_amount)
+);
+ALTER TABLE public.parking_payouts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_payouts FROM anon, authenticated;
+GRANT SELECT ON public.parking_payouts TO authenticated;
+
+CREATE TABLE IF NOT EXISTS public.parking_payout_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  seq bigint GENERATED ALWAYS AS IDENTITY,
+  payout_id uuid NOT NULL REFERENCES public.parking_payouts(id) ON DELETE CASCADE,
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  event_type text NOT NULL,
+  from_status text,
+  to_status text,
+  amount integer,
+  actor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE public.parking_payout_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parking_payout_events FROM anon, authenticated;
+GRANT SELECT ON public.parking_payout_events TO authenticated;
+
 -- Monthly finance close: the snapshot and its operation event commit together.
 CREATE TABLE IF NOT EXISTS public.finance_period_closures (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

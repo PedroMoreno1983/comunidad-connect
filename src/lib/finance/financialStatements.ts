@@ -19,6 +19,7 @@ import { fetchAllFinanceRows } from './billNotice';
 import { getJournal } from './journalService';
 import { isCommitteeDiscount } from './adjustments';
 import { LEGAL_RESERVE_FUND, parseFundLabel } from './funds';
+import { isParkingPayoutCredit } from '@/lib/parkingPayouts/payouts';
 
 const CATEGORY_LABELS: Record<string, string> = {
     water: 'Agua',
@@ -37,7 +38,8 @@ export interface StatementInputs {
     unitIds: string[];
     expenses: Array<{ unitId: string; month: string; amount: number }>;
     charges: Array<{ unitId: string; month: string; kind: string; amount: number; label?: string }>;
-    payments: Array<{ unitId: string; paidAt: string; amount: number }>;
+    /** nonCash: abono de una liquidación de estacionamiento (baja el saldo de la unidad, no entra al banco). */
+    payments: Array<{ unitId: string; paidAt: string; amount: number; nonCash?: boolean }>;
     communityExpenses: Array<{ month: string; category: string; amount: number }>;
     reserveMovements: Array<{ month: string; kind: string; amount: number; label?: string }>;
     /** Saldo de la cuenta 1100 Banco del libro de 4 cuentas. 0 si aún no hay asientos. */
@@ -80,7 +82,10 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
         .reduce((sum, row) => sum + round(row.amount), 0);
 
     const paymentsByMonth = new Map<string, number>();
-    for (const row of inputs.payments) paymentsByMonth.set(monthOf(row.paidAt), (paymentsByMonth.get(monthOf(row.paidAt)) || 0) + round(row.amount));
+    for (const row of inputs.payments) {
+        if (row.nonCash) continue;
+        paymentsByMonth.set(monthOf(row.paidAt), (paymentsByMonth.get(monthOf(row.paidAt)) || 0) + round(row.amount));
+    }
     const expensesByMonth = new Map<string, number>();
     for (const row of inputs.communityExpenses) expensesByMonth.set(row.month, (expensesByMonth.get(row.month) || 0) + round(row.amount));
 
@@ -171,8 +176,8 @@ export async function getFinancialStatements(
         fetchAllFinanceRows<{ unit_id: string; month: string; kind: string; amount: number; label: string }>((from, to) =>
             admin.from('unit_charges').select('unit_id, month, kind, amount, label').eq('community_id', communityId)
                 .lte('month', cutoff).neq('status', 'cancelled').order('id').range(from, to)),
-        fetchAllFinanceRows<{ unit_id: string; paid_at: string; amount: number }>((from, to) =>
-            admin.from('unit_payments').select('unit_id, paid_at, amount').eq('community_id', communityId)
+        fetchAllFinanceRows<{ unit_id: string; paid_at: string; amount: number; reference: string | null }>((from, to) =>
+            admin.from('unit_payments').select('unit_id, paid_at, amount, reference').eq('community_id', communityId)
                 .order('id').range(from, to)),
         fetchAllFinanceRows<{ month: string; category: string; amount: number }>((from, to) =>
             admin.from('community_expenses').select('month, category, amount').eq('community_id', communityId)
@@ -190,7 +195,10 @@ export async function getFinancialStatements(
         unitIds: units.map(row => String(row.id)),
         expenses: expenses.map(row => ({ unitId: String(row.unit_id), month: String(row.month), amount: Number(row.amount || 0) })),
         charges: charges.map(row => ({ unitId: String(row.unit_id), month: String(row.month), kind: String(row.kind), amount: Number(row.amount || 0), label: String(row.label || '') })),
-        payments: payments.map(row => ({ unitId: String(row.unit_id), paidAt: String(row.paid_at), amount: Number(row.amount || 0) })),
+        payments: payments.map(row => ({
+            unitId: String(row.unit_id), paidAt: String(row.paid_at), amount: Number(row.amount || 0),
+            nonCash: isParkingPayoutCredit(row.reference),
+        })),
         communityExpenses: communityExpenses.map(row => ({ month: String(row.month), category: String(row.category || 'other'), amount: Number(row.amount || 0) })),
         reserveMovements: reserve.map(row => ({ month: String(row.month), kind: String(row.kind), amount: Number(row.amount || 0), label: String(row.label || '') })),
         journalBank: Number(journal.accounts.find(account => account.code === '1100')?.balance || 0),
