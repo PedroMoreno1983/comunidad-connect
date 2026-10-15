@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     if (error || !batch) return NextResponse.json({ error: 'Lote no encontrado.' }, { status: 404 });
     const data: OnboardingRightsStoredRow[] = (rows || []).map(row => ({
         id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
-        email: row.email ?? '', phone: row.phone ?? '', derechos_permil: rightsFromRawData(row.raw_data),
+        email: row.email ?? '', phone: row.phone ?? '', derechos_porcentaje: rightsFromRawData(row.raw_data),
         status: row.status, warnings: row.warnings, error: row.error, documentId: row.document_id,
     }));
     const payload: OnboardingBatchDetailResponse & { data: OnboardingRightsStoredRow[] } = { batch, documents: documents || [], data };
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         recovered, remaining, assessment: { ...assessment, warnings },
         data: (storedRows || []).map(row => ({
             id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
-            email: row.email ?? '', phone: row.phone ?? '', derechos_permil: rightsFromRawData(row.raw_data),
+            email: row.email ?? '', phone: row.phone ?? '', derechos_porcentaje: rightsFromRawData(row.raw_data),
         })),
     };
     return NextResponse.json(payload);

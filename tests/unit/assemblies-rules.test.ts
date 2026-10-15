@@ -165,10 +165,10 @@ describe('ponderación de votos (art. 15: un voto proporcional a los derechos)',
         const rights = computeRights([{ id: 'a', label: '101', sharePermille: null }]);
         expect(rights.warnings[0]).toMatch(/Ninguna unidad/);
     });
-    it('alícuotas que no suman 1000‰: proporcional con advertencia', () => {
+    it('alícuotas que no suman 100 % (1000‰): proporcional con advertencia en %', () => {
         const rights = computeRights([{ id: 'a', label: '101', sharePermille: 300 }, { id: 'b', label: '102', sharePermille: 300 }]);
         expect(rights.method).toBe('share');
-        expect(rights.warnings[0]).toMatch(/600/);
+        expect(rights.warnings[0]).toMatch(/suman 60 % en vez de 100 %/);
     });
 });
 

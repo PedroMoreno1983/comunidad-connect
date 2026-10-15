@@ -1,7 +1,7 @@
 import type { UnitRightsView } from '@/lib/assemblies/types';
 
 /**
- * Cliente de "Derechos de cada unidad (‰)" (Ley 21.442, arts. 3 y 15). Módulo
+ * Cliente de "Derechos de cada unidad" (valores en ‰; la interfaz los muestra en %) (Ley 21.442, arts. 3 y 15). Módulo
  * aparte de `src/lib/api.ts` (ese archivo supera el tamaño publicable); mismo
  * patrón de Service: la página llama a `/api/assemblies/unit-rights`.
  */

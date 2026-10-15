@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type { OnboardingSyncRowResult } from '@/lib/types';
 import type { OnboardingRightsUpsertResponse } from '@/lib/onboarding/types';
 import { applyOnboardingRights } from '@/lib/onboarding/unitRightsOnboarding';
-import type { ProvidedRight } from '@/lib/onboarding/unitRightsImport';
+import { legacyPermilleTextToPercent, type ProvidedRight } from '@/lib/onboarding/unitRightsImport';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,9 @@ type IncomingResident = {
     unit_id?: string;
     email?: string;
     phone?: string;
+    /** Derechos de la unidad en % ("0,532"). */
+    derechos_porcentaje?: string | number;
+    /** Formato anterior, en ‰: se convierte a %. */
     derechos_permil?: string | number;
 };
 
@@ -24,8 +27,8 @@ type NormalizedResident = {
     unit_id: string;
     email: string;
     phone: string;
-    /** Derechos de la unidad en ‰, como texto (opcional). */
-    derechos_permil: string;
+    /** Derechos de la unidad en %, como texto (opcional; se guardan en ‰ = % × 10). */
+    derechos_porcentaje: string;
 };
 
 type UnitInsertPayload = {
@@ -42,6 +45,13 @@ function cleanText(value: unknown) {
         : '';
 }
 
+function rightsPercentText(resident: IncomingResident): string {
+    const percent = cleanText(resident.derechos_porcentaje);
+    if (percent || resident.derechos_porcentaje !== undefined) return percent.slice(0, 40);
+    const legacy = cleanText(resident.derechos_permil);
+    return legacy ? legacyPermilleTextToPercent(legacy).slice(0, 40) : '';
+}
+
 function normalizeResidents(value: unknown): NormalizedResident[] {
     const rows = Array.isArray(value) ? value : [];
 
@@ -52,7 +62,7 @@ function normalizeResidents(value: unknown): NormalizedResident[] {
             unit_id: cleanText(resident.unit_id),
             email: cleanText(resident.email).toLowerCase(),
             phone: cleanText(resident.phone),
-            derechos_permil: cleanText(resident.derechos_permil).slice(0, 40),
+            derechos_porcentaje: rightsPercentText(resident),
         }))
         .filter((resident) => resident.name && resident.unit_id);
 }
@@ -255,7 +265,7 @@ export async function POST(request: Request) {
                 if (!resident.id) continue;
                 await supabaseAdmin.from('onboarding_import_rows').update({
                     name: resident.name, unit_number: resident.unit_id, email: resident.email, phone: resident.phone,
-                    raw_data: { name: resident.name, unit_id: resident.unit_id, email: resident.email, phone: resident.phone, derechos_permil: resident.derechos_permil },
+                    raw_data: { name: resident.name, unit_id: resident.unit_id, email: resident.email, phone: resident.phone, derechos_porcentaje: resident.derechos_porcentaje },
                     updated_at: new Date().toISOString(),
                 }).eq('id', resident.id).eq('batch_id', batchId);
             }
@@ -287,7 +297,7 @@ export async function POST(request: Request) {
                     tower: unitDetails.tower,
                     floor: unitDetails.floor,
                 });
-                providedRights.push({ unitId: finalUnitId, label: resident.unit_id, raw: resident.derechos_permil });
+                providedRights.push({ unitId: finalUnitId, label: resident.unit_id, raw: resident.derechos_porcentaje });
 
                 const residentProfileId = await ensureResidentProfile(
                     supabaseAdmin,
@@ -321,7 +331,7 @@ export async function POST(request: Request) {
             }
         }
 
-        // Derechos (‰): mismo servicio y auditoría que /admin/asambleas#derechos. No bloquea la sincronización.
+        // Derechos (en %, se guardan en ‰): mismo servicio y auditoría que /admin/asambleas#derechos. No bloquea la sincronización.
         const rights = await applyOnboardingRights(
             { id: profile.id, role: 'admin', communityId, name: profile.name ?? null },
             providedRights,
