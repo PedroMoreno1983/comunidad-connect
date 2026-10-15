@@ -306,8 +306,12 @@ export interface MyEligibility {
 }
 
 // ---------------------------------------------------------------------------
-// Derechos de cada unidad (‰) — Ley 21.442, arts. 3 y 15
+// Derechos de cada unidad — Ley 21.442, arts. 3 y 15. Se muestran y aceptan
+// en % (suman 100 %); se guardan en ‰ (`units.share_permille`, ‰ = % × 10).
 // ---------------------------------------------------------------------------
+
+/** Cómo viene expresada una columna de derechos: por ciento (%) o por mil (‰). */
+export type RightsScale = 'permille' | 'percent';
 
 /** Cómo se cargó una revisión de derechos. `direct`: cambio fuera de la herramienta (siempre provisorio). `onboarding`: desde la importación de unidades. */
 export type UnitRightsMethod = 'manual' | 'csv' | 'expense_prorate' | 'verify' | 'direct' | 'onboarding';
@@ -362,8 +366,9 @@ export interface UnitRightsView {
 
 export interface UnitRightsValidation {
     ok: boolean;
+    /** Suma en ‰ (la interfaz la muestra en %: ÷ 10). */
     total: number;
-    /** total − 1000, redondeado a 4 decimales. */
+    /** total − 1000‰, redondeado a 4 decimales (en % es ÷ 10). */
     difference: number;
     missing: string[];
     invalid: string[];
@@ -371,7 +376,11 @@ export interface UnitRightsValidation {
 }
 
 export interface RightsCsvResult {
+    /** Valores en ‰, ya convertidos desde la escala leída. */
     values: Record<string, number>;
+    /** Escala en que venían (por defecto %; ‰ si el encabezado o los valores lo indican). */
+    scale: RightsScale;
+    scaleInferred: boolean;
     unmatched: string[];
     duplicates: string[];
     invalid: string[];
