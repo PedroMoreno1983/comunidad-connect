@@ -34,7 +34,7 @@ import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { getUnitStatement } from '@/lib/finance/collectionService';
 import { createAgreement, listAgreementsForUnits } from '@/lib/finance/agreementService';
 import { activeCommitteeMembers } from '@/lib/finance/committeeMembers';
-import { proposeAgreementPlan, type AgreementProposal } from '@/lib/finance/agreementProposal';
+import { AGREEMENT_SIGNING_COPY, proposeAgreementPlan, type AgreementProposal } from '@/lib/finance/agreementProposal';
 import type { AgentKey, AgentProfile, ToolName } from '@/lib/agent-center/domain';
 import type { AgentExecutionResult } from '@/lib/agent-center/orchestrator';
 import type { ParkingBookingStatus, ParkingSpotStatus, ServiceRequestStatus, UserRole } from '@/lib/types';
@@ -666,6 +666,13 @@ function clp(value: number) {
     return `$${Math.round(value).toLocaleString('es-CL')}`;
 }
 
+/** La primera cuota vence al firmar; las siguientes, el día 5 de cada mes. */
+function agreementDatesText(proposal: AgreementProposal, pendingCommittee = false) {
+    return pendingCommittee
+        ? 'La primera cuota vence el dia en que el comite lo apruebe y las siguientes, el dia 5 de cada mes (con al menos 15 dias entre la primera y la segunda).'
+        : `La primera cuota vence al firmar (${proposal.startDate} si se firma hoy) y las siguientes, el dia 5 de cada mes desde el ${proposal.secondDueDate}.`;
+}
+
 async function buildAgreementProposal(communityId: string, unitId: string, installmentCount: number | null) {
     const statement = await getUnitStatement(communityId, unitId);
     const { data: lastExpense, error } = await getSupabaseAdmin().from('expenses').select('amount, month')
@@ -694,7 +701,7 @@ const previewPaymentAgreement: AgentToolDefinition = {
     label: 'Calcular propuesta de convenio',
     tool: {
         name: 'preview_payment_agreement',
-        description: 'Calcula una propuesta de convenio de pago para una unidad con saldo pendiente: total, cuotas y primera fecha. La cuota se ajusta para que el pago mensual siga siendo llevable. No crea nada. Solo administracion.',
+        description: 'Calcula una propuesta de convenio de pago para una unidad con saldo pendiente: total, cuotas y fechas. La primera cuota vence al firmar el convenio (asi, quien paga en el acto queda habilitado para votar en asambleas) y las siguientes el dia 5 de cada mes. La cuota se ajusta para que el pago mensual siga siendo llevable. No crea nada. Solo administracion.',
         input_schema: {
             type: 'object',
             properties: {
@@ -722,7 +729,7 @@ const previewPaymentAgreement: AgentToolDefinition = {
         const { proposal, unitLabel, overdueAmount, oldestOverdueMonth } = await buildAgreementProposal(communityId, unitId, args.installmentCount as number | null);
         return {
             entityType: 'unit', entityId: unitId, title: 'Propuesta de convenio', targetHref: '/admin/finanzas/convenios',
-            message: `Unidad ${unitLabel}: ${clp(proposal.totalAmount)} en ${proposal.installmentCount} cuotas de cerca de ${clp(proposal.installmentAmount)}, desde el ${proposal.startDate}. ${proposal.reasoning}`,
+            message: `Unidad ${unitLabel}: ${clp(proposal.totalAmount)} en ${proposal.installmentCount} cuotas de cerca de ${clp(proposal.installmentAmount)}. ${agreementDatesText(proposal)} ${proposal.reasoning} ${AGREEMENT_SIGNING_COPY}`,
             data: { unitId, unitLabel, overdueAmount, oldestOverdueMonth, ...proposal },
         };
     },
@@ -1001,7 +1008,7 @@ const proposePaymentAgreement: AgentToolDefinition = {
     label: 'Proponer convenio de pago',
     tool: {
         name: 'propose_payment_agreement',
-        description: 'Crea un convenio de pago para una unidad con el plan de preview_payment_agreement. Si la comunidad tiene comite de finanzas, queda pendiente de su revision. Requiere confirmacion humana. Solo administracion.',
+        description: 'Crea un convenio de pago para una unidad con el plan de preview_payment_agreement. Si la comunidad tiene comite de finanzas, queda pendiente de su revision y se firma el dia en que el comite lo aprueba; si no, queda firmado hoy. La primera cuota vence al firmar. Requiere confirmacion humana. Solo administracion.',
         input_schema: {
             type: 'object',
             properties: {
@@ -1039,7 +1046,6 @@ const proposePaymentAgreement: AgentToolDefinition = {
             title: `Convenio comunitario unidad ${unitLabel}`,
             totalAmount: proposal.totalAmount,
             installmentCount: proposal.installmentCount,
-            startDate: proposal.startDate,
             notes: [proposal.reasoning, String(args.note || '')].filter(Boolean).join(' '),
             reviewerId,
         });
@@ -1054,7 +1060,7 @@ const proposePaymentAgreement: AgentToolDefinition = {
         return {
             entityType: 'payment_agreement', entityId: agreement.id,
             title: pending ? 'Convenio enviado al comite' : 'Convenio abierto', targetHref: '/admin/finanzas/convenios',
-            message: `Unidad ${unitLabel}: ${clp(proposal.totalAmount)} en ${proposal.installmentCount} cuotas desde el ${proposal.startDate}. ${pending ? 'Queda pendiente de la revision del comite.' : 'Ya esta vigente y se aviso al propietario.'}`,
+            message: `Unidad ${unitLabel}: ${clp(proposal.totalAmount)} en ${proposal.installmentCount} cuotas. ${agreementDatesText(proposal, pending)} ${pending ? 'Queda pendiente de la revision del comite.' : 'Ya esta vigente (firmado hoy) y se aviso al propietario.'} ${AGREEMENT_SIGNING_COPY}`,
             data: { agreementId: agreement.id, status: agreement.status, ...proposal },
         };
     },
