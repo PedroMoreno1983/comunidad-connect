@@ -6,23 +6,25 @@ import type {
     OnboardingExtractedRow,
     OnboardingUpsertResponse,
 } from '@/lib/types';
+import type { RightsScale } from '@/lib/assemblies/types';
 
 /**
- * Tipos de los derechos por unidad (‰) en el onboarding. Viven aquí y no en
+ * Tipos de los derechos por unidad en el onboarding (se muestran en %; se
+ * guardan en ‰ en `units.share_permille`). Viven aquí y no en
  * `src/lib/types.ts` porque ese archivo ya no se puede publicar por la API de
  * GitHub (mismo criterio que `src/lib/assemblies/types.ts`).
  */
 
 /** Cómo viene expresada la columna de derechos: por mil (‰) o por ciento (%). */
-export type RightsScale = 'permille' | 'percent';
+export type { RightsScale };
 
-/** Fila extraída con sus derechos en ‰ como texto editable ("12,5"; vacío si no vino). */
+/** Fila extraída con sus derechos en % como texto editable ("0,532"; vacío si no vino). */
 export interface ExtractedResidentWithRights extends ExtractedResident {
-    derechos_permil: string;
+    derechos_porcentaje: string;
 }
 
 export interface OnboardingRightsRow extends OnboardingExtractedRow {
-    derechos_permil: string;
+    derechos_porcentaje: string;
 }
 
 /** Qué columna se leyó y cómo se interpretó (para mostrarlo en la vista previa). */
@@ -44,11 +46,13 @@ export interface OnboardingPendingTask {
 
 /** Vista previa de los derechos antes de sincronizar (solo con lo que trae el lote). */
 export interface OnboardingRightsPreview {
-    /** none: no vienen; partial: faltan, hay errores o no suman 1000‰; complete: todos y suman 1000‰ ± 0,5. */
+    /** none: no vienen; partial: faltan, hay errores o no suman 100 %; complete: todos y suman 100 % ± 0,05. */
     status: 'none' | 'partial' | 'complete';
     units: number;
     unitsWithValue: number;
+    /** Suma en ‰ (se muestra en %: ÷ 10). */
     total: number;
+    /** Suma − 1000‰ (se muestra en %: ÷ 10). */
     difference: number;
     errors: string[];
     /** Unidades con dos valores distintos en el lote. */
@@ -72,7 +76,7 @@ export type OnboardingRightsExtractResponse = Omit<OnboardingBatchExtractRespons
     rights?: OnboardingRightsMeta | null;
 };
 
-export type OnboardingRightsStoredRow = OnboardingBatchStoredRow & { derechos_permil: string };
+export type OnboardingRightsStoredRow = OnboardingBatchStoredRow & { derechos_porcentaje: string };
 
 export type OnboardingRightsRetryResponse = Omit<OnboardingBatchRetryResponse, 'data'> & {
     data?: OnboardingRightsRow[];
