@@ -103,6 +103,19 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
     return data as T;
 }
 
+/**
+ * El abono lo hace la base; el estado de los cobros de la unidad abonada lo
+ * recalcula el servidor. Si falla, el saldo de la cartola ya es correcto y el
+ * estado se recalcula en el próximo pago de esa comunidad.
+ */
+async function reconcileCreditedUnits(): Promise<void> {
+    try {
+        await fetch('/api/parking/payouts/reconcile', { method: 'POST', cache: 'no-store' });
+    } catch {
+        // Sin red: no bloquea la acción que ya se registró.
+    }
+}
+
 export const ParkingPayoutService = {
     /* — Dueño — */
 
@@ -159,15 +172,23 @@ export const ParkingPayoutService = {
 
     /* — Administración — */
 
+    /** Todas las liquidaciones de la comunidad, por páginas (los totales y la cola no se cortan). */
     async getCommunityPayouts(communityId: string): Promise<ParkingPayout[]> {
-        const { data, error } = await supabase
-            .from('parking_payouts')
-            .select(`${PAYOUT_COLUMNS},parking_spots(label),profiles!parking_payouts_owner_id_fkey(name)`)
-            .eq('community_id', communityId)
-            .order('created_at', { ascending: false })
-            .limit(300);
-        if (error) throw error;
-        return ((data || []) as Row[]).map(mapParkingPayoutRow);
+        const pageSize = 500;
+        const rows: Row[] = [];
+        for (let from = 0; ; from += pageSize) {
+            const { data, error } = await supabase
+                .from('parking_payouts')
+                .select(`${PAYOUT_COLUMNS},parking_spots(label),profiles!parking_payouts_owner_id_fkey(name)`)
+                .eq('community_id', communityId)
+                .order('created_at', { ascending: false })
+                .order('id', { ascending: true })
+                .range(from, from + pageSize - 1);
+            if (error) throw error;
+            rows.push(...((data || []) as Row[]));
+            if ((data?.length ?? 0) < pageSize) break;
+        }
+        return rows.map(mapParkingPayoutRow);
     },
 
     async adminMarkPaid(payoutId: string, paidOn: string, reference: string, note: string): Promise<void> {
@@ -177,7 +198,9 @@ export const ParkingPayoutService = {
     },
 
     async adminRetry(payoutId: string): Promise<ParkingPayoutStatus> {
-        return rpc<ParkingPayoutStatus>('admin_retry_parking_payout', { p_payout_id: payoutId });
+        const status = await rpc<ParkingPayoutStatus>('admin_retry_parking_payout', { p_payout_id: payoutId });
+        if (status === 'credited') await reconcileCreditedUnits();
+        return status;
     },
 
     async adminCancel(payoutId: string, note: string): Promise<void> {
@@ -189,7 +212,9 @@ export const ParkingPayoutService = {
     },
 
     async adminSync(): Promise<number> {
-        return rpc<number>('admin_sync_parking_payouts', {});
+        const created = await rpc<number>('admin_sync_parking_payouts', {});
+        await reconcileCreditedUnits();
+        return created;
     },
 
     async adminSetCommissionPercent(percent: number): Promise<number> {

@@ -259,11 +259,7 @@ export function formatDateEsCl(isoDate: string): string {
 }
 
 /** Hoy en Chile como AAAA-MM-DD (para la fecha por defecto de una transferencia). */
-export function todayInChile(now: Date = new Date()): string {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(now);
-}
+export { todayInChile } from '@/lib/finance/chileDates';
 
 /** Últimos 4 dígitos de una cuenta, para mostrarla sin exponerla entera. */
 export function maskAccountNumber(value: string | null | undefined): string {

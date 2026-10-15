@@ -354,10 +354,117 @@ describe('reversas y cancelaciones', () => {
     it('la máquina de estados no deja reabrir una liquidación cerrada', async () => {
         const c = await seedCommunity(db);
         const charge = await tenantPays(await bookAsResident(c));
-        await expect(db.query(`UPDATE public.parking_payouts SET status = 'pending' WHERE charge_id = $1`, [charge.id]))
+        await expect(db.query(`UPDATE public.parking_payouts SET status = 'donated' WHERE charge_id = $1`, [charge.id]))
             .rejects.toThrow(/Transición de liquidación inválida/);
         await expect(db.query(`UPDATE public.parking_payouts SET net_amount = 1 WHERE charge_id = $1`, [charge.id]))
             .rejects.toThrow(/no cambia/);
+    });
+});
+
+describe('revisión de la segunda pasada', () => {
+    it('marcar transferida registra la salida de banco: 2400 contra 1100, en el mismo paso', async () => {
+        const c = await seedCommunity(db);
+        await setSettings(c, { destination: 'bank_transfer', bank: true });
+        const payout = (await payoutFor((await tenantPays(await bookAsResident(c))).id))!;
+        const { rows: today } = await db.query<{ d: string }>(`SELECT to_char((NOW() AT TIME ZONE 'America/Santiago')::date, 'YYYY-MM-DD') AS d`);
+        await asUser(db, c.adminId, () => db.query(
+            'SELECT public.admin_mark_parking_payout_paid($1, $2::date, NULL, NULL)', [payout.id, today[0].d],
+        ));
+        const { rows } = await db.query<{ code: string; debit: number; credit: number }>(
+            `SELECT a.code, l.debit, l.credit FROM public.parking_payouts p
+               JOIN public.journal_lines l ON l.entry_id = p.journal_entry_id
+               JOIN public.ledger_accounts a ON a.id = l.account_id
+             WHERE p.id = $1 ORDER BY a.code`, [payout.id],
+        );
+        expect(rows).toEqual([
+            { code: '1100', debit: 0, credit: 3000 },
+            { code: '2400', debit: 3000, credit: 0 },
+        ]);
+        // Un segundo clic no registra otra transferencia.
+        await expect(asUser(db, c.adminId, () => db.query(
+            'SELECT public.admin_mark_parking_payout_paid($1, $2::date, NULL, NULL)', [payout.id, today[0].d],
+        ))).rejects.toThrow(/Solo una transferencia pendiente/);
+    });
+
+    it('con el período cerrado no se marca transferida (ni queda a medias)', async () => {
+        const c = await seedCommunity(db);
+        await setSettings(c, { destination: 'bank_transfer', bank: true });
+        const payout = (await payoutFor((await tenantPays(await bookAsResident(c))).id))!;
+        await db.query(`INSERT INTO public.finance_period_closures (community_id, month) VALUES ($1, '2999-12')`, [c.communityId]);
+        await db.exec(`
+          CREATE TRIGGER journal_entries_open_period BEFORE INSERT OR UPDATE OR DELETE ON public.journal_entries
+            FOR EACH ROW EXECUTE FUNCTION public.assert_finance_period_open('entry_date');
+        `);
+        try {
+            const { rows: today } = await db.query<{ d: string }>(`SELECT to_char((NOW() AT TIME ZONE 'America/Santiago')::date, 'YYYY-MM-DD') AS d`);
+            await expect(asUser(db, c.adminId, () => db.query(
+                'SELECT public.admin_mark_parking_payout_paid($1, $2::date, NULL, NULL)', [payout.id, today[0].d],
+            ))).rejects.toThrow(/cerrado/);
+            expect((await payoutFor(payout.charge_id))!.status).toBe('pending');
+        } finally {
+            await db.exec('DROP TRIGGER journal_entries_open_period ON public.journal_entries');
+            await db.query('DELETE FROM public.finance_period_closures WHERE community_id = $1', [c.communityId]);
+        }
+    });
+
+    it('no se puede anular a mano una liquidación mientras el arriendo siga pagado', async () => {
+        const c = await seedCommunity(db);
+        await setSettings(c, { destination: 'bank_transfer', bank: true });
+        const payout = (await payoutFor((await tenantPays(await bookAsResident(c))).id))!;
+        await expect(asUser(db, c.adminId, () => db.query(
+            'SELECT public.admin_cancel_parking_payout($1, $2)', [payout.id, 'por error'],
+        ))).rejects.toThrow(/sigue vigente/);
+        expect((await payoutFor(payout.charge_id))!.status).toBe('pending');
+    });
+
+    it('si en finanzas se elimina el abono, la liquidación vuelve a quedar por liquidar y para revisión', async () => {
+        const c = await seedCommunity(db);
+        const charge = await tenantPays(await bookAsResident(c));
+        const payout = (await payoutFor(charge.id))!;
+        expect(payout.status).toBe('credited');
+        await db.query('DELETE FROM public.unit_payments WHERE id = $1', [payout.unit_payment_id]);
+        const reopened = (await payoutFor(charge.id))!;
+        expect(reopened).toMatchObject({ status: 'pending', needs_review: true, unit_payment_id: null });
+        expect(reopened.review_reason).toMatch(/Se eliminó el abono/);
+
+        const result = await asUser(db, c.adminId, async () => (await db.query<{ r: string }>(
+            'SELECT public.admin_retry_parking_payout($1) AS r', [payout.id],
+        )).rows[0].r);
+        expect(result).toBe('credited');
+        const { rows } = await db.query(`SELECT 1 FROM public.unit_payments WHERE reference = $1`, [`parking_payout:${payout.id}`]);
+        expect(rows).toHaveLength(1);
+    });
+
+    it('el abono queda pendiente de recalcular la unidad del dueño (credit_reconciled_at NULL)', async () => {
+        const c = await seedCommunity(db);
+        const charge = await tenantPays(await bookAsResident(c));
+        const { rows } = await db.query<{ credit_reconciled_at: string | null }>(
+            'SELECT credit_reconciled_at FROM public.parking_payouts WHERE charge_id = $1', [charge.id],
+        );
+        expect(rows[0].credit_reconciled_at).toBeNull();
+        // La service role (el servidor) lo marca después de recalcular.
+        await asServiceRole(db, () => db.query(
+            'UPDATE public.parking_payouts SET credit_reconciled_at = NOW() WHERE charge_id = $1', [charge.id],
+        ));
+    });
+
+    it('comisión del 100 %: si el pago se revierte queda en pausa y se cierra de nuevo al volver a pagar; un reembolso la anula', async () => {
+        const c = await seedCommunity(db);
+        await db.query('UPDATE public.communities SET parking_commission_percent = 100 WHERE id = $1', [c.communityId]);
+        const bookingId = await bookAsResident(c);
+        const charge = await tenantPays(bookingId);
+        expect((await payoutFor(charge.id))!.status).toBe('retained');
+        await db.query(`UPDATE public.unit_charges SET status = 'pending' WHERE id = $1`, [charge.unit_charge_id]);
+        expect((await payoutFor(charge.id))!.status).toBe('on_hold');
+        await db.query(`UPDATE public.unit_charges SET status = 'paid' WHERE id = $1`, [charge.unit_charge_id]);
+        expect((await payoutFor(charge.id))!.status).toBe('retained');
+
+        await asUser(db, c.ownerId, () => db.query('SELECT public.cancel_parking_booking($1)', [bookingId]));
+        expect((await payoutFor(charge.id))!.status).toBe('on_hold');
+        await asUser(db, c.adminId, () => db.query(
+            'SELECT public.admin_mark_parking_charge_refunded($1, $2)', [charge.id, 'Devuelto'],
+        ));
+        expect((await payoutFor(charge.id))!.status).toBe('cancelled');
     });
 });
 

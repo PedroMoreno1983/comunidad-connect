@@ -202,8 +202,13 @@ CREATE TABLE IF NOT EXISTS public.parking_payouts (
   paid_on DATE,
   payment_reference TEXT CHECK (payment_reference IS NULL OR char_length(payment_reference) <= 120),
   payment_note TEXT CHECK (payment_note IS NULL OR char_length(payment_note) <= 500),
+  -- Asiento de la transferencia (2400 contra 1100 Banco).
+  journal_entry_id UUID REFERENCES public.journal_entries(id) ON DELETE SET NULL,
   settled_at TIMESTAMPTZ,
   settled_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  -- El servidor recalcula el estado de los cobros de la unidad abonada
+  -- (reconcileUnitStatuses) y lo marca aquí; NULL = pendiente de recalcular.
+  credit_reconciled_at TIMESTAMPTZ,
   cancelled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -219,6 +224,8 @@ CREATE INDEX IF NOT EXISTS parking_payouts_owner_idx
   ON public.parking_payouts(owner_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS parking_payouts_review_idx
   ON public.parking_payouts(community_id) WHERE needs_review;
+CREATE INDEX IF NOT EXISTS parking_payouts_credit_reconcile_idx
+  ON public.parking_payouts(community_id) WHERE status = 'credited' AND credit_reconciled_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS public.parking_payout_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -257,7 +264,12 @@ AS $$
   SELECT CASE p_from
     WHEN 'pending' THEN p_to IN ('paid', 'credited', 'donated', 'retained', 'on_hold', 'cancelled')
     WHEN 'on_hold' THEN p_to IN ('pending', 'cancelled')
-    ELSE FALSE -- paid, credited, donated, retained y cancelled son terminales
+    -- Comisión del 100 %: al dueño no se le entregó nada, así que una reversa
+    -- del pago o un reembolso la pausa o la anula igual que a una pendiente.
+    WHEN 'retained' THEN p_to IN ('on_hold', 'cancelled')
+    -- Se eliminó el abono en la cartola: vuelve a quedar por liquidar.
+    WHEN 'credited' THEN p_to = 'pending'
+    ELSE FALSE -- paid, donated y cancelled son terminales
   END;
 $$;
 
@@ -346,11 +358,14 @@ BEGIN
   END IF;
   UPDATE public.parking_payouts
   SET status = p_to,
-      settled_at = CASE WHEN p_to IN ('paid', 'credited', 'donated', 'retained') THEN NOW() ELSE settled_at END,
+      settled_at = CASE WHEN p_to IN ('paid', 'credited', 'donated', 'retained') THEN NOW()
+                        WHEN p_to IN ('pending', 'on_hold') THEN NULL ELSE settled_at END,
       settled_by = CASE WHEN p_to IN ('paid', 'credited', 'donated', 'retained')
                              AND p_actor IS NOT NULL AND EXISTS (SELECT 1 FROM public.profiles WHERE id = p_actor)
                         THEN p_actor ELSE settled_by END,
-      cancelled_at = CASE WHEN p_to = 'cancelled' THEN NOW() ELSE cancelled_at END
+      cancelled_at = CASE WHEN p_to = 'cancelled' THEN NOW() ELSE cancelled_at END,
+      unit_payment_id = CASE WHEN v_from = 'credited' AND p_to = 'pending' THEN NULL ELSE unit_payment_id END,
+      credit_reconciled_at = CASE WHEN p_to = 'credited' THEN NULL ELSE credit_reconciled_at END
   WHERE id = p_payout_id
   RETURNING * INTO v_payout;
   PERFORM public.parking_payout_log(v_payout, p_event, v_from, p_to, p_actor, p_details);
@@ -674,14 +689,14 @@ BEGIN
 
     IF OLD.status = 'paid' AND NEW.status = 'charged' THEN
       -- Se eliminó el pago que saldaba el cobro.
-      IF v_payout.status = 'pending' THEN
+      IF v_payout.status IN ('pending', 'retained') THEN
         PERFORM public.parking_payout_set_status(v_payout.id, 'on_hold', 'charge_payment_reversed', NULL);
       ELSIF v_payout.status IN ('paid', 'credited', 'donated') THEN
         PERFORM public.parking_payout_flag(v_payout.id, 'charge_payment_reversed',
           'El pago del arriendo se revirtió después de liquidar al dueño: revisar', NULL);
       END IF;
     ELSIF NEW.status IN ('refunded', 'voided') AND OLD.status IS DISTINCT FROM NEW.status THEN
-      IF v_payout.status IN ('pending', 'on_hold') THEN
+      IF v_payout.status IN ('pending', 'on_hold', 'retained') THEN
         PERFORM public.parking_payout_set_status(v_payout.id, 'cancelled', 'charge_' || NEW.status, NULL);
       ELSIF v_payout.status IN ('paid', 'credited', 'donated') THEN
         PERFORM public.parking_payout_flag(v_payout.id, 'charge_' || NEW.status,
@@ -691,7 +706,7 @@ BEGIN
       -- Cancelación sin costo sobre un cobro ya pagado: puede corresponder reembolso.
       SELECT status INTO v_booking_status FROM public.parking_bookings WHERE id = NEW.booking_id;
       IF v_booking_status = 'cancelled' THEN
-        IF v_payout.status = 'pending' THEN
+        IF v_payout.status IN ('pending', 'retained') THEN
           PERFORM public.parking_payout_set_status(v_payout.id, 'on_hold', 'booking_cancelled', NULL);
           PERFORM public.parking_payout_flag(v_payout.id, 'booking_cancelled',
             'La reserva se canceló y el arriendo puede requerir reembolso: revisar antes de liquidar', NULL);
@@ -715,6 +730,40 @@ DROP TRIGGER IF EXISTS trg_parking_charges_payout ON public.parking_charges;
 CREATE TRIGGER trg_parking_charges_payout
 AFTER UPDATE OF status, needs_review ON public.parking_charges
 FOR EACH ROW EXECUTE FUNCTION public.parking_payout_follow_charge();
+
+-- Si en finanzas se elimina el pago que respalda un abono, la liquidación vuelve
+-- a quedar por liquidar (y para revisión): nunca queda "abonada" sin abono.
+CREATE OR REPLACE FUNCTION public.parking_payout_on_credit_deleted()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_payout_id UUID;
+BEGIN
+  IF COALESCE(OLD.reference, '') NOT LIKE 'parking_payout:%' THEN
+    RETURN OLD;
+  END IF;
+  BEGIN
+    v_payout_id := substr(OLD.reference, char_length('parking_payout:') + 1)::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN OLD;
+  END;
+  IF EXISTS (SELECT 1 FROM public.parking_payouts WHERE id = v_payout_id AND status = 'credited') THEN
+    PERFORM public.parking_payout_set_status(v_payout_id, 'pending', 'credit_deleted', NULL,
+      jsonb_build_object('unit_payment_id', OLD.id));
+    PERFORM public.parking_payout_flag(v_payout_id, 'credit_deleted',
+      'Se eliminó el abono en gastos comunes: vuelve a liquidar o revisa con el dueño', NULL);
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_unit_payments_parking_payout_deleted ON public.unit_payments;
+CREATE TRIGGER trg_unit_payments_parking_payout_deleted
+AFTER DELETE ON public.unit_payments
+FOR EACH ROW EXECUTE FUNCTION public.parking_payout_on_credit_deleted();
 
 -- ============================================================
 -- 6. El abono a gastos comunes no es dinero que entra al banco
@@ -923,16 +972,43 @@ AS $$
 DECLARE
   v_payout public.parking_payouts%ROWTYPE;
   v_today DATE := (NOW() AT TIME ZONE 'America/Santiago')::date;
+  v_entry UUID;
+  v_liability UUID;
+  v_bank UUID;
+  v_spot_label TEXT;
 BEGIN
   v_payout := public.parking_payout_assert_admin(p_payout_id);
+  -- Bloquea la fila: dos clics no registran dos transferencias.
+  SELECT * INTO v_payout FROM public.parking_payouts WHERE id = p_payout_id FOR UPDATE;
   IF v_payout.destination <> 'bank_transfer' OR v_payout.status <> 'pending' THEN
     RAISE EXCEPTION 'Solo una transferencia pendiente se puede marcar como pagada' USING ERRCODE = '22023';
   END IF;
   IF p_paid_on IS NULL OR p_paid_on > v_today OR p_paid_on < (v_payout.created_at AT TIME ZONE 'America/Santiago')::date - 1 THEN
     RAISE EXCEPTION 'Indica la fecha de la transferencia (no puede ser futura)' USING ERRCODE = '22023';
   END IF;
+  -- Salida de banco: 2400 Liquidaciones a dueños (debe) contra 1100 Banco
+  -- (haber), en la misma transacción. Con el período cerrado, no se registra.
+  INSERT INTO public.ledger_accounts (community_id, code, name, kind)
+  VALUES (v_payout.community_id, '1100', 'Banco', 'asset'),
+         (v_payout.community_id, '2400', 'Liquidaciones a dueños de estacionamientos', 'liability')
+  ON CONFLICT (community_id, code) DO NOTHING;
+  SELECT id INTO STRICT v_bank FROM public.ledger_accounts
+    WHERE community_id = v_payout.community_id AND code = '1100';
+  SELECT id INTO STRICT v_liability FROM public.ledger_accounts
+    WHERE community_id = v_payout.community_id AND code = '2400';
+  SELECT label INTO v_spot_label FROM public.parking_spots WHERE id = v_payout.spot_id;
+  INSERT INTO public.journal_entries (community_id, entry_date, memo, source, source_record_id, created_by)
+  VALUES (v_payout.community_id, p_paid_on,
+          left('Transferencia al dueño del estacionamiento ' || COALESCE(v_spot_label, ''), 240),
+          'manual', v_payout.id, auth.uid())
+  RETURNING id INTO v_entry;
+  INSERT INTO public.journal_lines (entry_id, account_id, debit, credit)
+  VALUES (v_entry, v_liability, v_payout.net_amount, 0),
+         (v_entry, v_bank, 0, v_payout.net_amount);
+
   UPDATE public.parking_payouts
   SET paid_on = p_paid_on,
+      journal_entry_id = v_entry,
       payment_reference = NULLIF(left(btrim(COALESCE(p_reference, '')), 120), ''),
       payment_note = NULLIF(left(btrim(COALESCE(p_note, '')), 500), ''),
       needs_review = FALSE,
@@ -981,10 +1057,17 @@ SET search_path = public
 AS $$
 DECLARE
   v_payout public.parking_payouts%ROWTYPE;
+  v_charge_status TEXT;
 BEGIN
   v_payout := public.parking_payout_assert_admin(p_payout_id);
   IF v_payout.status NOT IN ('pending', 'on_hold') THEN
     RAISE EXCEPTION 'Solo una liquidación pendiente o suspendida se puede anular' USING ERRCODE = '22023';
+  END IF;
+  -- Mientras el arriendo siga cobrado o pagado, el dinero es del dueño: solo se
+  -- anula si el cobro ya se anuló, falló o se reembolsó (respaldo manual del trigger).
+  SELECT status INTO v_charge_status FROM public.parking_charges WHERE id = v_payout.charge_id;
+  IF v_charge_status IN ('paid', 'charged', 'pending') THEN
+    RAISE EXCEPTION 'El arriendo sigue vigente: la liquidación es del dueño y no se puede anular' USING ERRCODE = '22023';
   END IF;
   IF char_length(btrim(COALESCE(p_note, ''))) < 3 THEN
     RAISE EXCEPTION 'Indica el motivo de la anulación' USING ERRCODE = '22023';
@@ -1132,6 +1215,7 @@ REVOKE ALL ON FUNCTION public.parking_payout_credit_unit(UUID, UUID, UUID) FROM 
 REVOKE ALL ON FUNCTION public.parking_payout_execute(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parking_payout_open(UUID, UUID, BOOLEAN) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parking_payout_follow_charge() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.parking_payout_on_credit_deleted() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parking_payout_assert_admin(UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.parking_payout_split(INTEGER, NUMERIC) TO service_role;
 -- El CHECK de holder_rut la evalúa con el rol de quien escribe (las RPCs, como dueño).

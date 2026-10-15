@@ -28,8 +28,10 @@ type Filter = "todo" | "transferir" | "revisar";
  *
  * El abono a gastos comunes y la donación al fondo de reserva se hacen solos
  * cuando el arriendo queda pagado. Aquí queda lo que requiere una persona:
- * transferir y marcar como pagada, reintentar un abono que no se pudo hacer,
- * anular una pendiente y revisar las marcadas.
+ * transferir y marcar como pagada, reintentar un abono que no se pudo hacer o
+ * reanudar una en pausa, y revisar las marcadas. Una liquidación no se anula a
+ * mano mientras el arriendo siga vigente: se anula sola si el cobro se anula o
+ * se reembolsa.
  */
 export function ParkingPayoutsAdmin({ communityId }: { communityId: string }) {
   const { toast } = useToast();
@@ -220,19 +222,6 @@ export function ParkingPayoutsAdmin({ communityId }: { communityId: string }) {
                         onClick={() => run(payout, () => ParkingPayoutService.adminRetry(payout.id), "Liquidación procesada")}
                       >
                         Liquidar ahora
-                      </Button>
-                    )}
-                    {(payout.status === "pending" || payout.status === "on_hold") && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => {
-                          const reason = askNote("¿Por qué se anula esta liquidación?");
-                          if (reason) run(payout, () => ParkingPayoutService.adminCancel(payout.id, reason), "Liquidación anulada");
-                        }}
-                      >
-                        Anular
                       </Button>
                     )}
                     {payout.needsReview && (

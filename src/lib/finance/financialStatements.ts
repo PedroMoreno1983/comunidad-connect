@@ -20,6 +20,7 @@ import { getJournal } from './journalService';
 import { isCommitteeDiscount } from './adjustments';
 import { LEGAL_RESERVE_FUND, parseFundLabel } from './funds';
 import { isParkingPayoutCredit } from '@/lib/parkingPayouts/payouts';
+import { todayInChile } from './chileDates';
 
 const CATEGORY_LABELS: Record<string, string> = {
     water: 'Agua',
@@ -42,9 +43,19 @@ export interface StatementInputs {
     payments: Array<{ unitId: string; paidAt: string; amount: number; nonCash?: boolean }>;
     communityExpenses: Array<{ month: string; category: string; amount: number }>;
     reserveMovements: Array<{ month: string; kind: string; amount: number; label?: string }>;
+    /**
+     * Liquidaciones a dueños de estacionamientos ya entregadas (neto). El arriendo
+     * entra completo como ingreso (cargo 'service'), pero solo la comisión es de
+     * la comunidad: lo transferido o abonado al dueño es gasto. Una transferencia
+     * además es salida de caja. Las donaciones al fondo de reserva no van aquí:
+     * ya cuentan como aporte al fondo.
+     */
+    parkingPayouts?: Array<{ month: string; netAmount: number; kind: 'transfer' | 'credit' }>;
     /** Saldo de la cuenta 1100 Banco del libro de 4 cuentas. 0 si aún no hay asientos. */
     journalBank: number;
 }
+
+const PARKING_PAYOUTS_CATEGORY = 'parking_owner_payouts';
 
 function monthOf(date: string): string {
     return date.slice(0, 7);
@@ -73,8 +84,15 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
     for (const row of inputs.communityExpenses.filter(item => inYear(item.month))) {
         byCategory.set(row.category, (byCategory.get(row.category) || 0) + round(row.amount));
     }
+    const parkingPayoutsInYear = (inputs.parkingPayouts ?? []).filter(row => inYear(row.month));
+    const parkingPayoutTotal = parkingPayoutsInYear.reduce((sum, row) => sum + round(row.netAmount), 0);
+    if (parkingPayoutTotal > 0) byCategory.set(PARKING_PAYOUTS_CATEGORY, parkingPayoutTotal);
     const expenseLines = [...byCategory.entries()]
-        .map(([category, total]) => ({ category, label: CATEGORY_LABELS[category] || category, total }))
+        .map(([category, total]) => ({
+            category,
+            label: category === PARKING_PAYOUTS_CATEGORY ? 'Liquidaciones a dueños de estacionamientos' : CATEGORY_LABELS[category] || category,
+            total,
+        }))
         .sort((left, right) => right.total - left.total || left.category.localeCompare(right.category));
     const totalExpenses = expenseLines.reduce((sum, line) => sum + line.total, 0);
     const reserveTransfer = inputs.reserveMovements
@@ -88,6 +106,10 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
     }
     const expensesByMonth = new Map<string, number>();
     for (const row of inputs.communityExpenses) expensesByMonth.set(row.month, (expensesByMonth.get(row.month) || 0) + round(row.amount));
+    // La transferencia al dueño sale del banco; el abono a su cuenta no.
+    for (const row of inputs.parkingPayouts ?? []) {
+        if (row.kind === 'transfer') expensesByMonth.set(row.month, (expensesByMonth.get(row.month) || 0) + round(row.netAmount));
+    }
 
     const startingCash = inputs.openingCash;
     let running = startingCash;
@@ -167,7 +189,7 @@ export async function getFinancialStatements(
     const admin = getSupabaseAdmin();
     const cutoff = options.cutoffMonth;
 
-    const [units, expenses, charges, payments, communityExpenses, reserve, journal] = await Promise.all([
+    const [units, expenses, charges, payments, communityExpenses, reserve, journal, parkingPayouts] = await Promise.all([
         fetchAllFinanceRows<{ id: string }>((from, to) =>
             admin.from('units').select('id').eq('community_id', communityId).order('id').range(from, to)),
         fetchAllFinanceRows<{ unit_id: string; month: string; amount: number }>((from, to) =>
@@ -186,6 +208,7 @@ export async function getFinancialStatements(
             admin.from('reserve_fund_movements').select('month, kind, amount, label').eq('community_id', communityId)
                 .lte('month', cutoff).order('id').range(from, to)),
         getJournal(communityId, new Date(Date.UTC(Number(cutoff.slice(0, 4)), Number(cutoff.slice(5, 7)), 0)).toISOString().slice(0, 10)),
+        readDeliveredParkingPayouts(communityId, cutoff),
     ]);
 
     return buildFinancialStatements({
@@ -202,5 +225,28 @@ export async function getFinancialStatements(
         communityExpenses: communityExpenses.map(row => ({ month: String(row.month), category: String(row.category || 'other'), amount: Number(row.amount || 0) })),
         reserveMovements: reserve.map(row => ({ month: String(row.month), kind: String(row.kind), amount: Number(row.amount || 0), label: String(row.label || '') })),
         journalBank: Number(journal.accounts.find(account => account.code === '1100')?.balance || 0),
+        parkingPayouts,
     });
+}
+
+/** Liquidaciones transferidas o abonadas hasta el corte, con su mes en Chile. */
+async function readDeliveredParkingPayouts(communityId: string, cutoff: string) {
+    const admin = getSupabaseAdmin();
+    try {
+        const rows = await fetchAllFinanceRows<{ status: string; net_amount: number; paid_on: string | null; settled_at: string | null }>((from, to) =>
+            admin.from('parking_payouts').select('status, net_amount, paid_on, settled_at').eq('community_id', communityId)
+                .in('status', ['paid', 'credited']).order('id').range(from, to));
+        return rows
+            .map(row => ({
+                month: row.status === 'paid' && row.paid_on
+                    ? String(row.paid_on).slice(0, 7)
+                    : row.settled_at ? todayInChile(new Date(String(row.settled_at))).slice(0, 7) : '',
+                netAmount: Number(row.net_amount || 0),
+                kind: row.status === 'paid' ? 'transfer' as const : 'credit' as const,
+            }))
+            .filter(row => row.month && row.month <= cutoff && row.netAmount > 0);
+    } catch {
+        // Sin la migración de liquidaciones aplicada, no hay liquidaciones.
+        return [];
+    }
 }

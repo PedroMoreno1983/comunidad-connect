@@ -13,6 +13,7 @@
 import { allocateUnitPayments, legacySettlements, paymentMetadata } from './paymentAllocation';
 import type { FinancePageReader } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { reconcileParkingPayoutCredits } from '@/lib/parkingPayouts/reconcileCredits';
 import { BillingError, MONTH_PATTERN, DATE_PATTERN } from './billingService';
 import { isCommitteeDiscount, signedChargeAmount, COMMITTEE_DISCOUNT_LABEL, COMMITTEE_DISCOUNT_NOTE } from './adjustments';
 import {
@@ -294,6 +295,17 @@ export async function deletePayment(communityId: string, paymentId: string) {
  * y los descuentos se imputan a la deuda más antigua primero.
  */
 export async function reconcileUnitStatuses(communityId: string, unitId: string) {
+    await reconcileUnitStatusesOnly(communityId, unitId);
+    // Un pago puede saldar un arriendo de estacionamiento y abonar al dueño en
+    // otra unidad (trigger de base): esa unidad también se recalcula.
+    try {
+        await reconcileParkingPayoutCredits(communityId, reconcileUnitStatusesOnly);
+    } catch (error) {
+        console.error('[finance] No se pudo recalcular la unidad abonada por un arriendo', error);
+    }
+}
+
+async function reconcileUnitStatusesOnly(communityId: string, unitId: string) {
     const admin = getSupabaseAdmin();
     const [expensesResult, chargesResult, paymentsResult] = await Promise.all([
         admin.from('expenses')
