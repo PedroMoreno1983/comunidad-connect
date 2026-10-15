@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
-import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
+import { spreadsheetBufferToRows, spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import type { ExtractedDocumentKnowledge, ExtractedResident, OnboardingAssessment } from '@/lib/types';
+import type { ExtractedResidentWithRights, OnboardingRightsMeta } from './types';
+import { convertRightsColumn, extractRightsFromTable, parseDelimitedTable, permilleToText, rightsUnitKey, type TableRights } from './unitRightsImport';
 
 export const MAX_ONBOARDING_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_ONBOARDING_BATCH_BYTES = 50 * 1024 * 1024;
@@ -11,8 +13,8 @@ export const MAX_ONBOARDING_BATCH_FILES = 20;
 type ExtractionContext = { userId: string; communityId?: string | null; role?: string | null };
 
 const PROMPT = `Analiza documentos administrativos de condominios. Devuelve solo JSON valido con esta forma:
-{"residents":[{"name":"","unit_id":"","email":"","phone":""}],"document":{"title":"","document_kind":"resident_roster|acta|reglamento|contrato|comunicado|finanzas|mantenimiento|otro","summary":"","search_text":""}}.
-Extrae residentes, dueños o arrendatarios cuando existan. No inventes correos, telefonos, nombres ni unidades. document.summary debe resumir hechos verificables. document.search_text debe contener el texto y datos utiles para busqueda, conservando nombres, fechas, montos, obligaciones y acuerdos; maximo 30000 caracteres. Si no hay residentes devuelve residents: [].`;
+{"residents":[{"name":"","unit_id":"","email":"","phone":"","derechos":""}],"document":{"title":"","document_kind":"resident_roster|acta|reglamento|contrato|comunicado|finanzas|mantenimiento|otro","summary":"","search_text":""}}.
+Extrae residentes, dueños o arrendatarios cuando existan. No inventes correos, telefonos, nombres ni unidades. document.summary debe resumir hechos verificables. document.search_text debe contener el texto y datos utiles para busqueda, conservando nombres, fechas, montos, obligaciones y acuerdos; maximo 30000 caracteres. derechos: los derechos o el prorrateo de la unidad solo si el documento los trae (columna derechos, prorrateo, alícuota, ‰ o %), copiados tal cual con su símbolo; vacío si no aparecen. No los calcules ni los inventes. Si no hay residentes devuelve residents: [].`;
 
 function clean(value: unknown) {
     return typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\s+/g, ' ').trim() : '';
@@ -93,6 +95,47 @@ async function callGemini(text: string, inlineData: { mimeType: string; data: st
     return output;
 }
 
+/** Derechos (‰) desde la tabla original (CSV, TXT o Excel): más confiable que la IA para números. */
+async function tableRightsFrom(lower: string, text: string, buffer: Buffer): Promise<TableRights | null> {
+    try {
+        if (lower.endsWith('.csv') || lower.endsWith('.txt')) return extractRightsFromTable(parseDelimitedTable(text));
+        if (lower.endsWith('.xlsx')) {
+            for (const sheet of await spreadsheetBufferToRows(buffer, { maxRows: 10_000 })) {
+                const rights = extractRightsFromTable(sheet);
+                if (rights) return rights;
+            }
+        }
+    } catch (error) {
+        console.warn('[onboarding] rights column not read', error);
+    }
+    return null;
+}
+
+/**
+ * Agrega `derechos_permil` (‰ en texto) a cada fila: primero la columna de la
+ * tabla original; si no hay (PDF, Word), lo que copió la IA, con la misma conversión.
+ */
+export function attachRights(rows: (ExtractedResident & { rawRights?: string })[], table: TableRights | null): { rows: ExtractedResidentWithRights[]; rights: OnboardingRightsMeta | null } {
+    const strip = ({ rawRights, ...row }: ExtractedResident & { rawRights?: string }) => ({ row, rawRights: rawRights || '' });
+    const items = rows.map(strip);
+    if (table) {
+        return {
+            rows: items.map(({ row }) => ({ ...row, derechos_permil: table.byUnit.get(rightsUnitKey(row.unit_id)) ?? '' })),
+            rights: table.meta,
+        };
+    }
+    const raws = items.map(item => item.rawRights.trim());
+    if (!raws.some(Boolean)) return { rows: items.map(({ row }) => ({ ...row, derechos_permil: '' })), rights: null };
+    const converted = convertRightsColumn(raws, 'auto');
+    return {
+        rows: items.map(({ row }, index) => {
+            const value = converted.values[index];
+            return { ...row, derechos_permil: value === undefined ? raws[index] : permilleToText(value) };
+        }),
+        rights: { header: 'derechos (leídos por CoCo)', scale: converted.scale, scaleInferred: converted.scaleInferred, unitsWithValue: raws.filter(Boolean).length },
+    };
+}
+
 export async function extractResidentsFromBuffer(fileName: string, mimeType: string, buffer: Buffer, context: ExtractionContext) {
     if (buffer.byteLength > MAX_ONBOARDING_FILE_BYTES) throw new Error('Archivo demasiado grande. Maximo 10 MB por archivo.');
     const lower = fileName.toLowerCase();
@@ -121,8 +164,10 @@ export async function extractResidentsFromBuffer(fileName: string, mimeType: str
             unit_id: /^desconocid[oa]$/i.test(unit) ? '' : unit,
             email: clean(row.email).toLowerCase(),
             phone: clean(row.phone ?? row.phone_number),
+            rawRights: clean(row.derechos ?? row.derechos_permil ?? row.share_permille).slice(0, 40),
         };
     }).filter(row => row.name || row.unit_id || row.email || row.phone);
+    const withRights = attachRights(rows, await tableRightsFrom(lower, text, buffer));
     const document = record(parsedRecord.document);
     const knowledge: ExtractedDocumentKnowledge = {
         title: clean(document.title) || fileName,
@@ -131,8 +176,9 @@ export async function extractResidentsFromBuffer(fileName: string, mimeType: str
         searchText: (text.trim() || clean(document.search_text)).slice(0, 100_000),
     };
     return {
-        rows,
-        assessment: assessResidents(rows),
+        rows: withRights.rows,
+        rights: withRights.rights,
+        assessment: assessResidents(withRights.rows),
         knowledge,
         checksum: createHash('sha256').update(buffer).digest('hex'),
         mimeType: mimeType || 'application/octet-stream',

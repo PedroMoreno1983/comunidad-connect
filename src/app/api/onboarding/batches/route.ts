@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { assessResidents, extractResidentsFromBuffer, MAX_ONBOARDING_BATCH_BYTES, MAX_ONBOARDING_BATCH_FILES, MAX_ONBOARDING_FILE_BYTES, residentDedupeKey } from '@/lib/onboarding/documentExtractor';
-import type { ExtractedResident, OnboardingBatchDocumentResult, OnboardingBatchExtractResponse } from '@/lib/types';
+import type { OnboardingBatchDocumentResult } from '@/lib/types';
+import type { ExtractedResidentWithRights, OnboardingRightsExtractResponse, OnboardingRightsMeta } from '@/lib/onboarding/types';
+import { rightsFromRawData } from '@/lib/onboarding/unitRightsImport';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
@@ -14,7 +16,7 @@ function safeName(value: string) {
     return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 120) || 'documento';
 }
 
-function rowPayload(row: ExtractedResident, index: number, batchId: string, documentId: string, communityId: string) {
+function rowPayload(row: ExtractedResidentWithRights, index: number, batchId: string, documentId: string, communityId: string) {
     const warnings: string[] = [];
     if (!row.name) warnings.push('Falta nombre.');
     if (!row.unit_id) warnings.push('Falta unidad.');
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
 
         const documentResults: OnboardingBatchDocumentResult[] = [];
         const seenChecksums = new Set<string>();
+        let rightsMeta: OnboardingRightsMeta | null = null;
         for (const file of files) {
             const documentId = randomUUID();
             const buffer = Buffer.from(await file.arrayBuffer());
@@ -86,6 +89,7 @@ export async function POST(request: Request) {
                     continue;
                 }
                 seenChecksums.add(extraction.checksum);
+                if (extraction.rights && !rightsMeta) rightsMeta = extraction.rights;
                 const payload = extraction.rows.map((row, index) => rowPayload(row, index, batchId, documentId, profile.community_id!));
                 if (payload.length) {
                     const { error: rowsError } = await admin.from('onboarding_import_rows').upsert(payload, { onConflict: 'batch_id,dedupe_key', ignoreDuplicates: true });
@@ -105,7 +109,7 @@ export async function POST(request: Request) {
         }
 
         const { data: storedRows, error: rowsReadError } = await admin.from('onboarding_import_rows')
-            .select('id, name, unit_number, email, phone, status, warnings, document_id').eq('batch_id', batchId).order('created_at');
+            .select('id, name, unit_number, email, phone, status, warnings, document_id, raw_data').eq('batch_id', batchId).order('created_at');
         if (rowsReadError) throw rowsReadError;
         const normalizedRows = (storedRows || []).map(row => ({ name: row.name, unit_id: row.unit_number, email: row.email, phone: row.phone }));
         const assessment = assessResidents(normalizedRows);
@@ -124,11 +128,11 @@ export async function POST(request: Request) {
             summary: `Lote procesado: ${files.length} documento(s), ${assessment.validRows} fila(s) listas`,
             metadata: { source, documents: documentResults, assessment, warnings }, requestId: getRequestId(request),
         });
-        const payload: OnboardingBatchExtractResponse = {
-            batchId, status, assessment: { ...assessment, warnings }, documents: documentResults,
+        const payload: OnboardingRightsExtractResponse = {
+            batchId, status, assessment: { ...assessment, warnings }, documents: documentResults, rights: rightsMeta,
             data: (storedRows || []).map(row => ({
                 id: String(row.id), name: row.name ?? '', unit_id: row.unit_number ?? '',
-                email: row.email ?? '', phone: row.phone ?? '',
+                email: row.email ?? '', phone: row.phone ?? '', derechos_permil: rightsFromRawData(row.raw_data),
             })),
         };
         return NextResponse.json(payload);

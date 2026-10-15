@@ -30,6 +30,7 @@ const METHOD_LABEL: Record<UnitRightsMethod, string> = {
   expense_prorate: "Prorrateo de gastos comunes",
   verify: "Fuente registrada",
   direct: "Cambio fuera de esta sección",
+  onboarding: "Onboarding (importación de unidades)",
 };
 
 const SOURCE_PLACEHOLDER = "Reglamento de copropiedad, art. X / escritura";
