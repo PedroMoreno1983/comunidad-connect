@@ -92,6 +92,7 @@ export default function CommitteeReviewPage() {
             {agreement.notes && <p className="mt-2 text-sm cc-text-secondary">Antecedentes: {agreement.notes}</p>}
             <ul className="mt-3 space-y-1 text-sm">{agreement.installments.map(item => <li key={item.id}>Cuota {item.sequence} · vence {item.dueDate} · {money(item.amount)}</li>)}</ul>
             {agreement.status === 'pending_committee' ? <div className="mt-4 space-y-2">
+                <p className="text-sm cc-text-secondary">Si lo apruebas, el convenio queda firmado ese día: ahí vence la primera cuota y las fechas se recalculan desde entonces (las siguientes, el día 5 de cada mes). Al pagar la primera cuota, la unidad queda habilitada para votar en asambleas.</p>
                 <label className="block text-sm">Observación para administración
                     <textarea className="mt-1 w-full rounded-lg border bg-transparent p-2" maxLength={1000} rows={3} value={note[agreement.id] || ''}
                         onChange={event => setNote(current => ({ ...current, [agreement.id]: event.target.value }))} placeholder="Obligatoria si rechazas" />
