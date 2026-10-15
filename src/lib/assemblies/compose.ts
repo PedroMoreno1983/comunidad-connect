@@ -6,6 +6,7 @@
  * Sin montos, sin nombres de personas y sin lenguaje de deudor.
  */
 import { findMatter, QUORUM_CLASS_LABEL } from './catalog';
+import { formatRightsPercent, RIGHTS_TOLERANCE_PERMILLE, RIGHTS_TOTAL_PERMILLE } from './unitRights';
 import {
     CITATION_MAX_DAYS,
     CITATION_MIN_DAYS,
@@ -57,6 +58,8 @@ export function formatChileDateTime(iso: string): string {
 
 const fmtNumber = (value: number) => new Intl.NumberFormat('es-CL', { maximumFractionDigits: 4 }).format(value);
 const fmtPct = (value: number) => `${new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 }).format(value)}%`;
+/** Derechos de una unidad o un total: con alícuota (guardada en ‰) en %; con 1 unidad = 1 voto, votos. */
+const fmtRights = (weight: number, method: RightsSnapshot['method']) => method === 'share' ? formatRightsPercent(weight) || '0 %' : fmtNumber(weight);
 
 export interface CitationInput {
     title: string;
@@ -137,7 +140,9 @@ export function eligibilityMinutesSection(certificate: EligibilityCertificate | 
         return ['', '### Copropietarios hábiles', 'No se emitió certificado de habilidad para esta sesión.'];
     }
     const rights = method === 'share'
-        ? `${fmtNumber(certificate.eligibleWeight)}‰ de ${fmtNumber(certificate.totalWeight)}‰ de los derechos del condominio (${fmtPct(certificate.eligibleShare)})`
+        ? (Math.abs(certificate.totalWeight - RIGHTS_TOTAL_PERMILLE) <= RIGHTS_TOLERANCE_PERMILLE
+            ? `el ${fmtRights(certificate.eligibleWeight, method)} de los derechos del condominio`
+            : `${fmtRights(certificate.eligibleWeight, method)} de ${fmtRights(certificate.totalWeight, method)} de los derechos del condominio (${fmtPct(certificate.eligibleShare)})`)
         : `${fmtNumber(certificate.eligibleWeight)} de ${fmtNumber(certificate.totalWeight)} votos (1 unidad = 1 voto; ${fmtPct(certificate.eligibleShare)})`;
     return [
         '', '### Copropietarios hábiles',
@@ -178,7 +183,7 @@ export function composeMinutes(input: MinutesInput, narrative: string): string {
     if (verified.length) {
         lines.push('', '| Unidad | Calidad | Modalidad | Derechos |', '|---|---|---|---|');
         [...verified].sort((a, b) => a.unitLabel.localeCompare(b.unitLabel, 'es')).forEach(row => {
-            lines.push(`| ${row.unitLabel} | ${CAPACITY_LABEL[row.capacity]} | ${row.mode === 'remote' ? 'En línea (imagen y voz verificadas)' : 'Presencial'} | ${fmtNumber(row.weight)} |`);
+            lines.push(`| ${row.unitLabel} | ${CAPACITY_LABEL[row.capacity]} | ${row.mode === 'remote' ? 'En línea (imagen y voz verificadas)' : 'Presencial'} | ${fmtRights(row.weight, input.rights.method)} |`);
         });
     }
     lines.push(...eligibilityMinutesSection(input.eligibility, input.rights.method));
@@ -193,7 +198,8 @@ export function composeMinutes(input: MinutesInput, narrative: string): string {
         }
         const { tally, percentages } = item.result;
         lines.push(`- Resultado: **${OUTCOME_LABEL[item.outcome]}**.`);
-        lines.push(`- A favor: ${fmtNumber(tally.yes)} · En contra: ${fmtNumber(tally.no)} · Abstenciones: ${fmtNumber(tally.abstain)} (derechos).`);
+        const unit = input.rights.method === 'share' ? 'de los derechos' : 'votos';
+        lines.push(`- A favor: ${fmtRights(tally.yes, input.rights.method)} · En contra: ${fmtRights(tally.no, input.rights.method)} · Abstenciones: ${fmtRights(tally.abstain, input.rights.method)} (${unit}).`);
         lines.push(`- A favor sobre la base de ${percentages.base === 'present' ? 'los derechos presentes' : 'los derechos del condominio'}: ${fmtPct(percentages.yesOfBase)}. Presentes al votar: ${fmtPct(percentages.presentOfTotal)} de los derechos.`);
         lines.push(`- Regla aplicada: ${item.result.rule}`);
         if (item.notes) lines.push(`- Observaciones: ${item.notes}`);
