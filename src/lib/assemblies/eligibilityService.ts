@@ -47,7 +47,7 @@ export async function loadEligibilitySources(communityId: string): Promise<{ deb
             unitId: String(agreement.unitId),
             status: String(agreement.status),
             createdAt: String(agreement.createdAt || ''),
-            installments: (agreement.installments || []).map(item => ({ sequence: Number(item.sequence), dueDate: String(item.dueDate || ''), status: String(item.status) })),
+            installments: (agreement.installments || []).map(item => ({ sequence: Number(item.sequence), dueDate: String(item.dueDate || ''), status: String(item.status), paidAt: item.paidAt ? String(item.paidAt) : null })),
         })),
     };
 }
