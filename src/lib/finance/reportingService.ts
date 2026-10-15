@@ -9,6 +9,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, MONTH_PATTERN } from './billingService';
 import { formatFundLabel, groupFundMovements, LEGAL_RESERVE_FUND, normalizeFundName, parseFundLabel } from './funds';
+import { isParkingPayoutCredit } from '@/lib/parkingPayouts/payouts';
 
 export interface ReserveFundState {
     balance: number;
@@ -301,7 +302,7 @@ export async function getMonthlyReport(communityId: string, month: string): Prom
         admin.from('unit_charges')
             .select('amount').eq('community_id', communityId).eq('month', month).neq('status', 'cancelled'),
         admin.from('unit_payments')
-            .select('amount, method').eq('community_id', communityId)
+            .select('amount, method, reference').eq('community_id', communityId)
             .gte('paid_at', monthStart).lt('paid_at', nextMonth),
         admin.from('reserve_fund_movements')
             .select('kind, amount').eq('community_id', communityId),
@@ -329,6 +330,9 @@ export async function getMonthlyReport(communityId: string, month: string): Prom
     const byMethodMap = new Map<string, number>();
     let collectedTotal = 0;
     for (const row of paymentsResult.data ?? []) {
+        // El abono de una liquidación de estacionamiento baja la deuda del dueño,
+        // pero no es dinero recaudado: ya entró cuando pagó el arrendatario.
+        if (isParkingPayoutCredit((row as { reference?: string | null }).reference)) continue;
         const amount = Math.round(Number(row.amount || 0));
         collectedTotal += amount;
         const key = String(row.method || 'other');

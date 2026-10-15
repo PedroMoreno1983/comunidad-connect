@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { ParkingOwnerPayouts } from "@/components/parking/ParkingOwnerPayouts";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
@@ -49,7 +50,6 @@ interface ParkingOwnerDashboardProps {
   onCreateSpot: (input: ParkingSpotInput, availability: Omit<ParkingAvailabilityRule, "id" | "spotId">[]) => Promise<void>;
   onToggleSpot: (spotId: string, isAvailable: boolean) => Promise<void>;
   onDeleteSpot: (spotId: string) => Promise<void>;
-  onApplyToExpenses: (amount: number) => Promise<void>;
   /** El comité habilitó el arriendo a conductores ajenos al condominio. */
   externalEnabled: boolean;
 }
@@ -63,13 +63,10 @@ export function ParkingOwnerDashboard({
   onCreateSpot,
   onToggleSpot,
   onDeleteSpot,
-  onApplyToExpenses,
   externalEnabled,
 }: ParkingOwnerDashboardProps) {
   const { toast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showExpenseOffsetModal, setShowExpenseOffsetModal] = useState(false);
-  const [offsetAmount, setOffsetAmount] = useState<number>(0);
   const [saving, setSaving] = useState(false);
 
   // New Spot Form state
@@ -183,37 +180,6 @@ export function ParkingOwnerDashboard({
     }
   };
 
-  const handleApplyOffset = async () => {
-    if (offsetAmount <= 0 || (earnings && offsetAmount > earnings.availableBalance)) {
-      toast({
-        title: "Monto inválido",
-        description: "Ingresa un monto válido menor o igual a tu saldo disponible.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await onApplyToExpenses(offsetAmount);
-      toast({
-        title: "Descuento aplicado con éxito",
-        description: `Se abonaron ${formatCurrency(offsetAmount)} como rebaja en tu próximo aviso de gastos comunes.`,
-        variant: "success",
-      });
-      setShowExpenseOffsetModal(false);
-      onRefresh();
-    } catch (err: unknown) {
-      toast({
-        title: "No se pudo aplicar",
-        description: parkingErrorMessage(err),
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const field =
     "w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-[13px] cc-text-primary";
 
@@ -241,26 +207,22 @@ export function ParkingOwnerDashboard({
         <div className="rounded-2xl border border-subtle bg-surface p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider cc-text-tertiary">
-              Saldo para Descuento GGCC
+              Destino de lo recaudado
             </span>
             <div className="p-2 rounded-xl bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]">
               <Receipt size={16} />
             </div>
           </div>
-          <p className="mt-3 text-[22px] font-bold text-emerald-600">
-            {formatCurrency(earnings?.availableBalance || 0)}
+          <p className="mt-3 text-[12px] cc-text-secondary">
+            Tú decides: transferencia a tu cuenta, abono a tus gastos comunes o donación al fondo de reserva.
           </p>
-          <button
-            onClick={() => {
-              setOffsetAmount(earnings?.availableBalance || 0);
-              setShowExpenseOffsetModal(true);
-            }}
-            disabled={!earnings || earnings.availableBalance <= 0}
-            className="mt-1 text-[11px] font-semibold text-[var(--cc-copper)] hover:underline flex items-center gap-1 disabled:opacity-50 disabled:no-underline text-left cursor-pointer"
+          <a
+            href="#liquidaciones"
+            className="mt-1 text-[11px] font-semibold text-[var(--cc-copper)] hover:underline flex items-center gap-1 text-left"
           >
             <ArrowDownToLine size={12} />
-            Abonar a Gastos Comunes →
-          </button>
+            Ver mis liquidaciones →
+          </a>
         </div>
 
         <div className="rounded-2xl border border-subtle bg-surface p-4 flex flex-col justify-between">
@@ -300,6 +262,8 @@ export function ParkingOwnerDashboard({
           </Button>
         </div>
       </div>
+
+      <ParkingOwnerPayouts />
 
       {/* Mis Estacionamientos Publicados */}
       <section className="space-y-4">
@@ -716,67 +680,6 @@ export function ParkingOwnerDashboard({
         </div>
       )}
 
-      {/* Modal: Abonar a Gastos Comunes */}
-      {showExpenseOffsetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md rounded-3xl border border-subtle bg-surface p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-                <Receipt size={20} />
-              </div>
-              <div>
-                <h3 className="text-[16px] font-semibold cc-text-primary">
-                  Abonar a Gastos Comunes
-                </h3>
-                <p className="text-[12px] cc-text-secondary">
-                  Aplica tu saldo acumulado directamente como descuento en tu próximo cobro.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-subtle/30 border border-subtle space-y-2">
-              <div className="flex justify-between text-[13px]">
-                <span className="cc-text-secondary">Saldo Disponible:</span>
-                <span className="font-bold text-emerald-600">
-                  {formatCurrency(earnings?.availableBalance || 0)}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
-                Monto a Descontar ($ CLP)
-              </label>
-              <input
-                type="number"
-                className={field}
-                value={offsetAmount}
-                max={earnings?.availableBalance || 0}
-                onChange={(e) => setOffsetAmount(Number(e.target.value))}
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-subtle">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowExpenseOffsetModal(false)}
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="copper"
-                size="sm"
-                onClick={handleApplyOffset}
-                disabled={saving || offsetAmount <= 0}
-              >
-                {saving ? "Aplicando…" : "Confirmar Abono"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { signHaulmerParams } from '@/lib/services/haulmer';
 import { todayInChile } from '@/lib/finance/chileDates';
 import { recordOnlineExpensePayment } from '@/lib/payments/recordOnlineExpensePayment';
 import crypto from 'crypto';
+import { reconcileParkingPayoutCredits } from '@/lib/parkingPayouts/reconcileCredits';
+import { reconcileUnitStatuses } from '@/lib/finance/collectionService';
 
 type CallbackParams = Record<string, string>;
 
@@ -168,7 +170,21 @@ async function processParkingPayment(chargeId: string, params: CallbackParams) {
         p_gateway_reference: String(params.x_gateway_reference || params.x_reference || '').slice(0, 200),
     });
     if (error) throw error;
-    return { status: String(data || 'recorded') };
+    const status = String(data || 'recorded');
+    if (status === 'processed') {
+        // El pago abre la liquidación al dueño; si fue un abono a sus gastos
+        // comunes, se recalcula el estado de su unidad. Nunca rompe el webhook.
+        try {
+            const { data: charge } = await supabaseAdmin
+                .from('parking_charges').select('community_id').eq('id', chargeId).maybeSingle();
+            if (charge?.community_id) {
+                await reconcileParkingPayoutCredits(String(charge.community_id), reconcileUnitStatuses);
+            }
+        } catch (reconcileError) {
+            console.error('[Haulmer] No se pudo recalcular la unidad abonada por el arriendo', reconcileError);
+        }
+    }
+    return { status };
 }
 
 export async function POST(req: Request) {

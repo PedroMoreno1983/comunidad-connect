@@ -3287,7 +3287,8 @@ export const ParkingService = {
             const transactions: ParkingEarningsTransaction[] = [];
 
             for (const b of completedBookings) {
-                const payout = b.ownerPayoutAmount || (b.totalAmount * 0.9); // 90% para el dueño por defecto si no viene desglosado
+                // ?? y no ||: con comisión del 100 % el neto del dueño es 0 legítimo.
+                const payout = b.ownerPayoutAmount ?? b.totalAmount;
                 totalHistoricalEarnings += payout;
                 const bDate = new Date(b.startsAt);
                 if (bDate >= startOfMonth) {

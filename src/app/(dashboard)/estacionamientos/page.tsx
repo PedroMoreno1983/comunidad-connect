@@ -57,6 +57,8 @@ import { ParkingAccessPassModal } from "@/components/parking/ParkingAccessPassMo
 import { ParkingOwnerDashboard } from "@/components/parking/ParkingOwnerDashboard";
 import { ParkingConciergeGate } from "@/components/parking/ParkingConciergeGate";
 import { ParkingChargesAdmin } from "@/components/parking/ParkingChargesAdmin";
+import { ParkingPayoutsAdmin } from "@/components/parking/ParkingPayoutsAdmin";
+import { validateCommissionPercent } from "@/lib/parkingPayouts/payouts";
 import type {
   ParkingAccessRequest,
   ParkingCommunityAccess,
@@ -695,14 +697,6 @@ function EstacionamientosContent() {
     }
   };
 
-  const handleApplyToExpenses = async (amount: number) => {
-    const result = await ParkingService.applyEarningsToExpenses(amount);
-    // El abono todavía no está conectado a billingService. Si el servicio dice
-    // que no se aplicó, hay que lanzar: si no, el dashboard celebra un descuento
-    // que nunca llegó al gasto común.
-    if (!result.success) throw new Error(result.message);
-  };
-
   const start = parseLocalDateTime(startValue);
   const end = parseLocalDateTime(endValue);
   const hours = start && end ? parkingDurationHours(start.toISOString(), end.toISOString()) : 0;
@@ -1060,7 +1054,6 @@ function EstacionamientosContent() {
           onCreateSpot={handleCreateSpot}
           onToggleSpot={handleToggleSpot}
           onDeleteSpot={handleDeleteSpot}
-          onApplyToExpenses={handleApplyToExpenses}
           externalEnabled={Boolean(communitySettings?.externalEnabled)}
         />
       )}
@@ -1148,12 +1141,13 @@ function EstacionamientosContent() {
 
             <div>
               <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
-                Comisión Comunitaria (% Fondo de Reserva)
+                Comisión de la comunidad (%)
               </label>
               <input
                 type="number"
                 min={0}
-                max={50}
+                max={100}
+                step={0.01}
                 className={field}
                 value={communitySettings?.commissionPercent ?? 0}
                 onChange={(e) =>
@@ -1163,7 +1157,7 @@ function EstacionamientosContent() {
                 }
               />
               <span className="text-[11px] cc-text-secondary mt-1 block">
-                Porcentaje de cada arriendo que ingresa directamente al fondo de reserva o rebaja general del condominio.
+                Porcentaje de cada arriendo pagado que se queda en la comunidad (0 a 100 %, hasta 2 decimales). El resto se liquida al dueño del estacionamiento, al destino que él elija.
               </span>
             </div>
 
@@ -1216,6 +1210,11 @@ function EstacionamientosContent() {
               variant="copper"
               onClick={async () => {
                 if (!communitySettings || !user?.communityId) return;
+                const commissionError = validateCommissionPercent(Number(communitySettings.commissionPercent));
+                if (commissionError) {
+                  toast({ title: "Revisa la comisión", description: commissionError, variant: "destructive" });
+                  return;
+                }
                 try {
                   await ParkingService.updateCommunitySettings(user.communityId, communitySettings);
                   if (communitySettings.freeCancellationHours !== undefined) {
@@ -1239,6 +1238,10 @@ function EstacionamientosContent() {
 
       {activeTab === "admin" && isAdmin && user?.communityId && (
         <ParkingChargesAdmin communityId={user.communityId} />
+      )}
+
+      {activeTab === "admin" && isAdmin && user?.communityId && (
+        <ParkingPayoutsAdmin communityId={user.communityId} />
       )}
 
       {/* Digital Access Pass Modal */}
