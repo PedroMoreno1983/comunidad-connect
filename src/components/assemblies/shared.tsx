@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Tag } from "@/components/cc/Tag";
 import { DigestMarkdown } from "@/components/committeeDigest/DigestMarkdown";
+import { formatRightsPercent, RIGHTS_TOLERANCE_PERMILLE, RIGHTS_TOTAL_PERMILLE } from "@/lib/assemblies/unitRights";
 import type {
   AgendaOutcome,
   AssemblyAgendaItem,
@@ -75,6 +76,24 @@ export function fmt(value: number) {
   return new Intl.NumberFormat("es-CL", { maximumFractionDigits: 4 }).format(value);
 }
 
+/**
+ * Derechos de una unidad o de un total: con alícuota (`share`, guardada en ‰)
+ * se muestran en % ("0,532 %", el total suma 100 %); con 1 unidad = 1 voto, votos.
+ */
+export function fmtRights(weight: number, method: "share" | "equal") {
+  return method === "share" ? formatRightsPercent(weight) || "0 %" : fmt(weight);
+}
+
+/**
+ * "X de Y de los derechos" / "X de Y votos". Con alícuotas que suman 100 % basta
+ * "X de los derechos"; si no suman 100 %, también se muestra el total y la proporción.
+ */
+export function rightsOfTotal(part: number, total: number, share: number, method: "share" | "equal") {
+  if (method === "equal") return `${fmt(part)} de ${fmt(total)} votos (${share.toLocaleString("es-CL")}%)`;
+  if (Math.abs(total - RIGHTS_TOTAL_PERMILLE) <= RIGHTS_TOLERANCE_PERMILLE) return `${fmtRights(part, method)} de los derechos`;
+  return `${fmtRights(part, method)} de ${fmtRights(total, method)} de los derechos (${share.toLocaleString("es-CL")}% del total)`;
+}
+
 export function Card({ children, id, className = "" }: { children: React.ReactNode; id?: string; className?: string }) {
   return (
     <section id={id} className={`rounded-2xl border p-5 ${className}`} style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
@@ -118,7 +137,7 @@ export function QuorumMeter({ quorum, rightsMethod }: { quorum: LiveQuorum; righ
         <div className="h-full" style={{ width: `${width}%`, background: quorum.constitutionMet ? "var(--cc-sage)" : "var(--cc-amber)" }} />
       </div>
       <p className="mt-2 text-xs cc-text-tertiary">
-        {quorum.presentUnits} de {quorum.totalUnits} unidades acreditadas · {fmt(quorum.presentWeight)} de {fmt(quorum.totalWeight)} {rightsMethod === "share" ? "‰ de derechos" : "votos (1 unidad = 1 voto)"}
+        {quorum.presentUnits} de {quorum.totalUnits} unidades acreditadas · {fmtRights(quorum.presentWeight, rightsMethod)} de {fmtRights(quorum.totalWeight, rightsMethod)} {rightsMethod === "share" ? "de los derechos" : "votos (1 unidad = 1 voto)"}
       </p>
       <p className="mt-1 text-xs cc-text-tertiary">{quorum.constitutionRule}</p>
       <EligibilityTotals quorum={quorum} rightsMethod={rightsMethod} />
@@ -136,18 +155,18 @@ export function EligibilityTotals({ quorum, rightsMethod }: { quorum: LiveQuorum
   if (!certificate) return <p className="mt-1 text-xs cc-text-tertiary">Certificado de habilidad: lo emite el administrador antes de la primera votación.</p>;
   return (
     <p className="mt-1 text-xs cc-text-tertiary">
-      Habilitadas para votar: {certificate.eligibleUnits} de {certificate.totalUnits} unidades · {fmt(certificate.eligibleWeight)}{rightsMethod === "share" ? "‰" : ""} de {fmt(certificate.totalWeight)}{rightsMethod === "share" ? "‰ de derechos" : " votos"} ({certificate.eligibleShare.toLocaleString("es-CL")}%) · corte {certificate.cutoffDate}
+      Habilitadas para votar: {certificate.eligibleUnits} de {certificate.totalUnits} unidades · {rightsOfTotal(certificate.eligibleWeight, certificate.totalWeight, certificate.eligibleShare, rightsMethod)} · corte {certificate.cutoffDate}
     </p>
   );
 }
 
-export function ItemResult({ item }: { item: AssemblyAgendaItem }) {
+export function ItemResult({ item, rightsMethod }: { item: AssemblyAgendaItem; rightsMethod: "share" | "equal" }) {
   if (!item.result || !item.outcome) return null;
   const { tally, percentages } = item.result;
   return (
     <div className="mt-3 rounded-xl border p-3 text-sm cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>
       <div className="flex flex-wrap items-center gap-2"><OutcomeTag outcome={item.outcome} /><span>A favor {percentages.yesOfBase.toLocaleString("es-CL")}% de {percentages.base === "present" ? "los derechos presentes" : "los derechos del condominio"}</span></div>
-      <p className="mt-2">A favor {fmt(tally.yes)} · En contra {fmt(tally.no)} · Abstención {fmt(tally.abstain)} · Presentes {percentages.presentOfTotal.toLocaleString("es-CL")}%</p>
+      <p className="mt-2">A favor {fmtRights(tally.yes, rightsMethod)} · En contra {fmtRights(tally.no, rightsMethod)} · Abstención {fmtRights(tally.abstain, rightsMethod)} · Presentes {percentages.presentOfTotal.toLocaleString("es-CL")}%</p>
       <p className="mt-1 text-xs cc-text-tertiary">Regla aplicada: {item.result.rule}</p>
       {item.result.pendingVerification > 0 && <p className="mt-1 text-xs cc-text-tertiary">{item.result.pendingVerification} voto(s) en línea sin verificar no se contaron.</p>}
     </div>

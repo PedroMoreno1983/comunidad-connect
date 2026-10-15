@@ -3,7 +3,7 @@ import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiU
 import { spreadsheetBufferToRows, spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import type { ExtractedDocumentKnowledge, ExtractedResident, OnboardingAssessment } from '@/lib/types';
 import type { ExtractedResidentWithRights, OnboardingRightsMeta } from './types';
-import { convertRightsColumn, extractRightsFromTable, parseDelimitedTable, permilleToText, rightsUnitKey, type TableRights } from './unitRightsImport';
+import { convertRightsColumn, extractRightsFromTable, parseDelimitedTable, permilleToPercentText, rightsUnitKey, type TableRights } from './unitRightsImport';
 
 export const MAX_ONBOARDING_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_ONBOARDING_BATCH_BYTES = 50 * 1024 * 1024;
@@ -95,12 +95,12 @@ async function callGemini(text: string, inlineData: { mimeType: string; data: st
     return output;
 }
 
-/** Derechos (‰) desde la tabla original (CSV, TXT o Excel): más confiable que la IA para números. */
+/** Derechos desde la tabla original (CSV, TXT o Excel): más confiable que la IA para números. */
 async function tableRightsFrom(lower: string, text: string, buffer: Buffer): Promise<TableRights | null> {
     try {
         if (lower.endsWith('.csv') || lower.endsWith('.txt')) return extractRightsFromTable(parseDelimitedTable(text));
         if (lower.endsWith('.xlsx')) {
-            for (const sheet of await spreadsheetBufferToRows(buffer, { maxRows: 10_000 })) {
+            for (const sheet of await spreadsheetBufferToRows(buffer, { maxRows: 10_000, decimalComma: true })) {
                 const rights = extractRightsFromTable(sheet);
                 if (rights) return rights;
             }
@@ -112,25 +112,26 @@ async function tableRightsFrom(lower: string, text: string, buffer: Buffer): Pro
 }
 
 /**
- * Agrega `derechos_permil` (‰ en texto) a cada fila: primero la columna de la
- * tabla original; si no hay (PDF, Word), lo que copió la IA, con la misma conversión.
+ * Agrega `derechos_porcentaje` (% en texto) a cada fila: primero la columna de la
+ * tabla original; si no hay (PDF, Word), lo que copió la IA, con la misma
+ * conversión (en ‰ si así venía: ÷ 10).
  */
 export function attachRights(rows: (ExtractedResident & { rawRights?: string })[], table: TableRights | null): { rows: ExtractedResidentWithRights[]; rights: OnboardingRightsMeta | null } {
     const strip = ({ rawRights, ...row }: ExtractedResident & { rawRights?: string }) => ({ row, rawRights: rawRights || '' });
     const items = rows.map(strip);
     if (table) {
         return {
-            rows: items.map(({ row }) => ({ ...row, derechos_permil: table.byUnit.get(rightsUnitKey(row.unit_id)) ?? '' })),
+            rows: items.map(({ row }) => ({ ...row, derechos_porcentaje: table.byUnit.get(rightsUnitKey(row.unit_id)) ?? '' })),
             rights: table.meta,
         };
     }
     const raws = items.map(item => item.rawRights.trim());
-    if (!raws.some(Boolean)) return { rows: items.map(({ row }) => ({ ...row, derechos_permil: '' })), rights: null };
+    if (!raws.some(Boolean)) return { rows: items.map(({ row }) => ({ ...row, derechos_porcentaje: '' })), rights: null };
     const converted = convertRightsColumn(raws, 'auto');
     return {
         rows: items.map(({ row }, index) => {
             const value = converted.values[index];
-            return { ...row, derechos_permil: value === undefined ? raws[index] : permilleToText(value) };
+            return { ...row, derechos_porcentaje: value === undefined ? raws[index] : permilleToPercentText(value) };
         }),
         rights: { header: 'derechos (leídos por CoCo)', scale: converted.scale, scaleInferred: converted.scaleInferred, unitsWithValue: raws.filter(Boolean).length },
     };
@@ -164,7 +165,7 @@ export async function extractResidentsFromBuffer(fileName: string, mimeType: str
             unit_id: /^desconocid[oa]$/i.test(unit) ? '' : unit,
             email: clean(row.email).toLowerCase(),
             phone: clean(row.phone ?? row.phone_number),
-            rawRights: clean(row.derechos ?? row.derechos_permil ?? row.share_permille).slice(0, 40),
+            rawRights: clean(row.derechos ?? row.derechos_porcentaje ?? row.derechos_permil ?? row.share_permille).slice(0, 40),
         };
     }).filter(row => row.name || row.unit_id || row.email || row.phone);
     const withRights = attachRights(rows, await tableRightsFrom(lower, text, buffer));

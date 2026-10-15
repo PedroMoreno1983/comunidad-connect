@@ -2,6 +2,19 @@ import ExcelJS from "exceljs";
 
 interface SpreadsheetTextOptions {
     maxRows?: number;
+    /**
+     * Números con coma decimal (es-CL) en vez de String(n): 1.125 → "1,125", para
+     * que no se lean como miles. Las celdas con formato de porcentaje, que Excel
+     * guarda como fracción (0,01125), salen como "1,125%". Solo `spreadsheetBufferToRows`.
+     */
+    decimalComma?: boolean;
+}
+
+/** Número de Excel → texto con coma decimal y sin separador de miles. */
+function numberToDecimalComma(value: number, percent: boolean): string {
+    const scaled = percent ? value * 100 : value;
+    const text = String(Number(scaled.toPrecision(12))).replace(".", ",");
+    return percent ? `${text}%` : text;
 }
 
 function cellToText(value: ExcelJS.CellValue): string {
@@ -19,13 +32,17 @@ function cellToText(value: ExcelJS.CellValue): string {
     return String(value);
 }
 
-function normalizeRows(worksheet: ExcelJS.Worksheet, maxRows: number) {
+function normalizeRows(worksheet: ExcelJS.Worksheet, maxRows: number, decimalComma = false) {
     const rows: string[][] = [];
     worksheet.eachRow({ includeEmpty: false }, (row) => {
         if (rows.length >= maxRows + 1) return;
         const values: string[] = [];
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            values[colNumber - 1] = cellToText(cell.value).trim();
+            const raw = cell.value;
+            const result = raw && typeof raw === "object" && "result" in raw ? raw.result : raw;
+            values[colNumber - 1] = decimalComma && typeof result === "number" && Number.isFinite(result)
+                ? numberToDecimalComma(result, typeof cell.numFmt === "string" && cell.numFmt.includes("%"))
+                : cellToText(raw).trim();
         });
         if (values.some(Boolean)) rows.push(values);
     });
@@ -76,7 +93,7 @@ export async function spreadsheetBufferToRows(buffer: Buffer, options: Spreadshe
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     const sheets: string[][][] = [];
     workbook.eachSheet((worksheet) => {
-        const rows = normalizeRows(worksheet, maxRows).map(row => Array.from(row, value => value ?? ""));
+        const rows = normalizeRows(worksheet, maxRows, options.decimalComma).map(row => Array.from(row, value => value ?? ""));
         if (rows.length > 0) sheets.push(rows);
     });
     return sheets;

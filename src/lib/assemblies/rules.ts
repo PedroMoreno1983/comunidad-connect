@@ -6,6 +6,7 @@
  *   DS 7 (2025) https://www.bcn.cl/leychile/navegar?idNorma=1210089
  */
 import { findMatter, QUORUM_CLASS_LABEL } from './catalog';
+import { formatRightsPercent } from './unitRights';
 import type {
     AgendaResult,
     AssemblyAlert,
@@ -480,7 +481,7 @@ export function computeRights(units: RightsSourceUnit[]): RightsSnapshot {
     const totalUnits = rows.reduce((sum, row) => sum + toUnits(row.weight), 0);
     const total = totalUnits / SCALE;
     const warnings = Math.abs(total - 1000) > 1
-        ? [`Las alícuotas suman ${total.toFixed(4)}‰ en vez de 1000‰. Los quórums se calculan en proporción al total cargado; conviene revisar las unidades.`]
+        ? [`Los derechos (alícuotas) suman ${formatRightsPercent(total, 5)} en vez de 100 %. Los quórums se calculan en proporción al total cargado; conviene revisar las unidades.`]
         : [];
     return { method: 'share', units: rows, total, warnings };
 }

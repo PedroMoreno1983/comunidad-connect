@@ -30,7 +30,8 @@ import {
   SESSION_LABEL,
   SectionTitle,
   StatusTag,
-  fmt,
+  fmtRights,
+  rightsOfTotal,
   formatDateTime,
   inputClass,
   inputStyle,
@@ -312,7 +313,7 @@ function AssemblyConsole({ view, residents, onView, onEdit }: { view: AssemblyVi
       {a.status === "in_progress" && <LivePanel view={view} residents={residents} onView={onView} />}
       {(a.status === "closed" || a.status === "minutes_signed") && <MinutesCard view={view} onView={onView} />}
       {(a.status === "closed" || a.status === "minutes_signed") && (
-        <Card><SectionTitle eyebrow="Resultados" title="Acuerdos por punto" />{a.items.map(item => <div key={item.id} className="mt-3"><p className="text-sm font-medium cc-text-primary">{item.position}. {item.title}</p><ItemResult item={item} /></div>)}</Card>
+        <Card><SectionTitle eyebrow="Resultados" title="Acuerdos por punto" />{a.items.map(item => <div key={item.id} className="mt-3"><p className="text-sm font-medium cc-text-primary">{item.position}. {item.title}</p><ItemResult item={item} rightsMethod={view.rights.method} /></div>)}</Card>
       )}
     </div>
   );
@@ -416,7 +417,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
         <SectionTitle eyebrow="Ley 21.442, art. 15 · DS 7, art. 14" title="Certificado de habilidad" />
         <p className="text-sm cc-text-secondary">Solo votan los copropietarios hábiles: al día con la comunidad o con un convenio vigente con su primera cuota pagada. Todos asisten con voz. Emítelo con fecha de corte de hoy antes de abrir la primera votación; puedes volver a emitirlo hasta entonces si alguien se puso al día. El detalle por unidad queda guardado solo para administración.</p>
         {certificate ? (
-          <p className="mt-2 text-sm cc-text-primary">Emitido el {formatDateTime(certificate.issuedAt)} por {certificate.issuedByName || "administración"} · corte {certificate.cutoffDate} · {certificate.eligibleUnits} de {certificate.totalUnits} unidades · {fmt(certificate.eligibleWeight)} de {fmt(certificate.totalWeight)} {view.rights.method === "share" ? "‰ de derechos" : "votos"} ({certificate.eligibleShare.toLocaleString("es-CL")}%)</p>
+          <p className="mt-2 text-sm cc-text-primary">Emitido el {formatDateTime(certificate.issuedAt)} por {certificate.issuedByName || "administración"} · corte {certificate.cutoffDate} · {certificate.eligibleUnits} de {certificate.totalUnits} unidades · {rightsOfTotal(certificate.eligibleWeight, certificate.totalWeight, certificate.eligibleShare, view.rights.method)}</p>
         ) : <p className="mt-2 text-sm" style={{ color: "var(--cc-amber)" }}>Aún no se emite: la votación no se puede abrir sin él.</p>}
         {!votingStarted && <Button className="mt-3" size="sm" variant="dark" disabled={busy} onClick={() => run(() => AssemblyService.certifyEligibility(a.id), "Certificado de habilidad emitido.")}>{certificate ? "Volver a emitir con datos de hoy" : "Emitir certificado de habilidad"}</Button>}
       </Card>
@@ -425,7 +426,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
         <SectionTitle eyebrow="Acreditación" title="Asistencia por unidad" />
         <p className="text-sm cc-text-secondary">En línea, marca «verificada» solo después de ver y oír a la persona a la vez (DS 7, art. 16). No se puede exigir dónde está conectada.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <Field label="Unidad"><select className={inputClass} style={inputStyle} value={unitId} onChange={e => setUnitId(e.target.value)}><option value="">Elige</option>{view.rights.units.map(unit => <option key={unit.unitId} value={unit.unitId}>{unit.label} · {fmt(unit.weight)}</option>)}</select></Field>
+          <Field label="Unidad"><select className={inputClass} style={inputStyle} value={unitId} onChange={e => setUnitId(e.target.value)}><option value="">Elige</option>{view.rights.units.map(unit => <option key={unit.unitId} value={unit.unitId}>{unit.label} · {fmtRights(unit.weight, view.rights.method)}</option>)}</select></Field>
           <Field label="Calidad"><select className={inputClass} style={inputStyle} value={capacity} onChange={e => setCapacity(e.target.value as AttendanceCapacity)}>{Object.entries(CAPACITY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
           {a.modality === "hybrid" && <Field label="Modalidad"><select className={inputClass} style={inputStyle} value={mode} onChange={e => setMode(e.target.value as AttendanceMode)}><option value="in_person">Presencial</option><option value="remote">En línea</option></select></Field>}
           <Field label="Persona (residente)"><select className={inputClass} style={inputStyle} value={attendeeProfileId} onChange={e => setAttendeeProfileId(e.target.value)}><option value="">Sin cuenta (indicar nombre)</option>{residents.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></Field>
@@ -446,7 +447,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
                   <td className="cc-text-secondary">{row.attendeeName || "—"}</td>
                   <td className="cc-text-secondary">{CAPACITY_LABEL[row.capacity]}</td>
                   <td className="cc-text-secondary">{row.mode === "remote" ? "En línea" : "Presencial"}</td>
-                  <td className="cc-text-secondary">{fmt(row.weight)}</td>
+                  <td className="cc-text-secondary">{fmtRights(row.weight, view.rights.method)}</td>
                   <td>{row.status === "left" ? <Tag>Se retiró</Tag> : row.identityVerifiedAt && row.status === "present" ? <Tag tone="sage">Acreditada</Tag> : <Tag tone="amber">Por verificar</Tag>}</td>
                   <td className="text-right">
                     {row.status !== "left" && !(row.identityVerifiedAt && row.status === "present") && <Button size="sm" variant="dark" disabled={busy} onClick={() => run(() => AssemblyService.verifyAttendance(a.id, row.id))}>{row.mode === "remote" ? "Imagen y voz OK" : "Acreditar"}</Button>}
@@ -473,7 +474,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
                 {item.votingStatus === "pending" && <Button className="mt-2" size="sm" variant="dark" disabled={busy || Boolean(openItem) || !certificate} onClick={() => run(() => AssemblyService.openVote(a.id, item.id))}>Abrir votación</Button>}
                 {item.votingStatus === "open" && (
                   <div className="mt-2 space-y-2 text-sm cc-text-secondary">
-                    <p>A favor {fmt(tally.yes)} · En contra {fmt(tally.no)} · Abstención {fmt(tally.abstain)}{tally.pending ? ` · ${tally.pending} sin verificar` : ""}</p>
+                    <p>A favor {fmtRights(tally.yes, view.rights.method)} · En contra {fmtRights(tally.no, view.rights.method)} · Abstención {fmtRights(tally.abstain, view.rights.method)}{tally.pending ? ` · ${tally.pending} sin verificar` : ""}</p>
                     <div className="flex flex-wrap items-end gap-2">
                       <Field label="Registrar voto en sala"><select className={inputClass} style={inputStyle} value={voteUnit} onChange={e => setVoteUnit(e.target.value)}><option value="">Unidad</option>{present.map(row => <option key={row.unitId} value={row.unitId}>{row.unitLabel}</option>)}</select></Field>
                       {(["yes", "no", "abstain"] as VoteChoice[]).map(choice => <Button key={choice} size="sm" variant="ghost" disabled={busy || !voteUnit} onClick={() => run(() => AssemblyService.recordVote(a.id, item.id, voteUnit, choice))}>{CHOICE_LABEL[choice]}</Button>)}
@@ -483,7 +484,7 @@ function LivePanel({ view, residents, onView }: { view: AssemblyView; residents:
                     <Button size="sm" variant="copper" disabled={busy} onClick={() => closeVote(item)}>Cerrar votación y calcular</Button>
                   </div>
                 )}
-                {item.votingStatus === "closed" && <ItemResult item={item} />}
+                {item.votingStatus === "closed" && <ItemResult item={item} rightsMethod={view.rights.method} />}
               </div>
             );
           })}

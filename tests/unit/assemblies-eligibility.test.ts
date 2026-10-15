@@ -214,6 +214,11 @@ describe('privacidad', () => {
         expect(section).toContain('2 de 3 unidades');
         expect(section).toContain('2026-12-01');
         expect(section).toContain('Administración Central');
+        // Derechos en % (se guardan en ‰): 700‰ de 1000‰ → 70 %.
+        expect(section).toContain('el 70 % de los derechos del condominio');
+        expect(minutes).toContain('| 101 | ');
+        expect(minutes).toMatch(/\| 40 % \|/);
+        expect(minutes).not.toContain('‰');
         expect(checkEligibilityPrivacy(section, labels)).toEqual([]);
         expect(minutes).not.toContain('103');
         expect(minutes).not.toContain(CONDUCTOR_BADGE);

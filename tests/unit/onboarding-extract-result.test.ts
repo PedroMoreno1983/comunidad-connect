@@ -38,4 +38,20 @@ describe("interpretRosterExtractResponse", () => {
             expect(result.rows[0].unit_id).toBe("1204");
         }
     });
+
+    it("carries the unit rights as % text and converts the legacy ‰ field", () => {
+        const result = interpretRosterExtractResponse(
+            {
+                status: "review",
+                data: [
+                    { id: "1", name: "Ana", unit_id: "101", email: "", phone: "", derechos_porcentaje: "0,532" },
+                    { id: "2", name: "Luis", unit_id: "102", email: "", phone: "", derechos_permil: "12,5" },
+                    { id: "3", name: "Eva", unit_id: "103", email: "", phone: "" },
+                ],
+            },
+            true,
+        );
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.rows.map(row => row.derechos_porcentaje)).toEqual(["0,532", "1,25", ""]);
+    });
 });

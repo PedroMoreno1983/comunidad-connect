@@ -4,8 +4,9 @@ import { planOnboardingRights, rightsPendingTask, type ProvidedRight } from './u
 import type { OnboardingRightsOutcome } from './types';
 
 /**
- * Derechos de cada unidad (‰) al sincronizar el onboarding. Si vienen todos y
- * suman 1000‰ ± 0,5 contra las unidades de la comunidad, se guardan con el
+ * Derechos de cada unidad al sincronizar el onboarding (llegan en %, se guardan
+ * en ‰). Si vienen todos y suman 100 % ± 0,05 (1000‰ ± 0,5) contra las
+ * unidades de la comunidad, se guardan con el
  * mismo servicio de Asambleas (`saveUnitRights` → `save_unit_rights`, con la
  * revisión auditable, método 'onboarding'): verificados si hay fuente,
  * provisorios si no. Si no, no se guarda nada y queda la tarea pendiente.

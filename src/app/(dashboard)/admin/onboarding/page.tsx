@@ -31,6 +31,7 @@ import {
     rightsPendingTask,
 } from "@/lib/onboarding/unitRightsImport";
 import { UnitRightsService } from "@/lib/services/unitRightsService";
+import { formatRightsPercent } from "@/lib/assemblies/unitRights";
 import type { UnitRightsStatus } from "@/lib/assemblies/types";
 import type {
     OnboardingAssessment,
@@ -131,7 +132,7 @@ export default function AdminOnboardingPage() {
                 const payload = await response.json() as Omit<OnboardingBatchDetailResponse, "data"> & { data?: OnboardingRightsStoredRow[] };
                 if (!response.ok) throw new Error(payload.error || "batch-load-failed");
                 setBatchId(requestedBatch);
-                setExtractedData((payload.data || []).map(row => ({ ...row, derechos_permil: row.derechos_permil ?? "" })));
+                setExtractedData((payload.data || []).map(row => ({ ...row, derechos_porcentaje: row.derechos_porcentaje ?? "" })));
                 setLastFileName((payload.documents || []).map(item => item.file_name).filter(Boolean).join(", "));
                 setFailedDocumentCount((payload.documents || []).filter(item => item.status === "failed").length);
                 const batch = payload.batch || {};
@@ -466,7 +467,7 @@ export default function AdminOnboardingPage() {
                         {!isExtracting && (
                             <p className="mt-4 max-w-xl text-xs leading-5 cc-text-secondary">
                                 <Scale className="mr-1 inline h-3.5 w-3.5" style={{ color: "var(--cc-copper)" }} />
-                                Opcional: agrega la columna <span className="font-mono">derechos_permil</span> con los derechos de cada unidad (‰, o % y lo convertimos). {RIGHTS_WHY}
+                                Opcional: agrega la columna <span className="font-mono">derechos_porcentaje</span> con los derechos de cada unidad en % (por ejemplo, 0,532; deben sumar 100 %). Si los tienes en ‰, usa <span className="font-mono">derechos_permil</span> y los pasamos a %. {RIGHTS_WHY}
                             </p>
                         )}
 
@@ -712,7 +713,7 @@ export default function AdminOnboardingPage() {
                                         <th className="px-5 py-4">Unidad</th>
                                         <th className="px-5 py-4">Correo</th>
                                         <th className="px-5 py-4">Teléfono</th>
-                                        <th className="px-5 py-4" title="Derechos de la unidad según el reglamento (‰). Opcional.">Derechos (‰)</th>
+                                        <th className="px-5 py-4" title="Derechos de la unidad según el reglamento, en % (deben sumar 100 %). Opcional.">Derechos (%)</th>
                                         <th className="px-5 py-4 text-right">Acción</th>
                                     </tr>
                                 </thead>
@@ -732,7 +733,7 @@ export default function AdminOnboardingPage() {
                                                 <EditableCell value={row.phone} onChange={value => handleFieldChange(row.id, "phone", value)} placeholder="+56 9..." />
                                             </td>
                                             <td className="px-4 py-3">
-                                                <EditableCell value={row.derechos_permil} onChange={value => handleFieldChange(row.id, "derechos_permil", value)} placeholder="12,5" mono />
+                                                <EditableCell value={row.derechos_porcentaje} onChange={value => handleFieldChange(row.id, "derechos_porcentaje", value)} placeholder="0,532" mono />
                                             </td>
                                             <td className="px-5 py-3 text-right">
                                                 <button
@@ -804,7 +805,6 @@ function PendingTaskCard({ task }: { task: OnboardingPendingTask }) {
     );
 }
 
-const fmtPermille = (value: number) => value.toLocaleString("es-CL", { maximumFractionDigits: 4 });
 
 function RightsPreviewPanel({
     preview,
@@ -822,18 +822,18 @@ function RightsPreviewPanel({
             <div className="flex items-start gap-3">
                 <Scale className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--cc-copper)" }} />
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold cc-text-primary">Derechos de cada unidad (‰)</p>
+                    <p className="text-sm font-semibold cc-text-primary">Derechos de cada unidad (%)</p>
                     <p className="mt-1 text-xs cc-text-secondary">{RIGHTS_WHY}</p>
                     {meta && preview.status !== "none" && (
                         <p className="mt-2 text-xs cc-text-secondary">
                             Columna leída: <span className="font-mono">{meta.header}</span>
-                            {meta.scale === "percent" ? " · venía en %, la convertimos a ‰ (×10)" : " · en ‰"}
+                            {meta.scale === "percent" ? " · en %" : " · venía en ‰, la pasamos a % (÷ 10)"}
                             {meta.scaleInferred ? " (deducido de los valores: revísalo)" : ""}.
                         </p>
                     )}
                     {preview.status === "complete" && (
                         <p className="mt-2 text-sm font-semibold text-success-fg">
-                            Las {preview.units} unidades tienen derechos y suman {fmtPermille(preview.total)}‰. Se guardarán {preview.willBeVerified ? "como verificados (con fuente)" : "como provisorios hasta que registres la fuente"}.
+                            Las {preview.units} unidades tienen derechos y suman {formatRightsPercent(preview.total)}. Se guardarán {preview.willBeVerified ? "como verificados (con fuente)" : "como provisorios hasta que registres la fuente"}.
                         </p>
                     )}
                     {preview.status === "partial" && (
@@ -848,7 +848,7 @@ function RightsPreviewPanel({
                     )}
                     {preview.status === "none" && (
                         <p className="mt-2 text-xs cc-text-secondary">
-                            El archivo no trae derechos. Puedes escribirlos en la columna &quot;Derechos (‰)&quot; o cargarlos después: quedará la tarea pendiente &quot;Cargar derechos de cada unidad&quot;.
+                            El archivo no trae derechos. Puedes escribirlos en %, en la columna &quot;Derechos (%)&quot;, o cargarlos después: quedará la tarea pendiente &quot;Cargar derechos de cada unidad&quot;.
                         </p>
                     )}
                     {preview.status !== "none" && (
