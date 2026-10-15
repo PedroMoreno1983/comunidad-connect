@@ -17,6 +17,7 @@ import {
     eligibilityNoticeCopy,
 } from '@/lib/assemblies/eligibilityCopy';
 import { inNoticeWindow } from '@/lib/assemblies/eligibilityService';
+import { agreementDueDates } from '@/lib/finance/operationalFlows';
 import { composeMinutes, eligibilityMinutesSection, type MinutesInput } from '@/lib/assemblies/compose';
 import { evaluateAgendaItem, tallyVotes, voteCounts } from '@/lib/assemblies/rules';
 import { QuorumMeter } from '@/components/assemblies/shared';
@@ -61,6 +62,39 @@ describe('regla de habilidad', () => {
         const unpaidFirst = agreement('u1', '2026-11-10', [['2026-12-05', 'pending'], ['2027-01-05', 'pending']]);
         expect(agreementInForceAt(unpaidFirst, CUTOFF)).toBe(false);
         expect(unitEligibility([debt('u1', '2026-09-05')], [unpaidFirst], CUTOFF)).toEqual({ eligible: false, basis: 'agreement_lapsed' });
+    });
+
+    it('convenio firmado y con la primera cuota pagada en el acto: hábil ese mismo día', () => {
+        // Primera cuota con vencimiento el día de la firma (agreementDueDates).
+        const dates = agreementDueDates(CUTOFF, 3);
+        expect(dates[0]).toBe(CUTOFF);
+        const signedAndPaid: EligibilityAgreement = {
+            unitId: 'u1', status: 'active', createdAt: `${CUTOFF}T13:00:00Z`,
+            installments: dates.map((dueDate, index) => ({ sequence: index + 1, dueDate, status: index === 0 ? 'paid' : 'pending', paidAt: index === 0 ? CUTOFF : null })),
+        };
+        expect(agreementInForceAt(signedAndPaid, CUTOFF)).toBe(true);
+        expect(unitEligibility([debt('u1', '2026-08-05'), debt('u1', '2026-10-05')], [signedAndPaid], CUTOFF)).toEqual({ eligible: true, basis: 'agreement' });
+    });
+
+    it('convenio firmado hoy sin pagar la primera cuota: todavía no habilita, aunque esa cuota aún no esté vencida', () => {
+        const dates = agreementDueDates(CUTOFF, 3);
+        const signedUnpaid: EligibilityAgreement = {
+            unitId: 'u1', status: 'active', createdAt: `${CUTOFF}T13:00:00Z`,
+            installments: dates.map((dueDate, index) => ({ sequence: index + 1, dueDate, status: 'pending', paidAt: null })),
+        };
+        expect(agreementInForceAt(signedUnpaid, CUTOFF)).toBe(false);
+        expect(unitEligibility([debt('u1', '2026-08-05')], [signedUnpaid], CUTOFF)).toEqual({ eligible: false, basis: 'agreement_lapsed' });
+        // Pagada después de la fecha de corte: no cuenta para ese certificado.
+        const paidLater: EligibilityAgreement = { ...signedUnpaid, installments: signedUnpaid.installments.map((item, index) => index === 0 ? { ...item, status: 'paid', paidAt: '2026-11-21' } : item) };
+        expect(agreementInForceAt(paidLater, CUTOFF)).toBe(false);
+        expect(agreementInForceAt(paidLater, '2026-11-21')).toBe(true);
+    });
+
+    it('la fecha del convenio se lee en el calendario de Chile (un instante de la noche no corre al día siguiente)', () => {
+        // 2026-10-01 22:30 en Chile = 2026-10-02 01:30 UTC.
+        const late = agreement('u1', '2026-10-02T01:30:00Z', [['2026-10-01', 'paid'], ['2026-11-05', 'paid'], ['2026-12-05', 'pending']]);
+        expect(unitEligibility([debt('u1', '2026-10-01')], [late], CUTOFF).eligible).toBe(true);
+        expect(unitEligibility([debt('u1', '2026-10-02')], [late], CUTOFF)).toEqual({ eligible: false, basis: 'overdue' });
     });
 
     it('convenio caído: una cuota vencida impaga, o pendiente de comité o anulado, no habilita', () => {
