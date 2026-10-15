@@ -20,7 +20,7 @@ import {
   SESSION_LABEL,
   SectionTitle,
   StatusTag,
-  fmt,
+  fmtRights,
   formatDateTime,
   inputClass,
   inputStyle,
@@ -185,7 +185,7 @@ function AssemblyDetail({ view, onView }: { view: AssemblyView; onView: (view: A
                     })}
                   </div>
                 )}
-                {item.votingStatus === "closed" && <ItemResult item={item} />}
+                {item.votingStatus === "closed" && <ItemResult item={item} rightsMethod={view.rights.method} />}
               </li>
             );
           })}
@@ -202,7 +202,7 @@ function AssemblyDetail({ view, onView }: { view: AssemblyView; onView: (view: A
             <tbody>{view.attendance.map(row => (
               <tr key={row.id} className="border-t" style={{ borderColor: "var(--cc-line)" }}>
                 <td className="py-2 cc-text-primary">{row.unitLabel}</td><td className="cc-text-secondary">{CAPACITY_LABEL[row.capacity]}</td>
-                <td className="cc-text-secondary">{row.mode === "remote" ? "En línea" : "Presencial"}</td><td className="cc-text-secondary">{fmt(row.weight)}</td>
+                <td className="cc-text-secondary">{row.mode === "remote" ? "En línea" : "Presencial"}</td><td className="cc-text-secondary">{fmtRights(row.weight, view.rights.method)}</td>
                 <td>{row.status === "left" ? <Tag>Se retiró</Tag> : row.identityVerifiedAt ? <Tag tone="sage">Acreditada</Tag> : view.viewer.canVerify && live
                   ? <Button size="sm" variant="dark" disabled={busy} onClick={() => run(() => AssemblyService.verifyAttendance(a.id, row.id))}>{row.mode === "remote" ? "Imagen y voz OK" : "Acreditar"}</Button>
                   : <Tag tone="amber">Por verificar</Tag>}</td>
