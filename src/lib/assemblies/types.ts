@@ -309,8 +309,8 @@ export interface MyEligibility {
 // Derechos de cada unidad (‰) — Ley 21.442, arts. 3 y 15
 // ---------------------------------------------------------------------------
 
-/** Cómo se cargó una revisión de derechos. `direct`: cambio fuera de la herramienta (siempre provisorio). */
-export type UnitRightsMethod = 'manual' | 'csv' | 'expense_prorate' | 'verify' | 'direct';
+/** Cómo se cargó una revisión de derechos. `direct`: cambio fuera de la herramienta (siempre provisorio). `onboarding`: desde la importación de unidades. */
+export type UnitRightsMethod = 'manual' | 'csv' | 'expense_prorate' | 'verify' | 'direct' | 'onboarding';
 
 /** missing: falta alguna unidad (cuenta 1 unidad = 1 voto); provisional: cargados sin fuente; verified: con fuente del reglamento. */
 export type UnitRightsStatus = 'missing' | 'provisional' | 'verified';
