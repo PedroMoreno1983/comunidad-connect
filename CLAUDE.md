@@ -95,7 +95,8 @@ src/
 │   ├── api/             # Route Handlers de Next.js
 │   └── page.tsx         # Landing page pública
 ├── lib/
-│   ├── api.ts           # ← TODOS los Services de datos van aquí
+│   ├── api.ts           # ← Barrel: re-exporta src/lib/api/*. No agregues código aquí
+│   ├── api/             # ← Services de datos, un archivo por dominio (ver "Patrón de Services")
 │   ├── types.ts         # ← TODOS los tipos TypeScript centralizados
 │   ├── agentBrain.ts    # Lógica del agente de supermercado/recetas
 │   ├── authContext.tsx  # Contexto global de autenticación
@@ -107,13 +108,43 @@ src/
 
 ### 2. Reglas de arquitectura — NO ROMPER
 
-- **Las páginas NO hacen llamadas directas a Supabase.** Toda lógica de datos va encapsulada en un `Service` dentro de `src/lib/api.ts`.
+- **Las páginas NO hacen llamadas directas a Supabase.** Toda lógica de datos va encapsulada en un `Service` dentro de `src/lib/api/<dominio>.ts` y se importa desde `@/lib/api`.
 - **Todos los tipos van en `src/lib/types.ts`.** No definir tipos inline en componentes o páginas.
 - **Las rutas de API van en `src/app/api/`** como Route Handlers de Next.js (`route.ts`).
 - **`src/lib/supabase.ts`** exporta el cliente Supabase — importar siempre desde ahí, nunca instanciar Supabase directamente.
 - **No usar `any` en TypeScript.** El modo strict está activo.
 
-### 3. Patrón de Services (api.ts)
+### 3. Patrón de Services (`src/lib/api/`)
+
+`src/lib/api.ts` es solo un barrel (`export * from './api/<dominio>'`); el código vive en `src/lib/api/`. Los consumidores importan siempre desde `@/lib/api`, nunca desde `@/lib/api/<dominio>`.
+
+| Archivo | Services |
+|---|---|
+| `finance.ts` | `FinanceCommitteeService`, `ExpensesService`, `AdminFinanceService`, `ResidentFinanceService` |
+| `invoicing.ts` | `InvoicingService` |
+| `users.ts` | `AdminUsersService`, `DirectoryService`, `ProfileService` |
+| `community.ts` | `CommunityCollaborationService` |
+| `dashboard.ts` | `HomeService`, `AdminDashboardService` |
+| `announcements.ts` | `AnnouncementsService` |
+| `maintenance.ts` | `MaintenanceService` |
+| `coco-cases.ts` | `CocoCasesService` |
+| `water.ts` | `WaterService` |
+| `marketplace.ts` | `MarketplaceService`, `MarketplaceMessagingService` |
+| `amenities.ts` | `AmenitiesService` |
+| `polls.ts` | `PollsService` |
+| `platform.ts` | `NavigationService`, `ProductCapabilitiesService`, `CommercialService`, `ApiKeysService`, `OversightLinksService` |
+| `supermarket.ts` | `SupermarketCartService`, `SupermarketCatalogService`, `SupermarketGroupService` |
+| `parking.ts` | `ParkingService` |
+| `access.ts` | `IntercomService`, `AccessGateService` |
+| `_shared.ts` | Helpers internos usados por más de un dominio (`readApi`, `financeWrite`, `isUuid`, `textValue`, `nullableText`, `mapCocoCase`, `DbRow`). No se re-exporta. |
+
+Dónde agregar código nuevo:
+- **Función de un dominio existente:** agrégala al Service de su archivo.
+- **Dominio nuevo:** crea `src/lib/api/<dominio>.ts` y suma `export * from './api/<dominio>';` en `src/lib/api.ts`.
+- **Helper:** privado en el archivo de su dominio; súbelo a `_shared.ts` solo si lo usa más de un dominio. `_shared.ts` no importa de otros módulos de `api/`.
+- **Dependencias entre dominios:** importa el Service del archivo hermano (`import { ResidentFinanceService } from './finance'`). Evita ciclos; si dos dominios se necesitan mutuamente, mueve lo común a `_shared.ts`.
+- `qa:architecture-boundaries` verifica que `api.ts` siga siendo solo barrel y que ningún archivo de `src/lib/api/` pase de 1.500 líneas.
+
 
 Todos los servicios siguen este patrón:
 
