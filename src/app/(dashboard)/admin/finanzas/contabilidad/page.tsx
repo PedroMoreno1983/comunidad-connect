@@ -27,6 +27,8 @@ const SOURCE_LABEL: Record<string, string> = {
     payroll: "Remuneración",
     payment: "Pago de unidad",
     payment_reversal: "Reversa de pago",
+    parking_charge: "Arriendo de estacionamiento",
+    parking_charge_reversal: "Reversa de arriendo de estacionamiento",
 };
 
 interface DraftLine {
