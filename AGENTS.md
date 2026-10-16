@@ -397,6 +397,17 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el
 
 ---
 
+## Tests de punta a punta de los flujos de dinero
+
+`npm run test:e2e:money` (`vitest.money.config.ts`, `tests/e2e-money/`; corre en el job `validate` del CI). Sin red ni secretos:
+
+- **Base real:** `tests/fixtures/moneyDb.ts` levanta PGlite y aplica **todas** las migraciones de `supabase/migrations/` en orden. Lo que se creó fuera de las migraciones (panel, `legacy_migrations/`, `schema_rpc_match_memories.sql`) entra por `DRIFT_BRIDGES`, una lista corta y explicada que toma la definición de `schema.sql` o de la migración que la define; ninguna migración de dinero necesita puente. Si una migración nueva no aplica sobre la cadena, el test lo dice: corrige la migración, no el puente.
+- **Servicios reales:** `tests/fixtures/supabasePglite.ts` es un cliente con la forma de supabase-js que traduce a SQL (select con embebidos por FK, filtros, insert/update/upsert/delete, rpc) y ejecuta cada llamada como una transacción con el rol de PostgREST (`service_role`, `authenticated` con `auth.uid()` o `anon`). Los tests mockean `getSupabaseAdmin` (y `@/lib/supabase` para servicios del cliente) con él, así que pasan por `billingService`, `collectionService`, `agreementService`, `reconcileCredits`, el webhook de Haulmer, etc. Si un servicio usa algo de PostgREST que el cliente no cubre, falla con un error `[supabasePglite]` explícito: agrégalo ahí.
+- **Invariante contable** (`expectLedgerInvariant` en `tests/fixtures/moneyFlows.ts`): al final de cada flujo, cada asiento cuadra, cada pago tiene un solo asiento y el banco 1100 = pagos en dinero − transferencias a dueños. Los avisos se revisan con `MONEY_PATTERN`/`DEBTOR_PATTERN`.
+- Un bug conocido sin corregir se deja como `it.fails` con su explicación; al corregirlo, quita el `.fails`.
+
+---
+
 ## Próximos Pasos Planificados
 
 - [ ] **Búsqueda híbrida** — pgvector + Full Text Search en Supabase para Marketplace y Directorio (Anthropic embeddings)
