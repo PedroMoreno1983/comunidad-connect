@@ -58,6 +58,18 @@ jobs:
       - name: Supermarket price comparison regression
         run: npm run qa:supermarket-price-comparison
 
+      # QA estáticos y deterministas: leen el código o usan PGlite en memoria; sin red ni secretos.
+      - name: Integrity regressions
+        run: |
+          npm run qa:coco-legal
+          npm run qa:finance-agent
+          npm run qa:agent-center
+          npm run qa:production-hardening
+          npm run qa:supabase-config
+
+      - name: Operational recovery rehearsal (PGlite)
+        run: npm run qa:operational-recovery
+
       - name: Production dependency audit
         run: npm audit --omit=dev
 

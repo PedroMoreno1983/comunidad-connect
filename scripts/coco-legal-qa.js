@@ -40,7 +40,13 @@ const checks = [
   {
     name: "local fallback handles noise through CNV mediation",
     file: "src/app/api/coco/route.ts",
-    mustInclude: ["OPEN_MEDIATION_CNV", "Ley 21.442 art. 27", "Comunicación No Violenta", "navigate: '/convivencia'"],
+    // Desde 5f5866f la navegación separa admin (/admin/convivencia) y residente (/convivencia).
+    mustInclude: [
+      "OPEN_MEDIATION_CNV",
+      "Ley 21.442 art. 27",
+      "Comunicación No Violenta",
+      "navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined",
+    ],
   },
   {
     name: "local fallback handles morosity and common expenses",
