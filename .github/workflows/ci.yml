@@ -70,6 +70,11 @@ jobs:
       - name: Operational recovery rehearsal (PGlite)
         run: npm run qa:operational-recovery
 
+      # Flujos de dinero de punta a punta: PGlite con todas las migraciones y los
+      # servicios TypeScript reales; sin red ni secretos.
+      - name: Money flows end-to-end (PGlite)
+        run: npm run test:e2e:money
+
       - name: Production dependency audit
         run: npm audit --omit=dev
 

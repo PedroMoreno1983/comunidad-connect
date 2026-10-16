@@ -46,6 +46,7 @@
     "test:e2e:security": "playwright test tests/e2e/security-boundaries.spec.ts",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:e2e:money": "vitest run --config vitest.money.config.ts",
     "qa:schema-drift": "node scripts/schema-drift-qa.js",
     "qa:supabase-config": "node scripts/supabase-config-guard.js",
     "supabase:config-push": "node scripts/supabase-config-guard.js && npx supabase config push"
