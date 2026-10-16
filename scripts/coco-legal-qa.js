@@ -40,7 +40,16 @@ const checks = [
   {
     name: "local fallback handles noise through CNV mediation",
     file: "src/app/api/coco/route.ts",
-    mustInclude: ["OPEN_MEDIATION_CNV", "Ley 21.442 art. 27", "Comunicación No Violenta", "navigate: '/convivencia'"],
+    // Las reglas se evalúan dentro del mismo `return { ... }` que contiene el ancla,
+    // para que otras ramas con la misma navegación no oculten una regresión.
+    // Desde 5f5866f la navegación separa admin (/admin/convivencia) y residente (/convivencia).
+    blockAnchor: "Ley 21.442 art. 27",
+    mustInclude: [
+      "OPEN_MEDIATION_CNV",
+      "Ley 21.442 art. 27",
+      "Comunicación No Violenta",
+      "navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined",
+    ],
   },
   {
     name: "local fallback handles morosity and common expenses",
@@ -51,8 +60,17 @@ const checks = [
 
 const failures = [];
 
+function returnBlock(text, anchor) {
+  const at = text.indexOf(anchor);
+  if (at === -1) return "";
+  const start = text.lastIndexOf("return {", at);
+  const end = text.indexOf("};", at);
+  return start === -1 || end === -1 ? "" : text.slice(start, end + 2);
+}
+
 for (const check of checks) {
-  const text = normalize(read(check.file));
+  const source = normalize(read(check.file));
+  const text = check.blockAnchor ? returnBlock(source, normalize(check.blockAnchor)) : source;
   const missing = check.mustInclude.filter((needle) => !text.includes(normalize(needle)));
   if (missing.length) {
     failures.push({
