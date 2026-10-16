@@ -6,7 +6,9 @@
  * GC como unit_payments sin doble conteo, donación al fondo de reserva),
  * comisión 0 %, 12,5 % y 100 % con bruto = comisión + neto, reversas según
  * AGENTS.md e idempotencia (un cobro por reserva, una liquidación por cobro,
- * webhook repetido).
+ * webhook repetido). El arriendo pagado (por GC o por Haulmer) se reconoce en el
+ * libro: debe 1200 o 1100 por el bruto, haber 2400 por el neto y 4300 por la
+ * comisión; liquidar deja la 2400 en 0.
  *
  * Cada paso va por el camino de la app: la reserva y las RPC del dueño o de la
  * administración con su JWT (RLS activo), el pago del arrendatario por
@@ -151,6 +153,26 @@ async function creditPayments(unitId: string) {
 }
 
 const thisYear = () => Number(chileMonth(0).slice(0, 4));
+/** Saldo acreedor de una cuenta (haber − debe); 0 si no existe. */
+const net = (balance?: { debit: number; credit: number }) => balance ? balance.credit - balance.debit : 0;
+
+interface LedgerLine { code: string; debit: number; credit: number }
+/** Asientos de reconocimiento (y reversa) del arriendo, con sus líneas. */
+async function chargeEntries(chargeId: string) {
+    const { rows } = await db.query<{ entry_id: string; source: string; event_type: string; code: string; debit: number; credit: number }>(`
+        SELECT j.id AS entry_id, j.source, ev.event_type, a.code, l.debit, l.credit
+        FROM public.parking_charge_events ev
+        JOIN public.journal_entries j ON j.source_record_id = ev.id AND j.source IN ('parking_charge', 'parking_charge_reversal')
+        JOIN public.journal_lines l ON l.entry_id = j.id JOIN public.ledger_accounts a ON a.id = l.account_id
+        WHERE ev.charge_id = $1 ORDER BY ev.seq, a.code`, [chargeId]);
+    const entries = new Map<string, { source: string; lines: LedgerLine[] }>();
+    for (const row of rows) {
+        const entry = entries.get(row.entry_id) ?? { source: row.source, lines: [] };
+        entry.lines.push({ code: row.code, debit: row.debit, credit: row.credit });
+        entries.set(row.entry_id, entry);
+    }
+    return [...entries.values()];
+}
 
 describe('cargo a gastos comunes → abono a GC del dueño (destino por defecto)', () => {
     it('el pago de la arrendataria abre la liquidación, abona al dueño y recalcula su unidad sin contar dos veces', async () => {
@@ -191,13 +213,16 @@ describe('cargo a gastos comunes → abono a GC del dueño (destino por defecto)
         // Sin doble conteo: el abono no es dinero que entra al banco ni se ofrece para conciliar.
         const { balances, bankBalance } = await expectLedgerInvariant(db, p.communityId);
         expect(bankBalance).toBe(3000);
-        expect(balances.get('2400')).toMatchObject({ debit: 3000, credit: 0 });
+        // El arriendo pagado reconoce la obligación con el dueño (1200 → 2400) y el abono la salda.
+        expect(balances.get('2400')).toMatchObject({ debit: 3000, credit: 3000 });
         const reconciliation = await getReconciliation(p.communityId);
         expect(reconciliation.unmatchedPayments.map(item => item.id)).toEqual([tenantPayment.id]);
         const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
         expect(statements.cashFlow.totalInflow).toBe(3000);
         expect(statements.income.lines.find(line => line.label.startsWith('Cargos extraordinarios'))?.total).toBe(3000);
         expect(statements.income.expenseLines).toEqual([{ category: 'parking_owner_payouts', label: 'Liquidaciones a dueños de estacionamientos', total: 3000 }]);
+        // Solo queda el gasto común del dueño: el arriendo (3000 de ingreso, 3000 liquidados) da 0.
+        expect(statements.income.result).toBe(3000);
         expect(statements.position.cash).toBe(3000);
         expect(statements.position.journalBank).toBe(3000);
         expect(statements.position.receivables).toBe(0);
@@ -298,9 +323,14 @@ describe('transferencia al dueño, marcada por la administración', () => {
             { code: '2400', debit: 1749, credit: 0, source: 'manual', source_record_id: payout.id },
         ]);
         // Banco = lo que pagó la arrendataria − lo transferido al dueño; nada del abono.
-        const { bankBalance } = await expectLedgerInvariant(db, p.communityId);
+        const { bankBalance, balances } = await expectLedgerInvariant(db, p.communityId);
         expect(bankBalance).toBe(1999 - 1749);
+        // La 2400 queda en 0 tras liquidar y la comisión es ingreso de la comunidad
+        // (el reconocimiento del primer pago se revirtió y se volvió a registrar).
+        expect(net(balances.get('2400'))).toBe(0);
+        expect(net(balances.get('4300'))).toBe(250);
         const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
+        expect(statements.income.result).toBe(250);
         expect(statements.cashFlow.totalOutflow).toBe(1749);
         expect(statements.position.cash).toBe(250);
         expect(statements.position.journalBank).toBe(250);
@@ -354,8 +384,11 @@ describe('donación al fondo de reserva y comisión del 100 %', () => {
         expect(statements.income.expenseLines).toEqual([]);
         expect(statements.position.reserveFund).toBe(3000);
         expect(await creditPayments(p.owner.id)).toEqual([]);
-        const { bankBalance } = await expectLedgerInvariant(db, p.communityId);
+        const { bankBalance, balances } = await expectLedgerInvariant(db, p.communityId);
         expect(bankBalance).toBe(3000);
+        // La donación también salda la 2400: pasa al fondo de reserva (3100).
+        expect(balances.get('2400')).toMatchObject({ debit: 3000, credit: 3000 });
+        expect(balances.get('3100')).toMatchObject({ debit: 0, credit: 3000 });
     });
 
     it('con comisión del 100 % la liquidación queda retenida sin mover dinero', async () => {
@@ -368,6 +401,7 @@ describe('donación al fondo de reserva y comisión del 100 %', () => {
         expect(await creditPayments(p.owner.id)).toEqual([]);
         const balances = await ledgerBalances(db, p.communityId);
         expect(balances.has('2400')).toBe(false);
+        expect(balances.get('4300')).toMatchObject({ debit: 0, credit: 3000 });
         await expectLedgerInvariant(db, p.communityId);
     });
 });
@@ -436,23 +470,100 @@ describe('Haulmer: link de pago y webhook firmado', () => {
         await expectLedgerInvariant(db, p.communityId);
     });
 
-    // BUG conocido (reportado, no corregido en este PR): el arriendo cobrado por
-    // Haulmer no deja rastro contable de la entrada (no hay cargo `service` ni
-    // pago de unidad ni asiento), pero el abono al dueño sí se registra como gasto
-    // ("Liquidaciones a dueños") y como débito en 2400. Con comisión 0 % el
-    // resultado debería quedar en 0 y queda en −neto. Cuando se corrija, quitar
-    // `.fails` para que este test pase a exigirlo.
-    it.fails('el arriendo cobrado por Haulmer entra a los estados como ingreso (hoy no: solo aparece el gasto)', async () => {
-        const p = await seedParking({ haulmer: true });
-        const bookingId = await bookAt(p, 19);
+    async function payByHaulmer(p: ParkingCommunity, fromHour: number, hours = 2, gateway = `gw-${fromHour}`) {
+        const bookingId = await bookAt(p, fromHour, hours);
         const charge = await chargeOf(bookingId);
         await processParkingCharge(clients.admin as ParkingChargesDb, bookingId, { haulmer: fakeHaulmer().provider });
-        const params = { x_reference: `PARKING_${charge.id}`, x_result: 'completed', x_amount: String(charge.amount), x_currency: 'CLP', x_gateway_reference: 'gw-2' };
+        const params = { x_reference: `PARKING_${charge.id}`, x_result: 'completed', x_amount: String(charge.amount), x_currency: 'CLP', x_gateway_reference: gateway };
         expect((await webhook(params)).body.status).toBe('processed');
+        return { bookingId, charge, params };
+    }
+
+    it('comisión 0 %: el pago por Haulmer entra al banco contra la 2400; resultado 0 y la 2400 en 0 tras abonar', async () => {
+        const p = await seedParking({ haulmer: true, commission: 0 });
+        const { charge, params } = await payByHaulmer(p, 19);
         expect((await payoutOf(charge.id)).status).toBe('credited');
+        // Webhook repetido: un solo asiento por cobro.
+        expect((await webhook(params)).body.status).toBe('idempotent');
+        expect(await chargeEntries(charge.id)).toEqual([{ source: 'parking_charge', lines: [
+            { code: '1100', debit: 3000, credit: 0 },
+            { code: '2400', debit: 0, credit: 3000 },
+        ] }]);
+
         const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
         expect(statements.income.totalIncome).toBe(charge.amount);
+        expect(statements.income.lines.find(line => line.label.startsWith('Cargos extraordinarios'))?.total).toBe(3000);
+        expect(statements.income.totalExpenses).toBe(3000);
         expect(statements.income.result).toBe(0);
+        expect(statements.cashFlow.totalInflow).toBe(3000);
+        expect(statements.position.cash).toBe(3000);
+        expect(statements.position.journalBank).toBe(3000);
+        const { bankBalance, balances } = await expectLedgerInvariant(db, p.communityId);
+        expect(bankBalance).toBe(3000);
+        expect(net(balances.get('2400'))).toBe(0);
+    });
+
+    it('comisión 12,5 %: bruto a banco, neto a la 2400 y comisión a ingreso; resultado = comisión y la 2400 en 0 tras transferir', async () => {
+        const p = await seedParking({ haulmer: true, commission: 12.5, hourlyRate: 1999 });
+        as(p.owner.ownerId);
+        await ParkingPayoutService.saveMySettings({ destination: 'bank_transfer', ...BANK, creditUnitId: null });
+        const { charge } = await payByHaulmer(p, 20, 1);
+        const payout = await payoutOf(charge.id);
+        expect(payout).toMatchObject({ status: 'pending', gross_amount: 1999, commission_amount: 250, net_amount: 1749 });
+        expect(await chargeEntries(charge.id)).toEqual([{ source: 'parking_charge', lines: [
+            { code: '1100', debit: 1999, credit: 0 },
+            { code: '2400', debit: 0, credit: 1749 },
+            { code: '4300', debit: 0, credit: 250 },
+        ] }]);
+        // Antes de liquidar, el neto espera al dueño en la 2400.
+        expect(net((await expectLedgerInvariant(db, p.communityId)).balances.get('2400'))).toBe(1749);
+
+        as(p.adminId);
+        await ParkingPayoutService.adminMarkPaid(payout.id, chileToday(), 'TRX-H1', '');
+        const { bankBalance, balances } = await expectLedgerInvariant(db, p.communityId);
+        expect(bankBalance).toBe(250);
+        expect(net(balances.get('2400'))).toBe(0);
+        expect(net(balances.get('4300'))).toBe(250);
+        const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
+        expect(statements.income.totalIncome).toBe(1999);
+        expect(statements.income.result).toBe(250);
+        expect(statements.position.cash).toBe(250);
+        expect(statements.position.journalBank).toBe(250);
+    });
+
+    it('el reembolso de un arriendo pagado por Haulmer revierte su asiento y anula la transferencia pendiente', async () => {
+        const p = await seedParking({ haulmer: true, commission: 12.5 });
+        as(p.owner.ownerId);
+        await ParkingPayoutService.saveMySettings({ destination: 'bank_transfer', ...BANK, creditUnitId: null });
+        const { bookingId, charge } = await payByHaulmer(p, 21);
+        await asUser(db, p.adminId, tx => tx.query('SELECT public.admin_mark_parking_charge_refunded($1, $2)', [charge.id, 'Devuelto por Haulmer']));
+        expect((await chargeOf(bookingId)).status).toBe('refunded');
+        expect((await payoutOf(charge.id)).status).toBe('cancelled');
+        const [recorded, reversed, ...rest] = await chargeEntries(charge.id);
+        expect(rest).toEqual([]);
+        expect(recorded.source).toBe('parking_charge');
+        expect(reversed).toEqual({ source: 'parking_charge_reversal', lines: recorded.lines.map(line => ({ ...line, debit: line.credit, credit: line.debit })) });
+        const { bankBalance, balances } = await expectLedgerInvariant(db, p.communityId);
+        expect(bankBalance).toBe(0);
+        expect(net(balances.get('2400'))).toBe(0);
+        expect(net(balances.get('4300'))).toBe(0);
+        const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
+        expect(statements.income.totalIncome).toBe(0);
+        expect(statements.income.result).toBe(0);
+        expect(statements.cashFlow.totalInflow - statements.cashFlow.totalOutflow).toBe(0);
+        expect(statements.position.cash).toBe(0);
+    });
+
+    it('reembolsar después de abonar al dueño revierte la entrada pero no el abono: queda para revisión y la 2400 lo muestra', async () => {
+        const p = await seedParking({ haulmer: true });
+        const { charge } = await payByHaulmer(p, 6);
+        expect((await payoutOf(charge.id)).status).toBe('credited');
+        await asUser(db, p.adminId, tx => tx.query('SELECT public.admin_mark_parking_charge_refunded($1, $2)', [charge.id, 'Devuelto por Haulmer']));
+        expect(await payoutOf(charge.id)).toMatchObject({ status: 'credited', needs_review: true });
+        const { bankBalance, balances } = await expectLedgerInvariant(db, p.communityId);
+        expect(bankBalance).toBe(0);
+        // Deudora por lo ya abonado: lo que hay que regularizar con el dueño.
+        expect(net(balances.get('2400'))).toBe(-3000);
     });
 
     it('si Haulmer no está disponible, el cobro cae a gastos comunes', async () => {
