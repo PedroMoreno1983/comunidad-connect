@@ -33,12 +33,15 @@ function verifyCallbackSignature(params: CallbackParams, secretKey: string): boo
     return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
+// `amount` es lo que se esperaba cobrar (lo fija create-haulmer-link al crear el
+// link); lo que informa cada callback va en `paid_amount`. Si el callback pisara
+// `amount`, un aviso con otro monto pasaría a ser "lo esperado" en el reintento.
 function buildPaymentMetadata(params: CallbackParams) {
     return {
         processor: 'haulmer_tuu',
         payment_reference: params.x_reference,
         account_id: params.x_account_id,
-        amount: Number(params.x_amount || 0),
+        paid_amount: Number(params.x_amount || 0),
         currency: params.x_currency || 'CLP',
         result: params.x_result,
         message: params.x_message || null,
@@ -80,7 +83,7 @@ async function processExpensePayment(recordId: string, params: CallbackParams, c
         : {};
     const metadata = { ...previousMetadata, ...buildPaymentMetadata(params) };
     const expectedAmount = Math.round(Number(previousMetadata.amount || expense.amount || 0));
-    const amountMatches = expectedAmount > 0 && Math.abs(Number(metadata.amount || 0) - expectedAmount) <= 1;
+    const amountMatches = expectedAmount > 0 && Math.abs(Number(metadata.paid_amount || 0) - expectedAmount) <= 1;
     const gatewayReference = String(params.x_gateway_reference || params.x_reference || '').trim();
     const paymentReference = gatewayReference ? `haulmer:${gatewayReference}` : `haulmer:${recordId}`;
 
@@ -103,7 +106,7 @@ async function processExpensePayment(recordId: string, params: CallbackParams, c
     }
 
     if (completed && !amountMatches) {
-        console.warn(`[Haulmer] Monto no coincide para expense ${recordId}: pagado ${metadata.amount}, esperado ${expectedAmount}`);
+        console.warn(`[Haulmer] Monto no coincide para expense ${recordId}: pagado ${metadata.paid_amount}, esperado ${expectedAmount}`);
         const { error } = await supabaseAdmin
             .from('expenses')
             .update({ payment_metadata: { ...metadata, mismatch: true, expected_amount: expectedAmount } })
