@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
         let moduleQuery = getSupabaseAdmin()
             .from('training_modules')
-            .select('id,title,description,target_audience,learning_objectives,training_lessons(content,order_index)')
+            .select('id,title,description,target_audience,learning_objectives,version_number,training_lessons(content,order_index)')
             .eq('id', moduleId)
             .eq('is_active', true)
             .or(`community_id.is.null,community_id.eq.${profile.community_id}`)
@@ -51,9 +51,36 @@ export async function POST(req: NextRequest) {
         if (!courseModule) return NextResponse.json({ error: "Curso no disponible para tu rol o comunidad." }, { status: 404 });
         const lessonContent = courseModule.training_lessons?.[0]?.content || '';
         currentSlide = parseTrainingSlides(lessonContent).find(slide => slide.id === currentSlideId) || null;
+        let practiceContext = '';
+        if (currentSlide?.activity) {
+            const { data: latestAttempt } = await getSupabaseAdmin()
+                .from('training_attempts')
+                .select('id')
+                .eq('module_id', moduleId)
+                .eq('user_id', profile.id)
+                .eq('community_id', profile.community_id)
+                .eq('module_version', courseModule.version_number || 1)
+                .order('attempt_number', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (latestAttempt) {
+                const { data: activityResponses } = await getSupabaseAdmin()
+                    .from('training_activity_responses')
+                    .select('response_number,is_correct')
+                    .eq('attempt_id', latestAttempt.id)
+                    .eq('slide_id', currentSlide.id)
+                    .order('response_number', { ascending: false })
+                    .limit(5);
+                if (activityResponses?.length) {
+                    const latest = activityResponses[0];
+                    practiceContext = `Práctica registrada en esta sección: ${activityResponses.length} respuesta(s) reciente(s); la última fue ${latest.is_correct ? 'correcta' : 'incorrecta'}. No reveles la alternativa correcta; ayuda a razonar el criterio.`;
+                }
+            }
+        }
         const courseContent = JSON.stringify({
             course: { title: courseModule.title, description: courseModule.description, objectives: courseModule.learning_objectives },
             participantRole: profile.role,
+            practiceContext,
             currentSection: currentSlide || null,
             fullCourse: parseTrainingSlides(lessonContent),
             instruction: 'Responde desde esta versión publicada. Distingue responsabilidades, cita la sección pertinente y termina con una acción aplicable al rol.',
@@ -77,6 +104,7 @@ export async function POST(req: NextRequest) {
                     learnerName: profile.name && !profile.name.includes("@") ? profile.name : undefined,
                     communityId: profile.community_id || undefined,
                     userId: profile.id,
+                    practiceContext,
                 });
                 return NextResponse.json({ responses }, { status: 200 });
             } catch (error) {

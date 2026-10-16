@@ -4241,6 +4241,22 @@ CREATE TABLE IF NOT EXISTS public.training_activity_responses (
   UNIQUE (attempt_id, slide_id, response_number)
 );
 
+-- Repaso diferido a partir de siete días después de aprobar el curso.
+-- El servidor valida identidad, comunidad, versión y fecha; sin acceso directo del cliente.
+CREATE TABLE IF NOT EXISTS public.training_retention_checks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id uuid NOT NULL REFERENCES public.training_attempts(id) ON DELETE CASCADE,
+  module_id uuid NOT NULL REFERENCES public.training_modules(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  module_version integer NOT NULL CHECK (module_version > 0),
+  slide_id text NOT NULL,
+  answer jsonb NOT NULL,
+  is_correct boolean NOT NULL,
+  responded_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (attempt_id, slide_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.training_certificates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   attempt_id uuid NOT NULL UNIQUE REFERENCES public.training_attempts(id),
@@ -4263,6 +4279,8 @@ CREATE INDEX IF NOT EXISTS idx_training_attempts_user_module ON public.training_
 CREATE INDEX IF NOT EXISTS idx_training_attempts_community ON public.training_attempts(community_id, completed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_training_attempts_assignment ON public.training_attempts(assignment_id) WHERE assignment_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_training_responses_attempt ON public.training_activity_responses(attempt_id, slide_id, response_number DESC);
+CREATE INDEX IF NOT EXISTS idx_training_retention_community_module ON public.training_retention_checks(community_id, module_id, responded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_training_retention_user ON public.training_retention_checks(user_id, module_id, responded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_training_certificates_user ON public.training_certificates(user_id, issued_at DESC);
 CREATE INDEX IF NOT EXISTS idx_training_certificates_community ON public.training_certificates(community_id, issued_at DESC);
 
@@ -4487,6 +4505,9 @@ ALTER TABLE public.training_module_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.training_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.training_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.training_activity_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_retention_checks ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.training_retention_checks FROM anon, authenticated;
+GRANT SELECT, INSERT, DELETE ON public.training_retention_checks TO service_role;
 ALTER TABLE public.training_certificates ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS training_modules_read_visible ON public.training_modules;

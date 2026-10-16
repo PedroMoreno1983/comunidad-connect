@@ -61,6 +61,23 @@ datawise-people-analytics/
 
 # real PII / operational logs that must never be committed
 scripts/envios-completados.json
+scripts/envios_leads_log.csv
+
+# Material local de prospeccion, finanzas y QA; no incluir con git add .
+/leads_administradoras_regiones.csv
+/leads_administradoras_regiones.xlsx
+/mensajes_prospeccion_administradoras.md
+/Planilla Control Propiedades 2026.xlsx
+/planillas_originales/
+/extracto_2026.json
+/extracto_patrimonio.json
+/build_planilla.py
+/Norma-presentacion-empresas.pdf
+/norma-motion/
+/artifacts/
+/src/app/zz-preview-training/
+/scripts/_glosa-setup.js
+/scripts/membrane-run.mjs
 
 # local infrastructure access helpers (must never contain tracked credentials)
 download_scrapp*.py

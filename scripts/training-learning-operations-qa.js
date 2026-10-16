@@ -89,7 +89,10 @@ async function main() {
         }
         assert(true, 'Temporary admin and concierge profiles created');
 
-        browser = await chromium.launch({ headless: true });
+        browser = await chromium.launch({
+            headless: true,
+            ...(process.env.QA_CHROME_EXECUTABLE ? { executablePath: process.env.QA_CHROME_EXECUTABLE } : {}),
+        });
         const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
         const adminPage = await adminContext.newPage();
         await login(adminPage, people[0].email, password);
@@ -98,6 +101,16 @@ async function main() {
         const modules = await browserJson(adminPage, '/api/training/modules');
         assert(modules.ok && modules.data.length >= 3, 'Admin can read the official curriculum');
         const sourceCourse = modules.data.find(item => item.training_lessons?.[0]?.content);
+        if (process.env.QA_TEST_GENERATION === '1') {
+            const sourceSlides = JSON.parse(sourceCourse.training_lessons[0].content);
+            const sourceText = sourceSlides.map(slide => [slide.title, slide.lead, ...slide.bullets, slide.notes].filter(Boolean).join('. ')).join('\n');
+            const generated = await browserJson(adminPage, '/api/training/generate-slides', {
+                method: 'POST',
+                body: { text: sourceText, targetAudience: 'all' },
+            });
+            assert(generated.ok && generated.data.quality?.publishable && generated.data.slides?.length >= 8,
+                'Admin generates a complete course from source material', { status: generated.status, error: generated.data.error });
+        }
         const title = `Protocolo operativo QA ${runId}`;
         const create = await browserJson(adminPage, '/api/training/modules', {
             method: 'POST',
@@ -183,6 +196,22 @@ async function main() {
             'Certificate is a parseable one-page PDF payload',
             { bytes: certificateBytes.length, pages: certificatePdf.getPageCount() },
         );
+        const earlyReview = await browserJson(conciergePage, `/api/training/retention?attemptId=${attemptId}`);
+        assert(earlyReview.ok && earlyReview.data.eligible === false, 'Delayed review stays closed before seven days');
+        const reviewSlide = slides.find(item => item.activity && item.activity.type !== 'checklist');
+        const prematureAnswer = await browserJson(conciergePage, '/api/training/retention', { method: 'POST', body: { attemptId, slideId: reviewSlide.id, answer: reviewSlide.activity.correctIndex } });
+        assert(prematureAnswer.status === 403, 'Learner cannot submit an early review');
+        const otherUserReview = await browserJson(adminPage, `/api/training/retention?attemptId=${attemptId}`);
+        assert(otherUserReview.status === 404, 'Another user cannot read the learner review');
+        const eightDaysAgo = new Date(Date.now() - 8 * 86_400_000).toISOString();
+        const { error: shiftError } = await adminClient.from('training_attempts').update({ completed_at: eightDaysAgo }).eq('id', attemptId);
+        if (shiftError) throw shiftError;
+        const dueReview = await browserJson(conciergePage, `/api/training/retention?attemptId=${attemptId}`);
+        assert(dueReview.ok && dueReview.data.eligible === true, 'Delayed review opens after seven days');
+        const retained = await browserJson(conciergePage, '/api/training/retention', { method: 'POST', body: { attemptId, slideId: reviewSlide.id, answer: reviewSlide.activity.correctIndex } });
+        assert(retained.status === 201 && retained.data.check?.is_correct === true, 'Delayed answer is scored and persisted');
+        const duplicateReview = await browserJson(conciergePage, '/api/training/retention', { method: 'POST', body: { attemptId, slideId: reviewSlide.id, answer: reviewSlide.activity.correctIndex } });
+        assert(duplicateReview.status === 409, 'Learner cannot overwrite a delayed answer');
         if (writeArtifacts) {
             const pdfDir = path.join(process.cwd(), 'tmp', 'pdfs');
             fs.mkdirSync(pdfDir, { recursive: true });
@@ -192,7 +221,7 @@ async function main() {
         await conciergePage.reload({ waitUntil: 'networkidle' });
         const card = conciergePage.locator('article').filter({ hasText: title });
         await card.getByRole('button', { name: 'Revisar curso' }).click();
-        await conciergePage.getByText('Consulta sobre el curso').waitFor();
+        await conciergePage.getByRole('button', { name: 'Preguntar a CoCo' }).waitFor();
         const certificateLink = conciergePage.getByRole('link', { name: 'Descargar constancia' });
         await certificateLink.waitFor({ timeout: 20_000 });
         if (writeArtifacts) await conciergePage.screenshot({ path: path.join(outputDir, 'concierge-classroom.png'), fullPage: true });
@@ -201,6 +230,8 @@ async function main() {
         const dashboardAfter = await browserJson(adminPage, '/api/training/admin/dashboard');
         const completedAssignment = dashboardAfter.data.assignments.find(item => item.module_id === cleanup.courseId && item.user_id === people[1].id);
         assert(completedAssignment?.status === 'completed' && completedAssignment.latest_attempt?.score === 100, 'Admin dashboard receives the verified completion and score');
+        const learning = dashboardAfter.data.learning.find(item => item.module_id === cleanup.courseId);
+        assert(learning?.firstTryTotal >= 3 && learning?.delayedTotal === 1 && learning?.delayedCorrect === 1, 'Admin dashboard separates immediate practice from delayed review');
         report.passed = true;
         await adminContext.close();
         await conciergeContext.close();

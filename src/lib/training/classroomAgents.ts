@@ -30,6 +30,7 @@ export interface ClassroomTurnInput {
     learnerName?: string;
     communityId?: string;
     userId?: string;
+    practiceContext?: string;
 }
 
 /** Respuestas que solo acusan recibo: no merecen que hable todo el grupo. */
@@ -82,6 +83,7 @@ export function classroomSystemPrompt(role: 'admin' | 'concierge', course: Class
         'Cómo responde la tutora:',
         '- Primero responde la pregunta de forma directa y aplicable, apoyándote en el criterio de la sección abierta. Si existe peligro inmediato, da primero la acción de protección y aviso; deja la pregunta pedagógica para el final.',
         '- Luego cierra con una sola pregunta que obligue a aplicar ese criterio a un caso del trabajo.',
+        '- Si el contexto de práctica indica un error reciente, explica el criterio sin revelar la opción correcta ni repetir la misma pregunta. Propón una pista o un caso análogo más simple. Si ya respondió bien, plantea una transferencia a otra situación del turno. Ajusta la dificultad a los intentos registrados.',
         '- Máximo 70 palabras, de tú, sin títulos ni listas. Hablas de ti en femenino. Para quien aprende usa formas sin género ("en administración", "en tu turno"), nunca "administradora", "administrador", "conserje" ni adjetivos con género. No saludes ni nombres a los compañeros.',
         '',
         'Compañeros de práctica (intervienen solo si aportan algo; si no, la lista va vacía):',
@@ -140,6 +142,7 @@ function conversation(input: ClassroomTurnInput): Anthropic.MessageParam[] {
             : 'No se sabe qué sección está abierta; responde desde el curso completo.',
         `Rol de quien aprende: ${input.role === 'admin' ? 'administración' : 'conserjería'}.`,
         input.learnerName ? `Quien aprende se llama ${input.learnerName}.` : '',
+        input.practiceContext || '',
         isAcknowledgement(input.message) ? 'Este mensaje solo acusa recibo.' : '',
         `Mensaje: ${input.message}`,
     ].filter(Boolean).join('\n');

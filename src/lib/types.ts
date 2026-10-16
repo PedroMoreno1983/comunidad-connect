@@ -3290,6 +3290,27 @@ export interface TrainingAttemptResponse {
     error?: string;
 }
 
+export interface TrainingRetentionCheck {
+    id: string;
+    attempt_id: string;
+    slide_id: string;
+    is_correct: boolean;
+    responded_at: string;
+}
+
+export interface TrainingRetentionResponse {
+    eligible_at: string;
+    eligible: boolean;
+    checks: TrainingRetentionCheck[];
+    check?: TrainingRetentionCheck;
+    error?: string;
+}
+
+export interface TrainingRetentionReviewProps {
+    attemptId: string;
+    slides: TrainingSlide[];
+}
+
 export interface TrainingCompletionResult {
     attempt: TrainingAttemptRecord;
     certificate: TrainingCertificateRecord;
@@ -3320,6 +3341,13 @@ export interface TrainingComplianceDashboard {
         quality_score: number;
         created_at: string;
         created_by?: string | null;
+    }>;
+    learning: Array<{
+        module_id: string;
+        firstTryCorrect: number;
+        firstTryTotal: number;
+        delayedCorrect: number;
+        delayedTotal: number;
     }>;
 }
 

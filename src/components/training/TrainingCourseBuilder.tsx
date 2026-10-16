@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/cc/Button";
 import { Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
+import { SlideCanvas } from "@/components/training/MultiAgentClassroom";
 import {
     isPublishableTrainingCourse,
     normalizeTrainingSlides,
@@ -77,6 +78,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
     const [busy, setBusy] = useState<"file" | "generate" | "publish" | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [reviewed, setReviewed] = useState(false);
+    const [previewIndex, setPreviewIndex] = useState(0);
 
     const publishableSlides = useMemo(() => normalizeTrainingSlides(slides), [slides]);
     const activities = useMemo(() => trainingActivityCount(publishableSlides), [publishableSlides]);
@@ -153,6 +155,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                 throw new Error(data.error || "No se pudo construir un curso interactivo válido.");
             }
             setSlides(normalized);
+            setPreviewIndex(0);
             setReviewed(false);
             toast({
                 title: "Curso diseñado",
@@ -331,6 +334,20 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                                 <PreviewMetric value={slides.length} label="secciones" />
                                 <PreviewMetric value={activities} label="actividades" />
                             </div>
+                            <details className="mt-3 rounded-xl border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                                <summary className="cursor-pointer text-xs font-semibold cc-text-primary">Ver presentación antes de publicar</summary>
+                                <label className="mt-3 block text-xs font-semibold cc-text-secondary" htmlFor="training-preview-section">Sección</label>
+                                <select id="training-preview-section" className="input-premium mt-1 w-full p-2 text-xs" value={Math.min(previewIndex, publishableSlides.length - 1)} onChange={event => setPreviewIndex(Number(event.target.value))}>
+                                    {publishableSlides.map((slide, index) => <option key={slide.id} value={index}>{index + 1}. {slide.title}</option>)}
+                                </select>
+                                {publishableSlides[Math.min(previewIndex, publishableSlides.length - 1)] && (
+                                    <SlideCanvas
+                                        key={publishableSlides[Math.min(previewIndex, publishableSlides.length - 1)].id}
+                                        slide={publishableSlides[Math.min(previewIndex, publishableSlides.length - 1)]}
+                                        accent={{ copper: "var(--cc-copper)", sage: "var(--cc-sage)", ink: "var(--cc-ink)", amber: "#9a5b16" }[publishableSlides[Math.min(previewIndex, publishableSlides.length - 1)].visual_theme]}
+                                    />
+                                )}
+                            </details>
                             <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                 <div className="flex items-center justify-between text-xs font-semibold"><span className="cc-text-primary">Control de estructura</span><span style={{ color: quality.publishable ? "var(--cc-sage)" : "var(--cc-copper)" }}>{quality.score}/100</span></div>
                                 <div className="mt-2 grid gap-1.5">{quality.checks.map(check => <div key={check.id} className="flex items-center gap-2 text-[11px] cc-text-secondary">{check.passed ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "var(--cc-sage)" }} /> : <span className="h-3.5 w-3.5 rounded-full border" style={{ borderColor: "var(--cc-line-strong)" }} />}{check.label}</div>)}</div>

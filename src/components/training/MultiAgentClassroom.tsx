@@ -29,6 +29,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/cc/Button";
+import { TrainingRetentionReview } from "@/components/training/TrainingRetentionReview";
 import { parseTrainingSlides, visibleSlideBullets } from "@/lib/training/courseContent";
 import { slideTopic, splitComparison, splitLabeled, topicImage, type TrainingTopic } from "@/lib/training/slideVisual";
 import type { TrainingAttemptRecord, TrainingAttemptResponse, TrainingChatMessage, TrainingClassroomProps, TrainingSlide } from "@/lib/types";
@@ -143,7 +144,7 @@ export function MultiAgentClassroom({
     }, [currentIndex, onSlideChange, slides.length]);
 
     useEffect(() => {
-        messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: "smooth" });
+        messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     }, [messages, isTyping]);
 
     const current = slides[currentIndex];
@@ -236,8 +237,8 @@ export function MultiAgentClassroom({
         }
     };
 
-    const sendQuestion = async () => {
-        const text = question.trim();
+    const sendQuestion = async (suggestedQuestion?: string) => {
+        const text = (suggestedQuestion || question).trim();
         if (!text || isTyping) return;
         const userMessage: TrainingChatMessage = { id: `user-${Date.now()}`, role: "user", text };
         const history = [...messages, userMessage];
@@ -350,6 +351,10 @@ export function MultiAgentClassroom({
                         onCheckAnswer={checkAnswer}
                         onToggleChecklist={toggleChecklistItem}
                         onValidateChecklist={() => void saveActivityAnswer(checklists[current.id] || [])}
+                        onAskForHelp={() => {
+                            setHelpOpen(true);
+                            void sendQuestion(`Necesito una pista para aplicar el criterio de «${current.title}» después de mi respuesta. Ayúdame a razonar sin revelar la opción correcta.`);
+                        }}
                     />
                 )}
 
@@ -380,6 +385,7 @@ export function MultiAgentClassroom({
                         </ul>
                     </section>
                 )}
+                {completed && attempt && <TrainingRetentionReview attemptId={attempt.id} slides={slides} />}
             </main>
 
             {helpOpen && (
@@ -393,7 +399,8 @@ export function MultiAgentClassroom({
                             </div>
                             <button type="button" onClick={() => setHelpOpen(false)} className="rounded-full p-2 cc-text-secondary hover:bg-[var(--cc-paper-warm)]" aria-label="Cerrar panel"><X className="h-4 w-4" /></button>
                         </div>
-                        <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+                        <button type="button" disabled={isTyping} onClick={() => void sendQuestion(`Practiquemos la sección «${current.title}». Plantea un caso breve de mi trabajo y ayúdame a decidir qué hacer según el curso.`)} className="mx-4 mt-3 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50" style={{ borderColor: "var(--cc-copper)", color: "var(--cc-copper)" }}>Practicar esta sección con CoCo</button>
+                        <div ref={messagesRef} role="log" aria-label="Conversación con CoCo" aria-live="polite" aria-relevant="additions" className="flex-1 space-y-3 overflow-y-auto p-4">
                             {!messages.length && (
                                 <div className="mt-6 text-center">
                                     <MessageCircleQuestion className="mx-auto h-8 w-8 cc-text-tertiary" />
@@ -441,7 +448,7 @@ function SceneHero({ topic, tall = false, children }: { topic: TrainingTopic; ta
     );
 }
 
-function SlideCanvas({ slide, accent, soft }: { slide: TrainingSlide; accent: string; soft: string }) {
+export function SlideCanvas({ slide, accent, soft = "var(--cc-paper-warm)" }: { slide: TrainingSlide; accent: string; soft?: string }) {
     const bullets = visibleSlideBullets(slide);
     const topic = slideTopic(slide.title, slide.lead);
     const kicker = slide.eyebrow || "";
@@ -565,6 +572,7 @@ function ActivityCard({
     onCheckAnswer,
     onToggleChecklist,
     onValidateChecklist,
+    onAskForHelp,
 }: {
     slide: TrainingSlide;
     selectedAnswer?: number;
@@ -576,6 +584,7 @@ function ActivityCard({
     onCheckAnswer: () => void;
     onToggleChecklist: (item: string) => void;
     onValidateChecklist: () => void;
+    onAskForHelp: () => void;
 }) {
     const activity = slide.activity;
     if (!activity) return null;
@@ -606,6 +615,7 @@ function ActivityCard({
             )}
 
             {feedback && <p role="status" className="mt-3 rounded-lg px-3 py-2 text-sm leading-5" style={{ background: isComplete ? "var(--cc-sage-tint)" : "var(--cc-copper-tint)", color: isComplete ? "var(--cc-sage)" : "var(--cc-copper)" }}>{feedback}</p>}
+            {feedback && !isComplete && !isChecklist && <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={onAskForHelp}>Pedir una pista a CoCo</Button>}
         </section>
     );
 }
