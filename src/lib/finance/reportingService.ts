@@ -305,7 +305,7 @@ export async function getMonthlyReport(communityId: string, month: string): Prom
             .select('amount, method, reference').eq('community_id', communityId)
             .gte('paid_at', monthStart).lt('paid_at', nextMonth),
         admin.from('reserve_fund_movements')
-            .select('kind, amount').eq('community_id', communityId),
+            .select('kind, amount, label').eq('community_id', communityId),
     ]);
     if (expensesResult.error) throw expensesResult.error;
     if (billedResult.error) throw billedResult.error;
@@ -339,10 +339,14 @@ export async function getMonthlyReport(communityId: string, month: string): Prom
         byMethodMap.set(key, (byMethodMap.get(key) || 0) + amount);
     }
 
-    const fundContributions = (fundResult.data ?? [])
+    // Solo el fondo de reserva legal, igual que getReserveFund y los estados
+    // financieros: los fondos adicionales ("[pintura] ...") no son el fondo de reserva.
+    const legalFund = (fundResult.data ?? [])
+        .filter(row => parseFundLabel(String(row.label || '')).fundName === LEGAL_RESERVE_FUND);
+    const fundContributions = legalFund
         .filter(row => row.kind === 'contribution')
         .reduce((sum, row) => sum + Math.round(Number(row.amount || 0)), 0);
-    const fundWithdrawals = (fundResult.data ?? [])
+    const fundWithdrawals = legalFund
         .filter(row => row.kind === 'withdrawal')
         .reduce((sum, row) => sum + Math.round(Number(row.amount || 0)), 0);
 
