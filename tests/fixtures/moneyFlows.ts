@@ -125,9 +125,14 @@ export async function ledgerBalances(db: PGlite, communityId: string): Promise<M
  *  1. cada asiento cuadra (debe = haber) y por lo tanto el libro entero;
  *  2. cada pago tiene un único asiento de pago (y uno de reversa si se borró);
  *  3. el banco (1100) es exactamente el dinero que entró (pagos que no son
- *     abonos de liquidación) menos las transferencias a dueños marcadas como
- *     pagadas: ni el abono a GC ni la donación pasan por el banco;
- *  4. ningún asiento usa una cuenta de otra comunidad.
+ *     abonos de liquidación, más los arriendos de estacionamiento pagados por
+ *     Haulmer y no reembolsados) menos las transferencias a dueños marcadas
+ *     como pagadas: ni el abono a GC ni la donación pasan por el banco;
+ *  4. ningún asiento usa una cuenta de otra comunidad;
+ *  5. cada arriendo pagado tiene exactamente un asiento vigente de
+ *     reconocimiento (y ninguno si ya no está pagado), y la 2400 es el neto de
+ *     los arriendos pagados que aún no se entrega al dueño: queda en 0 cuando
+ *     todo está liquidado.
  */
 export async function expectLedgerInvariant(db: PGlite, communityId: string) {
     const { rows: unbalanced } = await db.query(`
@@ -159,16 +164,34 @@ export async function expectLedgerInvariant(db: PGlite, communityId: string) {
     [communityId]);
     expect(missing, 'pagos sin asiento').toEqual([]);
 
-    const { rows: [cash] } = await db.query<{ inflow: number; transferred: number }>(`
+    const { rows: [cash] } = await db.query<{ inflow: number; haulmer: number; transferred: number }>(`
         SELECT
           (SELECT coalesce(sum(amount), 0)::int FROM public.unit_payments
             WHERE community_id = $1 AND coalesce(reference, '') NOT LIKE 'parking_payout:%') AS inflow,
+          (SELECT coalesce(sum(amount), 0)::int FROM public.parking_charges
+            WHERE community_id = $1 AND method = 'haulmer' AND status = 'paid') AS haulmer,
           (SELECT coalesce(sum(net_amount), 0)::int FROM public.parking_payouts
             WHERE community_id = $1 AND status = 'paid') AS transferred`, [communityId]);
     const balances = await ledgerBalances(db, communityId);
     const bank = balances.get('1100');
     const bankBalance = bank ? bank.debit - bank.credit : 0;
-    expect(bankBalance, 'banco = pagos en dinero − transferencias a dueños').toBe(cash.inflow - cash.transferred);
+    expect(bankBalance, 'banco = pagos en dinero + Haulmer − transferencias a dueños').toBe(cash.inflow + cash.haulmer - cash.transferred);
+
+    const { rows: recognition } = await db.query<{ id: string; status: string; vigentes: number }>(`
+        SELECT c.id, c.status,
+          (count(*) FILTER (WHERE e.event_type = 'ledger_recorded') - count(*) FILTER (WHERE e.event_type = 'ledger_reversed'))::int AS vigentes
+        FROM public.parking_charges c LEFT JOIN public.parking_charge_events e ON e.charge_id = c.id
+        WHERE c.community_id = $1 AND c.amount > 0 GROUP BY c.id, c.status`, [communityId]);
+    expect(recognition.filter(row => row.vigentes !== (row.status === 'paid' ? 1 : 0)), 'arriendos sin su asiento vigente').toEqual([]);
+
+    const { rows: [owed] } = await db.query<{ owed: number }>(`
+        SELECT
+          (SELECT coalesce(sum(p.net_amount), 0) FROM public.parking_payouts p JOIN public.parking_charges c ON c.id = p.charge_id
+            WHERE p.community_id = $1 AND c.status = 'paid')
+          - (SELECT coalesce(sum(net_amount), 0) FROM public.parking_payouts
+            WHERE community_id = $1 AND status IN ('paid', 'credited', 'donated')) AS owed`, [communityId]);
+    const owners = balances.get('2400');
+    expect(owners ? owners.credit - owners.debit : 0, '2400 = neto pagado por los arrendatarios que falta entregar').toBe(Number(owed.owed));
     return { bankBalance, balances };
 }
 

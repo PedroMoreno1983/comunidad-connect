@@ -52,6 +52,34 @@ describe('liquidaciones en los estados financieros', () => {
         expect(statements.cashFlow.endingCash).toBe(statements.position.cash);
     });
 
+    it('arriendo pagado por Haulmer: ingreso y entrada de caja aunque no pase por la cuenta de la unidad', () => {
+        const statements = buildFinancialStatements({
+            ...base,
+            charges: [],
+            payments: [],
+            providerParkingCharges: [{ paidMonth: '2026-02', amount: 10_000, refundedMonth: null }],
+            parkingPayouts: [{ month: '2026-03', netAmount: 8_750, kind: 'transfer' }],
+        });
+        expect(statements.income.lines.find(line => line.label.startsWith('Cargos extraordinarios'))?.total).toBe(10_000);
+        expect(statements.income.result).toBe(1_250); // comisión del 12,5 %
+        expect(statements.cashFlow.months.find(row => row.month === '2026-02')?.inflow).toBe(10_000);
+        expect(statements.position.cash).toBe(1_250);
+        expect(statements.cashFlow.endingCash).toBe(statements.position.cash);
+    });
+
+    it('arriendo por Haulmer reembolsado: sale del ingreso y de la caja el mes del reembolso', () => {
+        const statements = buildFinancialStatements({
+            ...base,
+            charges: [],
+            payments: [],
+            providerParkingCharges: [{ paidMonth: '2026-02', amount: 10_000, refundedMonth: '2026-03' }],
+        });
+        expect(statements.income.totalIncome).toBe(0);
+        expect(statements.income.result).toBe(0);
+        expect(statements.cashFlow.months.find(row => row.month === '2026-03')?.outflow).toBe(10_000);
+        expect(statements.position.cash).toBe(0);
+    });
+
     it('sin liquidaciones no cambia nada', () => {
         const statements = buildFinancialStatements(base);
         expect(statements.income.result).toBe(10_000);

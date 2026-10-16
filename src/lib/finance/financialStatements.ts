@@ -51,6 +51,13 @@ export interface StatementInputs {
      * ya cuentan como aporte al fondo.
      */
     parkingPayouts?: Array<{ month: string; netAmount: number; kind: 'transfer' | 'credit' }>;
+    /**
+     * Arriendos de estacionamiento pagados por Haulmer (no pasan por la cuenta de
+     * la unidad). Entran completos como ingreso y como entrada de caja el mes del
+     * pago, igual que un cargo 'service' pagado en gastos comunes; si se
+     * reembolsaron, el mes del reembolso salen de ambos.
+     */
+    providerParkingCharges?: Array<{ paidMonth: string; amount: number; refundedMonth: string | null }>;
     /** Saldo de la cuenta 1100 Banco del libro de 4 cuentas. 0 si aún no hay asientos. */
     journalBank: number;
 }
@@ -78,7 +85,12 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
     const otherIncome = inputs.charges
         .filter(row => inYear(row.month) && ['extraordinary', 'service', 'other'].includes(row.kind) && !isCommitteeDiscount(row))
         .reduce((sum, row) => sum + round(row.amount), 0);
-    const totalIncome = gastoComun + fines + interest + otherIncome;
+    const providerParking = inputs.providerParkingCharges ?? [];
+    const providerParkingIncome = providerParking.reduce((sum, row) => sum
+        + (inYear(row.paidMonth) ? round(row.amount) : 0)
+        - (row.refundedMonth && inYear(row.refundedMonth) ? round(row.amount) : 0), 0);
+    const servicesIncome = otherIncome + providerParkingIncome;
+    const totalIncome = gastoComun + fines + interest + servicesIncome;
 
     const byCategory = new Map<string, number>();
     for (const row of inputs.communityExpenses.filter(item => inYear(item.month))) {
@@ -104,11 +116,18 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
         if (row.nonCash) continue;
         paymentsByMonth.set(monthOf(row.paidAt), (paymentsByMonth.get(monthOf(row.paidAt)) || 0) + round(row.amount));
     }
+    // Haulmer deposita en el banco: entrada el mes del pago, salida el del reembolso.
+    for (const row of providerParking) {
+        paymentsByMonth.set(row.paidMonth, (paymentsByMonth.get(row.paidMonth) || 0) + round(row.amount));
+    }
     const expensesByMonth = new Map<string, number>();
     for (const row of inputs.communityExpenses) expensesByMonth.set(row.month, (expensesByMonth.get(row.month) || 0) + round(row.amount));
     // La transferencia al dueño sale del banco; el abono a su cuenta no.
     for (const row of inputs.parkingPayouts ?? []) {
         if (row.kind === 'transfer') expensesByMonth.set(row.month, (expensesByMonth.get(row.month) || 0) + round(row.netAmount));
+    }
+    for (const row of providerParking) {
+        if (row.refundedMonth) expensesByMonth.set(row.refundedMonth, (expensesByMonth.get(row.refundedMonth) || 0) + round(row.amount));
     }
 
     const startingCash = inputs.openingCash;
@@ -150,7 +169,7 @@ export function buildFinancialStatements(inputs: StatementInputs): FinancialStat
                 { label: 'Gastos comunes emitidos', total: gastoComun },
                 { label: 'Multas', total: fines },
                 { label: 'Intereses por mora', total: interest },
-                { label: 'Cargos extraordinarios y servicios', total: otherIncome },
+                { label: 'Cargos extraordinarios y servicios', total: servicesIncome },
             ],
             totalIncome,
             expenseLines,
@@ -189,7 +208,7 @@ export async function getFinancialStatements(
     const admin = getSupabaseAdmin();
     const cutoff = options.cutoffMonth;
 
-    const [units, expenses, charges, payments, communityExpenses, reserve, journal, parkingPayouts] = await Promise.all([
+    const [units, expenses, charges, payments, communityExpenses, reserve, journal, parkingPayouts, providerParkingCharges] = await Promise.all([
         fetchAllFinanceRows<{ id: string }>((from, to) =>
             admin.from('units').select('id').eq('community_id', communityId).order('id').range(from, to)),
         fetchAllFinanceRows<{ unit_id: string; month: string; amount: number }>((from, to) =>
@@ -209,6 +228,7 @@ export async function getFinancialStatements(
                 .lte('month', cutoff).order('id').range(from, to)),
         getJournal(communityId, new Date(Date.UTC(Number(cutoff.slice(0, 4)), Number(cutoff.slice(5, 7)), 0)).toISOString().slice(0, 10)),
         readDeliveredParkingPayouts(communityId, cutoff),
+        readProviderParkingCharges(communityId, cutoff),
     ]);
 
     return buildFinancialStatements({
@@ -226,7 +246,32 @@ export async function getFinancialStatements(
         reserveMovements: reserve.map(row => ({ month: String(row.month), kind: String(row.kind), amount: Number(row.amount || 0), label: String(row.label || '') })),
         journalBank: Number(journal.accounts.find(account => account.code === '1100')?.balance || 0),
         parkingPayouts,
+        providerParkingCharges,
     });
+}
+
+/** Arriendos de estacionamiento cobrados por Haulmer hasta el corte, con sus meses en Chile. */
+async function readProviderParkingCharges(communityId: string, cutoff: string) {
+    const admin = getSupabaseAdmin();
+    const monthOfTimestamp = (value: string | null) => value ? todayInChile(new Date(String(value))).slice(0, 7) : '';
+    try {
+        const rows = await fetchAllFinanceRows<{ amount: number; paid_at: string | null; refunded_at: string | null }>((from, to) =>
+            admin.from('parking_charges').select('amount, paid_at, refunded_at').eq('community_id', communityId)
+                .eq('method', 'haulmer').in('status', ['paid', 'refunded']).order('id').range(from, to));
+        return rows
+            .map(row => {
+                const refundedMonth = monthOfTimestamp(row.refunded_at);
+                return {
+                    paidMonth: monthOfTimestamp(row.paid_at),
+                    amount: Number(row.amount || 0),
+                    refundedMonth: refundedMonth && refundedMonth <= cutoff ? refundedMonth : null,
+                };
+            })
+            .filter(row => row.paidMonth && row.paidMonth <= cutoff && row.amount > 0);
+    } catch {
+        // Sin el libro de cobros de estacionamientos aplicado, no hay cobros.
+        return [];
+    }
 }
 
 /** Liquidaciones transferidas o abonadas hasta el corte, con su mes en Chile. */
