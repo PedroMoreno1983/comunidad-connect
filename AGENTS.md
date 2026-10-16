@@ -94,7 +94,8 @@ src/
 │   ├── api/             # Route Handlers de Next.js
 │   └── page.tsx         # Landing page pública
 ├── lib/
-│   ├── api.ts           # ← TODOS los Services de datos van aquí
+│   ├── api.ts           # ← Barrel: re-exporta src/lib/api/*. No agregues código aquí
+│   ├── api/             # ← Services de datos, un archivo por dominio (ver "Patrón de Services")
 │   ├── types.ts         # ← TODOS los tipos TypeScript centralizados
 │   ├── agentBrain.ts    # Lógica del agente de supermercado/recetas
 │   ├── authContext.tsx  # Contexto global de autenticación
@@ -106,13 +107,43 @@ src/
 
 ### 2. Reglas de arquitectura — NO ROMPER
 
-- **Las páginas NO hacen llamadas directas a Supabase.** Toda lógica de datos va encapsulada en un `Service` dentro de `src/lib/api.ts`.
+- **Las páginas NO hacen llamadas directas a Supabase.** Toda lógica de datos va encapsulada en un `Service` dentro de `src/lib/api/<dominio>.ts` y se importa desde `@/lib/api`.
 - **Todos los tipos van en `src/lib/types.ts`.** No definir tipos inline en componentes o páginas.
 - **Las rutas de API van en `src/app/api/`** como Route Handlers de Next.js (`route.ts`).
 - **`src/lib/supabase.ts`** exporta el cliente Supabase — importar siempre desde ahí, nunca instanciar Supabase directamente.
 - **No usar `any` en TypeScript.** El modo strict está activo.
 
-### 3. Patrón de Services (api.ts)
+### 3. Patrón de Services (`src/lib/api/`)
+
+`src/lib/api.ts` es solo un barrel (`export * from './api/<dominio>'`); el código vive en `src/lib/api/`. Los consumidores importan siempre desde `@/lib/api`, nunca desde `@/lib/api/<dominio>`.
+
+| Archivo | Services |
+|---|---|
+| `finance.ts` | `FinanceCommitteeService`, `ExpensesService`, `AdminFinanceService`, `ResidentFinanceService` |
+| `invoicing.ts` | `InvoicingService` |
+| `users.ts` | `AdminUsersService`, `DirectoryService`, `ProfileService` |
+| `community.ts` | `CommunityCollaborationService` |
+| `dashboard.ts` | `HomeService`, `AdminDashboardService` |
+| `announcements.ts` | `AnnouncementsService` |
+| `maintenance.ts` | `MaintenanceService` |
+| `coco-cases.ts` | `CocoCasesService` |
+| `water.ts` | `WaterService` |
+| `marketplace.ts` | `MarketplaceService`, `MarketplaceMessagingService` |
+| `amenities.ts` | `AmenitiesService` |
+| `polls.ts` | `PollsService` |
+| `platform.ts` | `NavigationService`, `ProductCapabilitiesService`, `CommercialService`, `ApiKeysService`, `OversightLinksService` |
+| `supermarket.ts` | `SupermarketCartService`, `SupermarketCatalogService`, `SupermarketGroupService` |
+| `parking.ts` | `ParkingService` |
+| `access.ts` | `IntercomService`, `AccessGateService` |
+| `_shared.ts` | Helpers internos usados por más de un dominio (`readApi`, `financeWrite`, `isUuid`, `textValue`, `nullableText`, `mapCocoCase`, `DbRow`). No se re-exporta. |
+
+Dónde agregar código nuevo:
+- **Función de un dominio existente:** agrégala al Service de su archivo.
+- **Dominio nuevo:** crea `src/lib/api/<dominio>.ts` y suma `export * from './api/<dominio>';` en `src/lib/api.ts`.
+- **Helper:** privado en el archivo de su dominio; súbelo a `_shared.ts` solo si lo usa más de un dominio. `_shared.ts` no importa de otros módulos de `api/`.
+- **Dependencias entre dominios:** importa el Service del archivo hermano (`import { ResidentFinanceService } from './finance'`). Evita ciclos; si dos dominios se necesitan mutuamente, mueve lo común a `_shared.ts`.
+- `qa:architecture-boundaries` verifica que `api.ts` siga siendo solo barrel y que ningún archivo de `src/lib/api/` pase de 1.500 líneas.
+
 
 Todos los servicios siguen este patrón:
 
@@ -278,7 +309,7 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el
   - Ruta: `POST /api/admin/maintenance/tasks/[id]/complete`; la foto queda en el bucket privado `maintenance-photos`.
   - El trigger `trg_maintenance_task_requires_photo` rechaza completar una tarea sin `completion_photo_path`, así que **no actualices `maintenance_tasks.status` a `completed` directo desde el cliente.**
   - Al completar, `trg_maintenance_task_completed_update_asset` actualiza `last_maintenance`.
-  - `MaintenanceService.completeTask` en `src/lib/api.ts` quedó obsoleto: usa la ruta.
+  - `MaintenanceService.completeTask` en `src/lib/api/maintenance.ts` quedó obsoleto: usa la ruta.
 
 **Resumen semanal para el comité** (`src/lib/committeeDigest/`, playbook `committee_weekly_digest`, tabla `committee_digests`)
 - Cada lunes a las 8:00 de Chile (cron `/api/agent-center/committee-digest/cron`, agendado a las 11:00 y 12:00 UTC con guarda de hora local para cubrir el horario de verano; `CRON_SECRET`) o a pedido (botón en la tarjeta "Resumen semanal" del Agent Center, o el playbook), se arma **un solo resumen por comunidad y semana** (`UNIQUE (community_id, week_start)`, con `week_start` = lunes chileno).
@@ -287,7 +318,7 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el
 - Privacidad (`privacy.ts`, `checkDigestPrivacy`): nunca unidades, personas (incluye los nombres de los perfiles de la comunidad), montos, datos de contacto, lenguaje de deudor ni amenazas. Se aplica a los títulos que entran, al texto de la IA y a la edición del admin (la API responde 422).
 - Flujo: borrador → tarjeta en la cola de aprobaciones del Agent Center (`run_playbook` con `digestId`) y aviso en la app a los admins → el admin edita y aprueba (`POST /api/agent-center/committee-digest`, bloqueo optimista por `updated_at`) → lo ve el comité vigente (`finance_committee_members`) en `/expenses/committee-digest`, o los admins si no hay comité. Solo avisos en la app (`notifications`, categoría `committee_digest`).
 - RLS: lectura para admins de la comunidad y, ya publicado, para integrantes vigentes del comité (`is_active_committee_member`); escrituras solo por el servidor. Auditoría `agent.committee_digest.*`.
-- Los tipos del resumen viven en `src/lib/committeeDigest/types.ts` y el cliente en `src/lib/services/committeeDigestService.ts`, porque `src/lib/api.ts` y `src/lib/types.ts` ya no se pueden publicar por la API de GitHub. No los muevas ahí.
+- Los tipos del resumen viven en `src/lib/committeeDigest/types.ts` y el cliente en `src/lib/services/committeeDigestService.ts`, porque `src/lib/types.ts` ya no se puede publicar por la API de GitHub (antes también `src/lib/api.ts`, ahora dividido en `src/lib/api/`). No los muevas ahí.
 
 **Asambleas en línea (Ley 21.442 y DS 7 de 2025)** (`src/lib/assemblies/`, ruta `/api/assemblies`, migración `20261014230000_assemblies_ley_21442.sql`)
 - Tablas: `assemblies` (tipo `ordinary | extraordinary | reinforced`, modalidad `in_person | remote | hybrid`, estado `draft → cited → in_progress → closed → minutes_signed`, más `cancelled`), `assembly_agenda_items`, `assembly_attendance` (una fila por unidad), `assembly_proxies`, `assembly_votes` (uno por unidad y punto) y `assembly_minutes`.

@@ -57,6 +57,40 @@ checks.push({
 });
 if (agentCenterLines >= 1_650) failures.push({ message: 'Agent Center route grew past its refactoring baseline.' });
 
+// src/lib/api.ts es solo un barrel; los Services viven en src/lib/api/<dominio>.ts.
+const apiBarrel = path.join(root, 'src', 'lib', 'api.ts');
+const apiModulesRoot = path.join(root, 'src', 'lib', 'api');
+const barrelLines = fs.readFileSync(apiBarrel, 'utf8').split(/\r?\n/).filter(line => line.trim() && !line.trim().startsWith('//'));
+const nonBarrelLines = barrelLines.filter(line => !/^export \* from '\.\/api\/[a-z0-9-]+';$/.test(line.trim()));
+const barrelTargets = barrelLines.map(line => /'\.\/api\/([a-z0-9-]+)'/.exec(line)?.[1]).filter(Boolean);
+const missingTargets = barrelTargets.filter(name => !fs.existsSync(path.join(apiModulesRoot, `${name}.ts`)));
+checks.push({
+    name: 'src/lib/api.ts only re-exports domain modules from src/lib/api/',
+    passed: nonBarrelLines.length === 0 && missingTargets.length === 0 && !barrelTargets.includes('_shared'),
+    details: { modules: barrelTargets.length },
+});
+if (nonBarrelLines.length || missingTargets.length || barrelTargets.includes('_shared')) {
+    failures.push({ message: 'src/lib/api.ts must stay a barrel of src/lib/api/* (without _shared)', nonBarrelLines, missingTargets });
+}
+
+const apiModules = filesUnder(apiModulesRoot, file => file.endsWith('.ts'))
+    .map(file => ({ file, lines: fs.readFileSync(file, 'utf8').split(/\r?\n/).length }));
+const unexported = apiModules
+    .map(item => path.basename(item.file, '.ts'))
+    .filter(name => name !== '_shared' && !barrelTargets.includes(name));
+const oversizedApiModules = apiModules.filter(item => item.lines > 1_500);
+checks.push({
+    name: 'Every src/lib/api/ module is re-exported and stays under 1500 lines',
+    passed: unexported.length === 0 && oversizedApiModules.length === 0,
+});
+if (unexported.length || oversizedApiModules.length) {
+    failures.push({
+        message: 'src/lib/api/ module not re-exported or oversized',
+        unexported,
+        files: oversizedApiModules.map(item => ({ file: path.relative(root, item.file), lines: item.lines })),
+    });
+}
+
 const report = { passed: failures.length === 0, checks, failures };
 console.log(JSON.stringify(report, null, 2));
 if (!report.passed) process.exit(1);
