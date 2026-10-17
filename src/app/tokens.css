@@ -238,7 +238,8 @@
    .cc-force-light. Custom properties referencing other vars are
    resolved where declared, so the aliases are re-declared here too.
    Tailwind theme utilities (bg-ivory, text-ink) resolve at :root:
-   inside this island use bg-[var(--cc-*)] / text-[var(--cc-*)]. */
+   inside this island use arbitrary values with the --cc tokens
+   (e.g. background var(--cc-paper)), not the theme utilities. */
 .dark .cc-force-light {
   color-scheme: light;
   --cc-ivory:          #F4EFE6;

@@ -7,7 +7,7 @@
  * whose text uses var(--cc-ink) / text-ink ends up light-on-white: invisible.
  *
  * Fails when a single JSX opening tag has:
- *   - a fixed light surface (bg-white, bg-*-50, bg-[#Fxxxxx]; not bg-white/NN)
+ *   - a fixed light surface (bg-white, Tailwind -50 tints, light hex backgrounds; not white with opacity)
  *     and no dark:bg-* variant, AND text-ink / text-[var(--cc-ink)] in its
  *     classes or style color var(--cc-ink); or
  *   - a var(--cc-ink) surface (light in dark mode) with fixed text-white / #fff.

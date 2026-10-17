@@ -12,7 +12,7 @@ la clase `.dark`. En `.dark`, `src/app/tokens.css` invierte `--cc-ink` (pasa a c
 - Botón/insignia con fondo `var(--cc-ink)`: texto `var(--cc-paper)` (se invierte con el tema).
 - Bloques que deben quedar siempre oscuros (héroes con foto): `var(--cc-carbon)` + texto claro fijo.
 - Páginas o bloques diseñados sólo en paleta clara (hex fijos): clase `cc-force-light`
-  en el contenedor. Dentro usa `bg-[var(--cc-*)]`, no `bg-ivory`/`text-ink` (esas utilidades
+  en el contenedor. Dentro usa valores arbitrarios con los tokens `--cc` (p. ej. fondo `var(--cc-paper)`), no `bg-ivory`/`text-ink` (esas utilidades
   de `@theme` se resuelven en `:root`).
 - `npm run qa:dark-contrast` (en CI) bloquea las dos combinaciones directas en un mismo tag.
   `node scripts/dark-contrast-qa.js --audit` lista además los `bg-white` sin color de texto.
@@ -28,7 +28,7 @@ la clase `.dark`. En `.dark`, `src/app/tokens.css` invierte `--cc-ink` (pasa a c
   legibles, pero no siguen el tema.
 - QR (`QRInvitationGenerator`, `ParkingAccessPassModal`) quedan blancos a propósito
   (lectura del código); su texto ya es `text-zinc-900`.
-- Pantallas internas con `text-black` o hex oscuros fijos sobre `var(--cc-*)` no se auditaron
+- Pantallas internas con `text-black` o hex oscuros fijos sobre superficies con tokens `--cc` no se auditaron
   una por una (búsqueda directa no encontró casos en un mismo tag).
 - Contenedores con fondo `var(--cc-ink)` sin color propio y con hijos `var(--cc-paper)`
   (p. ej. `MaintenanceDashboard`, tooltip de `UnitStatusGrid`) se invierten bien; revisar
