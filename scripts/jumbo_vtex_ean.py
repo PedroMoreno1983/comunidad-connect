@@ -12,6 +12,13 @@ skuId VTEX (135211). `fq=skuId:1993595` devuelve [] sin error, por eso el
 primer run con #189 dejó 0 EAN. Se consulta primero por
 `fq=alternateIds_RefId:` y, para lo que quede sin EAN, por `fq=skuId:`.
 
+Filas sin sku (17-oct-2026, ~8.700 de 21.500): vienen del respaldo JSON-LD y
+su product_url no trae el refId (.../bebida-isotonica-gatorade-500-cc-.../p).
+VTEX rechaza `fq=linkText:` con 400 ("Invalid Parameter, linkText"), así que
+no hay lote: se consulta `/search/<linkText>/p`, una por producto, con pocos
+hilos (JUMBO_SLUG_WORKERS). De ahí sale el EAN y el refId, que se guarda como
+sku igual que en las demás filas de Jumbo.
+
 Si la API falla, los productos siguen sin EAN: el crawl no se cae por esto.
 """
 
@@ -19,10 +26,12 @@ from __future__ import annotations
 
 import json
 import sys
+import re
 from collections.abc import Callable, Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from scrape_supermarkets import Product
 
@@ -31,6 +40,10 @@ JUMBO_VTEX_SEARCH_URL = (
 )
 JUMBO_EAN_BATCH_SIZE = 50
 JUMBO_EAN_MAX_FAILURES = 3
+# Una consulta por producto (no hay lote por linkText): 4 hilos son ~0,2 s por
+# producto medidos el 17-oct-2026, unos 7 min para 8.700 filas.
+JUMBO_SLUG_WORKERS = 4
+_JUMBO_SLUG_RE = re.compile(r"jumbo\.cl/([^/?#]+)/p/?(?:[?#].*)?$", re.I)
 
 
 JUMBO_EAN_FIELDS = ("alternateIds_RefId", "skuId")
@@ -41,6 +54,51 @@ def jumbo_vtex_ean_url(sku_ids: Iterable[str], field: str = "skuId") -> str:
     params = [("fq", f"{field}:{sku}") for sku in skus]
     params += [("_from", "0"), ("_to", str(max(0, len(skus) - 1)))]
     return f"{JUMBO_VTEX_SEARCH_URL}?{urlencode(params)}"
+
+
+def jumbo_url_slug(url: str | None) -> str | None:
+    """linkText de una URL de producto Jumbo (https://www.jumbo.cl/<slug>/p)."""
+    match = _JUMBO_SLUG_RE.search(str(url or "").strip())
+    return match.group(1) if match else None
+
+
+def jumbo_vtex_slug_url(slug: str) -> str:
+    return f"{JUMBO_VTEX_SEARCH_URL}/{quote(slug, safe='')}/p"
+
+
+def parse_vtex_slug_match(payload: str, name: str) -> tuple[str, str | None] | None:
+    """(ean, refId) del ítem VTEX cuyo nombre coincide con `name`, si hay uno."""
+    try:
+        root = json.loads(payload) if payload else []
+    except json.JSONDecodeError:
+        return None
+    for raw in root if isinstance(root, list) else []:
+        if not isinstance(raw, dict):
+            continue
+        items = [item for item in raw.get("items") or [] if isinstance(item, dict)]
+        product_name = str(raw.get("productName") or "").strip()
+        for item in items:
+            ean = str(item.get("ean") or "").strip()
+            if not ean.isdigit():
+                continue
+            names = [
+                product_name if len(items) == 1 else "",
+                str(item.get("name") or "").strip(),
+                str(item.get("nameComplete") or "").strip(),
+            ]
+            if not any(candidate and _same_name(candidate, name) for candidate in names):
+                continue
+            refs = [
+                str(reference.get("Value") or "").strip()
+                for reference in item.get("referenceId") or []
+                if isinstance(reference, dict)
+                and str(reference.get("Key") or "").casefold() == "refid"
+            ]
+            if len(items) == 1:
+                refs.append(str(raw.get("productReference") or "").strip())
+            ref = next((value for value in refs if value), None)
+            return ean, ref
+    return None
 
 
 def _same_name(left: str, right: str) -> bool:
@@ -92,20 +150,65 @@ def with_jumbo_eans(
     products: Iterable[Product],
     fetch: Callable[[str], str],
     batch_size: int = JUMBO_EAN_BATCH_SIZE,
+    slug_workers: int = JUMBO_SLUG_WORKERS,
 ) -> Iterator[Product]:
-    """Completa el EAN de los productos Jumbo que traen skuId, de a lotes.
+    """Completa el EAN de los productos Jumbo, de a lotes.
 
-    Se busca primero por refId y luego por skuId, y solo se acepta si el nombre
-    VTEX coincide con el del listado: un número que es refId de un producto
-    puede ser el skuId de otro.
+    Los que traen sku se buscan primero por refId y luego por skuId; los que no
+    (respaldo JSON-LD), por el linkText de su URL, y de ahí también sale el
+    refId que queda como sku. Solo se acepta si el nombre VTEX coincide con el
+    del listado: un número que es refId de un producto puede ser el skuId de
+    otro.
     """
     pending: list[Product] = []
     disabled = False
     failures = 0
-    stats = {"looked_up": 0, "matched": 0}
+    slug_disabled = False
+    slug_failures = 0
+    stats = {"looked_up": 0, "matched": 0, "slug_looked_up": 0, "slug_matched": 0}
+
+    def lookup_slugs() -> None:
+        """Rellena ean y sku de los pendientes sin sku, por linkText."""
+        nonlocal slug_disabled, slug_failures
+        targets = [
+            (index, product, slug)
+            for index, product in enumerate(pending)
+            if not product.sku and not product.ean
+            and (slug := jumbo_url_slug(product.product_url))
+        ]
+        if not targets or slug_disabled:
+            return
+        stats["slug_looked_up"] += len(targets)
+
+        def one(target: tuple[int, Product, str]) -> tuple[str | None, Exception | None]:
+            try:
+                return fetch(jumbo_vtex_slug_url(target[2])), None
+            except Exception as error:  # noqa: BLE001 - el EAN es opcional
+                return None, error
+
+        workers = max(1, min(slug_workers, len(targets)))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            results = list(executor.map(one, targets))
+        errors = [error for _, error in results if error is not None]
+        if len(errors) == len(results):
+            # Lote caído entero (cada consulta ya trae sus reintentos).
+            slug_failures += 1
+            if slug_failures >= JUMBO_EAN_MAX_FAILURES:
+                slug_disabled = True
+                print(f"jumbo slug lookup disabled: {errors[-1]}", file=sys.stderr)
+            return
+        slug_failures = 0
+        for (index, product, _slug), (payload, _error) in zip(targets, results):
+            match = parse_vtex_slug_match(payload or "", product.name)
+            if not match:
+                continue
+            ean, ref = match
+            pending[index] = replace(product, ean=ean, sku=ref or product.sku)
+            stats["slug_matched"] += 1
 
     def flush() -> Iterator[Product]:
         nonlocal disabled, failures
+        lookup_slugs()
         found: dict[int, str] = {}
         for field in JUMBO_EAN_FIELDS:
             missing = [
@@ -153,6 +256,11 @@ def with_jumbo_eans(
         # Deja rastro en el log del job: 0 de N fue lo que pasó sin avisar en #189.
         print(
             f"jumbo ean lookup: {stats['matched']} of {stats['looked_up']} products matched",
+            file=sys.stderr,
+        )
+        print(
+            f"jumbo slug lookup: {stats['slug_matched']} of {stats['slug_looked_up']} "
+            "products matched",
             file=sys.stderr,
         )
 

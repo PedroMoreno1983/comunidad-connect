@@ -168,6 +168,36 @@ def finalize_stock_reconciliation(store_name: str, started_at: str) -> dict[str,
         ) from error
 
 
+def inherit_jumbo_gtins() -> int | None:
+    """Jumbo sin GTIN hereda el de Santa Isabel con el mismo nombre exacto.
+
+    Ver supabase/migrations/20261017180000_jumbo_gtin_from_santa_isabel.sql.
+    No hace fallar la carga: el GTIN solo sirve para cruzar cadenas.
+    """
+    try:
+        supabase_url, service_role_key = supabase_credentials()
+        request = Request(
+            f"{supabase_url}/rest/v1/rpc/inherit_jumbo_gtin_from_santa_isabel",
+            data=b"{}",
+            method="POST",
+            headers={
+                "apikey": service_role_key,
+                "Authorization": f"Bearer {service_role_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        with urlopen(request, timeout=90) as response:
+            body = response.read().decode("utf-8").strip()
+            return int(body) if body.isdigit() else None
+    except Exception as error:  # noqa: BLE001 - opcional, no bloquea el catálogo.
+        print(
+            json.dumps({"warning": f"No se pudo heredar GTIN de Santa Isabel: {error}"}),
+            file=sys.stderr,
+        )
+        return None
+
+
 def refresh_search_vocabulary() -> int | None:
     """Recalcula el vocabulario que alimenta el autocompletado de la lista.
 
@@ -249,11 +279,13 @@ def crawl_store(
         flush()
     except CatalogCoverageWarning as warning:
         flush()
+        inherited = inherit_jumbo_gtins() if store == "jumbo" and not dry_run else None
         return {
             "store": display_store,
             "status": "refreshed",
             "warning": str(warning),
             "reconciliation_skipped": True,
+            "inherited_gtin_count": inherited,
             "scraped_count": scraped_count,
             "persisted_count": persisted_count,
             "database_count": None if dry_run else catalog_count(display_store),
@@ -299,10 +331,12 @@ def crawl_store(
                 "dry_run": dry_run,
             }
 
+    inherited = inherit_jumbo_gtins() if store == "jumbo" and not dry_run else None
     database_count = None if dry_run else catalog_count(display_store)
     return {
         "store": display_store,
         "status": "completed" if scraped_count > 0 else "empty",
+        "inherited_gtin_count": inherited,
         "scraped_count": scraped_count,
         "persisted_count": persisted_count,
         "database_count": database_count,
