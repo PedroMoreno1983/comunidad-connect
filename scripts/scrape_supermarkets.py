@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 from urllib.request import Request, urlopen
 
 from supermarket_gtin import normalize_gtin
@@ -231,43 +231,58 @@ def scrape_jumbo(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
         return [], SourceStatus("Jumbo", query, "error", str(error))
 
 
+SANTA_ISABEL_VTEX_SEARCH = (
+    "https://santaisabel.vtexcommercestable.com.br/api/catalog_system/pub/products/search"
+)
+
+
+def santa_isabel_search_url(query: str, size: int = 50) -> str:
+    # VTEX rechaza ft con "+" (HTTP 400): los espacios van como %20.
+    return f"{SANTA_ISABEL_VTEX_SEARCH}?ft={quote(query)}&_from=0&_to={max(0, size - 1)}"
+
+
+def parse_santa_isabel_vtex(payload: str, query: str, fallback_url: str) -> list[Product]:
+    """Productos de la búsqueda pública VTEX de Santa Isabel (products[].items[])."""
+    root = json.loads(payload) if payload else []
+    products: list[Product] = []
+    for product in root if isinstance(root, list) else []:
+        if not isinstance(product, dict):
+            continue
+        item = first(product.get("items"))
+        if not isinstance(item, dict):
+            continue
+        seller = first(item.get("sellers"))
+        offer = seller.get("commertialOffer", {}) if isinstance(seller, dict) else {}
+        price = as_int(offer.get("Price"))
+        name = str(product.get("productName") or item.get("name") or "")
+        if not name or price <= 0:
+            continue
+        link_text = product.get("linkText")
+        image = first(item.get("images"))
+        image_url = image.get("imageUrl") if isinstance(image, dict) else None
+        products.append(Product(
+            store="Santa Isabel",
+            query=query,
+            name=name,
+            price=price,
+            list_price=as_int(offer.get("ListPrice")) or None,
+            in_stock=as_int(offer.get("AvailableQuantity")) > 0,
+            brand=str(product.get("brand") or "") or None,
+            sku=str(item.get("itemId") or "") or None,
+            ean=str(item.get("ean") or "") or None,
+            product_url=f"https://www.santaisabel.cl/{link_text}/p" if link_text else fallback_url,
+            image_url=str(image_url) if image_url else None,
+            scraped_at=utc_now(),
+        ))
+    return products
+
+
 def scrape_santa_isabel(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
+    # Desde el 15-oct-2026 santaisabel.cl es Next.js y ya no trae
+    # window.__renderData; la búsqueda VTEX pública devuelve el mismo payload.
     url = f"https://www.santaisabel.cl/busqueda?ft={quote_plus(query)}"
     try:
-        page = fetch(url)
-        match = re.search(r"window\.__renderData\s*=\s*(\"(?:\\.|[^\"\\])*\")", page)
-        if not match:
-            return [], SourceStatus("Santa Isabel", query, "no_state", "No window.__renderData block found")
-
-        render_data = json.loads(json.loads(match.group(1)))
-        products: list[Product] = []
-        for product in render_data.get("plp", {}).get("plp_products", {}).get("products", []) or []:
-            item = first(product.get("items"))
-            if not isinstance(item, dict):
-                continue
-            seller = first(item.get("sellers"))
-            offer = seller.get("commertialOffer", {}) if isinstance(seller, dict) else {}
-            price = as_int(offer.get("Price"))
-            name = str(product.get("productName") or item.get("name") or "")
-            if not name or price <= 0:
-                continue
-            link_text = product.get("linkText")
-            image = first(item.get("images"))
-            image_url = image.get("imageUrl") if isinstance(image, dict) else None
-            products.append(Product(
-                store="Santa Isabel",
-                query=query,
-                name=name,
-                price=price,
-                list_price=as_int(offer.get("ListPrice")) or None,
-                in_stock=as_int(offer.get("AvailableQuantity")) > 0,
-                brand=str(product.get("brand") or "") or None,
-                sku=str(item.get("itemId") or "") or None,
-                ean=str(item.get("ean") or "") or None,
-                product_url=f"https://www.santaisabel.cl/{link_text}/p" if link_text else url,
-                image_url=str(image_url) if image_url else None,
-                scraped_at=utc_now(),
-            ))
+        products = parse_santa_isabel_vtex(fetch(santa_isabel_search_url(query)), query, url)
         relevant = limit_relevant(products, query, limit)
         return relevant, SourceStatus("Santa Isabel", query, "ok", count=len(relevant))
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
