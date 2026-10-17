@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cronAccess } from '@/lib/cronAuth';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { normalizeGtin } from '@/lib/supermarketGtin';
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import type { ScrapedItem } from '@/lib/supermarketLive';
 
@@ -74,6 +75,8 @@ interface IngestProduct {
   image_url?: string;
   sku?: string;
   ean?: string;
+  /** GTIN canónico; Supabase lo recalcula igual desde ean (trigger). */
+  gtin?: string;
 }
 
 function buildIngestPayload(items: ScrapedItem[]): IngestProduct[] {
@@ -89,6 +92,7 @@ function buildIngestPayload(items: ScrapedItem[]): IngestProduct[] {
     image_url: item.imageUrl,
     sku: item.sku,
     ean: item.ean,
+    gtin: normalizeGtin(item.ean, item.store) ?? undefined,
   }));
 }
 

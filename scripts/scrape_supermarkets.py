@@ -23,6 +23,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
+from supermarket_gtin import normalize_gtin
 from supermarket_promotions import lider_volume_promo
 
 
@@ -87,6 +88,17 @@ class Product:
     promo_label: str | None = None
     promo_group: str | None = None
     promo_checked: bool = False
+    # GTIN canónico (supermarket_gtin.normalize_gtin): se deriva del ean para
+    # cruzar el mismo producto entre cadenas. Supabase lo recalcula igual en el
+    # trigger supermarket_products_set_gtin.
+    gtin: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "gtin",
+            normalize_gtin(self.ean, self.store) or normalize_gtin(self.gtin),
+        )
 
 
 @dataclass(frozen=True)
