@@ -202,7 +202,7 @@ export function MarketplaceChatModal({
                                     onClick={() => setSelectedConversationId(conversation.id)}
                                     className={`mb-1 w-full rounded-lg border p-3 text-left transition-colors ${
                                         selectedConversationId === conversation.id
-                                            ? "border-[var(--cc-copper)] bg-white"
+                                            ? "border-[var(--cc-copper)] bg-[var(--cc-paper)]"
                                             : "border-transparent hover:border-[var(--cc-line)] hover:bg-white/70"
                                     }`}
                                 >
@@ -278,7 +278,7 @@ export function MarketplaceChatModal({
                                                         <div className={`max-w-[82%] rounded-xl px-4 py-3 text-sm leading-6 shadow-sm ${
                                                             own
                                                                 ? "rounded-br-sm bg-[var(--cc-copper)] text-white"
-                                                                : "rounded-bl-sm border border-[var(--cc-line)] bg-white text-[var(--cc-ink)]"
+                                                                : "rounded-bl-sm border border-[var(--cc-line)] bg-[var(--cc-paper)] text-[var(--cc-ink)]"
                                                         }`}
                                                         >
                                                             <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -294,7 +294,7 @@ export function MarketplaceChatModal({
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                <form onSubmit={handleSend} className="border-t border-[var(--cc-line)] bg-white p-4">
+                                <form onSubmit={handleSend} className="border-t border-[var(--cc-line)] bg-[var(--cc-paper)] p-4">
                                     {error && <p role="alert" className="mb-2 text-sm font-medium text-[var(--cc-rose)]">{error}</p>}
                                     <div className="flex items-end gap-2">
                                         <textarea

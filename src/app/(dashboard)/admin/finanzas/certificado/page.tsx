@@ -62,7 +62,7 @@ function CertificateContent() {
                 <Link href="/admin/finanzas/cobranza" className="inline-flex items-center gap-2 text-sm cc-text-tertiary hover:underline">
                     <ArrowLeft className="h-4 w-4" /> Volver a Cobranza
                 </Link>
-                <Button type="button" onClick={() => window.print()} className="text-white" style={{ background: "var(--cc-ink)" }}>
+                <Button type="button" onClick={() => window.print()} className="text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                     <Printer className="mr-2 h-4 w-4" /> Imprimir o guardar como PDF
                 </Button>
             </div>

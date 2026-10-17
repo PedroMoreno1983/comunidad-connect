@@ -118,7 +118,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-ivory text-[#1A1611]">
+    <main className="cc-force-light min-h-screen bg-[var(--cc-ivory)] text-[var(--cc-on-light)]">
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(26,22,17,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(26,22,17,0.035)_1px,transparent_1px)] bg-[size:40px_40px]" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 md:px-12">
         <header className="flex items-center justify-between gap-4">

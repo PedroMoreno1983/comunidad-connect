@@ -169,7 +169,7 @@ export default function FacturacionPage() {
                                     />
                                 </div>
                                 <div className="flex gap-3">
-                                    <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>Guardar emisor</button>
+                                    <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>Guardar emisor</button>
                                     {settings?.configured && <button type="button" className="text-sm underline cc-text-secondary" onClick={() => setEditingSettings(false)}>Cancelar</button>}
                                 </div>
                             </form>
@@ -230,7 +230,7 @@ export default function FacturacionPage() {
                                         {type === 33 ? <>Neto {money(totals.net)} · IVA {money(totals.tax)} · </> : <>Exento · </>}
                                         <strong className="cc-text-primary">Total {money(totals.total)}</strong>
                                     </p>
-                                    <button type="submit" disabled={busy || totals.total <= 0} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                                    <button type="submit" disabled={busy || totals.total <= 0} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                                         {busy && <Loader2 className="h-4 w-4 animate-spin" />} Emitir
                                     </button>
                                 </div>

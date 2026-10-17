@@ -263,7 +263,7 @@ export default function LandingPage() {
                 <button
                   onClick={() => router.push('/admin-onboarding')}
                   className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium shadow-xl transition-all hover:bg-amber-50 active:scale-[0.98]"
-                  style={{ color: 'var(--cc-ink)' }}
+                  style={{ color: 'var(--cc-on-light)' }}
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     Activar con CoCo <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
@@ -357,7 +357,7 @@ export default function LandingPage() {
             <button
               onClick={() => router.push('/recorrido')}
               className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium transition-all hover:opacity-90"
-              style={{ color: 'var(--cc-ink)' }}
+              style={{ color: 'var(--cc-on-light)' }}
             >
               Ver recorrido comercial <ArrowRight size={14} />
             </button>
@@ -528,7 +528,7 @@ export default function LandingPage() {
               <button
                 onClick={() => router.push('/admin-onboarding')}
                 className="rounded-xl bg-white px-6 py-3.5 text-sm font-medium transition-all hover:opacity-90"
-                style={{ color: 'var(--cc-ink)' }}
+                style={{ color: 'var(--cc-on-light)' }}
               >
                 Registrar mi condominio
               </button>

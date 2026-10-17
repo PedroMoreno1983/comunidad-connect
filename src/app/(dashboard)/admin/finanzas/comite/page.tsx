@@ -45,7 +45,7 @@ export default function FinanceCommitteePage() {
                 <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-sm">Residente
                     <select className="mt-1 block rounded-lg border bg-transparent p-2" value={residentId} onChange={event => setResidentId(event.target.value)}>
                         {residents.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
-                    </select></label><button type="button" disabled={!residentId || busy} onClick={() => void appoint()} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-white disabled:opacity-50">Designar</button></div>
+                    </select></label><button type="button" disabled={!residentId || busy} onClick={() => void appoint()} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-[var(--cc-paper)] disabled:opacity-50">Designar</button></div>
             </section>
             <section className="rounded-2xl border p-5" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
                 <h2 className="font-semibold">Integrantes vigentes</h2>

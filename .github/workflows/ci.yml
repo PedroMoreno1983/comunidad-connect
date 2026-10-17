@@ -66,6 +66,7 @@ jobs:
           npm run qa:agent-center
           npm run qa:production-hardening
           npm run qa:supabase-config
+          npm run qa:dark-contrast
 
       - name: Operational recovery rehearsal (PGlite)
         run: npm run qa:operational-recovery

@@ -304,7 +304,7 @@ export default function MantenimientoAdminPage() {
                                         </div>
                                         <h3 className="font-semibold cc-text-primary">{item.description || "Solicitud técnica"}</h3>
                                     </div>
-                                    <button onClick={() => advanceService(item)} className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold text-white disabled:opacity-40" style={{ background: "var(--cc-ink)" }} disabled={["completed", "cancelled"].includes(item.status || "") || (item.status === "awaiting_confirmation" && item.user_id !== user?.id)}>
+                                    <button onClick={() => advanceService(item)} className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold text-[var(--cc-paper)] disabled:opacity-40" style={{ background: "var(--cc-ink)" }} disabled={["completed", "cancelled"].includes(item.status || "") || (item.status === "awaiting_confirmation" && item.user_id !== user?.id)}>
                                         <CheckCircle2 className="h-4 w-4" />
                                         Cerrar
                                     </button>
@@ -346,7 +346,7 @@ export default function MantenimientoAdminPage() {
                                             type="button"
                                             disabled={busy}
                                             onClick={() => updateCaseStatus(item.id, "resolved")}
-                                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-semibold text-white disabled:opacity-40"
+                                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-semibold text-[var(--cc-paper)] disabled:opacity-40"
                                             style={{ background: "var(--cc-ink)" }}
                                         >
                                             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -435,7 +435,7 @@ export default function MantenimientoAdminPage() {
                                 </select>
                                 <input type="date" value={form.scheduled_date} onChange={event => setForm(prev => ({ ...prev, scheduled_date: event.target.value }))} className="rounded-xl border px-4 py-3 text-sm font-semibold outline-none focus:border-[var(--cc-copper)]" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                             </div>
-                            <button onClick={saveTask} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white disabled:opacity-50" style={{ background: "var(--cc-ink)" }}>
+                            <button onClick={saveTask} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-50" style={{ background: "var(--cc-ink)" }}>
                                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                                 Crear tarea
                             </button>

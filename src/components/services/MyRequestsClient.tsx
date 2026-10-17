@@ -420,7 +420,7 @@ export function MyRequestsClient() {
                                                 type="button"
                                                 disabled={busyId === request.id}
                                                 onClick={() => handleReschedule(request.id)}
-                                                className="inline-flex flex-1 items-center justify-center rounded-full px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                                                className="inline-flex flex-1 items-center justify-center rounded-full px-4 py-2.5 text-sm font-bold text-[var(--cc-paper)] disabled:opacity-40"
                                                 style={{ background: "var(--cc-ink)" }}
                                             >
                                                 Guardar

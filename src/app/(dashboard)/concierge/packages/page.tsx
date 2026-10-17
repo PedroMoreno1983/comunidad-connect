@@ -129,7 +129,7 @@ export default function PackagesPage() {
                 <div className="flex items-center gap-4">
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 text-white font-semibold rounded-full transition-all" style={{ background: "var(--cc-ink)" }}>
+                            <button className="flex items-center gap-3 px-8 py-4 text-[var(--cc-paper)] font-semibold rounded-full transition-all" style={{ background: "var(--cc-ink)" }}>
                                 <Plus className="h-5 w-5" />
                                 Nueva Recepción
                             </button>

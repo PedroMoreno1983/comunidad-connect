@@ -56,7 +56,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
                         {reviewers.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
                     </select>
                 </label>
-                <button type="button" className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-white disabled:opacity-50" disabled={!reviewerId || saving} onClick={() => void requestReview()}>
+                <button type="button" className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-[var(--cc-paper)] disabled:opacity-50" disabled={!reviewerId || saving} onClick={() => void requestReview()}>
                     {saving ? 'Enviando…' : review ? 'Solicitar nueva revisión' : 'Enviar a revisión'}
                 </button>
             </div>}

@@ -201,7 +201,7 @@ export default function ConveniosPage() {
                         </select>
                     </label>}
                     <div className="sm:col-span-2">
-                        <button type="submit" disabled={busy || !unitId} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                        <button type="submit" disabled={busy || !unitId} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                             {reviewers.length > 0 ? "Enviar convenio al comité" : "Abrir convenio"}
                         </button>
                     </div>

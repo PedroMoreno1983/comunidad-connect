@@ -70,7 +70,7 @@ export function QRAccessValidator({ onScanSuccess }: { onScanSuccess?: (log: Vis
         <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <form onSubmit={validateCode} className="rounded-2xl border p-6 sm:p-8" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="flex items-start gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}>
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                         <KeyRound className="h-5 w-5" />
                     </div>
                     <div>

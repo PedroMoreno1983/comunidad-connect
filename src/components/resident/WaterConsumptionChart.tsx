@@ -101,7 +101,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                                     if (!active || !payload?.length) return null;
 
                                     return (
-                                        <div className="space-y-4 rounded-xl p-6 text-white" style={{ background: "var(--cc-ink)" }}>
+                                        <div className="space-y-4 rounded-xl p-6 text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                             <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--cc-ink-tertiary)" }}>{payload[0].payload.month}</p>
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-8">
@@ -110,7 +110,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                                                 </div>
                                                 <div className="flex items-center justify-between gap-8">
                                                     <span className="text-xs font-bold" style={{ color: "var(--cc-ink-tertiary)" }}>Promedio</span>
-                                                    <span className="text-lg font-semibold text-white">{payload[1].value} m³</span>
+                                                    <span className="text-lg font-semibold text-[var(--cc-paper)]">{payload[1].value} m³</span>
                                                 </div>
                                             </div>
                                         </div>

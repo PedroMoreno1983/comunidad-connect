@@ -107,7 +107,7 @@ export function IntercomCallWatcher() {
                     <button type="button" disabled={busy} onClick={() => void answer("reject")} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold cc-text-primary disabled:opacity-60" style={{ borderColor: "var(--cc-line)" }}>
                         <X className="h-4 w-4" /> No dejar pasar
                     </button>
-                    <button type="button" disabled={busy} onClick={() => void answer("approve")} className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                    <button type="button" disabled={busy} onClick={() => void answer("approve")} className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                         <Check className="h-4 w-4" /> Dejar pasar
                     </button>
                 </div>

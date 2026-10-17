@@ -28,7 +28,7 @@ const supportLanes = [
 
 export default function SupportPage() {
   return (
-    <main className="min-h-screen bg-ivory px-5 py-10 text-[#1A1611] md:px-12">
+    <main className="cc-force-light min-h-screen bg-[var(--cc-ivory)] px-5 py-10 text-[var(--cc-on-light)] md:px-12">
       <div className="mx-auto max-w-6xl space-y-8">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#733D24] hover:text-[#562D1B]">
           <ArrowLeft className="h-4 w-4" /> Volver

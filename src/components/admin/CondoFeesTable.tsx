@@ -149,7 +149,7 @@ export function CondoFeesTable() {
                             onClick={() => setStatusFilter(key)}
                             className="rounded-full px-3 py-2 text-xs font-semibold transition-colors"
                             style={statusFilter === key
-                                ? { background: "var(--cc-ink)", color: "#fff" }
+                                ? { background: "var(--cc-ink)", color: "var(--cc-paper)" }
                                 : { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)" }}
                         >
                             {label}

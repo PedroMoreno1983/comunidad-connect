@@ -234,7 +234,7 @@ export default function RendicionPage() {
                                         <option value="withdrawal">Uso del fondo</option>
                                         <option value="contribution">Aporte extra</option>
                                     </select>
-                                    <Button type="button" onClick={() => void addMovement()} disabled={busy} className="text-white" style={{ background: "var(--cc-ink)" }}>
+                                    <Button type="button" onClick={() => void addMovement()} disabled={busy} className="text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Registrar"}
                                     </Button>
                                 </div>
@@ -289,7 +289,7 @@ export default function RendicionPage() {
                                             className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                                     </label>
                                     <div className="flex items-end">
-                                        <Button type="button" onClick={() => void saveSettings()} disabled={busy} className="text-white" style={{ background: "var(--cc-ink)" }}>
+                                        <Button type="button" onClick={() => void saveSettings()} disabled={busy} className="text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
                                         </Button>
                                     </div>

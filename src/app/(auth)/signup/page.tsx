@@ -127,7 +127,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setFullName(e.target.value)}
                                     placeholder="Juan Perez"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -140,7 +140,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="tu@correo.com"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -165,7 +165,7 @@ export default function SignUpPage() {
                                     placeholder="Mínimo 8 caracteres"
                                     minLength={8}
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>
@@ -178,7 +178,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="Repite tu contraseña"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -196,7 +196,7 @@ export default function SignUpPage() {
                                     required
                                     aria-invalid={Boolean(accessCodeError)}
                                     aria-describedby={accessCodeError ? "access-code-error" : undefined}
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all font-mono uppercase tracking-[0.16em]"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all font-mono uppercase tracking-[0.16em]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                                 {accessCodeError && (
@@ -213,7 +213,7 @@ export default function SignUpPage() {
                                     value={departmentNumber}
                                     onChange={(e) => setDepartmentNumber(e.target.value)}
                                     placeholder="Ej: 501, 3B, 1201"
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>

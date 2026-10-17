@@ -141,7 +141,7 @@ export function IntercomPanel({ units, onAdmitted }: { units: UnitRow[]; onAdmit
                     </select>
                 </label>
                 <div className="sm:col-span-4">
-                    <button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                    <button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />}
                         Llamar a la unidad
                     </button>
@@ -178,7 +178,7 @@ export function IntercomPanel({ units, onAdmitted }: { units: UnitRow[]; onAdmit
                                     </button>
                                 )}
                                 {call.status === "approved" && !call.admitted && (
-                                    <button type="button" disabled={busy} onClick={() => void act(call, "admit")} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style={{ background: "var(--cc-ink)" }}>
+                                    <button type="button" disabled={busy} onClick={() => void act(call, "admit")} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                         <DoorOpen className="h-3.5 w-3.5" /> Dejar pasar
                                     </button>
                                 )}

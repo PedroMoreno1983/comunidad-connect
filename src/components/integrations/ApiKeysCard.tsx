@@ -92,7 +92,7 @@ export function ApiKeysCard() {
                         </label>
                     ))}
                 </fieldset>
-                <button type="submit" disabled={busy || !scopes.length} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                <button type="submit" disabled={busy || !scopes.length} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                     Crear clave
                 </button>
             </form>
