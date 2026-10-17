@@ -18,6 +18,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
+from jumbo_vtex_ean import jumbo_item_ean, with_jumbo_eans
 from scrape_supermarkets import Product, pack_units_from_name, utc_now
 from supermarket_promotions import (
     VolumePromo,
@@ -488,6 +489,20 @@ def tottus_listing_url(category_id: str, category_name: str, page: int) -> str:
     )
 
 
+def tottus_listing_ean(raw: Mapping[str, Any]) -> str | None:
+    """EAN si el listado lo trae. Hoy (17-oct-2026) el listado de Tottus no lo
+    expone: solo la ficha (okayToShopBarcodes / data-ean), y no se scrapea cada
+    ficha. Se lee igual por si Falabella lo agrega al listado."""
+    for key in ("gtin", "ean", "barcode", "okayToShopBarcodes", "barcodes"):
+        value = raw.get(key)
+        if isinstance(value, list):
+            value = value[0] if value else None
+        text = str(value or "").strip()
+        if text.isdigit() and len(text) >= 8:
+            return text
+    return None
+
+
 def parse_tottus_page(payload: str, query: str = "catalogo") -> tuple[list[Product], int, int]:
     root = json.loads(payload)
     data = root.get("data", root)
@@ -529,6 +544,7 @@ def parse_tottus_page(payload: str, query: str = "catalogo") -> tuple[list[Produ
         products.append(
             Product(
                 store="Tottus",
+                ean=tottus_listing_ean(raw),
                 query=query,
                 name=name,
                 price=price,
@@ -624,6 +640,7 @@ def parse_jumbo_payload(data: dict[str, Any], query: str) -> tuple[list[Product]
                 in_stock=True,
                 brand=str(raw.get("brand") or "").strip() or None,
                 sku=str(item.get("skuId") or raw.get("reference") or "").strip() or None,
+                ean=jumbo_item_ean(item),
                 product_url=f"https://www.jumbo.cl/{slug}/p" if slug else None,
                 image_url=str(images[0]) if images else None,
                 scraped_at=observed_at,
@@ -1650,7 +1667,8 @@ CRAWLERS: dict[str, Callable[[int | None], Iterator[Product]]] = {
     "tottus": crawl_tottus,
     "santaisabel": crawl_santa,
     "unimarc": crawl_unimarc,
-    "jumbo": crawl_jumbo,
+    # El listado de Jumbo no trae EAN; se completa en lotes desde VTEX.
+    "jumbo": lambda max_pages: with_jumbo_eans(crawl_jumbo(max_pages), fetch_text),
     "lider": crawl_lider,
     "acuenta": crawl_acuenta,
     "irurzun": crawl_irurzun,
@@ -1658,6 +1676,7 @@ CRAWLERS: dict[str, Callable[[int | None], Iterator[Product]]] = {
 
 
 def serialize_product(product: Product) -> dict[str, Any]:
+    # Incluye `gtin` (Product lo deriva del ean); Supabase lo recalcula igual.
     return asdict(product)
 
 
