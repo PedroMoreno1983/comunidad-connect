@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import sys
 import unittest
@@ -18,6 +19,7 @@ from full_catalog import (
     acuenta_category_looks_promotional,
     crawl_acuenta,
     crawl_lider,
+    crawl_santa,
     extract_santa_render_data,
     extract_next_flight_stream,
     jumbo_category_page_url,
@@ -34,13 +36,18 @@ from full_catalog import (
     parse_lider_browse_page,
     parse_lider_page,
     parse_santa_render_data,
+    parse_santa_listing_html,
+    parse_santa_vtex_products,
+    santa_department_slugs,
+    santa_products_from_listing,
+    santa_vtex_sku_url,
     parse_tottus_categories,
     parse_tottus_page,
     parse_unimarc_next_data,
     santa_categories,
     unique_products,
 )
-from scrape_supermarkets import scrape_lider
+from scrape_supermarkets import santa_isabel_search_url, scrape_lider, scrape_santa_isabel
 
 
 class FullCatalogParserTests(unittest.TestCase):
@@ -456,6 +463,165 @@ class FullCatalogParserTests(unittest.TestCase):
         products = parse_santa_render_data(extracted, "despensa")
         self.assertEqual(products[0].price, 990)
         self.assertEqual(products[0].ean, "7800000000001")
+
+    @staticmethod
+    def _santa_vtex_product(item_id: str, ean: str | None, stock: int = 10) -> dict:
+        # Forma real de santaisabel.vtexcommercestable.com.br (17-oct-2026).
+        return {
+            "productId": f"p{item_id}",
+            "productName": f"Producto {item_id}",
+            "brand": "Soprole",
+            "linkText": f"producto-{item_id}",
+            "items": [{
+                "itemId": item_id,
+                "ean": ean,
+                "images": [{"imageUrl": f"https://santaisabel.vteximg.com.br/{item_id}.jpg"}],
+                "sellers": [{"commertialOffer": {
+                    "Price": 1150.0, "ListPrice": 1290.0, "AvailableQuantity": stock,
+                }}],
+            }],
+        }
+
+    @staticmethod
+    def _santa_listing_html(entries: list[tuple[str, str, int]], total: int,
+                            carousel: list[tuple[str, str, int]] = ()) -> str:
+        # Tarjetas como las sirve santaisabel.cl (Next.js) desde el 15-oct-2026.
+        def card(sku: str, name: str, price: int, listing: str) -> str:
+            impression = {"name": name, "id": sku, "refId": f"r{sku}", "brand": "Soprole",
+                          "price": price, "list": listing, "stock": True}
+            return f'<div data-gtm-impression="{html.escape(json.dumps(impression))}"></div>'
+
+        cards = [card(*entry, "PLP Categorías: Despensa") for entry in entries]
+        cards += [card(*entry, "PLP - Los más vendidos") for entry in carousel]
+        return f'<div data-cnstrc-num-results="{total}"></div>' + "".join(cards)
+
+    def test_santa_department_slugs_skip_collections(self) -> None:
+        tree = json.dumps([
+            {"id": 1, "url": "https://santaisabel.vtexcommercestable.com.br/lacteos-huevos-y-congelados"},
+            {"id": 27, "url": "https://santaisabel.vtexcommercestable.com.br/despensa"},
+            {"id": 938, "url": "https://santaisabel.vtexcommercestable.com.br/marcas-exclusivas"},
+            {"id": 189, "url": "https://santaisabel.vtexcommercestable.com.br/mypes"},
+        ])
+        self.assertEqual(santa_department_slugs(tree), ["lacteos-huevos-y-congelados", "despensa"])
+        self.assertEqual(santa_department_slugs("<html>"), [])
+
+    def test_santa_listing_html_reads_plp_cards_only(self) -> None:
+        page = self._santa_listing_html(
+            [("887", "Leche Soprole Entera Natural 1 L", 1150)], 1670,
+            carousel=[("2922", "Café Nescafé 200 g", 9890)],
+        )
+        listing, total = parse_santa_listing_html(page)
+        self.assertEqual(total, 1670)
+        self.assertEqual([entry["id"] for entry in listing], ["887"])
+        self.assertEqual(parse_santa_listing_html("<!DOCTYPE html><html></html>"), ([], 0))
+
+    def test_santa_listing_gets_ean_from_vtex_and_keeps_site_price(self) -> None:
+        listing, _ = parse_santa_listing_html(self._santa_listing_html(
+            [("887", "Producto 887", 990), ("404", "Solo en el sitio", 500)], 2,
+        ))
+        vtex = json.dumps([self._santa_vtex_product("887", "7802900001308")])
+        products = santa_products_from_listing(listing, vtex, "despensa")
+        self.assertEqual(len(products), 2)
+        self.assertEqual(products[0].ean, "7802900001308")
+        self.assertEqual(products[0].gtin, "7802900001308")
+        self.assertEqual(products[0].price, 990)  # precio del sitio, no el de VTEX (1150)
+        self.assertEqual(products[0].list_price, 1290)
+        self.assertEqual(products[0].product_url, "https://www.santaisabel.cl/producto-887/p")
+        self.assertEqual(products[1].sku, "404")
+        self.assertIsNone(products[1].ean)
+        self.assertEqual(products[1].price, 500)
+        self.assertIn("fq=skuId%3A887&fq=skuId%3A404", santa_vtex_sku_url(["887", "404"]))
+
+    def test_santa_vtex_payload_keeps_ean_and_drops_out_of_stock(self) -> None:
+        payload = json.dumps([
+            self._santa_vtex_product("887", "7802900001308"),
+            self._santa_vtex_product("999", "7800000000001", stock=0),
+        ])
+        products = parse_santa_vtex_products(payload, "lacteos-huevos-y-congelados")
+        self.assertEqual([product.sku for product in products], ["887"])
+        self.assertEqual(parse_santa_vtex_products("<!DOCTYPE html>", "x"), [])
+
+    def test_santa_crawl_pages_site_then_batches_vtex_eans(self) -> None:
+        tree = json.dumps([{"id": 27, "url": "https://x/despensa"}])
+        pages = {
+            1: self._santa_listing_html([("1", "Producto 1", 1150), ("2", "Producto 2", 1150)], 3),
+            2: self._santa_listing_html([("3", "Producto 3", 1150)], 3),
+        }
+        requested: list[str] = []
+
+        def fake_fetch_many(urls, optional=False):
+            for url in urls:
+                requested.append(url)
+                if "santaisabel.cl/despensa?page=" in url:
+                    yield pages.get(int(url.rsplit("=", 1)[1]), "")  # 404 -> ""
+                else:
+                    self.assertTrue(optional)
+                    yield json.dumps([self._santa_vtex_product(n, f"780290000130{n}")
+                                      for n in ("1", "2", "3")])
+
+        with patch("full_catalog.fetch_text", return_value=tree), \
+                patch("full_catalog._santa_fetch_many", side_effect=fake_fetch_many):
+            products = list(crawl_santa())
+        self.assertEqual([product.sku for product in products], ["1", "2", "3"])
+        self.assertTrue(all(product.ean for product in products))
+        self.assertTrue(all(product.query == "despensa" for product in products))
+        vtex_calls = [url for url in requested if "vtexcommercestable" in url]
+        self.assertEqual(len(vtex_calls), 1)
+
+    def test_santa_crawl_flags_listing_far_below_advertised(self) -> None:
+        tree = json.dumps([{"id": 27, "url": "https://x/despensa"}])
+        page = self._santa_listing_html([("1", "Producto 1", 1150)], 500)
+
+        def fake_fetch_many(urls, optional=False):
+            for url in urls:
+                yield page if url.endswith("page=1") else ("[]" if optional else "")
+
+        with patch("full_catalog.fetch_text", return_value=tree), \
+                patch("full_catalog._santa_fetch_many", side_effect=fake_fetch_many):
+            with self.assertRaises(CatalogCoverageWarning):
+                list(crawl_santa())
+
+    def test_santa_fetch_retries_transient_errors(self) -> None:
+        from full_catalog import _santa_fetch, _santa_fetch_optional
+
+        responses = [RuntimeError("HTTP 500"), "[]"]
+
+        def flaky(*_args, **_kwargs):
+            value = responses.pop(0)
+            if isinstance(value, Exception):
+                raise value
+            return value
+
+        with patch("full_catalog.fetch_text", side_effect=flaky), patch("full_catalog.time.sleep"):
+            self.assertEqual(_santa_fetch("https://x"), "[]")
+        with patch("full_catalog.fetch_text", side_effect=RuntimeError("down")), \
+                patch("full_catalog.time.sleep"):
+            self.assertEqual(_santa_fetch_optional("https://x"), "")
+
+    def test_santa_crawl_fails_loudly_without_category_tree(self) -> None:
+        with patch("full_catalog.fetch_text", return_value="<!DOCTYPE html>"):
+            with self.assertRaises(RuntimeError):
+                list(crawl_santa())
+
+    def test_santa_price_refresh_reads_vtex_search_with_ean(self) -> None:
+        payload = json.dumps([{
+            **self._santa_vtex_product("887", "7802920777542"),
+            "productName": "Leche Colun Entera 1 L",
+        }])
+        requested: list[str] = []
+
+        def fake_fetch(url: str) -> str:
+            requested.append(url)
+            return payload
+
+        with patch("scrape_supermarkets.fetch", side_effect=fake_fetch):
+            products, status = scrape_santa_isabel("leche entera colun", 5)
+        self.assertEqual(status.status, "ok")
+        self.assertEqual(products[0].ean, "7802920777542")
+        self.assertEqual(products[0].price, 1150)
+        # VTEX responde 400 a ft con "+": los espacios deben ir como %20.
+        self.assertIn("ft=leche%20entera%20colun", requested[0])
+        self.assertEqual(requested[0], santa_isabel_search_url("leche entera colun"))
 
     def test_lider_json_ld_parses_product_and_pagination(self) -> None:
         page_html = """

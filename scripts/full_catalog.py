@@ -15,7 +15,7 @@ from dataclasses import asdict, replace
 from http.client import IncompleteRead
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urljoin
+from urllib.parse import quote, urlencode, urljoin
 from urllib.request import Request, urlopen
 
 from jumbo_vtex_ean import jumbo_item_ean, with_jumbo_eans
@@ -1186,35 +1186,185 @@ def crawl_tottus(max_pages: int | None = None) -> Iterator[Product]:
             yield from products
 
 
+SANTA_VTEX_API = "https://santaisabel.vtexcommercestable.com.br/api/catalog_system/pub"
+SANTA_EXCLUDED_CATEGORIES = {"marcas-exclusivas", "productos-importados", "libres-de", "mypes"}
+SANTA_EAN_BATCH_SIZE = 50
+SANTA_LISTING_PREFIX = "PLP Categ"  # "PLP Categorías: Despensa"; los carruseles traen otro `list`
+
+
+def santa_department_slugs(tree_payload: str) -> list[str]:
+    """Departamentos de primer nivel del árbol de categorías VTEX de Santa Isabel."""
+    try:
+        tree = json.loads(tree_payload) if tree_payload else []
+    except json.JSONDecodeError:
+        tree = []
+    slugs: list[str] = []
+    for department in tree if isinstance(tree, list) else []:
+        if not isinstance(department, dict):
+            continue
+        url = str(department.get("url") or "").rstrip("/")
+        slug = url.rsplit("/", 1)[-1] if url else ""
+        if slug and slug not in SANTA_EXCLUDED_CATEGORIES and slug not in slugs:
+            slugs.append(slug)
+    return slugs
+
+
+def parse_santa_listing_html(page_html: str) -> tuple[list[dict[str, Any]], int]:
+    """(productos del listado, total anunciado) de una página de categoría.
+
+    Desde el 15-oct-2026 santaisabel.cl es Next.js (igual que jumbo.cl): ya no
+    hay window.__renderData. Cada tarjeta trae data-gtm-impression con el skuId
+    VTEX (`id`), refId, nombre y precio; el EAN se completa luego por VTEX.
+    """
+    listing: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in re.findall(r'data-gtm-impression="([^"]+)"', page_html):
+        try:
+            impression = json.loads(html.unescape(raw))
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(impression, dict):
+            continue
+        if not str(impression.get("list") or "").startswith(SANTA_LISTING_PREFIX):
+            continue
+        sku = str(impression.get("id") or "").strip()
+        if not sku or sku in seen or impression.get("stock") is False:
+            continue
+        seen.add(sku)
+        listing.append(impression)
+    total_match = re.search(r'data-cnstrc-num-results="(\d+)"', page_html)
+    return listing, int(total_match.group(1)) if total_match else 0
+
+
+def santa_vtex_sku_url(sku_ids: Iterable[str]) -> str:
+    skus = [sku for sku in sku_ids if sku]
+    params = [("fq", f"skuId:{sku}") for sku in skus]
+    params += [("_from", "0"), ("_to", str(max(0, len(skus) - 1)))]
+    return f"{SANTA_VTEX_API}/products/search?{urlencode(params)}"
+
+
+def parse_santa_vtex_products(payload: str, query: str) -> list[Product]:
+    try:
+        root = json.loads(payload) if payload else []
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(root, list):
+        return []
+    return parse_santa_render_data({"plp": {"plp_products": {"products": root}}}, query)
+
+
+def santa_products_from_listing(
+    listing: list[dict[str, Any]], vtex_payload: str, query: str
+) -> list[Product]:
+    """Cruza el listado del sitio con el catálogo VTEX (EAN, precio normal, imagen).
+
+    Manda lo que muestra el sitio: precio y skus. Si VTEX no devuelve un sku,
+    el producto se guarda igual con los datos del listado, sin EAN.
+    """
+    by_sku = {product.sku: product for product in parse_santa_vtex_products(vtex_payload, query)}
+    products: list[Product] = []
+    observed_at = utc_now()
+    for entry in listing:
+        sku = str(entry.get("id") or "").strip()
+        price = parse_price(entry.get("price"))
+        vtex = by_sku.get(sku)
+        if vtex is not None:
+            if price > 0 and price != vtex.price:
+                list_price = vtex.list_price if vtex.list_price and vtex.list_price >= price else None
+                vtex = replace(vtex, price=price, list_price=list_price)
+            products.append(vtex)
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name or price <= 0:
+            continue
+        products.append(
+            Product(
+                store="Santa Isabel",
+                query=query,
+                name=name,
+                price=price,
+                list_price=None,
+                in_stock=True,
+                brand=str(entry.get("brand") or "").strip() or None,
+                sku=sku,
+                scraped_at=observed_at,
+            )
+        )
+    return products
+
+
+def _santa_fetch(url: str, attempts: int = 3, pause: float = 5.0) -> str:
+    # El sitio y el catálogo VTEX devuelven 500 sueltos bajo carga; fetch_text
+    # ya reintenta 3 veces en ~3 s, acá se espera más antes de rendirse.
+    for attempt in range(attempts):
+        try:
+            return fetch_text(url, missing_statuses=(404,))
+        except RuntimeError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(pause * (2**attempt))
+    return ""
+
+
+def _santa_fetch_optional(url: str) -> str:
+    # El EAN es un extra: si VTEX no responde, el lote se guarda sin EAN.
+    try:
+        return _santa_fetch(url)
+    except RuntimeError as error:
+        print(f"santa isabel ean batch skipped: {error}", file=sys.stderr)
+        return ""
+
+
+def _santa_fetch_many(urls: list[str], optional: bool = False) -> Iterator[str]:
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        yield from executor.map(_santa_fetch_optional if optional else _santa_fetch, urls)
+
+
 def crawl_santa(max_pages: int | None = None) -> Iterator[Product]:
-    home_data = extract_santa_render_data(fetch_text("https://www.santaisabel.cl/"))
-    for category in santa_categories(home_data):
+    slugs = santa_department_slugs(fetch_text(f"{SANTA_VTEX_API}/category/tree/3"))
+    if not slugs:
+        raise RuntimeError("Santa Isabel VTEX category tree is empty")
+    coverage_warnings: list[str] = []
+    for slug in slugs:
+        listing: list[dict[str, Any]] = []
+        seen_skus: set[str] = set()
+        advertised = 0
         page_number = 1
-        seen_pages: set[tuple[str, ...]] = set()
         while max_pages is None or page_number <= max_pages:
             final_page = page_number + 3
             if max_pages is not None:
                 final_page = min(final_page, max_pages)
             page_numbers = list(range(page_number, final_page + 1))
-            urls = [
-                f"https://www.santaisabel.cl/{quote(category)}?page={number}"
-                for number in page_numbers
-            ]
+            urls = [f"https://www.santaisabel.cl/{quote(slug)}?page={n}" for n in page_numbers]
             reached_end = False
-            for payload in fetch_many(urls, missing_statuses=(404,)):
-                if not payload:
+            for payload in _santa_fetch_many(urls):
+                entries, total = parse_santa_listing_html(payload)
+                advertised = max(advertised, total)
+                fresh = [entry for entry in entries if str(entry["id"]) not in seen_skus]
+                if not fresh:
                     reached_end = True
                     break
-                products = parse_santa_render_data(extract_santa_render_data(payload), category)
-                signature = tuple(sorted(product_key(product) for product in products))
-                if not products or signature in seen_pages:
-                    reached_end = True
-                    break
-                seen_pages.add(signature)
-                yield from products
+                seen_skus.update(str(entry["id"]) for entry in fresh)
+                listing.extend(fresh)
             if reached_end or len(page_numbers) < 4:
                 break
             page_number += len(page_numbers)
+        if max_pages is None and advertised and len(listing) < advertised * 0.9:
+            coverage_warnings.append(f"{slug}: {len(listing)} of {advertised}")
+        batches = [
+            listing[start : start + SANTA_EAN_BATCH_SIZE]
+            for start in range(0, len(listing), SANTA_EAN_BATCH_SIZE)
+        ]
+        payloads = _santa_fetch_many(
+            [santa_vtex_sku_url(str(entry["id"]) for entry in batch) for batch in batches],
+            optional=True,
+        )
+        for batch, payload in zip(batches, payloads):
+            yield from santa_products_from_listing(batch, payload, slug)
+    if coverage_warnings:
+        raise CatalogCoverageWarning(
+            "Santa Isabel listing incomplete: " + "; ".join(coverage_warnings)
+        )
 
 
 def _require_playwright() -> Any:

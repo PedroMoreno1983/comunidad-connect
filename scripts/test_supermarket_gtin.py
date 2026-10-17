@@ -74,10 +74,63 @@ class JumboVtexEanTests(unittest.TestCase):
             product("Jumbo", "Lasaña Carozzi 400 g", sku="1858600"),  # refId, otro producto
             product("Jumbo", "Sin sku"),
         ], fetch, batch_size=50))
-        self.assertEqual(len(calls), 1)
+        # Primero por refId; lo que queda sin EAN se reintenta por skuId.
+        self.assertEqual(len(calls), 2)
+        self.assertIn("alternateIds_RefId%3A6752", calls[0])
+        self.assertIn("skuId%3A6752", calls[1])
         self.assertEqual(enriched[0].gtin, "7613030049883")
         self.assertIsNone(enriched[1].ean)
         self.assertIsNone(enriched[2].ean)
+
+    # Respuesta real de jumbocl.vtexcommercestable.com.br (17-oct-2026) a
+    # fq=alternateIds_RefId:1993595: el sku que guarda el crawl es el refId.
+    refid_payload = json.dumps([
+        {"productId": "134917", "productReference": "1993595",
+         "productName": "Té Negro Orgánico Marley Coffee Sweet Vainilla 12 un.",
+         "items": [{"itemId": "135211", "ean": "737186390211",
+                    "name": "Té Negro Orgánico Marley Coffee Sweet Vainilla 12 un.",
+                    "referenceId": [{"Key": "RefId", "Value": "1993595"}]}]},
+    ])
+
+    def test_crawl_sku_is_resolved_as_refid(self) -> None:
+        calls: list[str] = []
+
+        def fetch(url: str) -> str:
+            calls.append(url)
+            # fq=skuId:1993595 devuelve [] en producción: esa fue la causa del 0 EAN.
+            return self.refid_payload if "alternateIds_RefId" in url else "[]"
+
+        enriched = list(with_jumbo_eans([
+            product("Jumbo", "Té Negro Orgánico Marley Coffee Sweet Vainilla 12 un.", sku="1993595"),
+        ], fetch))
+        self.assertEqual(len(calls), 1)  # resuelto por refId: no hace falta la 2ª consulta
+        self.assertEqual(enriched[0].ean, "737186390211")
+        self.assertEqual(enriched[0].gtin, "0737186390211")
+
+    def test_refid_match_still_requires_same_name(self) -> None:
+        enriched = list(with_jumbo_eans(
+            [product("Jumbo", "Garam Masala La Sazonería 52 g", sku="1993595")],
+            lambda url: self.refid_payload if "alternateIds_RefId" in url else "[]",
+        ))
+        self.assertIsNone(enriched[0].ean)
+
+    def test_single_failed_batch_does_not_disable_lookup(self) -> None:
+        state = {"calls": 0}
+
+        def flaky(url: str) -> str:
+            state["calls"] += 1
+            if state["calls"] == 1:
+                raise RuntimeError("timeout")
+            return self.refid_payload if "alternateIds_RefId" in url else "[]"
+
+        name = "Té Negro Orgánico Marley Coffee Sweet Vainilla 12 un."
+        enriched = list(with_jumbo_eans(
+            [product("Jumbo", name, sku="1993595"), product("Jumbo", name, sku="1993595")],
+            flaky,
+            batch_size=1,
+        ))
+        self.assertIsNone(enriched[0].ean)
+        self.assertEqual(enriched[1].ean, "737186390211")
 
     def test_lookup_failure_keeps_products_without_ean(self) -> None:
         def broken(_url: str) -> str:
