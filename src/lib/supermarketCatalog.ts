@@ -17,6 +17,7 @@ import {
   storesWithHits,
   termsMissingAnyStore,
 } from '@/lib/supermarketCatalogGaps';
+import { attachSameProductRows } from '@/lib/supermarketGtinMatch';
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import { foldedAccentVariants, matchAnchor, matchAnchors, productMatchScore } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
@@ -284,6 +285,12 @@ export async function comparePersistedSupermarkets(
       })));
       rowsByTerm = mergeMissingStoreRows(rowsByTerm, ilikeFills);
     }
+  }
+
+  // Mismo GTIN en otras cadenas antes de salir a buscar en vivo: el nombre de
+  // Lider o aCuenta no calza con el de Santa Isabel, pero el código sí.
+  rowsByTerm = await attachSameProductRows(rowsByTerm, terms, staleCutoff, PRODUCT_COLUMNS);
+  if (termsMissingAnyStore(rowsByTerm, terms).length > 0) {
     rowsByTerm = await fillLiveGaps(rowsByTerm, terms, requestedUnits);
   }
 
