@@ -66,6 +66,40 @@ class FullCatalogIngestionTests(unittest.TestCase):
         finalize.assert_called_once()
         self.assertEqual(finalize.call_args.args[0], "Tottus")
 
+    def test_jumbo_crawl_inherits_gtin_from_santa_isabel(self) -> None:
+        jumbo = Product(store="Jumbo", query="catalogo", name="Arroz 1 kg", price=1290,
+                        list_price=None, in_stock=True, sku="1")
+        with (
+            patch.dict(ingest.CRAWLERS, {"jumbo": lambda _max_pages: iter([jumbo])}),
+            patch.object(ingest, "persist_batch", return_value={"product_count": 1}),
+            patch.object(ingest, "finalize_stock_reconciliation", return_value={}),
+            patch.object(ingest, "catalog_count", return_value=1),
+            patch.object(ingest, "inherit_jumbo_gtins", return_value=7) as inherit,
+        ):
+            result = ingest.crawl_store("jumbo", 50, None, False)
+            ingest.crawl_store("jumbo", 50, None, True)
+
+        self.assertEqual(result["inherited_gtin_count"], 7)
+        inherit.assert_called_once()
+
+    def test_other_stores_do_not_inherit_gtin(self) -> None:
+        with (
+            patch.dict(ingest.CRAWLERS, {"tottus": lambda _max_pages: iter([sample_product()])}),
+            patch.object(ingest, "persist_batch", return_value={"product_count": 1}),
+            patch.object(ingest, "finalize_stock_reconciliation", return_value={}),
+            patch.object(ingest, "catalog_count", return_value=1),
+            patch.object(ingest, "inherit_jumbo_gtins") as inherit,
+        ):
+            result = ingest.crawl_store("tottus", 50, None, False)
+
+        self.assertIsNone(result["inherited_gtin_count"])
+        inherit.assert_not_called()
+
+    def test_inherit_failure_never_breaks_the_crawl(self) -> None:
+        with patch.object(ingest, "supabase_credentials", side_effect=RuntimeError("no env")), \
+                patch("sys.stderr", new_callable=io.StringIO):
+            self.assertIsNone(ingest.inherit_jumbo_gtins())
+
     def test_limited_crawl_never_reconciles_stock(self) -> None:
         with (
             patch.dict(ingest.CRAWLERS, {"tottus": lambda _max_pages: iter([sample_product()])}),

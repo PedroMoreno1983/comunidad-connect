@@ -6,14 +6,24 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from full_catalog import parse_jumbo_payload, parse_tottus_page  # noqa: E402
-from jumbo_vtex_ean import jumbo_vtex_ean_url, parse_vtex_sku_eans, with_jumbo_eans  # noqa: E402
+import io  # noqa: E402
+from contextlib import redirect_stderr  # noqa: E402
+
+from jumbo_vtex_ean import (  # noqa: E402
+    jumbo_url_slug,
+    jumbo_vtex_ean_url,
+    jumbo_vtex_slug_url,
+    parse_vtex_sku_eans,
+    with_jumbo_eans,
+)
 from scrape_supermarkets import Product  # noqa: E402
 from supermarket_gtin import gtin_check_digit, normalize_gtin  # noqa: E402
 
 
-def product(store: str, name: str, sku: str | None = None, ean: str | None = None) -> Product:
+def product(store: str, name: str, sku: str | None = None, ean: str | None = None,
+            url: str | None = None) -> Product:
     return Product(store=store, query="catalogo", name=name, price=1000, list_price=None,
-                   in_stock=True, sku=sku, ean=ean)
+                   in_stock=True, sku=sku, ean=ean, product_url=url)
 
 
 class GtinNormalizationTests(unittest.TestCase):
@@ -162,6 +172,95 @@ class JumboVtexEanTests(unittest.TestCase):
             "okayToShopBarcodes": ["7802920777252"],
         }]}}))
         self.assertEqual(tottus[0].gtin, "7802920777252")
+
+
+class JumboSlugLookupTests(unittest.TestCase):
+    """Filas del respaldo JSON-LD: sin sku y con URL sin refId (17-oct-2026)."""
+
+    url = "https://www.jumbo.cl/shampoo-simond-s-2-en-1-para-reci-n-nacido-500-ml/p"
+    name = "Shampoo y Jabón Simond's 2 En 1 Recién Nacido 500 ml"
+    # Respuesta real de /api/catalog_system/pub/products/search/<linkText>/p.
+    payload = json.dumps([{
+        "productId": "55600", "productReference": "1730533",
+        "linkText": "shampoo-simond-s-2-en-1-para-reci-n-nacido-500-ml",
+        "productName": "Shampoo y Jabón Simond's 2 En 1 Recién Nacido 500 ml",
+        "items": [{"itemId": "55633", "ean": "7804945011694",
+                   "name": "Shampoo y Jabón Simond's 2 En 1 Recién Nacido 500 ml",
+                   "referenceId": [{"Key": "RefId", "Value": "1730533"}]}],
+    }])
+
+    def test_slug_comes_from_url_without_refid(self) -> None:
+        self.assertEqual(jumbo_url_slug(self.url), "shampoo-simond-s-2-en-1-para-reci-n-nacido-500-ml")
+        self.assertEqual(jumbo_url_slug("https://www.jumbo.cl/te-marley-1993595/p?x=1"), "te-marley-1993595")
+        self.assertIsNone(jumbo_url_slug("https://www.santaisabel.cl/algo/p"))
+        self.assertIsNone(jumbo_url_slug(None))
+        self.assertTrue(jumbo_vtex_slug_url("a-b/p").endswith("/products/search/a-b%2Fp/p"))
+
+    def test_slug_lookup_fills_ean_and_refid_as_sku(self) -> None:
+        calls: list[str] = []
+
+        def fetch(url: str) -> str:
+            calls.append(url)
+            return self.payload if url.endswith("/search/shampoo-simond-s-2-en-1-para-reci-n-nacido-500-ml/p") else "[]"
+
+        err = io.StringIO()
+        with redirect_stderr(err):
+            enriched = list(with_jumbo_eans([product("Jumbo", self.name, url=self.url)], fetch))
+        self.assertEqual(len(calls), 1)  # resuelto por linkText: sin consulta por refId
+        self.assertEqual(enriched[0].ean, "7804945011694")
+        self.assertEqual(enriched[0].gtin, "7804945011694")
+        self.assertEqual(enriched[0].sku, "1730533")
+        self.assertIn("jumbo slug lookup: 1 of 1 products matched", err.getvalue())
+
+    def test_slug_lookup_requires_same_name(self) -> None:
+        with redirect_stderr(io.StringIO()):
+            enriched = list(with_jumbo_eans(
+                [product("Jumbo", "Otro producto 1 kg", url=self.url)], lambda _url: self.payload,
+            ))
+        self.assertIsNone(enriched[0].ean)
+        self.assertIsNone(enriched[0].sku)
+
+    def test_rows_with_sku_never_use_slug_lookup(self) -> None:
+        calls: list[str] = []
+
+        def fetch(url: str) -> str:
+            calls.append(url)
+            return "[]"
+
+        with redirect_stderr(io.StringIO()):
+            list(with_jumbo_eans([product("Jumbo", self.name, sku="1730533", url=self.url)], fetch))
+        self.assertTrue(calls)
+        self.assertTrue(all("fq=" in url for url in calls))
+
+    def test_three_failed_slug_batches_disable_slug_lookup(self) -> None:
+        calls: list[str] = []
+
+        def broken(url: str) -> str:
+            calls.append(url)
+            raise RuntimeError("down")
+
+        rows = [product("Jumbo", self.name, url=self.url) for _ in range(5)]
+        err = io.StringIO()
+        with redirect_stderr(err):
+            enriched = list(with_jumbo_eans(rows, broken, batch_size=1, slug_workers=1))
+        self.assertEqual(len(enriched), 5)
+        self.assertEqual(len(calls), 3)
+        self.assertIn("jumbo slug lookup disabled", err.getvalue())
+
+    def test_partial_slug_failures_do_not_count_as_a_failed_batch(self) -> None:
+        state = {"calls": 0}
+
+        def flaky(url: str) -> str:
+            state["calls"] += 1
+            if state["calls"] % 2:
+                raise RuntimeError("timeout")
+            return self.payload
+
+        rows = [product("Jumbo", self.name, url=self.url) for _ in range(8)]
+        with redirect_stderr(io.StringIO()):
+            enriched = list(with_jumbo_eans(rows, flaky, batch_size=2, slug_workers=1))
+        self.assertEqual(state["calls"], 8)
+        self.assertEqual(sum(1 for item in enriched if item.ean), 4)
 
 
 if __name__ == "__main__":
