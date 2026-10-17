@@ -30,11 +30,55 @@ const ANCHOR_NOISE = new Set([
 ]);
 
 /**
+ * Marcas que cada cadena escribe distinto: "Coca-Cola", "Coca Cola" y
+ * "CocaCola"; "Mc Kay" y "McKay"; "Oral-B" y "OralB". Se llevan a una sola
+ * forma para que el término y el nombre del SKU usen las mismas palabras.
+ * Cuando una de las dos palabras tiene menos de 3 letras ("mc", "b", "7") se
+ * pegan, porque significantWords descarta las palabras cortas.
+ * Medido en supermarket_products el 17-oct-2026.
+ */
+const BRAND_SPELLINGS: Array<[RegExp, string]> = [
+    [/\bcoca[\s-]*cola\b/g, 'coca cola'],
+    [/\bmc[\s.-]*kay\b/g, 'mckay'],
+    [/\boral[\s-]*b\b/g, 'oralb'],
+    [/\bkh[\s-]*7\b/g, 'kh7'],
+    [/\bmaster[\s-]*dog\b/g, 'master dog'],
+    [/\bair[\s-]*wick\b/g, 'air wick'],
+    [/\bnutra[\s-]*bien\b/g, 'nutra bien'],
+    [/\bbaby[\s-]*lee\b/g, 'baby lee'],
+    [/\bplay[\s-]*doh\b/g, 'play doh'],
+    [/\bvina[\s-]*mar\b/g, 'vina mar'],
+    [/\blove[\s-]*lemon\b/g, 'love lemon'],
+    [/\bfresh[\s-]*up\b/g, 'fresh up'],
+    [/\bbio[\s-]*frescura\b/g, 'bio frescura'],
+    [/\bunder[\s-]*five\b/g, 'under five'],
+];
+
+/** Grafías que ILIKE debe probar para una marca ya normalizada. */
+const BRAND_ANCHOR_VARIANTS: Record<string, string[]> = {
+    mckay: ['mckay', 'mc kay'],
+    oralb: ['oralb', 'oral-b', 'oral b'],
+    kh7: ['kh7', 'kh-7'],
+};
+
+/**
+ * Marca en una sola forma, sin apóstrofos ("Watt's" = "Watts") y con guiones
+ * entre palabras como espacios. Recibe texto ya plegado (foldAccents).
+ */
+export function normalizeBrandSpelling(folded: string): string {
+    let normalized = folded.replace(/['\u2019`\u00b4]/g, '');
+    for (const [pattern, replacement] of BRAND_SPELLINGS) {
+        normalized = normalized.replace(pattern, replacement);
+    }
+    return normalized.replace(/([a-z])-(?=[a-z])/g, '$1 ');
+}
+
+/**
  * Normaliza typos y jerga de lista chilena al vocabulario del catálogo.
  * "yogurth" y "leces" no existen en FTS; "ayuyitas"/"pampita" tampoco.
  */
 export function canonicalCatalogTerm(value: string): string {
-    let normalized = foldAccents(value);
+    let normalized = normalizeBrandSpelling(foldAccents(value));
     if (/^cocas?$/.test(normalized)) return 'coca cola';
     normalized = normalized
         .replace(/^champanas?\b/, 'espumante')
@@ -463,11 +507,12 @@ export function matchAnchors(term: string): string[] {
         seen.add(trimmed);
         anchors.push(trimmed);
     };
-    for (const value of (variants[anchor] ?? [anchor])) push(value);
+    const spellings = (word: string) => variants[word] ?? BRAND_ANCHOR_VARIANTS[word] ?? [word];
+    for (const value of spellings(anchor)) push(value);
 
     for (const word of requiredStemmedWords(term)) {
         if (word === anchor || ANCHOR_NOISE.has(word)) continue;
-        for (const value of (variants[word] ?? [word])) push(value);
+        for (const value of spellings(word)) push(value);
     }
     return anchors;
 }

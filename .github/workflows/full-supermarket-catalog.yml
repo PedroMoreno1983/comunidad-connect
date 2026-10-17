@@ -6,6 +6,10 @@ on:
       - "scripts/full_catalog.py"
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
+      - "scripts/test_supermarket_gtin.py"
+      - "scripts/jumbo_vtex_ean.py"
+      - "scripts/supermarket_gtin.py"
+      - "scripts/scrape_supermarkets.py"
       - "scripts/test_jumbo_catalog_gap_recovery.py"
       - "scripts/test_ingest_full_supermarket_catalog.py"
       - "scripts/backfill-lider-offer-id.js"
@@ -18,6 +22,10 @@ on:
       - "scripts/full_catalog.py"
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
+      - "scripts/test_supermarket_gtin.py"
+      - "scripts/jumbo_vtex_ean.py"
+      - "scripts/supermarket_gtin.py"
+      - "scripts/scrape_supermarkets.py"
       - "scripts/test_jumbo_catalog_gap_recovery.py"
       - "scripts/test_ingest_full_supermarket_catalog.py"
       - "scripts/backfill-lider-offer-id.js"
@@ -68,7 +76,7 @@ jobs:
           python-version: "3.12"
 
       - name: Run catalog ingestion tests
-        run: python -m unittest scripts/test_full_catalog.py scripts/test_jumbo_catalog_gap_recovery.py scripts/test_ingest_full_supermarket_catalog.py -v
+        run: python -m unittest scripts/test_full_catalog.py scripts/test_supermarket_gtin.py scripts/test_jumbo_catalog_gap_recovery.py scripts/test_ingest_full_supermarket_catalog.py -v
 
   crawl:
     if: github.event_name != 'pull_request'

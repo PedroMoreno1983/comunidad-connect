@@ -418,6 +418,10 @@ export function applyCombinedVolumePromos<T extends PromoLine>(items: T[]): T[] 
 }
 
 function selectComparableRows(rows: Record<string, unknown>[]) {
+  // Mismo GTIN en 2+ tiendas: es el mismo producto, gana al formato por nombre.
+  const sameProductRows = rows.filter(row => row.same_product === true);
+  if (new Set(sameProductRows.map(row => asString(row.store))).size >= 2) return sameProductRows;
+
   const groups = new Map<string, Record<string, unknown>[]>();
   for (const row of rows) {
     const signature = formatSignature(asString(row.name));
