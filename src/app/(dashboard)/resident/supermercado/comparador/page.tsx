@@ -710,7 +710,7 @@ export default function SupermarketPage() {
       </section>
 
       <section
-        className="relative overflow-hidden rounded-2xl border p-6 text-white md:p-8"
+        className="relative overflow-hidden rounded-2xl border p-6 text-[var(--cc-paper)] md:p-8"
         style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-ink)' }}
       >
         <div className="grid gap-7 2xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] 2xl:items-start">

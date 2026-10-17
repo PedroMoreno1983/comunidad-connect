@@ -356,7 +356,7 @@ export function TrainingCourseBuilder({ onPublished, onCancel, initialCourse }: 
                             <ol className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-1">
                                 {slides.map((slide, index) => (
                                     <li key={slide.id} className="flex gap-3 rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white" style={{ background: "var(--cc-ink)" }}>{index + 1}</span>
+                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>{index + 1}</span>
                                         <div className="min-w-0 flex-1">
                                             <p className="text-sm font-semibold cc-text-primary">{slide.title}</p>
                                             <p className="mt-1 text-xs cc-text-secondary">{slide.activity ? activityLabel(slide.activity.type) : `${slide.bullets.length} ideas clave`}</p>

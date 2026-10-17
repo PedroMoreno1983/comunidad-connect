@@ -199,7 +199,7 @@ export default function AdminOnboardingPage() {
 
                     <div className="mb-8 grid grid-cols-3 gap-2">
                         {STEP_LABELS.map((label, index) => (
-                            <div key={label} className={`rounded-lg border px-3 py-2 ${index === step ? "border-brand-500 bg-brand-50" : index < step ? "border-emerald-200 bg-emerald-50" : "border-subtle bg-canvas"}`}>
+                            <div key={label} className={`rounded-lg border px-3 py-2 ${index === step ? "border-brand-500 bg-brand-50" : index < step ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40" : "border-subtle bg-canvas"}`}>
                                 <div className="flex items-center gap-2">
                                     {index < step && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                                     <span className="text-xs font-semibold cc-text-primary">{label}</span>

@@ -389,7 +389,7 @@ function CopyButton({ text, label = "Copiar" }: { text: string; label?: string }
       type="button"
       onClick={() => copyText(text)}
       title={label}
-      className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]"
+      className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]"
     >
       <Copy className="h-3.5 w-3.5" />
       {label}
@@ -614,7 +614,7 @@ export default function MarketingReelsPage() {
             <form onSubmit={generate} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-[var(--cc-line)] pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--cc-ink)] text-white">
+                  <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--cc-ink)] text-[var(--cc-paper)]">
                     <Clapperboard className="h-4 w-4" />
                   </div>
                   <div>
@@ -632,20 +632,20 @@ export default function MarketingReelsPage() {
                     value={form.objective}
                     onChange={event => updateForm("objective", event.target.value)}
                     rows={4}
-                    className="w-full resize-none rounded-lg border border-[var(--cc-line)] bg-white px-3 py-2 text-sm leading-6 outline-none transition focus:border-[var(--cc-copper)]"
+                    className="w-full resize-none rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 py-2 text-sm leading-6 outline-none transition focus:border-[var(--cc-copper)]"
                   />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <FieldLabel>Audiencia</FieldLabel>
-                    <select value={form.audience} onChange={event => updateForm("audience", event.target.value as ReelAudience)} className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-white px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]">
+                    <select value={form.audience} onChange={event => updateForm("audience", event.target.value as ReelAudience)} className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]">
                       {AUDIENCE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
                     <FieldLabel>Tono</FieldLabel>
-                    <select value={form.tone} onChange={event => updateForm("tone", event.target.value as ReelTone)} className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-white px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]">
+                    <select value={form.tone} onChange={event => updateForm("tone", event.target.value as ReelTone)} className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]">
                       {TONE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </div>
@@ -653,7 +653,7 @@ export default function MarketingReelsPage() {
 
                 <div className="space-y-2">
                   <FieldLabel>Foco</FieldLabel>
-                  <select value={form.featureFocus} onChange={event => updateForm("featureFocus", event.target.value)} className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-white px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]">
+                  <select value={form.featureFocus} onChange={event => updateForm("featureFocus", event.target.value)} className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]">
                     {FEATURE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </div>
@@ -667,9 +667,9 @@ export default function MarketingReelsPage() {
                 </div>
 
                 <div className="grid gap-3">
-                  <input value={form.proofPoint || ""} onChange={event => updateForm("proofPoint", event.target.value)} placeholder="Prueba: acciones con auditoria..." className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-white px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]" />
-                  <input value={form.offer || ""} onChange={event => updateForm("offer", event.target.value)} placeholder="Oferta: demo guiada..." className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-white px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]" />
-                  <input value={form.callToAction || ""} onChange={event => updateForm("callToAction", event.target.value)} placeholder="CTA" className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-white px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]" />
+                  <input value={form.proofPoint || ""} onChange={event => updateForm("proofPoint", event.target.value)} placeholder="Prueba: acciones con auditoria..." className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]" />
+                  <input value={form.offer || ""} onChange={event => updateForm("offer", event.target.value)} placeholder="Oferta: demo guiada..." className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]" />
+                  <input value={form.callToAction || ""} onChange={event => updateForm("callToAction", event.target.value)} placeholder="CTA" className="h-11 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none transition focus:border-[var(--cc-copper)]" />
                 </div>
               </div>
 
@@ -678,7 +678,7 @@ export default function MarketingReelsPage() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Generar y guardar
                 </button>
-                <button type="button" onClick={() => setForm(DEFAULT_FORM)} title="Restaurar brief" className="grid min-h-11 w-11 place-items-center rounded-lg border border-[var(--cc-line)] bg-white cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
+                <button type="button" onClick={() => setForm(DEFAULT_FORM)} title="Restaurar brief" className="grid min-h-11 w-11 place-items-center rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
                   <RefreshCw className="h-4 w-4" />
                 </button>
               </div>
@@ -699,7 +699,7 @@ export default function MarketingReelsPage() {
                 {instagram.lastError && <p className="mt-2 text-xs text-rose-700">{instagram.lastError}</p>}
                 <a
                   href="/api/marketing/instagram/connect"
-                  className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-white transition hover:opacity-90"
+                  className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-[var(--cc-paper)] transition hover:opacity-90"
                 >
                   <Instagram className="h-3.5 w-3.5" />
                   {instagram.status === "connected" ? "Reconectar Instagram" : "Conectar Instagram"}
@@ -754,7 +754,7 @@ export default function MarketingReelsPage() {
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <CopyButton text={captionBlock(selectedReel)} label="Caption" />
                       <CopyButton text={buildFullScript(selectedReel)} label="Guion" />
-                      <button type="button" onClick={() => downloadJson(selectedReel)} className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
+                      <button type="button" onClick={() => downloadJson(selectedReel)} className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
                         <Download className="h-3.5 w-3.5" />
                         JSON
                       </button>
@@ -770,14 +770,14 @@ export default function MarketingReelsPage() {
                         <h3 className="text-sm font-semibold cc-text-primary">Video</h3>
                       </div>
                       {selectedReel.videoUrl && (
-                        <a href={selectedReel.videoUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--cc-line)] bg-white px-2 text-[11px] font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
+                        <a href={selectedReel.videoUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--cc-line)] bg-[var(--cc-paper)] px-2 text-[11px] font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
                           <ExternalLink className="h-3.5 w-3.5" />
                           Abrir grande
                         </a>
                       )}
                     </div>
                     {selectedReel.videoUrl ? (
-                      <div className="mt-3 flex justify-center rounded-lg bg-[var(--cc-ink)] p-3">
+                      <div className="mt-3 flex justify-center rounded-lg bg-[var(--cc-carbon)] p-3">
                         <video controls playsInline src={selectedReel.videoUrl} className="aspect-[9/16] max-h-[72vh] w-full max-w-[430px] rounded-md bg-black object-contain shadow-sm" />
                       </div>
                     ) : (
@@ -793,14 +793,14 @@ export default function MarketingReelsPage() {
                   </div>
 
                   <aside className="space-y-4">
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
                       <h3 className="text-sm font-semibold cc-text-primary">Control de publicacion</h3>
                       <div className="mt-3 grid gap-2">
-                        <button type="button" onClick={() => runReelAction("approve", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
+                        <button type="button" onClick={() => runReelAction("approve", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-[var(--cc-paper)] transition hover:opacity-90 disabled:opacity-60">
                           {actionLoading === `approve:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                           Aprobar guion
                         </button>
-                        <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
+                        <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
                           {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                           {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : videoAiProvider === "higgsfield" ? "Generar video Higgsfield" : hasVideoAiGeneration ? "Generar video IA completo" : hasProfessionalRenderer ? "Renderizar MP4 profesional" : "Renderizar preview"}
                         </button>
@@ -816,16 +816,16 @@ export default function MarketingReelsPage() {
                           type="datetime-local"
                           value={scheduleByReel[selectedReel.id] || ""}
                           onChange={event => setScheduleByReel(current => ({ ...current, [selectedReel.id]: event.target.value }))}
-                          className="h-10 w-full rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs outline-none focus:border-[var(--cc-copper)]"
+                          className="h-10 w-full rounded-md border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-xs outline-none focus:border-[var(--cc-copper)]"
                         />
-                        <button type="button" onClick={() => scheduleReel(selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 text-xs font-semibold cc-text-secondary transition hover:bg-white disabled:opacity-60">
+                        <button type="button" onClick={() => scheduleReel(selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-paper)] disabled:opacity-60">
                           {actionLoading === `schedule:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="h-3.5 w-3.5" />}
                           Guardar agenda
                         </button>
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
                       <h3 className="text-sm font-semibold cc-text-primary">Estado real</h3>
                       <div className="mt-3 space-y-2 text-xs leading-5">
                         <p className="flex items-start justify-between gap-3">
@@ -869,9 +869,9 @@ export default function MarketingReelsPage() {
                     <h3 className="text-sm font-semibold cc-text-primary">Guion por escenas</h3>
                     <div className="mt-3 grid gap-3">
                       {selectedReel.creativePackage.scenes.map((scene, index) => (
-                        <article key={`${selectedReel.id}-${scene.time}-${index}`} className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
+                        <article key={`${selectedReel.id}-${scene.time}-${index}`} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-md bg-[var(--cc-ink)] px-2 py-1 text-xs font-semibold text-white">{scene.time}</span>
+                            <span className="rounded-md bg-[var(--cc-ink)] px-2 py-1 text-xs font-semibold text-[var(--cc-paper)]">{scene.time}</span>
                             <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Escena {index + 1}</span>
                           </div>
                           <div className="mt-3 grid min-w-0 gap-3 xl:grid-cols-2">
@@ -884,7 +884,7 @@ export default function MarketingReelsPage() {
                   </div>
 
                   <aside className="space-y-4">
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
                       <div className="flex items-center gap-2">
                         <Hash className="h-4 w-4 text-[var(--cc-copper)]" />
                         <h3 className="text-sm font-semibold cc-text-primary">Caption</h3>
@@ -897,7 +897,7 @@ export default function MarketingReelsPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
                       <div className="flex items-center gap-2">
                         <Music2 className="h-4 w-4 text-[var(--cc-copper)]" />
                         <h3 className="text-sm font-semibold cc-text-primary">Audio</h3>
@@ -919,7 +919,7 @@ export default function MarketingReelsPage() {
             ) : (
               <div className="grid min-h-[620px] place-items-center rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 text-center shadow-sm">
                 <div className="max-w-md">
-                  <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-[var(--cc-ink)] text-white">
+                  <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-[var(--cc-ink)] text-[var(--cc-paper)]">
                     <Instagram className="h-6 w-6" />
                   </div>
                   <h2 className="mt-4 text-xl font-semibold cc-text-primary">Crea el primer reel de la campaña</h2>
@@ -948,7 +948,7 @@ export default function MarketingReelsPage() {
                     key={reel.id}
                     className={clsx(
                       "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border p-3 transition hover:bg-[var(--cc-ivory)]",
-                      selectedReel?.id === reel.id ? "border-[var(--cc-copper)] bg-[var(--cc-copper-tint)]" : "border-[var(--cc-line)] bg-white"
+                      selectedReel?.id === reel.id ? "border-[var(--cc-copper)] bg-[var(--cc-copper-tint)]" : "border-[var(--cc-line)] bg-[var(--cc-paper)]"
                     )}
                   >
                     <button type="button" onClick={() => setSelectedReelId(reel.id)} className="min-w-0 text-left">
@@ -975,7 +975,7 @@ export default function MarketingReelsPage() {
                       onClick={() => runReelAction("delete", reel.id)}
                       disabled={Boolean(actionLoading)}
                       title="Borrar reel"
-                      className="grid h-9 w-9 place-items-center rounded-md border border-rose-100 bg-white text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                      className="grid h-9 w-9 place-items-center rounded-md border border-rose-100 bg-[var(--cc-paper)] text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
                     >
                       {actionLoading === `delete:${reel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </button>

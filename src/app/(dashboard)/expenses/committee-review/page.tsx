@@ -82,7 +82,7 @@ export default function CommitteeReviewPage() {
                         <textarea className="mt-1 w-full rounded-lg border bg-transparent p-2" maxLength={1000} rows={3} value={note[review.id] || ''}
                             onChange={event => setNote(current => ({ ...current, [review.id]: event.target.value }))} placeholder="Obligatoria si rechazas" />
                     </label>
-                    <div className="flex gap-2"><button type="button" disabled={working !== null} onClick={() => void decide(review, 'approved')} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-white disabled:opacity-50">Aprobar cálculo</button>
+                    <div className="flex gap-2"><button type="button" disabled={working !== null} onClick={() => void decide(review, 'approved')} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-[var(--cc-paper)] disabled:opacity-50">Aprobar cálculo</button>
                         <button type="button" disabled={working !== null || !(note[review.id] || '').trim()} onClick={() => void decide(review, 'rejected')} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Rechazar y pedir corrección</button></div>
                 </div> : <p className="mt-4 text-sm font-semibold">{review.status === 'approved' ? 'Aprobado' : 'Rechazado'}{review.reviewNote ? ` · ${review.reviewNote}` : ''}</p>}
             </section>)}
@@ -97,7 +97,7 @@ export default function CommitteeReviewPage() {
                     <textarea className="mt-1 w-full rounded-lg border bg-transparent p-2" maxLength={1000} rows={3} value={note[agreement.id] || ''}
                         onChange={event => setNote(current => ({ ...current, [agreement.id]: event.target.value }))} placeholder="Obligatoria si rechazas" />
                 </label>
-                <div className="flex gap-2"><button type="button" disabled={working !== null} onClick={() => void decideAgreement(agreement, 'approved')} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-white disabled:opacity-50">Aprobar convenio</button>
+                <div className="flex gap-2"><button type="button" disabled={working !== null} onClick={() => void decideAgreement(agreement, 'approved')} className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-sm text-[var(--cc-paper)] disabled:opacity-50">Aprobar convenio</button>
                     <button type="button" disabled={working !== null || !(note[agreement.id] || '').trim()} onClick={() => void decideAgreement(agreement, 'rejected')} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Rechazar convenio</button></div>
             </div> : <p className="mt-3 text-sm font-semibold">{agreement.status === 'active' ? 'Aprobado' : agreement.status === 'rejected' ? 'Rechazado' : agreement.status === 'cancelled' ? 'Anulado' : 'Completado'}{agreement.committeeReviewNote ? ` · ${agreement.committeeReviewNote}` : ''}</p>}
         </section>)}

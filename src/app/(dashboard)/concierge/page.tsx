@@ -187,7 +187,7 @@ export default function ConciergeDashboardPage() {
     return (
         <div className="space-y-8">
             {/* Immersive concierge cover */}
-            <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-ink)" }}>
+            <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-carbon)" }}>
                 <Image
                     src={buildingCoverSrc}
                     alt="Foto de tu edificio"
@@ -201,7 +201,7 @@ export default function ConciergeDashboardPage() {
                     className="absolute inset-0"
                     style={{ background: "linear-gradient(90deg, rgba(20,17,13,0.94) 0%, rgba(20,17,13,0.7) 50%, rgba(20,17,13,0.2) 100%)" }}
                 />
-                <div className="relative flex min-h-[360px] flex-col justify-between p-7 sm:min-h-[400px] sm:p-10 lg:p-12" style={{ color: "var(--cc-paper)" }}>
+                <div className="relative flex min-h-[360px] flex-col justify-between p-7 sm:min-h-[400px] sm:p-10 lg:p-12" style={{ color: "#FAF7F1" }}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <Eyebrow style={{ color: "rgba(244,239,230,0.74)" }}>{dateToday}</Eyebrow>
                         <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium" style={{ borderColor: "rgba(244,239,230,0.3)", background: "rgba(20,17,13,0.35)" }}>

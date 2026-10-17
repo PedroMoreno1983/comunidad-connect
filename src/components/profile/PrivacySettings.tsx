@@ -120,7 +120,7 @@ export function PrivacySettings() {
                     <Download className="mb-3 h-6 w-6" style={{ color: "var(--cc-sage)" }} />
                     <h3 className="text-lg font-semibold cc-text-primary">Descargar mis datos</h3>
                     <p className="mt-2 text-sm leading-6 cc-text-secondary">Obtén un archivo JSON con los datos asociados a tu cuenta.</p>
-                    <a href="/api/privacy/export" className="mt-4 inline-flex min-h-11 items-center rounded-xl px-4 py-2 text-sm font-semibold text-white" style={{ background: "var(--cc-ink)" }}>
+                    <a href="/api/privacy/export" className="mt-4 inline-flex min-h-11 items-center rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                         Descargar copia
                     </a>
                 </article>

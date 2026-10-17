@@ -347,7 +347,7 @@ export default function RemuneracionesPage() {
                                 onClick={() => set("calculation", mode)}
                                 className="rounded-full border px-3 py-1 font-semibold"
                                 style={form.calculation === mode
-                                    ? { background: "var(--cc-ink)", color: "white", borderColor: "var(--cc-ink)" }
+                                    ? { background: "var(--cc-ink)", color: "var(--cc-paper)", borderColor: "var(--cc-ink)" }
                                     : { borderColor: "var(--cc-line)" }}
                             >
                                 {mode === "chile" ? "Liquidación legal" : "Monto fijo (honorarios o externo)"}
@@ -483,7 +483,7 @@ export default function RemuneracionesPage() {
                     )}
 
                     <div className="flex gap-3">
-                        <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                        <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                             {form.id ? "Guardar cambios" : "Agregar persona"}
                         </button>
                         {form.id && (
@@ -562,7 +562,7 @@ export default function RemuneracionesPage() {
                         Mes
                         <input className={`${fieldClass} mt-1`} style={fieldStyle} type="month" value={month} onChange={e => setMonth(e.target.value)} />
                     </label>
-                    <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void createRun()}>
+                    <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void createRun()}>
                         Calcular liquidaciones
                     </button>
                     <label className="text-sm cc-text-secondary">
@@ -605,7 +605,7 @@ export default function RemuneracionesPage() {
                                             </button>
                                         )}
                                         {run.status === "draft" && (
-                                            <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void payRun(run.id)}>
+                                            <button type="button" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }} onClick={() => void payRun(run.id)}>
                                                 Marcar pagada
                                             </button>
                                         )}

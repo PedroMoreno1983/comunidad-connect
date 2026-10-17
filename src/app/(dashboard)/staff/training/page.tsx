@@ -205,7 +205,7 @@ function CourseCard({ course, record, assignment, role, deleting, onOpen, onEdit
     const assignmentOverdue = Boolean(assignment?.due_at && new Date(assignment.due_at).getTime() < TRAINING_PAGE_TIME);
     return (
         <article className="group flex min-h-72 flex-col overflow-hidden rounded-2xl border transition-colors hover:border-[var(--cc-copper)]" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-            <button type="button" onClick={onOpen} className="relative block h-44 w-full overflow-hidden" aria-label={`Abrir ${course.title}`} style={{ background: "var(--cc-ink)" }}>
+            <button type="button" onClick={onOpen} className="relative block h-44 w-full overflow-hidden" aria-label={`Abrir ${course.title}`} style={{ background: "var(--cc-carbon)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={topicImage(slideTopic(course.title, course.description || ""))} alt="" aria-hidden className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(28,22,18,0) 45%, rgba(28,22,18,.6) 100%)" }} />

@@ -596,7 +596,7 @@ export default function AdminOnboardingPage() {
                         exit={{ opacity: 0 }}
                         className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
                     >
-                        <div className="flex flex-col gap-4 border-b p-5 text-white lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--cc-line)", background: "var(--cc-ink)" }}>
+                        <div className="flex flex-col gap-4 border-b p-5 text-[var(--cc-paper)] lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--cc-line)", background: "var(--cc-ink)" }}>
                             <div>
                                 <h2 className="flex items-center gap-2 text-lg font-semibold" style={{ fontFamily: "var(--cc-font-display)" }}>
                                     <FileSpreadsheet className="h-5 w-5" style={{ color: "var(--cc-copper-tint)" }} />

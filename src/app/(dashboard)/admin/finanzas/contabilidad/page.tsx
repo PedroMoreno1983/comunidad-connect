@@ -219,7 +219,7 @@ export default function ContabilidadPage() {
                                 Agregar línea
                             </button>
                         )}
-                        <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                        <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                             Guardar asiento
                         </button>
                     </div>
@@ -283,7 +283,7 @@ export default function ContabilidadPage() {
                             </div> : <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--cc-line)" }}>
                                 <span>{cutoffMonth >= currentMonthInChile() ? 'Vista previa: el mes debe terminar antes de guardar su corte.' : 'Vista previa: revisa caja inicial, saldos y respaldos antes de guardar el corte.'}</span>
                                 <button type="button" disabled={closing || statementsLoading || cutoffMonth >= currentMonthInChile()} onClick={() => void closePeriod()}
-                                    className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-white disabled:opacity-50">{closing ? 'Guardando…' : 'Guardar corte del período'}</button>
+                                    className="rounded-lg bg-[var(--cc-ink)] px-4 py-2 text-[var(--cc-paper)] disabled:opacity-50">{closing ? 'Guardando…' : 'Guardar corte del período'}</button>
                             </div>}
                             <div className="grid gap-3 sm:grid-cols-3">
                                 <article className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)" }}>

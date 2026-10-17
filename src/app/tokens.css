@@ -17,6 +17,13 @@
   --cc-ink-tertiary:  #8B8278;
   --cc-ink-faint:     #B8B0A3;
 
+  /* ─── Fixed text on always-light surfaces ───────────────
+     NOT redefined in .dark: use it for text on bg-white,
+     bg-amber-50 or any hard-coded light colour that stays light
+     in dark mode (otherwise --cc-ink turns light-on-white). */
+  --cc-on-light:       #1A1611;
+  --cc-on-light-muted: #524A40;
+
   /* ─── Borders & lines ──────────────────────────────────── */
   --cc-line:          rgba(26, 22, 17, 0.08);
   --cc-line-strong:   rgba(26, 22, 17, 0.16);
@@ -225,6 +232,36 @@
   --cc-info-border:    rgba(175, 158, 195, 0.30);
 }
 
+/* ─── Always-light islands ─────────────────────────────────
+   Pages or blocks designed only for a light palette (hard-coded
+   light backgrounds and #1A1611 text) opt out of dark mode with
+   .cc-force-light. Custom properties referencing other vars are
+   resolved where declared, so the aliases are re-declared here too.
+   Tailwind theme utilities (bg-ivory, text-ink) resolve at :root:
+   inside this island use arbitrary values with the --cc tokens
+   (e.g. background var(--cc-paper)), not the theme utilities. */
+.dark .cc-force-light {
+  color-scheme: light;
+  --cc-ivory:          #F4EFE6;
+  --cc-ivory-soft:     #EDE6D9;
+  --cc-paper:          #FAF7F1;
+  --cc-paper-warm:     #F8F2E7;
+  --cc-ink:            #1A1611;
+  --cc-ink-soft:       #2A241D;
+  --cc-ink-muted:      #524A40;
+  --cc-ink-tertiary:   #8B8278;
+  --cc-ink-faint:      #B8B0A3;
+  --cc-line:           rgba(26, 22, 17, 0.08);
+  --cc-line-strong:    rgba(26, 22, 17, 0.16);
+  --cc-text-primary:   #1A1611;
+  --cc-text-secondary: #524A40;
+  --cc-text-tertiary:  #8B8278;
+  --cc-text-disabled:  #B8B0A3;
+  --cc-border-default: rgba(26, 22, 17, 0.08);
+  --cc-border-strong:  rgba(26, 22, 17, 0.16);
+  color: var(--cc-ink);
+}
+
 /* ============================================================
    Tailwind v4 — @theme block
    Generates utilities like:  bg-ink, text-copper, font-display, rounded-xl, etc.
@@ -239,6 +276,8 @@
   --color-ink-muted:     var(--cc-ink-muted);
   --color-ink-tertiary:  var(--cc-ink-tertiary);
   --color-ink-faint:     var(--cc-ink-faint);
+  --color-on-light:       var(--cc-on-light);
+  --color-on-light-muted: var(--cc-on-light-muted);
 
   --color-copper:        var(--cc-copper);
   --color-copper-deep:   var(--cc-copper-deep);

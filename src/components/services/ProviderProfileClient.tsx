@@ -450,7 +450,7 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
             </div>
 
             <div
-                className="fixed inset-x-0 z-30 border-t bg-white px-4 py-3 shadow-[0_-8px_24px_rgba(26,22,17,0.08)] lg:hidden"
+                className="fixed inset-x-0 z-30 border-t bg-[var(--cc-paper)] px-4 py-3 shadow-[0_-8px_24px_rgba(26,22,17,0.08)] lg:hidden"
                 style={{
                     borderColor: "var(--cc-line)",
                     bottom: aboveResidentNav ? "4.75rem" : "0px",

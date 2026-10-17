@@ -146,7 +146,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
         <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
             <div className="border-b p-5" style={{ borderColor: "var(--cc-line)" }}>
                 <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                         <UserPlus className="h-5 w-5" />
                     </div>
                     <div>

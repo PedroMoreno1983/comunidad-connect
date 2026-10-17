@@ -241,7 +241,7 @@ function LoginForm() {
                                     onChange={(event) => setEmail(event.target.value)}
                                     placeholder={activeTab === "mail" ? "tu@correo.com" : "12.345.678-9"}
                                     required
-                                    className="w-full rounded-xl border bg-[#FAF7F1] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9C5636]"
+                                    className="w-full rounded-xl border bg-[var(--cc-paper)] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9C5636]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>
@@ -265,7 +265,7 @@ function LoginForm() {
                                     onChange={(event) => setPassword(event.target.value)}
                                     placeholder="Tu contraseña"
                                     required
-                                    className="w-full rounded-xl border bg-[#FAF7F1] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9C5636]"
+                                    className="w-full rounded-xl border bg-[var(--cc-paper)] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9C5636]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>

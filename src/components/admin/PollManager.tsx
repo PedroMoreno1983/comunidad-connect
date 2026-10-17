@@ -521,7 +521,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function StatCard({ icon, label, value, helper, dark = false }: { icon: React.ReactNode; label: string; value: number; helper: string; dark?: boolean }) {
     return (
         <article className="rounded-2xl border p-5" style={dark
-            ? { borderColor: "var(--cc-line)", background: "var(--cc-ink)", color: "#fff" }
+            ? { borderColor: "var(--cc-line)", background: "var(--cc-ink)", color: "var(--cc-paper)" }
             : { borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
             <div className="flex items-center justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full" style={dark

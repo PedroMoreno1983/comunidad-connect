@@ -34,7 +34,7 @@ export function CookieConsent() {
     };
 
     return (
-        <div className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-4xl rounded-xl border border-[var(--cc-line-strong)] bg-paper p-4 text-[#1A1611] shadow-2xl md:flex md:items-center md:justify-between md:gap-5">
+        <div className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-4xl cc-force-light rounded-xl border border-[var(--cc-line-strong)] bg-[var(--cc-paper)] p-4 text-[var(--cc-on-light)] shadow-2xl md:flex md:items-center md:justify-between md:gap-5">
             <div>
                 <p className="text-sm font-bold">Privacidad y cookies</p>
                 <p className="mt-1 text-xs leading-5 text-[#524A40]">

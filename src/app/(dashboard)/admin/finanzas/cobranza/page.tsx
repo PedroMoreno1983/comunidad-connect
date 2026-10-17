@@ -429,7 +429,7 @@ export default function CobranzaPage() {
                             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Previsualizar"}
                         </Button>
                         {importPreview && importPreview.readyCount > 0 && !importPreview.committed && (
-                            <Button type="button" onClick={() => void runPaymentImport(true)} disabled={busy} className="text-white" style={{ background: "var(--cc-ink)" }}>
+                            <Button type="button" onClick={() => void runPaymentImport(true)} disabled={busy} className="text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                 Registrar {importPreview.readyCount} pago(s)
                             </Button>
                         )}
@@ -559,7 +559,7 @@ export default function CobranzaPage() {
                                                 <input value={payReference} onChange={e => setPayReference(e.target.value)} placeholder="N° comprobante"
                                                     className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }} />
                                             </div>
-                                            <Button type="button" onClick={() => void submitPayment()} disabled={busy} className="w-full text-white" style={{ background: "var(--cc-ink)" }}>
+                                            <Button type="button" onClick={() => void submitPayment()} disabled={busy} className="w-full text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Registrar pago"}
                                             </Button>
                                         </div>

@@ -86,7 +86,7 @@ export function OversightLinksCard() {
                         <option value="180">180 días</option>
                     </select>
                 </label>
-                <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
+                <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                     Crear acceso
                 </button>
             </form>

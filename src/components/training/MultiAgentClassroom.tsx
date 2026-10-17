@@ -394,7 +394,7 @@ export function MultiAgentClassroom({
                     <aside className="relative flex h-full w-full max-w-md flex-col shadow-xl" style={{ background: "var(--cc-paper)" }}>
                         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--cc-line)" }}>
                             <div className="flex items-center gap-3">
-                                <span className="flex h-9 w-9 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
+                                <span className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}><Sparkles className="h-4 w-4" /></span>
                                 <div><p className="text-sm font-semibold cc-text-primary">Preguntar a CoCo</p><p className="text-xs cc-text-secondary">Sobre «{current.title}»</p></div>
                             </div>
                             <button type="button" onClick={() => setHelpOpen(false)} className="rounded-full p-2 cc-text-secondary hover:bg-[var(--cc-paper-warm)]" aria-label="Cerrar panel"><X className="h-4 w-4" /></button>
@@ -438,7 +438,7 @@ const SCALE_COLORS = ["var(--cc-sage)", "#9a5b16", "var(--cc-rose)", "var(--cc-i
 /** Ilustración de la sección: una escena del tema con el título encima. */
 function SceneHero({ topic, tall = false, children }: { topic: TrainingTopic; tall?: boolean; children: ReactNode }) {
     return (
-        <div className={`relative overflow-hidden rounded-3xl ${tall ? "min-h-[420px] sm:min-h-[480px]" : "min-h-[240px] sm:min-h-[280px]"}`} style={{ background: "var(--cc-ink)" }}>
+        <div className={`relative overflow-hidden rounded-3xl ${tall ? "min-h-[420px] sm:min-h-[480px]" : "min-h-[240px] sm:min-h-[280px]"}`} style={{ background: "var(--cc-carbon)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={topicImage(topic)} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: tall ? "center 40%" : "center 62%", animation: "cc-scene-in 900ms ease-out both" }} />
             <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(28,22,18,0) 25%, rgba(28,22,18,.55) 60%, rgba(28,22,18,.88) 100%)" }} />
@@ -524,7 +524,7 @@ export function SlideCanvas({ slide, accent, soft = "var(--cc-paper-warm)" }: { 
                     </article>
                 </div>
             ) : slide.layout === "scenario" ? (
-                <div className="mt-8 rounded-2xl p-5 sm:p-6" style={{ background: "var(--cc-ink)" }}>
+                <div className="mt-8 rounded-2xl p-5 sm:p-6" style={{ background: "var(--cc-carbon)" }}>
                     <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "#e7b89a" }}><Clapperboard className="h-4 w-4" />La situación</p>
                     <ol className="mt-4 space-y-4 border-l pl-5" style={{ borderColor: "rgba(255,255,255,.2)" }}>
                         {bullets.map((bullet, index) => <li key={`${slide.id}-${index}`} className="relative text-[15px] leading-6 text-white/90"><span className="absolute -left-[27px] top-1.5 h-3 w-3 rounded-full" style={{ background: "#e7b89a" }} />{bullet}</li>)}

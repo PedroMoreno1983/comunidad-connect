@@ -109,7 +109,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Immersive resident cover */}
-                <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-ink)" }}>
+                <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-carbon)" }}>
                     <Image
                         src={buildingCoverSrc}
                         alt="Foto de tu edificio"
@@ -123,7 +123,7 @@ export default function HomePage() {
                         className="absolute inset-0"
                         style={{ background: "linear-gradient(90deg, rgba(20,17,13,0.92) 0%, rgba(20,17,13,0.68) 48%, rgba(20,17,13,0.18) 100%)" }}
                     />
-                    <div className="relative flex min-h-[360px] flex-col justify-between p-7 sm:min-h-[400px] sm:p-10 lg:p-12" style={{ color: "var(--cc-paper)" }}>
+                    <div className="relative flex min-h-[360px] flex-col justify-between p-7 sm:min-h-[400px] sm:p-10 lg:p-12" style={{ color: "#FAF7F1" }}>
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <Eyebrow style={{ color: "rgba(244,239,230,0.74)" }}>{dateToday}</Eyebrow>
                             {user.unitName && (

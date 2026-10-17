@@ -626,7 +626,7 @@ export default function ExpensesPage() {
                         </p>
 
                         {/* Comprobante */}
-                        <div className="w-full bg-[#FAF7F1] border rounded-2xl p-5 mb-8 text-left" style={{ borderColor: "var(--cc-line)" }}>
+                        <div className="w-full bg-[var(--cc-paper)] border rounded-2xl p-5 mb-8 text-left" style={{ borderColor: "var(--cc-line)" }}>
                             <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-3">COMPROBANTE DE PAGO</div>
                             <div className="flex justify-between items-center text-sm py-1.5">
                                 <span className="text-slate-400">Referencia:</span>

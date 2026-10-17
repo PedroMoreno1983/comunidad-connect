@@ -531,7 +531,7 @@ export default function EgresosPage() {
                                 <option value="share">Por alícuota</option>
                                 <option value="equal">Partes iguales</option>
                             </select>
-                            <Button type="submit" disabled={saving} className="text-white" style={{ background: "var(--cc-ink)" }}>
+                            <Button type="submit" disabled={saving} className="text-[var(--cc-paper)]" style={{ background: "var(--cc-ink)" }}>
                                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                             </Button>
                         </form>
@@ -645,7 +645,7 @@ export default function EgresosPage() {
                                     type="button"
                                     disabled={issuing || preview.totalCharged !== preview.totalExpenses}
                                     onClick={() => void issue()}
-                                    className="text-white"
+                                    className="text-[var(--cc-paper)]"
                                     style={{ background: "var(--cc-ink)" }}
                                 >
                                     {issuing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
