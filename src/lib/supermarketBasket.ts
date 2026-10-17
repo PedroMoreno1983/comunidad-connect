@@ -418,10 +418,19 @@ export function applyCombinedVolumePromos<T extends PromoLine>(items: T[]): T[] 
 }
 
 function selectComparableRows(rows: Record<string, unknown>[]) {
-  // Mismo GTIN en 2+ tiendas: es el mismo producto, gana al formato por nombre.
+  const formatRows = selectFormatRows(rows);
+  // Mismo GTIN en 2+ tiendas: es el mismo producto y gana al formato por
+  // nombre. Las tiendas sin ese GTIN (Jumbo hoy) conservan su formato común.
   const sameProductRows = rows.filter(row => row.same_product === true);
-  if (new Set(sameProductRows.map(row => asString(row.store))).size >= 2) return sameProductRows;
+  const sameStores = new Set(sameProductRows.map(row => asString(row.store)));
+  if (sameStores.size < 2) return formatRows;
+  return [
+    ...sameProductRows,
+    ...formatRows.filter(row => row.same_product !== true && !sameStores.has(asString(row.store))),
+  ];
+}
 
+function selectFormatRows(rows: Record<string, unknown>[]) {
   const groups = new Map<string, Record<string, unknown>[]>();
   for (const row of rows) {
     const signature = formatSignature(asString(row.name));

@@ -46,6 +46,31 @@ export function isSpecificProductTerm(term: string): boolean {
   return (SIZE_PATTERN.test(term) && words.length >= 2) || words.length >= 3;
 }
 
+const SIZE_TOKEN = /(\d+(?:[.,]\d+)?)\s*(kg|kilos?|g|gr|grs|gramos?|l|lt|lts|litros?|ml|cc|un|unid|unidades?|u|bolsitas?|sobres?)\b/gi;
+
+/** Formatos del texto en unidad base: "3 L" -> "3000ml", "1 kg" -> "1000g". */
+export function sizeTokens(text: string): Set<string> {
+  const tokens = new Set<string>();
+  for (const match of text.toLowerCase().matchAll(SIZE_TOKEN)) {
+    const value = Number(match[1].replace(',', '.'));
+    const unit = match[2];
+    if (!Number.isFinite(value) || value <= 0) continue;
+    if (/^(kg|kilos?)$/.test(unit)) tokens.add(`${Math.round(value * 1000)}g`);
+    else if (/^(g|gr|grs|gramos?)$/.test(unit)) tokens.add(`${Math.round(value)}g`);
+    else if (/^(l|lt|lts|litros?)$/.test(unit)) tokens.add(`${Math.round(value * 1000)}ml`);
+    else if (/^(ml|cc)$/.test(unit)) tokens.add(`${Math.round(value)}ml`);
+    else tokens.add(`${Math.round(value)}un`);
+  }
+  return tokens;
+}
+
+/** Si la persona pidió un formato, el SKU ancla tiene que traerlo. */
+function sizeFits(termSizes: Set<string>, name: unknown): boolean {
+  if (termSizes.size === 0) return true;
+  const nameSizes = sizeTokens(String(name || ''));
+  return [...termSizes].every(size => nameSizes.has(size));
+}
+
 /** La marca de la fila (Coca-Cola, CocaCola, Colún) está escrita en el término. */
 function brandNamedInTerm(brand: unknown, termWords: Set<string>): boolean {
   const words = significantWords(String(brand || ''));
@@ -60,8 +85,12 @@ function brandNamedInTerm(brand: unknown, termWords: Set<string>): boolean {
  */
 export function pickAnchorGtin(rows: Row[], term: string): string | null {
   const termWords = new Set(significantWords(term));
+  const termSizes = sizeTokens(term);
+  // Mejor puntaje por tienda entre las filas del formato pedido: el puntaje
+  // por nombre no mira el tamaño y empata 591 ml con 3 L.
+  const fitting = rows.filter(row => sizeFits(termSizes, row.name));
   const bestByStore = new Map<string, number>();
-  for (const row of rows) {
+  for (const row of fitting) {
     const store = String(row.store || '');
     bestByStore.set(store, Math.max(bestByStore.get(store) ?? -1, relevance(row)));
   }
@@ -74,7 +103,7 @@ export function pickAnchorGtin(rows: Row[], term: string): string | null {
     const store = String(row.store || '');
     storesByGtin.set(gtin, (storesByGtin.get(gtin) ?? new Set()).add(store));
     if (brandNamedInTerm(row.brand, termWords)) brandedGtins.add(gtin);
-    if (relevance(row) >= (bestByStore.get(store) ?? 0) && relevance(row) >= 0) {
+    if (sizeFits(termSizes, row.name) && relevance(row) >= 0 && relevance(row) >= (bestByStore.get(store) ?? 0)) {
       topByGtin.set(gtin, Math.max(topByGtin.get(gtin) ?? -1, relevance(row)));
     }
   }

@@ -41,6 +41,7 @@ import {
   isSpecificProductTerm,
   mergeSameProductRows,
   pickAnchorGtin,
+  sizeTokens,
 } from '@/lib/supermarketGtinMatch';
 import { canonicalCatalogTerm, matchAnchors, productMatchScore, significantWords } from '@/lib/supermarketText';
 import { buildBasketComparison } from '@/lib/supermarketBasket';
@@ -56,6 +57,10 @@ describe('normalizeGtin', () => {
     expect(normalizeGtin('7802575007261', 'Santa Isabel')).toBe('7802575007261');
     expect(normalizeGtin('036000291452', 'aCuenta')).toBe('0036000291452');
     expect(normalizeGtin('78014046', 'Unimarc')).toBe('0000078014046');
+  });
+
+  it('keeps GTIN-14 with indicator digit whole', () => {
+    expect(normalizeGtin('17808709504252', 'Unimarc')).toBe('17808709504252');
   });
 
   it('drops invalid, internal and restricted-circulation codes', () => {
@@ -102,6 +107,33 @@ describe('same product by GTIN', () => {
     ];
     expect(pickAnchorGtin(rows, 'lasaña carozzi 400 g')).toBe('7802575007261');
     expect(pickAnchorGtin(rows, 'lasaña 400 g')).toBeNull();
+  });
+
+  it('does not anchor on a size the person did not ask for', () => {
+    // Medición del 17-oct: "coca cola original 3 l" anclaba en la de 591 ml.
+    expect([...sizeTokens('coca cola original 3 l')]).toEqual(['3000ml']);
+    expect([...sizeTokens('Leche Entera Natural Caja 1 l 1 L Colun')]).toEqual(['1000ml']);
+    const rows = [
+      { id: 'a', store: 'Santa Isabel', name: 'Bebida Coca-Cola Original 591 ml', brand: 'Coca-Cola', gtin: '7801610000571', match_relevance: 150 },
+      { id: 'b', store: 'Unimarc', name: 'Bebida Coca Cola original botella 591 ml', brand: 'Coca Cola', gtin: '7801610000571', match_relevance: 150 },
+      { id: 'c', store: 'Santa Isabel', name: 'Bebida Coca-Cola Original 3 L', brand: 'Coca-Cola', gtin: '7801610323236', match_relevance: 140 },
+    ];
+    expect(pickAnchorGtin(rows, 'coca cola original 3 l')).toBe('7801610323236');
+  });
+
+  it('keeps the common format for stores without the GTIN (Jumbo)', () => {
+    const term = 'leche entera colun 1 l';
+    const rows = mergeSameProductRows([
+      { id: 'j1', store: 'Jumbo', name: 'Leche Colun Entera 1 L', brand: 'Colun', price: 1180, match_relevance: 140 },
+      { id: 'j2', store: 'Jumbo', name: 'Leche Colun Entera 200 ml', brand: 'Colun', price: 620, match_relevance: 140 },
+      { id: 's0', store: 'Santa Isabel', name: 'Leche Colun Entera 1 L', brand: 'Colun', price: 1150, match_relevance: 140 },
+    ], '7802920777542', [
+      { id: 's1', store: 'Santa Isabel', name: 'Leche Colun Entera 1 L', brand: 'Colun', price: 1150 },
+      { id: 'u1', store: 'Unimarc', name: 'Leche entera natural Colun sin tapa 1 L', brand: 'Colun', price: 1250 },
+    ], term);
+    const comparison = buildBasketComparison([term], { [term]: rows });
+    const jumbo = comparison.comparisons.find(basket => basket.store === 'Jumbo');
+    expect(jumbo?.items[0]?.name).toBe('Leche Colun Entera 1 L');
   });
 
   it('pulls the same GTIN from stores whose names did not match', async () => {
