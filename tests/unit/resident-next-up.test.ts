@@ -54,7 +54,18 @@ describe('nextCharge (cartola unificada expenses + unit_charges)', () => {
       charge({ id: 'e2', month: '2026-10', dueDate: '2026-10-05', outstandingAmount: 85_000 }),
       charge({ id: 'e3', month: '2026-11', dueDate: '2026-11-05', outstandingAmount: 85_000 }),
     ], [], TODAY);
-    expect(result).toMatchObject({ state: 'open', dueDate: '2026-09-05', amount: 115_000, otherOpenCount: 2 });
+    // Suma septiembre y octubre (vencidos); noviembre aún no vence y queda aparte.
+    expect(result).toMatchObject({ state: 'open', dueDate: '2026-09-05', amount: 115_000, includedCount: 2, otherOpenCount: 1 });
+    expect(chargeCopy(result, TODAY).note).toBe('El monto suma 2 cobros pendientes. Hay 1 cobro más que aún no vence.');
+  });
+
+  it('con un solo cobro vencido no dice que el monto suma varios', () => {
+    const result = nextCharge([
+      charge({ id: 'e1', month: '2026-10', dueDate: '2026-10-05', outstandingAmount: 85_000 }),
+      charge({ id: 'e2', month: '2026-11', dueDate: '2026-11-05', outstandingAmount: 85_000 }),
+    ], [], TODAY);
+    expect(result).toMatchObject({ state: 'open', amount: 85_000, includedCount: 1, otherOpenCount: 1 });
+    expect(chargeCopy(result, TODAY).note).toBe('Hay 1 cobro más que aún no vence.');
   });
 
   it('un cobro sin vencimiento se ordena por el fin de su mes', () => {

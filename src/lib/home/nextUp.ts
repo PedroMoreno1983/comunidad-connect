@@ -98,7 +98,7 @@ export function nextCharge(
     .sort((left, right) => chargeReferenceDate(left).localeCompare(chargeReferenceDate(right)) || left.id.localeCompare(right.id));
 
   if (!open.length) {
-    return { state: 'clear', dueDate: null, month: null, label: 'Gasto común', amount: 0, otherOpenCount: 0 };
+    return { state: 'clear', dueDate: null, month: null, label: 'Gasto común', amount: 0, includedCount: 0, otherOpenCount: 0 };
   }
 
   const past = open.filter(charge => chargeReferenceDate(charge) < today);
@@ -111,7 +111,10 @@ export function nextCharge(
       month: oldest.month || null,
       label: friendlyChargeLabel(oldest),
       amount,
-      otherOpenCount: open.length - 1,
+      // El monto suma solo lo que ya pasó su fecha; lo que aún no vence queda aparte
+      // (antes se contaba aquí y el texto decía que el monto lo sumaba todo).
+      includedCount: past.length,
+      otherOpenCount: open.length - past.length,
     };
   }
 
@@ -122,6 +125,7 @@ export function nextCharge(
     month: next.month || null,
     label: friendlyChargeLabel(next),
     amount: Math.round(Number(next.outstandingAmount) || 0),
+    includedCount: 1,
     otherOpenCount: open.length - 1,
   };
 }

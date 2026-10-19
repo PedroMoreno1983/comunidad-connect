@@ -83,11 +83,17 @@ export function chargeCopy(charge: NextChargeItem, today: string): NextUpLine {
       note: others,
     };
   }
+  // El monto suma solo lo que ya pasó su fecha: se dice cuántos cobros son, y lo que
+  // aún no vence se nombra aparte para que nadie crea que el total ya lo incluye.
+  const suma = charge.includedCount > 1 ? `El monto suma ${charge.includedCount} cobros pendientes.` : '';
+  const porVencer = charge.otherOpenCount > 0
+    ? `${charge.otherOpenCount === 1 ? 'Hay 1 cobro más' : `Hay ${charge.otherOpenCount} cobros más`} que aún no vence${charge.otherOpenCount === 1 ? '' : 'n'}.`
+    : '';
   return {
     title: charge.label,
     detail: `Sigue pendiente desde el ${formatDayMonth(charge.dueDate)}. Cuando te acomode, págalo en línea o conversemos una alternativa: un convenio en cuotas también es una opción.`,
     amount: charge.amount,
-    note: charge.otherOpenCount > 0 ? 'El monto suma lo pendiente de tu cuenta.' : undefined,
+    note: [suma, porVencer].filter(Boolean).join(' ') || undefined,
   };
 }
 
