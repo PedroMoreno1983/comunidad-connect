@@ -13,6 +13,7 @@
     "qa:production-live": "node scripts/production-live-qa.js",
     "qa:production-hardening": "node scripts/production-hardening-qa.js",
     "qa:coco-legal": "node scripts/coco-legal-qa.js",
+    "qa:coco-platform-map": "node scripts/coco-platform-map-qa.js",
     "qa:finance-agent": "node scripts/finance-agent-integrity-qa.js",
     "qa:agent-center": "node scripts/agent-center-integrity-qa.js",
     "qa:onboarding-batches": "node scripts/onboarding-batch-integrity-qa.js",

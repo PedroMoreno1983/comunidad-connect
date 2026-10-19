@@ -16,6 +16,7 @@ import { resolveAiModel } from '@/lib/ai/modelRouter';
 import { runDeepSeekToolLoop } from '@/lib/ai/deepseek';
 import { fallbackToolsForRole, isFallbackReadOnlyTool, type AnthropicStyleTool } from '@/lib/ai/toolBridge';
 import { TOOL_DEFINITIONS, executeTool, isToolAllowedForRole } from '@/lib/coco/tools';
+import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/coco/platformMap';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -70,6 +71,8 @@ interface CoCoFallbackContext {
 
 function buildFallbackPrompt(message: string, context: CoCoFallbackContext): string {
     return `${COCO_SYSTEM_PROMPT}
+
+${buildPlatformContext(context.currentPage, context.role)}
 
 Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}
 
@@ -140,7 +143,7 @@ async function askDeepSeekFallback(message: string, context: CoCoFallbackContext
     const startedAt = Date.now();
     const result = await runDeepSeekToolLoop({
         model: routed.model,
-        system: COCO_SYSTEM_PROMPT,
+        system: `${COCO_SYSTEM_PROMPT}\n\n${buildPlatformContext(context.currentPage, context.role)}`,
         user: `Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}\n\nUsuario dice: ${message}`,
         tools,
         executeToolCall: (name, args) => {
@@ -153,6 +156,7 @@ async function askDeepSeekFallback(message: string, context: CoCoFallbackContext
                 user_id: context.userId,
                 community_id: context.communityId,
                 role: context.role,
+                currentPage: context.currentPage,
             });
         },
         maxTokens: 700,
@@ -342,6 +346,22 @@ function buildLocalCoCoFallback(
         };
     }
 
+    // "¿Cómo hago X?" / "¿Dónde está X?": pasos concretos desde el mapa de la
+    // plataforma, antes de las reglas por palabra clave (que dan orientación
+    // general o legal y no el paso a paso).
+    // Una pregunta de reglas ("¿cómo corto el agua a un moroso?") sigue al bloque legal.
+    const asksRules = /\b(ley|legal|reglamento|moros[oa]s?|morosidad|multa|sanci[oó]n|cortar|suspend\w*|c[aá]mara|datos personales|rut)\b/.test(text);
+    const howTo = !asksRules && /\b(c[oó]mo|d[oó]nde|en qu[eé] (pantalla|parte|secci[oó]n|m[oó]dulo))\b/.test(text)
+        ? searchPlatformMap(message, context.role, 1)[0]
+        : undefined;
+    if (howTo) {
+        return {
+            reply: `${describeScreen(howTo, context.role)}\n\n[Abrir ${howTo.title}](${howTo.route})`,
+            navigate: howTo.route,
+            action: 'OPEN_PLATFORM_GUIDE',
+        };
+    }
+
     if (
         text.includes('ley') ||
         text.includes('copropiedad') ||
@@ -471,6 +491,15 @@ function buildLocalCoCoFallback(
             reply: 'Para el supermercado: entra a Supermercado en tu menú, elige la tienda (Jumbo, Santa Isabel, Líder, Unimarc o aCuenta), busca productos con foto y precio y arma el carro. Si quieres, compara solo con las cadenas que elijas y después abre el carro en el sitio de esa tienda. Tottus e Irurzun no están disponibles. Si un producto falta en la comparación, el subtotal de esa tienda queda incompleto.',
             navigate: context.role === 'resident' ? '/resident/supermercado' : undefined,
             action: 'OPEN_SUPERMARKET',
+        };
+    }
+
+    const closest = searchPlatformMap(message, context.role, 1)[0];
+    if (closest) {
+        return {
+            reply: `Esto es lo más cercano en la plataforma: ${describeScreen(closest, context.role)}\n\n[Abrir ${closest.title}](${closest.route})`,
+            navigate: closest.route,
+            action: 'OPEN_PLATFORM_GUIDE',
         };
     }
 

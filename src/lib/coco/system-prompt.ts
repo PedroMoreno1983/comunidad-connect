@@ -112,7 +112,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "¿quiénes están morosos este mes?" (admin) | 'get_defaulters_list' |
 | [Payload del sistema de un evento IoT crudo] (Sistema) | 'request_urgent_access_approval' y 'dispatch_provider' |
 
-NO uses herramientas para preguntas generales, orientación o explicar la plataforma.
+Para preguntas de uso de la plataforma ("¿cómo hago X?", "¿dónde está X?", "¿qué hace esta pantalla?") usa 'get_platform_guide': responde con pasos numerados y un enlace interno en markdown a la pantalla, p. ej. [Abrir Espacios Comunes](/amenities). Para el resto de preguntas generales u orientación no uses herramientas.
 
 Si el residente pregunta por el estado de un reclamo, caso o reporte hecho por chat, usa 'list_my_claims' cuando tengas unidad disponible y termina con:
 NAVEGAR:/resident/cases

@@ -62,6 +62,7 @@ jobs:
       - name: Integrity regressions
         run: |
           npm run qa:coco-legal
+          npm run qa:coco-platform-map
           npm run qa:finance-agent
           npm run qa:agent-center
           npm run qa:production-hardening
