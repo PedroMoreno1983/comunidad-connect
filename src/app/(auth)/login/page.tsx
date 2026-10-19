@@ -304,8 +304,11 @@ function LoginForm() {
                         </div>
 
                         <div className="flex flex-col gap-2 pt-2">
+                            <Link href="/resident-access" className="text-center text-xs font-semibold text-slate-500 hover:text-slate-700">
+                                ¿Eres residente? <span className="text-copper underline">Entrar con mi correo</span>
+                            </Link>
                             <Link href="/signup" className="text-center text-xs font-semibold text-slate-500 hover:text-slate-700">
-                                ¿No tienes cuenta? <span className="text-copper underline">Crear cuenta</span>
+                                ¿Tienes un código de invitación? <span className="text-copper underline">Crear cuenta</span>
                             </Link>
                             <Link href="/admin-onboarding" className="text-center text-xs font-semibold text-slate-500 hover:text-slate-700">
                                 ¿Eres administrador? <span className="text-copper underline">Registrar edificio</span>

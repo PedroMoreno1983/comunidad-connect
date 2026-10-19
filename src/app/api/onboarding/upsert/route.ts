@@ -181,7 +181,7 @@ async function ensureResidentProfile(
         community_id: communityId,
         unit_id: unitId,
         department_number: resident.unit_id,
-        phone: resident.phone || null,
+        phone_number: resident.phone || null,
         // A phone number is contact data, not consent to receive WhatsApp messages.
         whatsapp_enabled: false,
     };
