@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AdminShell } from "@/components/cc/AdminShell";
 import { useToast } from "@/components/ui/Toast";
 import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE } from "@/lib/roleAccess";
+import { BiometricLockGate } from "@/components/native/BiometricLockGate";
 
 export default function DashboardLayout({
     children,
@@ -146,6 +147,9 @@ function DashboardShell({
             </ErrorBoundary>
             <ErrorBoundary name="CoCo Widget">
                 <CoCo />
+            </ErrorBoundary>
+            <ErrorBoundary name="Bloqueo biométrico">
+                <BiometricLockGate userId={user.id} />
             </ErrorBoundary>
             {user.role === "resident" && (
                 <ErrorBoundary name="Citófono">

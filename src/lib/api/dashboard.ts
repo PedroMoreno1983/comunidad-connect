@@ -1,7 +1,10 @@
 import { supabase } from '../supabase';
 import { periodCollectionStats, resolveBillingPeriod } from '@/lib/finance/periodCollection';
 import { AdminDashboardSummary, ResidentHomeSummary, User } from '../types';
-import type { ExpenseDatabaseRow } from '../types';
+import type { ExpenseDatabaseRow, PaymentAgreement, UnitStatement } from '../types';
+import { todayInChile } from '@/lib/finance/chileDates';
+import { buildResidentNextUp } from '@/lib/home/nextUp';
+import type { NextUpAssemblyRow, NextUpBookingRow, ResidentNextUp } from '@/lib/home/types';
 import { isUuid } from './_shared';
 import { ResidentFinanceService } from './finance';
 import { MaintenanceService } from './maintenance';
@@ -11,7 +14,108 @@ function getAnnouncementCategory(priority: unknown): string {
 }
 
 export const HomeService = {
-    async getResidentSummary(user: Pick<User, "id" | "email" | "unitId" | "communityId">): Promise<ResidentHomeSummary> {
+    /**
+     * Inicio del residente: el resumen y "Lo próximo a la vista" comparten una
+     * sola lectura de la cartola. Si la tarjeta no se puede armar, el resumen
+     * igual se muestra (`nextUp: null`).
+     */
+    async getResidentHome(user: Pick<User, "id" | "email" | "unitId" | "communityId">): Promise<{ summary: ResidentHomeSummary; nextUp: ResidentNextUp | null }> {
+        const statement = ResidentFinanceService.getStatement();
+        const [summary, nextUp] = await Promise.all([
+            HomeService.getResidentSummary(user, statement),
+            HomeService.getResidentNextUp(user, statement).catch((error: unknown) => {
+                console.error('Error building resident next-up card:', error);
+                return null;
+            }),
+        ]);
+        return { summary, nextUp };
+    },
+
+    /**
+     * "Lo próximo a la vista": próximo vencimiento (cartola unificada de
+     * `expenses` + `unit_charges`), próxima cuota del convenio y próxima
+     * reserva o asamblea. Solo lee la cuenta y la agenda del propio residente.
+     */
+    async getResidentNextUp(
+        user: Pick<User, "id" | "unitId" | "communityId">,
+        statementPromise?: Promise<UnitStatement>,
+    ): Promise<ResidentNextUp> {
+        const today = todayInChile();
+
+        const bookingsQuery = supabase
+            .from('bookings')
+            .select('id, date, start_time, end_time, status, amenities(name)')
+            .eq('user_id', user.id)
+            .gte('date', today)
+            .in('status', ['pending', 'confirmed'])
+            .order('date', { ascending: true })
+            .order('start_time', { ascending: true })
+            .limit(5);
+
+        let assembliesQuery = supabase
+            .from('assemblies')
+            .select('id, title, scheduled_at, modality, location, status')
+            .in('status', ['cited', 'in_progress'])
+            .gte('scheduled_at', `${today}T00:00:00-03:00`)
+            .order('scheduled_at', { ascending: true })
+            .limit(5);
+        if (user.communityId) assembliesQuery = assembliesQuery.eq('community_id', user.communityId);
+
+        const [statement, agreements, bookingsResult, assembliesResult] = await Promise.all([
+            statementPromise ?? ResidentFinanceService.getStatement(),
+            ResidentFinanceService.getAgreements().catch((error: unknown): PaymentAgreement[] => {
+                console.error('Error loading resident agreements for next-up:', error);
+                return [];
+            }),
+            bookingsQuery,
+            assembliesQuery,
+        ]);
+
+        // Reservas y asambleas son complemento: si fallan, la tarjeta sigue.
+        if (bookingsResult.error) console.error('Error loading next booking:', bookingsResult.error);
+        if (assembliesResult.error) console.error('Error loading next assembly:', assembliesResult.error);
+
+        const bookings: NextUpBookingRow[] = ((bookingsResult.error ? [] : bookingsResult.data) || [] as unknown[]).map((row: unknown) => {
+            const record = row as Record<string, unknown>;
+            const amenity = Array.isArray(record.amenities) ? record.amenities[0] : record.amenities;
+            const amenityName = amenity && typeof amenity === 'object' && typeof (amenity as { name?: unknown }).name === 'string'
+                ? String((amenity as { name: string }).name)
+                : null;
+            return {
+                id: String(record.id),
+                date: String(record.date || ''),
+                start_time: typeof record.start_time === 'string' ? record.start_time : null,
+                end_time: typeof record.end_time === 'string' ? record.end_time : null,
+                status: typeof record.status === 'string' ? record.status : null,
+                amenityName,
+            };
+        });
+        const assemblies: NextUpAssemblyRow[] = ((assembliesResult.error ? [] : assembliesResult.data) || [] as unknown[]).map((row: unknown) => {
+            const record = row as Record<string, unknown>;
+            return {
+                id: String(record.id),
+                title: String(record.title || 'Asamblea de copropietarios'),
+                scheduled_at: String(record.scheduled_at || ''),
+                modality: String(record.modality || 'in_person'),
+                location: typeof record.location === 'string' ? record.location : null,
+                status: String(record.status || ''),
+            };
+        });
+
+        return buildResidentNextUp({
+            today,
+            unitId: user.unitId ?? null,
+            chargeBalances: statement.chargeBalances,
+            agreements,
+            bookings,
+            assemblies,
+        });
+    },
+
+    async getResidentSummary(
+        user: Pick<User, "id" | "email" | "unitId" | "communityId">,
+        statementPromise?: Promise<UnitStatement>,
+    ): Promise<ResidentHomeSummary> {
 
         let expensesQuery = supabase
             .from('expenses')
@@ -44,7 +148,7 @@ export const HomeService = {
             expensesQuery,
             bookingsQuery,
             announcementsQuery,
-            ResidentFinanceService.getStatement(),
+            statementPromise ?? ResidentFinanceService.getStatement(),
         ]);
 
         if (expensesResult.error) throw expensesResult.error;
