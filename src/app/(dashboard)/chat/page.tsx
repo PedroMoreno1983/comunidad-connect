@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle } from "lucide-react";
+import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import confetti from "canvas-confetti";
@@ -11,7 +11,7 @@ import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
 import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
-import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction } from "@/lib/types";
+import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, WhatsAppStartStatus } from "@/lib/types";
 
 function CoCoMarkdown({ text }: { text: string }) {
     return (
@@ -52,6 +52,7 @@ export default function CoCoChatPage() {
     ]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
+    const [whatsApp, setWhatsApp] = useState<WhatsAppStartStatus | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const hasUnresolvedPending = msgs.some(message =>
         message.pendingActions?.some(action => !message.resolvedActions?.[action.toolUseId]),
@@ -60,6 +61,16 @@ export default function CoCoChatPage() {
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
+
+    useEffect(() => {
+        if (!user) return;
+        let active = true;
+        fetch(getApiUrl('/api/whatsapp/start'), { cache: 'no-store' })
+            .then(response => response.ok ? response.json() as Promise<WhatsAppStartStatus> : null)
+            .then(status => { if (active) setWhatsApp(status); })
+            .catch(() => { if (active) setWhatsApp(null); });
+        return () => { active = false; };
+    }, [user]);
 
     const postToCoCo = async (body: Record<string, unknown>): Promise<CoCoApiResponse> => {
         const res = await fetch(getApiUrl("/api/coco"), {
@@ -315,6 +326,21 @@ export default function CoCoChatPage() {
 
                 {/* Suggestion Chips & Input bar */}
                 <div className="space-y-4 border-t border-white/5 pt-6 bg-[#0E0B08]">
+                    {whatsApp?.available && (
+                        <div className="text-center">
+                            <a href={whatsApp.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-5 py-2.5 text-sm font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/25">
+                                <MessageCircle className="h-4 w-4" /> Hablar con CoCo por WhatsApp
+                            </a>
+                        </div>
+                    )}
+                    {whatsApp && !whatsApp.available && whatsApp.reason !== 'unconfigured' && (
+                        <p className="text-center text-xs text-slate-400">
+                            {whatsApp.reason === 'consent' ? 'Para usar WhatsApp, actívalo en el' : 'Para usar WhatsApp, agrega tu teléfono chileno en tu'}{' '}
+                            <a href={whatsApp.reason === 'consent' ? '/privacy-center' : '/profile'} className="font-semibold text-emerald-300 underline">
+                                {whatsApp.reason === 'consent' ? 'Centro de privacidad' : 'perfil'}
+                            </a>.
+                        </p>
+                    )}
                     {/* Suggestion Chips */}
                     {msgs.length <= 2 && (
                         <div className="flex flex-wrap gap-2 justify-center">

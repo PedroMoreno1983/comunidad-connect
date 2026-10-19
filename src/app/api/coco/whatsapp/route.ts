@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
                 auth_attempts: 1,
             });
             return twiml(
-                '👋 Hola, soy *CoCo*, el asistente de tu comunidad.\n\n' +
+                '👋 Hola, soy *CoCo*, la asistente de tu comunidad.\n\n' +
                 'Para ayudarte necesito verificar que eres residente. ' +
                 '¿Cuál es tu número de depto? (ej: *8B*, *101*, *Casa 3*)'
             );

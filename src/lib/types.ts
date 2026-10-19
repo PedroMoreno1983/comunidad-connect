@@ -2884,6 +2884,10 @@ export interface WhatsAppStatus {
     setup?: WhatsAppSetupInfo;
 }
 
+export type WhatsAppStartStatus =
+    | { available: true; url: string }
+    | { available: false; reason: 'unconfigured' | 'consent' | 'phone' };
+
 export interface WhatsAppBroadcastFailure {
     userId: string;
     reason: string;
