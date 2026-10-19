@@ -17,9 +17,11 @@ export interface NextChargeItem {
   month: string | null;
   /** Rótulo amable del cobro ("Gasto común de noviembre"). */
   label: string;
-  /** Monto que se muestra: el del próximo cobro, o la suma abierta si ya pasó la fecha. */
+  /** Monto que se muestra: el del próximo cobro, o la suma de lo que ya pasó su fecha. */
   amount: number;
-  /** Otros cobros abiertos además del que se muestra. */
+  /** Cobros que suma `amount` (1 si es el próximo; los vencidos si ya pasó la fecha). */
+  includedCount: number;
+  /** Otros cobros abiertos que NO están en `amount` (los que aún no vencen). */
   otherOpenCount: number;
 }
 

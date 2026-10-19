@@ -25,7 +25,10 @@ import type { BiometricKind, BiometricLockGateProps, BiometricLockState } from "
  */
 export function BiometricLockGate({ userId }: BiometricLockGateProps) {
     const { logout } = useAuth();
-    const [state, setState] = useState<BiometricLockState>(() => initialLockState(false));
+    // Nace bloqueada si el ajuste está activo en este teléfono, en el primer render: antes se
+    // bloqueaba al terminar la consulta al plugin y, mientras tanto, se alcanzaba a ver la pantalla
+    // de detrás (19-10-2026). Solo se monta con sesión, en el cliente: no hay render de servidor.
+    const [state, setState] = useState<BiometricLockState>(() => initialLockState(isNativeApp() && isBiometricLockEnabled(userId)));
     const [kind, setKind] = useState<BiometricKind>("biometric");
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
     const [message, setMessage] = useState("");
@@ -33,7 +36,7 @@ export function BiometricLockGate({ userId }: BiometricLockGateProps) {
     const autoPrompted = useRef(false);
     const verifying = useRef(false);
 
-    // Al abrir la app: bloquea si el ajuste está activo en este teléfono.
+    // Qué método hay (Face ID, huella) y si está disponible: solo cambia los textos y el botón.
     useEffect(() => {
         if (!isNativeApp() || !isBiometricLockEnabled(userId)) return;
         let active = true;
@@ -43,7 +46,6 @@ export function BiometricLockGate({ userId }: BiometricLockGateProps) {
             setKind(result.kind);
             setUnavailable(!result.available);
             if (!result.available && result.reason) setMessage(result.reason);
-            setState(current => ({ ...current, locked: true }));
         });
         return () => { active = false; };
     }, [userId]);
