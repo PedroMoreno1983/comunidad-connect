@@ -59,6 +59,7 @@ export const FALLBACK_READ_ONLY_TOOLS: readonly string[] = [
     'preview_billing',
     'list_supermarket_group_orders',
     'compare_supermarket_group_order',
+    'get_platform_guide',
 ] as const;
 
 const FALLBACK_READ_ONLY_SET = new Set(FALLBACK_READ_ONLY_TOOLS);

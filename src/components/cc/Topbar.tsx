@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Bot } from "lucide-react";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { Tag } from "./Tag";
 import { Button } from "./Button";
@@ -67,6 +67,18 @@ export function Topbar({
             Abrir
           </span>
         </Link>
+        {/* Acceso a CoCo igual en todas las pantallas del layout autenticado. */}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("coco:compose", { detail: {} }))}
+          aria-label="Preguntar a CoCo"
+          title="Preguntar a CoCo sobre esta pantalla"
+          className="flex items-center gap-1.5 rounded-md bg-paper text-[12px] font-semibold transition-colors hover:border-[var(--cc-line-strong)]"
+          style={{ padding: "7px 10px", border: "1px solid var(--cc-line)", color: "var(--cc-ink)" }}
+        >
+          <Bot size={15} color="var(--cc-copper)" />
+          <span className="hidden sm:inline">Preguntar a CoCo</span>
+        </button>
         <NotificationCenter />
         {cta?.href ? (
           <Link href={cta.href}>

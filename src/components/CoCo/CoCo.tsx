@@ -11,6 +11,8 @@ import confetti from "canvas-confetti";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
+import { findScreen } from "@/lib/coco/platformMap";
+import { CoCoMarkdownLink } from "./CoCoMarkdownLink";
 
 interface PendingAction {
     toolUseId: string;
@@ -41,14 +43,36 @@ interface Message {
 }
 
 
-const QUICK = [
-    { label: "¿Cómo reservo un espacio?", icon: Calendar },
-    { label: "¿Cómo pago mis gastos?", icon: DollarSign },
-    { label: "¿Cómo envío un mensaje?", icon: Hash },
-    { label: "Muéstrame el tour", icon: Sparkles },
-];
+type QuickAction = { label: string; icon: typeof Calendar };
+
+// Atajos por rol: preguntas de "¿cómo hago?" que CoCo responde con el mapa de la plataforma.
+const QUICK_BY_ROLE: Record<"resident" | "admin" | "concierge", QuickAction[]> = {
+    resident: [
+        { label: "¿Cómo reservo un espacio?", icon: Calendar },
+        { label: "¿Cómo pago mis gastos?", icon: DollarSign },
+        { label: "¿Cómo invito a una visita?", icon: Hash },
+    ],
+    admin: [
+        { label: "¿Cómo emito el gasto común?", icon: DollarSign },
+        { label: "¿Cómo invito a un residente?", icon: Hash },
+        { label: "¿Cómo registro un pago?", icon: Calendar },
+    ],
+    concierge: [
+        { label: "¿Cómo registro una visita?", icon: Hash },
+        { label: "¿Cómo registro una encomienda?", icon: Calendar },
+        { label: "¿Cómo dejo la entrega de turno?", icon: Sparkles },
+    ],
+};
+
+function quickActionsFor(role: string | undefined, pathname: string | null): QuickAction[] {
+    const base = QUICK_BY_ROLE[role === "admin" || role === "concierge" ? role : "resident"];
+    return findScreen(pathname)
+        ? [{ label: "¿Qué puedo hacer en esta pantalla?", icon: Sparkles }, ...base]
+        : base;
+}
 
 function CoCoMarkdown({ text }: { text: string }) {
+    const linkClass = "font-bold underline decoration-current/30 underline-offset-4";
     return (
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -57,11 +81,7 @@ function CoCoMarkdown({ text }: { text: string }) {
                 strong: ({ children }) => <strong className="font-black text-current">{children}</strong>,
                 ul: ({ children }) => <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4 text-sm leading-relaxed">{children}</ol>,
-                a: ({ children, href }) => (
-                    <a href={href} target="_blank" rel="noreferrer" className="font-bold underline decoration-current/30 underline-offset-4">
-                        {children}
-                    </a>
-                ),
+                a: ({ children, href }) => <CoCoMarkdownLink href={href} className={linkClass}>{children}</CoCoMarkdownLink>,
             }}
         >
             {text}
@@ -104,6 +124,11 @@ export default function CoCo() {
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
     if (!mounted || !user) return null;
+
+    const screen = findScreen(pathname);
+    const quickActions = quickActionsFor(user.role, pathname);
+    // En móvil el residente tiene la barra inferior (z-40): CoCo flota sobre ella, no debajo.
+    const residentOffset = user.role === "resident";
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -263,12 +288,12 @@ export default function CoCo() {
 
     return (
         <div
-            className="fixed bottom-4 right-4 z-30 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
+            className={`fixed right-4 z-30 flex flex-col items-end gap-3 sm:right-6 ${residentOffset ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] lg:bottom-6" : "bottom-4 sm:bottom-6"}`}
         >
             {open && (
                     <div
                         className="flex flex-col overflow-hidden rounded-lg border border-subtle bg-surface"
-                        style={{ width: "min(360px, calc(100vw - 32px))", height: "min(500px, calc(100vh - 96px))", boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
+                        style={{ width: "min(360px, calc(100vw - 32px))", height: residentOffset ? "min(500px, calc(100dvh - 176px))" : "min(500px, calc(100dvh - 96px))", boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
                         role="dialog"
                         aria-label="Asistente CoCo"
                     >
@@ -279,7 +304,7 @@ export default function CoCo() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-white">CoCo</p>
-                                <p className="text-white/70 text-[11px] font-medium">Asistente operativo</p>
+                                <p className="truncate text-white/70 text-[11px] font-medium">{screen ? `Contigo en: ${screen.title}` : "Asistente operativo"}</p>
                             </div>
                             <button onClick={() => setOpen(false)} aria-label="Cerrar CoCo" className="p-1.5 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
                                 <ChevronDown className="h-5 w-5 text-white" />
@@ -388,7 +413,7 @@ export default function CoCo() {
                         {/* Quick actions */}
                         {msgs.length === 1 && (
                             <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-canvas border-t border-subtle flex-shrink-0">
-                                {QUICK.map(({ label, icon: Icon }) => (
+                                {quickActions.map(({ label, icon: Icon }) => (
                                     <button key={label} onClick={() => send(label, null)}
                                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface rounded-lg text-[11px] font-semibold cc-text-secondary border border-subtle hover:border-brand-300 hover:text-brand-600 transition-colors">
                                         <Icon className="h-3 w-3" />{label}

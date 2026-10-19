@@ -18,6 +18,7 @@ import { maybeCreateCoCoCase } from './caseService';
 import { summarizeAccountPaymentStatus } from './paymentStatus';
 import { getUnitStatement } from '@/lib/finance/collectionService';
 import { rememberFact } from './user-memory';
+import { platformGuide } from './platformMap';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import { processParkingCharge, type ParkingChargesDb } from '@/lib/payments/parkingCharges';
 import { describeParkingCharge } from '@/lib/parking';
@@ -358,6 +359,19 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    // ── MÓDULO: GUÍA DE LA PLATAFORMA (todos los perfiles, solo lectura) ────
+    {
+        name: 'get_platform_guide',
+        description: 'Guía de Convive Connect: para "¿cómo hago X?" o "¿dónde está X?" devuelve las pantallas que el rol de la persona puede ver, con ruta, qué permite hacer y pasos típicos. No consulta datos de nadie.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                query: { type: 'string', description: 'Lo que la persona quiere hacer o encontrar, en sus palabras (ej: "reservar el quincho").' },
+            },
+            required: ['query'],
+        },
+    },
+
     // ── MÓDULO: ADMIN · GASTO COMÚN (unidades, alícuotas, egresos, emisión) ──
     // Alícuotas en % (‰ en la base), por el servicio de derechos: alicuotaTools.ts.
     ...ALICUOTA_TOOL_DEFINITIONS,
@@ -512,7 +526,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
-    'remember_preference',
+    'remember_preference', 'get_platform_guide',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
@@ -620,6 +634,7 @@ interface UserContext {
     community_id?: string;
     name?: string;
     channel?: string;
+    currentPage?: string;
 }
 
 function isStaff(userCtx: UserContext) {
@@ -1417,6 +1432,12 @@ export async function executeTool(
             }
 
             // ── MEMORIA ──────────────────────────────────────────────────────
+            case 'get_platform_guide': {
+                const query = (input.query || '').trim().slice(0, 300);
+                if (!query) return { error: 'Dime qué quieres hacer o encontrar.' };
+                return platformGuide(query, userCtx.role, userCtx.currentPage, PUBLIC_SITE_URL);
+            }
+
             case 'remember_preference': {
                 if (!userCtx.user_id) return { error: 'No pude identificarte para guardar el recuerdo.' };
                 const fact = (input.fact || '').trim();

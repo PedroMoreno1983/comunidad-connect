@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
 import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
+import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
 import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction } from "@/lib/types";
 
 function CoCoMarkdown({ text }: { text: string }) {
@@ -22,9 +23,9 @@ function CoCoMarkdown({ text }: { text: string }) {
                 ul: ({ children }) => <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed mb-2">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4 text-sm leading-relaxed mb-2">{children}</ol>,
                 a: ({ children, href }) => (
-                    <a href={href} target="_blank" rel="noreferrer" className="font-bold underline text-brand-400 hover:text-brand-300 transition-colors">
+                    <CoCoMarkdownLink href={href} className="font-bold underline text-brand-400 hover:text-brand-300 transition-colors">
                         {children}
-                    </a>
+                    </CoCoMarkdownLink>
                 ),
             }}
         >

@@ -10,6 +10,7 @@ import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { getUserMemory, buildMemoryContext } from './user-memory';
 import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
+import { buildPlatformContext } from './platformMap';
 import type { ConversationMessage, SessionData } from './session-store';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
@@ -309,10 +310,14 @@ export async function askCoCo(
     const proactiveContext = isFirstTurn && !isResuming ? await getProactiveContext(userCtx) : '';
     // Todo lo que varía por request (ley, memoria, proactivo, contexto del usuario)
     // va DESPUÉS del prefijo cacheado; si se colara antes invalidaría la cache.
+    // Mapa de la plataforma: solo la pantalla actual (el resto, vía get_platform_guide).
+    // WhatsApp no tiene pantalla actual, pero igual recibe la regla de uso.
+    const platformContext = buildPlatformContext(userCtx.currentPage, userCtx.role);
     const volatileSystem = [
         legalKnowledge,
         memoryContext,
         proactiveContext,
+        platformContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
     ].filter(Boolean);
 
