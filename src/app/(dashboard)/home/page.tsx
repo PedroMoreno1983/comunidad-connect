@@ -13,6 +13,9 @@ import { Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { Button } from "@/components/cc/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { NextUpCard } from "@/components/home/NextUpCard";
+import { todayInChile } from "@/lib/finance/chileDates";
+import type { ResidentNextUp } from "@/lib/home/types";
 
 export default function HomePage() {
     const { user } = useAuth();
@@ -24,6 +27,7 @@ export default function HomePage() {
         bookingsCount: 0,
         recentAnnouncement: null,
     });
+    const [nextUp, setNextUp] = useState<ResidentNextUp | null>(null);
 
     // ── Role Redirects ──
     useEffect(() => {
@@ -43,7 +47,9 @@ export default function HomePage() {
         const fetchData = async () => {
             setSummaryStatus('loading');
             try {
-                setStatsData(await HomeService.getResidentSummary(user));
+                const home = await HomeService.getResidentHome(user);
+                setStatsData(home.summary);
+                setNextUp(home.nextUp);
                 setSummaryStatus('ready');
             } catch (err) {
                 console.error("Error fetching resident home data:", err);
@@ -152,6 +158,13 @@ export default function HomePage() {
                         </div>
                     </div>
                 </section>
+
+                {/* Lo próximo a la vista */}
+                {nextUp && (
+                    <ErrorBoundary name="Lo próximo a la vista">
+                        <NextUpCard nextUp={nextUp} today={todayInChile()} />
+                    </ErrorBoundary>
+                )}
 
                 {/* Primary resident actions */}
                 <section className="mt-5">

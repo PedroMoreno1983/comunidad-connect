@@ -387,6 +387,15 @@ export const ResidentFinanceService = {
         );
         return data.agreements || [];
     },
+
+    /** Avisa solo a la administración, en la app, que el residente quiere conversar un convenio. */
+    async requestAgreementConversation(): Promise<{ requested: true; message: string }> {
+        return readApi<{ requested: true; message: string }>(
+            '/api/resident/agreement-request',
+            'No pudimos enviar tu solicitud. Vuelve a intentarlo en un momento.',
+            financeWrite({}),
+        );
+    },
 };
 
 // ==========================================

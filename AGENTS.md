@@ -402,6 +402,21 @@ El Agent Center (`src/lib/agent-center/`) opera la cobranza, la mantención y el
 
 ---
 
+## Inicio del residente: "Lo próximo a la vista" y bloqueo biométrico
+
+- **Lo próximo a la vista** (`src/lib/home/nextUp.ts` y `nextUpCopy.ts`, puros; tipos en `src/lib/home/types.ts`; datos en `HomeService.getResidentHome`/`getResidentNextUp` de `src/lib/api/dashboard.ts`; UI `src/components/home/NextUpCard.tsx`). Muestra el próximo vencimiento (cartola unificada `chargeBalances`: `expenses` + `unit_charges`), la próxima cuota del convenio (`agreementDueDates`) y la próxima reserva (`bookings`) o asamblea citada/en curso.
+  - Al residente, sobre su propia cuenta, sí se muestra el monto; sin lenguaje de deudor (`NEXT_UP_FORBIDDEN_LANGUAGE`) y siempre con salida: pagar en línea, conversar (`/chat`) o pedir un convenio.
+  - Multas, intereses y otros cargos se rotulan "Otro cargo de <mes>": nunca la glosa interna.
+  - Un convenio vigente cubre lo vencido hasta el día en que se abrió (como en la habilidad para votar): esos cobros no se repiten en la tarjeta.
+  - "Pedir un convenio": `POST /api/resident/agreement-request` (solo residentes) avisa en la app solo a los admins, sin montos, idempotente por unidad y día; auditado como `finance.agreement_conversation_requested`. No crea el convenio.
+- **Bloqueo con Face ID o huella** (app nativa; `src/lib/native/biometricLock.ts` puro, `biometricBridge.ts`, `components/native/BiometricLockGate.tsx` en el layout del dashboard y `BiometricLockSetting.tsx` en el perfil). Plugins gratuitos `@capgo/capacitor-native-biometric` (MPL-2.0) y `@capacitor/app`.
+  - Opcional, por persona y teléfono (localStorage `cc:biometric-lock:<userId>`). Se verifica la biometría antes de activarlo. En web no hace nada (el plugin tiene una implementación web de prueba que siempre "verifica": nunca la llames fuera de `isNativeApp()`).
+  - Pide biometría al abrir la app y al volver del fondo tras `LOCK_AFTER_BACKGROUND_MS` (10 s). Durante la verificación y `POST_VERIFY_SUPPRESS_MS` después se ignoran `pause`/`resume`, porque el propio aviso los dispara en Android: si no, entra en bucle.
+  - Si el teléfono ya no tiene biometría, la única salida es cerrar sesión, que además apaga el bloqueo en ese teléfono.
+  - `NSFaceIDUsageDescription` en `ios/App/App/Info.plist` y `USE_BIOMETRIC` en el `AndroidManifest.xml`.
+
+---
+
 ## Tests de punta a punta de los flujos de dinero
 
 `npm run test:e2e:money` (`vitest.money.config.ts`, `tests/e2e-money/`; corre en el job `validate` del CI). Sin red ni secretos:
