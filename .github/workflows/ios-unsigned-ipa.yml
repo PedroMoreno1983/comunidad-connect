@@ -1,0 +1,83 @@
+name: iOS unsigned IPA
+
+# Genera un .ipa SIN firmar para instalarlo con Sideloadly (Apple ID gratuito)
+# desde Windows. Solo se ejecuta a mano. La app carga https://conviveconnect.com
+# de forma remota (capacitor.config.ts), así que no se compila la web.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    name: Build unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # webDir ("out") no se usa porque la app carga server.url remoto, pero
+      # `cap sync` exige que la carpeta exista.
+      - name: Ensure web assets directory
+        run: |
+          if [ ! -f out/index.html ]; then
+            mkdir -p out
+            echo '<!doctype html><html><body></body></html>' > out/index.html
+          fi
+
+      - name: Sync Capacitor iOS (SPM)
+        run: npx cap sync ios
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Archive (unsigned)
+        working-directory: ios/App
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tee "$RUNNER_TEMP/xcodebuild.log" | grep -E "error:|warning: .*signing|\*\* ARCHIVE" || true
+          test -d "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app" || {
+            echo "::error::App.app no se generó; últimas líneas del log:"
+            tail -n 80 "$RUNNER_TEMP/xcodebuild.log"
+            exit 1
+          }
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/ipa"
+          rm -rf "$WORK" && mkdir -p "$WORK/Payload"
+          cp -R "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app" "$WORK/Payload/App.app"
+          cd "$WORK"
+          zip -qry "$GITHUB_WORKSPACE/ConviveConnect-unsigned.ipa" Payload
+          ls -lh "$GITHUB_WORKSPACE/ConviveConnect-unsigned.ipa"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v6
+        with:
+          name: ConviveConnect-unsigned-ipa
+          path: ConviveConnect-unsigned.ipa
+          retention-days: 7
+          if-no-files-found: error
