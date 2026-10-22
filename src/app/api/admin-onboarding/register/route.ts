@@ -143,17 +143,16 @@ async function insertCommunity(payload: Record<string, unknown>) {
     return { id: String(data.id), adminCode: String(data.admin_code) };
 }
 
-async function createSeedUnits(communityId: string, count: number) {
-    if (count <= 0) return;
+async function createSeedUnits(communityId: string, numbers: string[], unitType: "apartment" | "house") {
+    if (numbers.length === 0) return;
 
-    const rows = Array.from({ length: count }, (_item, index) => {
-        const number = String(index + 1).padStart(3, "0");
+    const rows = numbers.map((number) => {
         return {
             community_id: communityId,
-            tower: "A",
+            tower: unitType === "house" ? "Casas" : "A",
             number,
-            floor: Math.max(1, Math.ceil((index + 1) / 10)),
-            type: "apartment",
+            floor: unitType === "house" ? 1 : Math.max(1, Math.ceil(Number(number) / 10)),
+            type: unitType,
         };
     });
 
@@ -177,6 +176,10 @@ export async function POST(req: NextRequest) {
         const address = cleanText(body.address, 300);
         const planId = cleanText(body.planId, 80);
         const units = cleanUnitCount(body.units);
+        const unitType = body.unitType === "house" ? "house" : "apartment";
+        const unitNumbers = Array.isArray(body.unitNumbers)
+            ? body.unitNumbers.map(value => cleanText(value, 80)).filter(Boolean)
+            : [];
         const selectedAddress = selectedAddressFrom(body.selectedAddress);
         const acceptTerms = body.acceptTerms === true;
         const acceptPrivacy = body.acceptPrivacy === true;
@@ -184,7 +187,13 @@ export async function POST(req: NextRequest) {
         if (!fullName) return NextResponse.json({ error: "Ingresa tu nombre." }, { status: 400 });
         if (!isEmail(email)) return NextResponse.json({ error: "Email invalido." }, { status: 400 });
         if (password.length < 8) return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres." }, { status: 400 });
-        if (!communityName) return NextResponse.json({ error: "Ingresa el nombre del edificio." }, { status: 400 });
+        if (!communityName) return NextResponse.json({ error: "Ingresa el nombre de la comunidad." }, { status: 400 });
+        if (unitType === "house" && unitNumbers.length > 0) {
+            const unique = new Set(unitNumbers.map(value => value.toLocaleLowerCase("es-CL")));
+            if (unitNumbers.length !== units || unique.size !== unitNumbers.length || units > 800) {
+                return NextResponse.json({ error: "La numeración de sitios debe ser única y coincidir con el total informado." }, { status: 400 });
+            }
+        }
 
         if (!acceptTerms || !acceptPrivacy) {
             return NextResponse.json({ error: "Debes aceptar los términos y confirmar que leíste la política de privacidad." }, { status: 400 });
@@ -227,6 +236,7 @@ export async function POST(req: NextRequest) {
                 name: fullName,
                 invite_code: community.adminCode,
                 department_number: "Administración",
+                unit_type: unitType,
             },
         });
         if (isExistingAuthUserError(userError)) {
@@ -287,7 +297,10 @@ export async function POST(req: NextRequest) {
         });
         if (confirmationError) throw confirmationError;
 
-        await createSeedUnits(communityId, units);
+        const numbersToCreate = unitType === "house"
+            ? unitNumbers
+            : Array.from({ length: units }, (_item, index) => String(index + 1).padStart(3, "0"));
+        await createSeedUnits(communityId, numbersToCreate, unitType);
 
         await sendOnboardingEmails({ fullName, email, communityName, address, planId });
 

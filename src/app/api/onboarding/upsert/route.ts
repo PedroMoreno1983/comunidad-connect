@@ -37,6 +37,7 @@ type UnitInsertPayload = {
     unit_number?: string;
     tower: string;
     floor: number;
+    type?: string;
 };
 
 function cleanText(value: unknown) {
@@ -134,6 +135,7 @@ async function createUnit(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, pa
         number: payload.number,
         tower: payload.tower,
         floor: payload.floor,
+        type: payload.type,
     };
     const withoutUnitNumber = await supabaseAdmin
         .from('units')
@@ -254,6 +256,9 @@ export async function POST(request: Request) {
 
         const communityId = profile.community_id;
         const supabaseAdmin = getSupabaseAdmin();
+        const { data: adminAccount, error: adminAccountError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+        if (adminAccountError) throw adminAccountError;
+        const isHouseCommunity = adminAccount.user?.user_metadata?.unit_type === 'house';
         if (batchId) {
             const { data: batch, error: batchError } = await supabaseAdmin.from('onboarding_import_batches')
                 .select('id, status').eq('id', batchId).eq('community_id', communityId).maybeSingle();
@@ -294,8 +299,9 @@ export async function POST(request: Request) {
                     community_id: communityId,
                     number: unitDetails.number,
                     unit_number: unitDetails.unit_number,
-                    tower: unitDetails.tower,
-                    floor: unitDetails.floor,
+                    tower: isHouseCommunity ? 'Casas' : unitDetails.tower,
+                    floor: isHouseCommunity ? 1 : unitDetails.floor,
+                    type: isHouseCommunity ? 'house' : 'apartment',
                 });
                 providedRights.push({ unitId: finalUnitId, label: resident.unit_id, raw: resident.derechos_porcentaje });
 

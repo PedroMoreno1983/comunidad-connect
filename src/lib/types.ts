@@ -2843,6 +2843,8 @@ export interface AdminOnboardingRegisterResponse {
     loginUrl?: string;
 }
 
+export type OnboardingUnitType = "apartment" | "house";
+
 // ─── Unidades y alícuotas ───────────────────────────────────────────────────
 
 /** Perfil como opción de un selector de residente. */

@@ -41,6 +41,7 @@
   "exclude": [
     "node_modules",
     "supabase",
-    ".temp"
+    ".temp",
+    ".next/dev/types"
   ]
 }

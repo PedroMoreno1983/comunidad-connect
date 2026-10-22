@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Star, User, Zap } from "lucide-react";
-import type { AdminOnboardingRegisterResponse, GeocodeSuggestion, GeocodeSuggestionsResponse } from "@/lib/types";
+import type { AdminOnboardingRegisterResponse, GeocodeSuggestion, GeocodeSuggestionsResponse, OnboardingUnitType } from "@/lib/types";
 
 const PLANS = [
     {
@@ -38,7 +38,7 @@ const PLANS = [
     },
 ];
 
-const STEP_LABELS = ["Plan", "Edificio", "Activador"];
+const STEP_LABELS = ["Plan", "Comunidad", "Administrador"];
 
 export default function AdminOnboardingPage() {
     const [step, setStep] = useState(0);
@@ -49,6 +49,8 @@ export default function AdminOnboardingPage() {
     const [selectedAddress, setSelectedAddress] = useState<GeocodeSuggestion | null>(null);
     const [geocoding, setGeocoding] = useState(false);
     const [units, setUnits] = useState("");
+    const [unitType, setUnitType] = useState<OnboardingUnitType>("apartment");
+    const [unitNumbersText, setUnitNumbersText] = useState("");
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -59,6 +61,10 @@ export default function AdminOnboardingPage() {
     const [acceptPrivacy, setAcceptPrivacy] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
+    const unitNumbers = unitNumbersText.split(/[\n,;]+/).map(value => value.trim()).filter(Boolean);
+    const expectedUnits = Number(units);
+    const hasValidSiteNumbers = unitNumbers.length === expectedUnits
+        && new Set(unitNumbers.map(value => value.toLocaleLowerCase("es-CL"))).size === unitNumbers.length;
 
     useEffect(() => {
         const query = address.trim();
@@ -109,6 +115,10 @@ export default function AdminOnboardingPage() {
             toast({ title: "Error", description: "Debes ingresar el nombre del condominio", variant: "destructive" });
             return;
         }
+        if (unitType === "house" && unitNumbers.length > 0 && !hasValidSiteNumbers) {
+            toast({ title: "Revisa los sitios", description: "La numeración debe ser única y coincidir con el total de sitios.", variant: "destructive" });
+            return;
+        }
         if (!acceptTerms || !acceptPrivacy) {
             toast({ title: "Falta tu confirmación", description: "Acepta los términos y confirma que leíste la política de privacidad.", variant: "destructive" });
             return;
@@ -126,6 +136,8 @@ export default function AdminOnboardingPage() {
                     address,
                     selectedAddress,
                     units,
+                    unitType,
+                    unitNumbers: unitType === "house" ? unitNumbers : [],
                     fullName,
                     email,
                     password,
@@ -174,9 +186,9 @@ export default function AdminOnboardingPage() {
                     </Link>
                     <div className="space-y-5">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Activación Inteligente</p>
-                        <h1 className="text-5xl font-semibold leading-tight cc-text-primary">Crea el edificio y deja a CoCo listo para cargarlo.</h1>
+                        <h1 className="text-5xl font-semibold leading-tight cc-text-primary">CoCo te guía para crear tu comunidad.</h1>
                         <p className="text-lg leading-8 cc-text-secondary">
-                            Primero creamos la comunidad y el administrador. Luego CoCo interpreta archivos, detecta brechas y prepara la sincronización con aprobación.
+                            Cuéntale a CoCo cómo se organiza tu condominio. Revisa las unidades antes de crearlas y, después de confirmar tu correo, continúa con la carga asistida.
                         </p>
                     </div>
                     <div className="rounded-lg border border-subtle bg-surface p-5">
@@ -189,8 +201,8 @@ export default function AdminOnboardingPage() {
                     <div className="mb-8 flex items-start justify-between gap-4">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Registro</p>
-                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Activa tu edificio</h2>
-                        <p className="mt-2 text-sm cc-text-secondary">Elige plan, georreferencia la dirección y crea la cuenta que aprobará la carga inteligente.</p>
+                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Crea tu comunidad con CoCo</h2>
+                        <p className="mt-2 text-sm cc-text-secondary">CoCo te acompaña paso a paso. Tú revisas y apruebas lo que se guardará.</p>
                         </div>
                         <Link href="/login" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al login">
                             <ArrowLeft className="h-5 w-5" />
@@ -210,6 +222,9 @@ export default function AdminOnboardingPage() {
 
                     {step === 0 && (
                         <div className="space-y-5">
+                            <div className="rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm cc-text-primary" role="status">
+                                <strong>CoCo:</strong> ¡Hola! Empecemos por el plan. Puedes elegir uno ahora o decidirlo después; eso no activa un cobro.
+                            </div>
                             <div className="grid gap-3 lg:grid-cols-3">
                                 {PLANS.map((plan) => {
                                     const Icon = plan.icon;
@@ -256,9 +271,19 @@ export default function AdminOnboardingPage() {
 
                     {step === 1 && (
                         <div className="space-y-5">
-                            <Field label="Nombre del edificio o condominio" required>
-                                <Input type="text" value={communityName} onChange={(e) => setCommunityName(e.target.value)} placeholder="Edificio Los Pinos" required />
+                            <div className="rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm cc-text-primary" role="status">
+                                <strong>CoCo:</strong> ¿Cómo se llama tu comunidad? ¿Son departamentos o casas en sitios? Dime cuántas unidades tiene. Si son sitios, usaré solo la numeración que me confirmes.
+                            </div>
+                            <Field label="Nombre del condominio" required>
+                                <Input type="text" value={communityName} onChange={(e) => setCommunityName(e.target.value)} placeholder="Bahía Las Palmas" required />
                             </Field>
+                            <div>
+                                <p className="mb-2 text-sm font-semibold cc-text-primary">¿Qué tipo de unidades tiene?</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button type="button" variant={unitType === "apartment" ? "primary" : "outline"} onClick={() => setUnitType("apartment")}>Departamentos</Button>
+                                    <Button type="button" variant={unitType === "house" ? "primary" : "outline"} onClick={() => setUnitType("house")}>Casas / sitios</Button>
+                                </div>
+                            </div>
                             <Field label="Dirección">
                                 <div className="relative">
                                     <Input
@@ -268,7 +293,7 @@ export default function AdminOnboardingPage() {
                                             setAddress(e.target.value);
                                             setSelectedAddress(null);
                                         }}
-                                        placeholder="Av. Providencia 1234, Santiago"
+                                        placeholder="Dirección del condominio"
                                         className="pr-10"
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -305,9 +330,16 @@ export default function AdminOnboardingPage() {
                                     </p>
                                 ) : null}
                             </Field>
-                            <Field label="Número de unidades">
-                                <Input type="number" inputMode="numeric" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="80" min="1" />
+                            <Field label={unitType === "house" ? "Número de sitios" : "Número de unidades"}>
+                                <Input type="number" inputMode="numeric" value={units} onChange={(e) => setUnits(e.target.value)} placeholder={unitType === "house" ? "79" : "80"} min="1" max="800" />
                             </Field>
+                            {unitType === "house" && (
+                                <div className="space-y-2">
+                                    <label htmlFor="site-numbers" className="text-sm font-semibold cc-text-primary">Numeración real de los sitios (opcional por ahora)</label>
+                                    <textarea id="site-numbers" value={unitNumbersText} onChange={event => setUnitNumbersText(event.target.value)} rows={4} placeholder="Un identificador por línea, tal como aparece en la nómina del condominio" className="w-full rounded-lg border border-subtle bg-canvas p-3 text-sm" />
+                                    <p className="text-xs cc-text-secondary">{unitNumbers.length === 0 ? "CoCo creará la comunidad sin sitios. Podrás cargarlos después desde una nómina." : hasValidSiteNumbers ? `${unitNumbers.length} sitios listos para revisar y crear.` : `${unitNumbers.length} identificadores ingresados; deben ser únicos y coincidir con el total.`}</p>
+                                </div>
+                            )}
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <Button type="button" variant="outline" onClick={() => setStep(0)}>Volver</Button>
                                 <Button type="button" disabled={!communityName.trim()} onClick={() => setStep(2)} trailingIcon={<ArrowRight className="h-4 w-4" />}>Continuar</Button>
@@ -317,6 +349,9 @@ export default function AdminOnboardingPage() {
 
                     {step === 2 && (
                         <form onSubmit={handleSubmit} className="space-y-5">
+                            <div className="rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm cc-text-primary" role="status">
+                                <strong>CoCo:</strong> Ahora crea tu acceso de administrador. Antes de guardar, revisa el resumen; luego confirmarás tu correo para continuar conmigo en la carga de documentos.
+                            </div>
                             <IconField icon={<User className="h-5 w-5" />}>
                                 <Input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre completo" required className="pl-10" />
                             </IconField>
@@ -336,6 +371,13 @@ export default function AdminOnboardingPage() {
                             <div className="rounded-lg border border-subtle bg-canvas p-4 text-sm">
                                 <p className="font-semibold cc-text-primary">{communityName || "Condominio por definir"}</p>
                                 {address && <p className="mt-1 cc-text-secondary">{address}</p>}
+                                <p className="mt-1 cc-text-secondary">{unitType === "house" ? "Casas / sitios" : "Departamentos"}: {units || "Sin cantidad informada"}</p>
+                                {unitType === "house" && <p className="mt-1 cc-text-secondary">{unitNumbers.length > 0 ? `${unitNumbers.length} sitios con numeración confirmada se crearán.` : "No se crearán sitios hasta revisar la numeración real."}</p>}
+                                {unitType === "house" && unitNumbers.length > 0 && (
+                                    <p className="mt-2 max-h-24 overflow-y-auto break-words text-xs cc-text-secondary" aria-label="Numeración de sitios a crear">
+                                        {unitNumbers.join(", ")}
+                                    </p>
+                                )}
                                 <p className="mt-1 cc-text-secondary">Plan: {PLANS.find(p => p.id === selectedPlan)?.name || "Por definir"}</p>
                             </div>
 
