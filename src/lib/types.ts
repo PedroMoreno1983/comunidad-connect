@@ -2845,6 +2845,29 @@ export interface AdminOnboardingRegisterResponse {
 
 export type OnboardingUnitType = "apartment" | "house";
 
+export interface OnboardingConversationMessage {
+    role: "user" | "assistant";
+    content: string;
+}
+
+export interface OnboardingConversationDraft {
+    communityName: string;
+    unitType: OnboardingUnitType | null;
+    unitCount: number | null;
+    unitNumbers: string[];
+    address: string;
+    fullName: string;
+    email: string;
+    planId: string | null;
+}
+
+export interface OnboardingGuideResponse {
+    reply: string;
+    draft: OnboardingConversationDraft;
+    ready: boolean;
+    error?: string;
+}
+
 // ─── Unidades y alícuotas ───────────────────────────────────────────────────
 
 /** Perfil como opción de un selector de residente. */
