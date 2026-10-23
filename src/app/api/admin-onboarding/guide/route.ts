@@ -136,7 +136,6 @@ export async function POST(request: NextRequest) {
                 const response = await anthropic.messages.create({
                     model: anthropicModelFor('coco.chat'),
                     max_tokens: 950,
-                    temperature: 0.2,
                     system: `${SYSTEM_PROMPT}\nDebes usar la herramienta actualizar_borrador en cada respuesta y devolver el borrador completo.`,
                     messages,
                     tools: [{
