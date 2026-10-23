@@ -84,10 +84,37 @@ async function askGemini(history: OnboardingConversationMessage[], previous: Onb
     return JSON.parse(raw) as Record<string, unknown>;
 }
 
+async function askOpenAI(history: OnboardingConversationMessage[], previous: OnboardingConversationDraft, message: string) {
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) throw new Error('OpenAI no está configurado.');
+    const conversation = [...history, { role: 'user', content: message }]
+        .map(item => `${item.role === 'user' ? 'Persona' : 'CoCo'}: ${item.content}`)
+        .join('\n');
+    const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+            model: 'gpt-4.1-mini',
+            instructions: `${SYSTEM_PROMPT}\nDevuelve exclusivamente JSON válido con las claves reply (texto) y draft (objeto completo con communityName, unitType, unitCount, unitNumbers, address, fullName, email y planId). Usa null para tipo o cantidad desconocidos y cadenas vacías para texto desconocido.`,
+            input: `Borrador actual: ${JSON.stringify(previous)}\nConversación:\n${conversation}`,
+            text: { format: { type: 'json_object' } },
+            temperature: 0.2,
+            max_output_tokens: 950,
+        }),
+    });
+    if (!response.ok) throw new Error(`OpenAI respondió ${response.status}.`);
+    const data = await response.json() as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }> };
+    const raw = data.output?.flatMap(item => item.content || [])
+        .filter(item => item.type === 'output_text')
+        .map(item => item.text || '')
+        .join('') || '';
+    return JSON.parse(raw) as Record<string, unknown>;
+}
+
 export async function POST(request: NextRequest) {
     const limited = await enforceDistributedRateLimit(request, 'admin_onboarding.guide', { limit: 12, windowMs: 60_000 });
     if (limited) return limited;
-    if (!process.env.ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
+    if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
         return NextResponse.json({ error: 'CoCo no está disponible en este momento.' }, { status: 503 });
     }
 
@@ -144,6 +171,13 @@ export async function POST(request: NextRequest) {
                 output = tool.input as Record<string, unknown>;
             } catch (error) {
                 console.warn('[admin-onboarding/guide] Anthropic unavailable; trying Gemini.', error instanceof Error ? error.message : error);
+            }
+        }
+        if (!output && process.env.OPENAI_API_KEY) {
+            try {
+                output = await askOpenAI(history, previous, message);
+            } catch (error) {
+                console.warn('[admin-onboarding/guide] OpenAI unavailable; trying Gemini.', error instanceof Error ? error.message : error);
             }
         }
         if (!output) output = await askGemini(history, previous, message);
