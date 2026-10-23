@@ -26,6 +26,12 @@ const createNoopClient = () => {
       getSession: async () => ({ data: { session: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       signInWithPassword: async () => ({ data: { user: null, session: null }, error: new Error('Supabase no configurado') }),
+      signInWithPasskey: async () => ({ data: { user: null, session: null }, error: new Error('Supabase no configurado') }),
+      registerPasskey: async () => ({ data: null, error: new Error('Supabase no configurado') }),
+      passkey: {
+        list: async () => ({ data: [], error: new Error('Supabase no configurado') }),
+        delete: async () => ({ data: null, error: new Error('Supabase no configurado') }),
+      },
       signUp: async () => ({ error: new Error('Supabase no configurado') }),
       signOut: async () => ({ error: null }),
     },
@@ -35,5 +41,5 @@ const createNoopClient = () => {
 
 
 export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createBrowserClient(supabaseUrl, supabaseAnonKey)
+  ? createBrowserClient(supabaseUrl, supabaseAnonKey, { auth: { experimental: { passkey: true } } })
   : createNoopClient() as unknown as ReturnType<typeof createBrowserClient>;
