@@ -182,7 +182,9 @@ export async function POST(request: NextRequest) {
         }
         if (!output) output = await askGemini(history, previous, message);
         const draft = normalizeDraft(output.draft, previous);
-        const reply = cleanText(output.reply, 1_200);
+    const reply = cleanText(output.reply, 1_200)
+            .replace(/he registrado/gi, 'he anotado')
+            .replace(/ya registré/gi, 'ya anoté');
         if (!reply) throw new Error('CoCo no devolvió una respuesta.');
         const result: OnboardingGuideResponse = { reply, draft, ready: isReady(draft) };
         return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
