@@ -1,15 +1,20 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, ScanFace, Sparkles } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 import { postLoginPath } from "@/lib/roleAccess";
+import { isNativeApp } from "@/lib/native/biometricBridge";
+
+const subscribeToBrowserCapabilities = () => () => {};
+const getPasskeySupport = () => !isNativeApp() && window.isSecureContext && typeof window.PublicKeyCredential !== "undefined";
+const getServerPasskeySupport = () => false;
 
 export default function LoginPage() {
     return (
@@ -27,11 +32,32 @@ function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<"mail" | "rut">("mail");
-    const { signIn } = useAuth();
+    const { signIn, signInWithPasskey } = useAuth();
+    const passkeySupported = useSyncExternalStore(
+        subscribeToBrowserCapabilities,
+        getPasskeySupport,
+        getServerPasskeySupport,
+    );
     const router = useRouter();
     const { toast } = useToast();
     const nextParam = searchParams.get("next");
     const checkEmail = searchParams.get("check_email") === "1";
+
+    const handlePasskeySignIn = async () => {
+        setLoading(true);
+        const { error, role } = await signInWithPasskey();
+        if (error) {
+            toast({
+                title: "No pudimos usar tu llave de acceso",
+                description: error.message || "Prueba de nuevo o entra con tu contraseña.",
+                variant: "destructive",
+            });
+            setLoading(false);
+            return;
+        }
+        router.replace(postLoginPath(nextParam, role));
+        router.refresh();
+    };
 
     const handleResendConfirmation = async () => {
         if (!email.trim()) {
@@ -280,6 +306,21 @@ function LoginForm() {
                                 <ArrowRight size={15} />
                             </button>
                         </form>
+
+                        {passkeySupported && (
+                            <div className="space-y-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { void handlePasskeySignIn(); }}
+                                    disabled={loading}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border bg-paper px-4 py-3 text-sm font-semibold transition-colors hover:bg-paper-warm disabled:opacity-50"
+                                    style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}
+                                >
+                                    <ScanFace size={18} /> Entrar con Face ID, huella o PIN
+                                </button>
+                                <p className="text-center text-xs text-slate-500">Actívalo primero desde Mi perfil, con tu sesión iniciada.</p>
+                            </div>
+                        )}
 
                         <div className="relative my-6 flex items-center justify-center">
                             <div className="absolute w-full border-t" style={{ borderColor: "var(--cc-line-strong)" }} />
