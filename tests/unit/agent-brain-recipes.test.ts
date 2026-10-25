@@ -1,9 +1,13 @@
 // QA exploratorio: comportamiento del SupermarketAgent (agentBrain) de forma aislada.
 // Nota: este agente hoy no está montado en ninguna ruta (WhatsAppChat no se importa).
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { SupermarketAgent } from "@/lib/agentBrain";
+import { MarketplaceService } from "@/lib/api";
 
 describe("SupermarketAgent (lógica de recetas)", () => {
+    beforeEach(() => {
+        vi.spyOn(MarketplaceService, "getItemsV2").mockResolvedValue([]);
+    });
     it("sugiere una receta cuando calzan ingredientes", async () => {
         const agent = new SupermarketAgent();
         const res = await agent.processMessage("tengo arroz y cebolla");
