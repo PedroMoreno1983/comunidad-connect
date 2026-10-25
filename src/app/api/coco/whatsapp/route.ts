@@ -109,8 +109,11 @@ export async function POST(req: NextRequest) {
         params[key] = typeof value === 'string' ? value : '';
     }
 
-    const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
-    if (!authToken) console.error('[CoCo WhatsApp] TWILIO_AUTH_TOKEN no configurado');
+    const relayedFromNorma = req.headers.get('x-coco-shared-number') === '1';
+    const authToken = (relayedFromNorma
+        ? process.env.COCO_TWILIO_AUTH_TOKEN
+        : process.env.TWILIO_AUTH_TOKEN)?.trim();
+    if (!authToken) console.error('[CoCo WhatsApp] Token de Twilio no configurado');
     // El sitio responde en el dominio propio y en el de Vercel. Twilio firma la
     // URL que efectivamente invoco, asi que se valida contra ambas: comparar solo
     // contra PUBLIC_SITE_URL rechazaba con 401 los mensajes legitimos que
@@ -127,11 +130,23 @@ export async function POST(req: NextRequest) {
         return new NextResponse('', { status: 401 });
     }
 
+    const respond = (text: string) => relayedFromNorma
+        ? NextResponse.json({ reply: text })
+        : twiml(text);
+
     const message = (formData.get('Body') as string)?.trim();
     const waId    = formData.get('WaId') as string; // número sin +
     const messageSid = formData.get('MessageSid') as string | null;
 
     if (!message || !waId) return new NextResponse('', { status: 400 });
+
+    if (relayedFromNorma) {
+        const sessionKey = `wa:${waId}`;
+        const existingSession = await getSession(sessionKey);
+        if (!existingSession && !/^(hola\s+)?coco[.!?]?$/i.test(message)) {
+            return new NextResponse('', { status: 204 });
+        }
+    }
 
     // Anti-replay: Twilio's signature scheme has no timestamp/nonce, so a captured
     // valid request could otherwise be replayed indefinitely. MessageSid is unique
@@ -141,15 +156,22 @@ export async function POST(req: NextRequest) {
             .from('whatsapp_processed_messages')
             .insert({ message_sid: messageSid });
         if (dedupError) {
-            if (dedupError.code === '23505') return new NextResponse('', { status: 200 });
+            if (dedupError.code === '23505') return relayedFromNorma
+                ? NextResponse.json({ duplicate: true })
+                : new NextResponse('', { status: 200 });
             console.error('[CoCo WhatsApp] No se pudo registrar MessageSid para deduplicacion', dedupError);
         }
+    }
+
+    if (relayedFromNorma && /^norma[.!]?$/i.test(message)) {
+        await deleteSession(`wa:${waId}`);
+        return respond('Listo, vuelves a conversar con Norma. ¿Qué necesitas?');
     }
 
     // Rate limit: 15 mensajes/min por número, exigido entre instancias (no solo en memoria local)
     const allowed = await checkDistributedRateLimitBySubject(`wa:${waId}`, 'coco.whatsapp.inbound', { limit: 15, windowMs: 60_000 });
     if (!allowed) {
-        return twiml('Demasiados mensajes en poco tiempo. Espera 1 minuto. 🙏');
+        return respond('Demasiados mensajes en poco tiempo. Espera 1 minuto. 🙏');
     }
 
     try {
@@ -173,7 +195,7 @@ export async function POST(req: NextRequest) {
                 || !currentProfile.community_id
             ) {
                 await deleteSession(sessionKey);
-                return twiml('Tu sesion de CoCo debe verificarse nuevamente. Envia otro mensaje para comenzar.');
+                return respond('Tu sesion de CoCo debe verificarse nuevamente. Envia otro mensaje para comenzar.');
             }
 
             // Este mensaje abre (o renueva) la ventana de 24 horas en la que
@@ -203,9 +225,9 @@ export async function POST(req: NextRequest) {
             await saveSession(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext });
             if (pendingActions?.length) {
                 const actionList = pendingActions.map(action => `- ${action.title}: ${action.summary}`).join('\n');
-                return twiml(`${reply || 'Necesito tu confirmacion antes de continuar.'}\n\n${actionList}\n\nResponde APROBAR para ejecutar o RECHAZAR para cancelar.`);
+                return respond(`${reply || 'Necesito tu confirmacion antes de continuar.'}\n\n${actionList}\n\nResponde APROBAR para ejecutar o RECHAZAR para cancelar.`);
             }
-            return twiml(reply || 'La solicitud fue procesada.');
+            return respond(reply || 'La solicitud fue procesada.');
         }
 
         // ── Flujo de autenticación ───────────────────────────────────────────
@@ -219,7 +241,7 @@ export async function POST(req: NextRequest) {
                 auth_state: 'pending',
                 auth_attempts: 1,
             });
-            return twiml(
+            return respond(
                 '👋 Hola, soy *CoCo*, la asistente de tu comunidad.\n\n' +
                 'Para ayudarte necesito verificar que eres residente. ' +
                 '¿Cuál es tu número de depto? (ej: *8B*, *101*, *Casa 3*)'
@@ -277,7 +299,7 @@ export async function POST(req: NextRequest) {
                 auth_state:   'verified',
                 auth_attempts: 0,
             });
-            return twiml(
+            return respond(
                 `¡Listo, ${name}! ✅\n` +
                 `Soy CoCo, tu asistente en tu comunidad. ¿En qué te ayudo?`
             );
@@ -292,7 +314,7 @@ export async function POST(req: NextRequest) {
                 auth_state: 'pending',
                 auth_attempts: 0,
             });
-            return twiml(
+            return respond(
                 'No pude verificar tu identidad. Si crees que hay un error, ' +
                 'contacta al administrador de tu comunidad.'
             );
@@ -304,13 +326,13 @@ export async function POST(req: NextRequest) {
             auth_state: 'pending',
             auth_attempts: newAttempts,
         });
-        return twiml(
+        return respond(
             `No encontré ese depto con tu número. Intento ${newAttempts - 1}/3. ` +
             '¿Puedes revisar cómo aparece en tu app?'
         );
 
     } catch (err) {
         console.error('[CoCo WhatsApp Error]', err);
-        return twiml('Ocurrió un error. Intenta de nuevo en unos segundos.');
+        return respond('Ocurrió un error. Intenta de nuevo en unos segundos.');
     }
 }

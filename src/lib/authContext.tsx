@@ -20,6 +20,7 @@ interface AuthContextType {
     supabaseUser: SupabaseUser | null;
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null; role?: User["role"] | null }>;
+    signInWithPasskey: () => Promise<{ error: Error | null; role?: User["role"] | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -262,6 +263,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const signInWithPasskey = async () => {
+        try {
+            setLoading(true);
+            setUser(null);
+            setSupabaseUser(null);
+            setSession(null);
+            await supabase.auth.signOut({ scope: "local" });
+            const { data, error } = await supabase.auth.signInWithPasskey();
+            if (error) return { error, role: null };
+            const role = data.user ? await fetchUserProfile(data.user) : null;
+            return { error: null, role };
+        } catch (error) {
+            return { error: error as Error, role: null };
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Logout
     const logout = async () => {
         if (typeof window !== 'undefined') {
@@ -281,6 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             supabaseUser,
             session,
             signIn,
+            signInWithPasskey,
         }}>
             {children}
         </AuthContext.Provider>

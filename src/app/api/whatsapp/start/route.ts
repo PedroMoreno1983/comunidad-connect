@@ -16,9 +16,12 @@ export async function GET() {
         return NextResponse.json({ error: 'No se pudo consultar tu configuración de WhatsApp.' }, { status: 500 });
     }
 
-    const from = process.env.TWILIO_WHATSAPP_FROM?.trim() || '';
+    const sharedFrom = process.env.COCO_WHATSAPP_FROM?.trim() || '';
+    const from = sharedFrom || process.env.TWILIO_WHATSAPP_FROM?.trim() || '';
     const number = /^whatsapp:\+([1-9]\d{6,14})$/.exec(from)?.[1];
-    const configured = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && number);
+    const configured = sharedFrom
+        ? Boolean(process.env.COCO_TWILIO_AUTH_TOKEN && number)
+        : Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && number);
     const phone = String(settings.phone_number || '').replace(/\D/g, '');
     const validPhone = /^569\d{8}$/.test(phone) || /^9\d{8}$/.test(phone);
 

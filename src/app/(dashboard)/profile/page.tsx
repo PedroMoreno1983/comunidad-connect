@@ -13,6 +13,7 @@ import { Tag as CcTag } from "@/components/cc/Tag";
 import { ProfileService } from "@/lib/api";
 import { PrivacySettings } from "@/components/profile/PrivacySettings";
 import { BiometricLockSetting } from "@/components/native/BiometricLockSetting";
+import { WebPasskeySetting } from "@/components/profile/WebPasskeySetting";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -307,6 +308,7 @@ export default function ProfilePage() {
                     <div className="space-y-3">
                         <Eyebrow className="px-1">Seguridad</Eyebrow>
                         {user?.id && <BiometricLockSetting userId={user.id} />}
+                        {user?.id && <WebPasskeySetting />}
                         {showEmailConfirm ? (
                             <div className="flex items-start gap-3 p-4 rounded-xl bg-[var(--cc-sage-tint)] border border-[var(--cc-sage)]/30">
                                 <CheckCircle className="h-5 w-5 text-[var(--cc-sage)] mt-0.5 flex-shrink-0" />

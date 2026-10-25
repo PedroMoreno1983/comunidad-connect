@@ -2,6 +2,12 @@ import type { ReactNode } from 'react';
 
 export type UserRole = 'admin' | 'resident' | 'concierge';
 
+export interface PasskeyCredential {
+  id: string;
+  friendlyName: string;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   name: string;
