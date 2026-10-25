@@ -31,8 +31,12 @@ export interface PlatformScreen {
 export const PLATFORM_SCREENS: readonly PlatformScreen[] = [
     // ── Acceso ───────────────────────────────────────────────────────────────
     { route: '/login', title: 'Iniciar sesión', module: 'Acceso', roles: ['public'],
-        does: 'Entrar con correo y contraseña; recuperar la clave.',
-        keywords: ['login', 'entrar', 'iniciar sesion', 'contrasena', 'clave', 'olvide'] },
+        does: 'Entrar con correo y contraseña o con una passkey registrada; recuperar la clave.',
+        keywords: ['login', 'entrar', 'iniciar sesion', 'contrasena', 'clave', 'olvide', 'face id', 'huella', 'passkey'] },
+    { route: '/resident-access', title: 'Acceso de residentes', module: 'Acceso', roles: ['public'],
+        does: 'Solicitar un enlace personal para entrar si el correo figura en la nómina de una unidad.',
+        steps: ['Abre Acceso de residentes', 'Escribe el correo registrado en la nómina', 'Abre el enlace que llega por correo'],
+        keywords: ['residente', 'acceso', 'enlace', 'correo', 'nomina', 'entrar sin codigo'] },
     { route: '/signup', title: 'Registro con invitación', module: 'Acceso', roles: ['public'],
         does: 'Crear cuenta con el código de invitación que entrega Administración.',
         steps: ['Pide el código a Administración (Usuarios y accesos)', 'Ingresa código, correo y contraseña', 'Acepta términos y privacidad'],
