@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
+import { askCoCoWhatsAppFallback } from '@/lib/coco/whatsapp-fallback';
+import { isAiBudgetExceededError } from '@/lib/ai/budget';
 import {
     getSession,
     saveSession,
@@ -217,11 +219,22 @@ export async function POST(req: NextRequest) {
                 name: String(currentProfile.name || currentProfile.full_name || 'vecino/a'),
                 channel: 'whatsapp',
             };
-            const { reply, updatedHistory, pendingActions } = await askCoCo(
-                message,
-                session,
-                verifiedContext,
-            );
+            let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
+            try {
+                agentResponse = await askCoCo(message, session, verifiedContext);
+            } catch (agentError) {
+                if (isAiBudgetExceededError(agentError)) throw agentError;
+                const lastContent = session.conversation.at(-1)?.content;
+                const hasPendingAction = Array.isArray(lastContent) && lastContent.some(block =>
+                    typeof block === 'object' && block !== null && 'type' in block && block.type === 'tool_use',
+                );
+                // Resolver una acción pendiente puede ejecutar cambios antes de consultar al modelo.
+                // Nunca se cambia a otro proveedor a mitad de esa confirmación.
+                if (hasPendingAction) throw agentError;
+                console.warn('[CoCo WhatsApp] Motor principal no disponible; usando respaldo de solo lectura');
+                agentResponse = await askCoCoWhatsAppFallback(message, session, verifiedContext);
+            }
+            const { reply, updatedHistory, pendingActions } = agentResponse;
             await saveSession(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext });
             if (pendingActions?.length) {
                 const actionList = pendingActions.map(action => `- ${action.title}: ${action.summary}`).join('\n');
