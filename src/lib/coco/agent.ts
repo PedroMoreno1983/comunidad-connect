@@ -5,6 +5,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { askOpenAi } from './openai-agent';
 import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { getUserMemory, buildMemoryContext } from './user-memory';
@@ -26,6 +27,7 @@ const anthropic = new Anthropic({
 // herramientas que leen y escriben datos reales, así que no baja de nivel
 // aunque otras tareas del sistema sí lo hagan.
 const MODEL = anthropicModelFor('coco.chat');
+const OPENAI_MODEL = process.env.COCO_OPENAI_MODEL || 'gpt-5.4-mini';
 const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
 
 export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
@@ -408,7 +410,14 @@ export async function askCoCo(
 
     // 4. Loop agéntico
     let rounds = 0;
-    let response: Anthropic.Message;
+    let response: {
+        content: Anthropic.ContentBlock[];
+        stop_reason: Anthropic.Message['stop_reason'];
+        usage: { input_tokens: number; output_tokens: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null };
+    };
+    const useOpenAi = Boolean(process.env.OPENAI_API_KEY);
+    const provider = useOpenAi ? 'openai' : 'anthropic';
+    const model = useOpenAi ? OPENAI_MODEL : MODEL;
 
     do {
         const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
@@ -419,15 +428,22 @@ export async function askCoCo(
             userId: userCtx.user_id,
             role: userCtx.role,
             module: 'coco.chat',
-            provider: 'anthropic',
-            model: MODEL,
+            provider,
+            model,
             actionType: 'chat',
             estimatedPromptTokens,
             estimatedCompletionTokens,
         });
 
         const startedAt = Date.now();
-        response = await anthropic.messages.create({
+        response = useOpenAi ? await askOpenAi({
+            apiKey: process.env.OPENAI_API_KEY!,
+            model,
+            systemPrompt,
+            history,
+            tools: TOOL_DEFINITIONS.filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
+            requiredTool: rounds === 0 ? requiredTool : undefined,
+        }) : await anthropic.messages.create({
             model: MODEL,
             max_tokens: 2048,
             system: systemBlocks,
@@ -452,15 +468,15 @@ export async function askCoCo(
             userId: userCtx.user_id,
             role: userCtx.role,
             module: 'coco.chat',
-            provider: 'anthropic',
-            model: MODEL,
+            provider,
+            model,
             actionType: 'chat',
             promptTokens,
             completionTokens,
             totalTokens: promptTokens + completionTokens,
             estimatedCostCents: estimateAiCostCents({
-                provider: 'anthropic',
-                model: MODEL,
+                provider,
+                model,
                 promptTokens,
                 completionTokens,
             }),
