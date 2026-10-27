@@ -19,7 +19,7 @@ import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { summarizeResidentPaymentStatus } from "@/lib/coco/paymentStatus";
 import type { ExpenseDatabaseRow, FinanceDocumentLink, PaymentCheckout, UnitExpenseView, UnitStatement } from "@/lib/types";
 import { PaymentAgreementCard } from "@/components/resident/PaymentAgreementCard";
-import { formatFinanceDate, todayInChile } from "@/lib/finance/chileDates";
+import { formatFinanceDate } from "@/lib/finance/chileDates";
 
 function mapExpenseRow(expense: ExpenseDatabaseRow): UnitExpenseView {
     return {
@@ -57,11 +57,6 @@ export default function ExpensesPage() {
     const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
     const [documentLinks, setDocumentLinks] = useState<FinanceDocumentLink[]>([]);
     const [statement, setStatement] = useState<UnitStatement | null>(null);
-    const [reportAmount, setReportAmount] = useState("");
-    const [reportDate, setReportDate] = useState(todayInChile);
-    const [reportReference, setReportReference] = useState("");
-    const [reportExpenseId, setReportExpenseId] = useState("");
-    const [reporting, setReporting] = useState(false);
 
     const targetUnitId = user?.unitId;
     const paymentReturnExpenseId = searchParams.get("payment") === "return"
@@ -575,7 +570,7 @@ export default function ExpensesPage() {
                             <div className="mt-auto pt-4 pb-3">
                                 <Button variant="primary" size="lg" block onClick={handlePay} disabled={isPaying !== null}>
                                     {isPaying ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                                        <><span className="flex-1 text-left">Pagar con Webpay · ${totalAmount.toLocaleString("es-CL")}</span><ArrowRight size={16} /></>
+                                        <><span className="flex-1 text-left">Pagar con Haulmer · ${totalAmount.toLocaleString("es-CL")}</span><ArrowRight size={16} /></>
                                     )}
                                 </Button>
                                 {pendingExpenses.length > 1 && (
@@ -584,9 +579,7 @@ export default function ExpensesPage() {
                                     </div>
                                 )}
                                 <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                        {capabilities.paymentProvider === "transbank"
-                                            ? "Webpay Plus (Transbank). El cobro se confirma solo cuando Transbank autoriza el pago."
-                                            : "Webpay vía Tuu/Haulmer, comisión e IVA incluidos"}
+                                    Pago procesado en el entorno Haulmer/Tuu, comisión e IVA incluidos
                                 </div>
                             </div>
                         ) : (
@@ -599,9 +592,7 @@ export default function ExpensesPage() {
                                         Tienes ${paymentSummary.pending_amount.toLocaleString("es-CL")} por pagar
                                     </div>
                                     <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                        El pago en línea aún no está activo. Administración debe configurar
-                                        Haulmer (HAULMER_ACCOUNT_ID y HAULMER_SECRET_KEY) o Transbank Webpay Plus
-                                        (TRANSBANK_COMMERCE_CODE y TRANSBANK_API_KEY). Mientras tanto, coordina el pago con administración.
+                                        Los pagos de gastos comunes operan integrados al entorno Haulmer. Se habilitarán automáticamente al activarse las credenciales Haulmer de tu comunidad.
                                     </div>
                                 </div>
                             </div>
@@ -678,89 +669,6 @@ export default function ExpensesPage() {
                             </li>
                         ))}
                     </ul>
-
-                    <form
-                        className="mt-4 space-y-2 border-t pt-4"
-                        style={{ borderColor: "var(--cc-line)" }}
-                        onSubmit={event => {
-                            event.preventDefault();
-                            const amount = Number(reportAmount.replace(/[^\d]/g, ""));
-                            if (!reportExpenseId || !Number.isFinite(amount) || amount <= 0 || reportReference.trim().length < 4) {
-                                toast({
-                                    title: "Faltan datos",
-                                    description: "Elige el mes, un monto y el número de comprobante.",
-                                    variant: "destructive",
-                                });
-                                return;
-                            }
-                            setReporting(true);
-                            void ResidentFinanceService.reportTransfer({
-                                amount,
-                                paidAt: reportDate,
-                                reference: reportReference.trim(),
-                                expenseId: reportExpenseId,
-                            }).then(result => {
-                                toast({
-                                    title: "Transferencia informada",
-                                    description: result.notified > 0
-                                        ? "Administración debe verificar el comprobante. El saldo no cambia hasta que la registre."
-                                        : "No hay un administrador en la comunidad para recibir el aviso.",
-                                    variant: "success",
-                                });
-                                setReportAmount("");
-                                setReportReference("");
-                            }).catch(error => {
-                                toast({
-                                    title: "No se informó",
-                                    description: error instanceof Error ? error.message : "Intenta nuevamente.",
-                                    variant: "destructive",
-                                });
-                            }).finally(() => setReporting(false));
-                        }}
-                    >
-                        <p className="text-sm font-semibold" style={{ color: "var(--cc-ink)" }}>Informar una transferencia</p>
-                        <p className="text-xs" style={{ color: "var(--cc-ink-muted)" }}>
-                            Elige el mes del cobro. El aviso no marca la cuota como pagada.
-                        </p>
-                        <select
-                            value={reportExpenseId}
-                            onChange={event => setReportExpenseId(event.target.value)}
-                            className="w-full rounded-lg border px-3 py-2 text-sm"
-                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
-                        >
-                            <option value="">Mes del cobro</option>
-                            {statement.entries.filter(entry => entry.kind === "gasto_comun").map(entry => (
-                                <option key={entry.id} value={entry.id}>{entry.label}</option>
-                            ))}
-                        </select>
-                        <div className="grid grid-cols-2 gap-2">
-                            <input
-                                value={reportAmount}
-                                onChange={event => setReportAmount(event.target.value)}
-                                inputMode="numeric"
-                                placeholder="Monto"
-                                className="rounded-lg border px-3 py-2 text-sm"
-                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
-                            />
-                            <input
-                                type="date"
-                                value={reportDate}
-                                onChange={event => setReportDate(event.target.value)}
-                                className="rounded-lg border px-3 py-2 text-sm"
-                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
-                            />
-                        </div>
-                        <input
-                            value={reportReference}
-                            onChange={event => setReportReference(event.target.value)}
-                            placeholder="N° de comprobante"
-                            className="w-full rounded-lg border px-3 py-2 text-sm"
-                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
-                        />
-                        <Button type="submit" variant="primary" block disabled={reporting}>
-                            {reporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar aviso a administración"}
-                        </Button>
-                    </form>
                 </section>
             )}
         </ErrorBoundary>

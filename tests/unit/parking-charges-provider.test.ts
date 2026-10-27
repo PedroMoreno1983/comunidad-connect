@@ -86,17 +86,28 @@ beforeEach(() => {
 });
 
 describe('interruptor de Haulmer para estacionamientos', () => {
-    it('está apagado por defecto', () => {
-        expect(parkingHaulmerUnavailableReason({})).toMatch(/PARKING_HAULMER_ENABLED/);
+    it('queda activo con credenciales Haulmer sin requerir flag extra', () => {
+        expect(parkingHaulmerUnavailableReason({
+            HAULMER_ACCOUNT_ID: 'acc-123',
+            HAULMER_SECRET_KEY: 'secret-abc',
+        })).toBeNull();
     });
 
-    it('con el flag pero sin credenciales sigue apagado', () => {
+    it('sin credenciales indica que faltan las claves de Haulmer', () => {
+        expect(parkingHaulmerUnavailableReason({})).toMatch(/HAULMER_ACCOUNT_ID/);
         expect(parkingHaulmerUnavailableReason({ PARKING_HAULMER_ENABLED: 'true' })).toMatch(/HAULMER_ACCOUNT_ID/);
         expect(parkingHaulmerUnavailableReason({
             PARKING_HAULMER_ENABLED: 'true',
             HAULMER_ACCOUNT_ID: 'TU_ACCOUNT',
             HAULMER_SECRET_KEY: 'placeholder',
         })).not.toBeNull();
+    });
+
+    it('se puede desactivar explícitamente con PARKING_HAULMER_ENABLED=false', () => {
+        expect(parkingHaulmerUnavailableReason({
+            ...HAULMER_ON,
+            PARKING_HAULMER_ENABLED: 'false',
+        })).toMatch(/PARKING_HAULMER_ENABLED/);
     });
 
     it('con flag y credenciales queda disponible', () => {
@@ -124,7 +135,7 @@ describe('processParkingCharge', () => {
         expect(mocks.createPaymentLink).not.toHaveBeenCalled();
     });
 
-    it('si la comunidad eligió Haulmer pero está apagado, cae a gastos comunes', async () => {
+    it('si la comunidad eligió Haulmer pero no hay credenciales, respalda en gastos comunes', async () => {
         const { db, rpcCalls } = fakeDb(haulmerPending);
         const result = await processParkingCharge(db, BOOKING_ID, {
             haulmer: createHaulmerParkingProvider({}),
@@ -132,12 +143,12 @@ describe('processParkingCharge', () => {
         expect(mocks.createPaymentLink).not.toHaveBeenCalled();
         expect(rpcCalls).toHaveLength(1);
         expect(rpcCalls[0].fn).toBe('parking_charge_fallback_to_unit');
-        expect(rpcCalls[0].args).toEqual({ p_charge_id: CHARGE_ID, p_reason: expect.stringMatching(/PARKING_HAULMER_ENABLED/) });
+        expect(rpcCalls[0].args).toEqual({ p_charge_id: CHARGE_ID, p_reason: expect.stringMatching(/HAULMER_ACCOUNT_ID/) });
         // Ningún monto viaja a la base: lo tiene el libro.
         expect(Object.keys(rpcCalls[0].args)).not.toContain('p_amount');
         expect(result.charge?.status).toBe('charged');
         expect(result.provider).toBe('common_expenses');
-        expect(result.fallbackReason).toMatch(/PARKING_HAULMER_ENABLED/);
+        expect(result.fallbackReason).toMatch(/HAULMER_ACCOUNT_ID/);
     });
 
     it('con Haulmer habilitado genera el link con el monto del libro y la referencia PARKING_<id>', async () => {
@@ -209,6 +220,6 @@ describe('regla de cancelación y textos', () => {
         expect(describeParkingCharge({ status: 'charged', method: 'common_expenses', unitLabel: 'A-202', needsReview: false }))
             .toBe('Cargado a la cuenta de gastos comunes · Unidad A-202');
         expect(describeParkingCharge({ status: 'voided', method: 'common_expenses', needsReview: false })).toBe('Anulado sin costo');
-        expect(describeParkingCharge({ status: 'pending', method: 'haulmer', needsReview: false })).toBe('Pendiente de pago en línea');
+        expect(describeParkingCharge({ status: 'pending', method: 'haulmer', needsReview: false })).toBe('Pendiente de pago vía Haulmer');
     });
 });

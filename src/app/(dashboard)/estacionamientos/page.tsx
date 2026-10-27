@@ -346,7 +346,7 @@ function BookingRow({
                   className="text-[12px] font-semibold underline"
                   style={{ color: "var(--cc-copper)" }}
                 >
-                  Pagar en línea
+                  Pagar con Haulmer
                 </a>
               )}
             </div>
@@ -772,7 +772,7 @@ function EstacionamientosContent() {
               <p className="text-[12px] cc-text-secondary">
                 {isAdmin
                   ? "Panel de administración y gobernanza de estacionamientos del condominio."
-                  : "Arrienda cupos desocupados por horas o rentabiliza tu puesto con descuento directo a tus gastos comunes."}
+                  : "Arrienda cupos desocupados por horas con pago directo vía Haulmer (o cargo opcional a gastos comunes) y rentabiliza tu puesto."}
               </p>
             </div>
           </div>
@@ -1178,8 +1178,8 @@ function EstacionamientosContent() {
                       )
                     }
                   >
-                    <option value="common_expenses">Cargo en la cuenta de gastos comunes de la unidad</option>
-                    <option value="haulmer">Pago en línea con Haulmer (si no está habilitado, va a gastos comunes)</option>
+                    <option value="haulmer">Pago en línea con Haulmer (por defecto; cargo a gastos comunes opcional)</option>
+                    <option value="common_expenses">Cargo en la cuenta de gastos comunes de la unidad (opcional)</option>
                   </select>
                 </div>
 
