@@ -16,7 +16,8 @@ import {
 } from '@/lib/finance/billingService';
 import { maybeCreateCoCoCase } from './caseService';
 import { summarizeAccountPaymentStatus } from './paymentStatus';
-import { getUnitStatement } from '@/lib/finance/collectionService';
+import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/collectionService';
+import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact } from './user-memory';
 import { platformGuide } from './platformMap';
 import { PUBLIC_SITE_URL } from '@/lib/config';
@@ -391,6 +392,30 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'record_payment',
+        description: 'Registra manualmente un pago que el administrador ya comprobó fuera de CoCo. No cobra ni verifica el banco. SOLO administradores; requiere referencia única y confirmación explícita. Nunca inventes datos faltantes.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_id: { type: 'string', description: 'Número o ID de la unidad.' },
+                amount: { type: 'string', description: 'Monto recibido en pesos, entero sin puntos.' },
+                paid_at: { type: 'string', description: 'Fecha real del pago, AAAA-MM-DD.' },
+                method: { type: 'string', enum: ['transfer', 'cash', 'check', 'card', 'online', 'other'] },
+                reference: { type: 'string', description: 'Referencia única del comprobante o transacción.' },
+            },
+            required: ['unit_id', 'amount', 'paid_at', 'method', 'reference'],
+        },
+    },
+    {
+        name: 'get_monthly_finance_report',
+        description: 'Obtiene la rendición mensual real de la comunidad: egresos, cobros, recaudación y fondo de reserva. SOLO administradores. No crea un documento descargable.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { month: { type: 'string', description: 'Mes AAAA-MM.' } },
+            required: ['month'],
+        },
+    },
+    {
         name: 'preview_billing',
         description: 'Previsualiza el reparto del gasto común de un mes: cuánto se cobraría a cada unidad y el total, SIN emitir nada. SOLO administradores. Úsala SIEMPRE antes de emitir.',
         input_schema: {
@@ -516,6 +541,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'set_unit_alicuota',
     'distribute_alicuotas_equally',
     'add_community_expense',
+    'record_payment',
     'issue_billing',
 ]);
 
@@ -543,7 +569,7 @@ const ADMIN_TOOLS = new Set([
     ...CONCIERGE_TOOLS,
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
-    'add_community_expense', 'preview_billing', 'issue_billing',
+    'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
 ]);
 
 const SYSTEM_TOOLS = new Set([
@@ -608,6 +634,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Repartir alícuotas', summary: 'Dividir el 100 % en partes iguales entre todas las unidades. Sin fuente queda provisorio.' };
         case 'add_community_expense':
             return { title: 'Cargar egreso', summary: `${str('label') || 'Egreso'} · $${str('amount')} · ${str('month')}.` };
+        case 'record_payment':
+            return { title: 'Registrar pago recibido', summary: `Unidad ${unit('unit_id')} · $${str('amount')} · ${str('paid_at')} · ${str('method')} · referencia ${str('reference')}. Confirma solo si verificaste el pago fuera de CoCo; esto actualiza el saldo de la unidad.` };
         case 'issue_billing':
             return { title: 'Emitir gasto común', summary: `Emitir ${str('month')} (vence ${str('due_date')}): crea el cobro real a las unidades. Revisa el reparto antes de aprobar.` };
         case 'request_urgent_access_approval':
@@ -1486,6 +1514,43 @@ export async function executeTool(
                 } catch (billingError) {
                     if (billingError instanceof BillingError) return { error: billingError.message };
                     throw billingError;
+                }
+            }
+
+            case 'record_payment': {
+                if (!isAdmin(userCtx)) return forbidden('Solo los administradores pueden registrar pagos.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return { error: 'Indica una unidad existente de tu comunidad.' };
+                const amountText = (input.amount || '').trim();
+                const amount = Number(amountText);
+                const reference = (input.reference || '').trim();
+                const paidAt = (input.paid_at || '').trim();
+                const method = (input.method || '').trim();
+                if (!/^\d+$/.test(amountText) || !Number.isSafeInteger(amount) || amount <= 0) return { error: 'Indica un monto entero positivo en pesos, sin separadores.' };
+                const parsedDate = new Date(`${paidAt}T00:00:00Z`);
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(paidAt) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== paidAt) return { error: 'Indica una fecha válida en formato AAAA-MM-DD.' };
+                if (!PAYMENT_METHODS.has(method)) return { error: 'Indica un medio de pago válido.' };
+                if (!reference || reference.length > 120) return { error: 'Indica una referencia de comprobante única (máximo 120 caracteres).' };
+                try {
+                    const payment = await recordPayment(communityId, userCtx.user_id ?? null, { unitId, amount, paidAt, method, reference });
+                    return { success: true, payment_id: payment.id, message: `Pago de $${amount.toLocaleString('es-CL')} registrado manualmente para la unidad ${input.unit_id}, con referencia ${reference}. CoCo no verificó el banco.` };
+                } catch (paymentError) {
+                    if (paymentError instanceof BillingError) return { error: paymentError.message };
+                    throw paymentError;
+                }
+            }
+
+            case 'get_monthly_finance_report': {
+                if (!isAdmin(userCtx)) return forbidden('Solo los administradores pueden ver la rendición mensual.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                try {
+                    return await getMonthlyReport(communityId, (input.month || '').trim());
+                } catch (reportError) {
+                    if (reportError instanceof BillingError) return { error: reportError.message };
+                    throw reportError;
                 }
             }
 
