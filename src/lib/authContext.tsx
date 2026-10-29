@@ -265,13 +265,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInWithPasskey = async () => {
         try {
-            setLoading(true);
-            setUser(null);
-            setSupabaseUser(null);
-            setSession(null);
-            await supabase.auth.signOut({ scope: "local" });
+            // No ejecutar signOut ni cambios de estado antes de signInWithPasskey:
+            // en iOS Safari cualquier espera previa consume el gesto de usuario
+            // y bloquea el diálogo nativo de Face ID / huella.
             const { data, error } = await supabase.auth.signInWithPasskey();
             if (error) return { error, role: null };
+            setLoading(true);
+            if (typeof window !== 'undefined') {
+                try {
+                    window.localStorage.setItem('cc:web-passkey-ready', '1');
+                } catch {
+                    // Ignorar si el almacenamiento local está restringido.
+                }
+            }
             const role = data.user ? await fetchUserProfile(data.user) : null;
             return { error: null, role };
         } catch (error) {

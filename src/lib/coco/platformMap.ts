@@ -83,9 +83,9 @@ export const PLATFORM_SCREENS: readonly PlatformScreen[] = [
 
     // ── Mi hogar (residente) ────────────────────────────────────────────────
     { route: '/expenses', title: 'Mis Gastos', module: 'Finanzas', roles: ['resident'],
-        does: 'Cobros por pagar, cartola, respaldos de cada cobro, cuotas de convenio e informar una transferencia.',
-        steps: ['Abre Mis Gastos', 'Revisa "Cobros por pagar" y la cartola', 'Para avisar un pago: "Informar una transferencia", con monto y N° de comprobante'],
-        keywords: ['gasto comun', 'gastos comunes', 'pagar', 'pago', 'cuanto debo', 'cartola', 'transferencia', 'comprobante', 'convenio', 'cuotas', 'boleta'] },
+        does: 'Cobros por pagar, cartola, respaldos de cada cobro, cuotas de convenio y pago directo en el entorno Haulmer.',
+        steps: ['Abre Mis Gastos', 'Revisa "Cobros por pagar" y la cartola', 'Paga directamente en el entorno Haulmer'],
+        keywords: ['gasto comun', 'gastos comunes', 'pagar', 'pago', 'cuanto debo', 'cartola', 'haulmer', 'comprobante', 'convenio', 'cuotas', 'boleta'] },
     { route: '/expenses/solidaridad', title: 'Apoyo mutuo', module: 'Convivencia', roles: ['resident'],
         does: 'Fondo solidario: conocerlo, postular de forma confidencial y sumarse a tareas vecinales.',
         keywords: ['fondo solidario', 'apoyo mutuo', 'solidaridad', 'ayuda economica', 'cesantia'] },
@@ -116,8 +116,8 @@ export const PLATFORM_SCREENS: readonly PlatformScreen[] = [
         steps: ['Abre Espacios Comunes', 'Elige el espacio y el día', 'Toma un turno libre y confirma', 'Admin: "Crear tipo de espacio común" con aforo, tarifa y duración'],
         keywords: ['reservar', 'reserva', 'quincho', 'sala', 'piscina', 'espacio comun', 'gimnasio', 'turno'] },
     { route: '/estacionamientos', title: 'Estacionamientos', module: 'Estacionamientos', roles: ['resident', 'admin', 'concierge'],
-        does: 'Arrendar un estacionamiento por horas o días, o publicar el propio. Admin aprueba espacios y fija reglas (?tab=admin).',
-        steps: ['Registra tu vehículo (patente)', 'Busca un espacio libre en el horario', 'Reserva: se carga a la cuenta de gastos comunes de tu unidad', 'Para ofrecer el tuyo, publícalo y espera la aprobación'],
+        does: 'Arrendar un estacionamiento por horas o días con pago vía Haulmer (o cargo opcional a gastos comunes), o publicar el propio. Admin aprueba espacios y fija reglas (?tab=admin).',
+        steps: ['Registra tu vehículo (patente)', 'Busca un espacio libre en el horario', 'Reserva: se paga por Haulmer (o se carga a gastos comunes si la comunidad así lo definió)', 'Para ofrecer el tuyo, publícalo y espera la aprobación'],
         keywords: ['estacionamiento', 'parking', 'patente', 'vehiculo', 'auto', 'arrendar estacionamiento'] },
     { route: '/marketplace', title: 'Marketplace', module: 'Marketplace', roles: ['resident', 'admin'],
         does: 'Comprar, vender o permutar entre vecinos; el admin modera publicaciones.',

@@ -77,7 +77,7 @@ export const PARKING_CHARGE_STATUS_TONES: Record<ParkingChargeStatus, 'neutral' 
 
 export const PARKING_CHARGE_METHOD_LABELS: Record<ParkingChargeMethod, string> = {
     common_expenses: 'Gastos comunes',
-    haulmer: 'Pago en línea',
+    haulmer: 'Pago vía Haulmer',
     none: 'Sin costo',
 };
 
@@ -106,11 +106,11 @@ export function describeParkingCharge(charge: Pick<ParkingCharge, 'status' | 'me
             return `Cargado a la cuenta de gastos comunes${unit}`;
         case 'paid':
             return charge.method === 'haulmer'
-                ? 'Pagado en línea'
+                ? 'Pagado vía Haulmer'
                 : charge.method === 'none' ? 'Arriendo sin costo' : `Pagado con los gastos comunes${unit}`;
         case 'pending':
             return charge.method === 'haulmer'
-                ? 'Pendiente de pago en línea'
+                ? 'Pendiente de pago vía Haulmer'
                 : charge.needsReview ? 'Pendiente: la administración lo revisará' : 'Pendiente de cargo';
         case 'failed':
             return 'No se pudo cobrar: la administración lo revisará';

@@ -614,7 +614,7 @@ export const ParkingService = {
             .maybeSingle();
         if (!billing.error && billing.data) {
             const row = billing.data as { parking_billing_method?: string; parking_free_cancellation_hours?: number };
-            settings.billingMethod = row.parking_billing_method === 'haulmer' ? 'haulmer' : 'common_expenses';
+            settings.billingMethod = row.parking_billing_method === 'common_expenses' ? 'common_expenses' : 'haulmer';
             settings.freeCancellationHours = Number(row.parking_free_cancellation_hours ?? 2);
         }
         return settings;

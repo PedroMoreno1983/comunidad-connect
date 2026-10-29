@@ -18,14 +18,13 @@ export type ServiceRpc = (
 /**
  * Interruptor de Haulmer para arriendos de estacionamiento.
  *
- * Apagado por defecto. Se enciende solo con PARKING_HAULMER_ENABLED=true y las
- * credenciales de Haulmer cargadas. Además, la comunidad tiene que haber elegido
- * parking_billing_method = 'haulmer'; si no, el cobro va directo a gastos
- * comunes y este proveedor nunca se consulta.
+ * Activo cuando están cargadas las credenciales de Haulmer (HAULMER_ACCOUNT_ID y
+ * HAULMER_SECRET_KEY), salvo que se apague explícitamente con
+ * PARKING_HAULMER_ENABLED=false.
  */
 export function parkingHaulmerUnavailableReason(environment: Environment = process.env): string | null {
-    if (environment.PARKING_HAULMER_ENABLED?.trim().toLowerCase() !== 'true') {
-        return 'PARKING_HAULMER_ENABLED no está activado en el servidor';
+    if (environment.PARKING_HAULMER_ENABLED?.trim().toLowerCase() === 'false') {
+        return 'PARKING_HAULMER_ENABLED está desactivado en el servidor';
     }
     if (!isHaulmerConfigured(environment)) {
         return 'Faltan HAULMER_ACCOUNT_ID o HAULMER_SECRET_KEY';
