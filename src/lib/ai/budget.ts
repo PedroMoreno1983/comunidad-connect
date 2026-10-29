@@ -91,6 +91,9 @@ export function estimateAiCostCents(input: {
     // Opus 5 el costo real es un tercio de eso, así que el panel de consumo
     // venía sobreestimando y podía bloquear por presupuesto antes de tiempo.
     if (provider === 'openai' && images > 0) return images * 4;
+    if (provider === 'openai' && model.includes('gpt-5.4-mini')) {
+        return (prompt / 1_000_000) * 75 + (completion / 1_000_000) * 450;
+    }
     if (provider === 'voyage') return ((prompt + completion) / 1_000_000) * 0.2;
     if (provider === 'gemini') return (prompt / 1_000_000) * 8 + (completion / 1_000_000) * 30;
     // DeepSeek cobra aún menos los tokens servidos desde su caché; sin ese dato

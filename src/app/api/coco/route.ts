@@ -569,17 +569,17 @@ export async function POST(req: NextRequest) {
         const unitId = profile.unit_id || '';
         const communityId = profile.community_id || '';
 
-        if (resolutions && !process.env.ANTHROPIC_API_KEY) {
+        if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
             return NextResponse.json(
                 { reply: 'No pude confirmar la acción porque el motor principal no está disponible en este momento. Intenta de nuevo en unos segundos.' },
                 { status: 503 }
             );
         }
 
-        if (!process.env.ANTHROPIC_API_KEY) {
+        if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
             if (imageAttachment) {
                 return NextResponse.json(
-                    { reply: 'El análisis de imágenes de CoCo requiere ANTHROPIC_API_KEY activo. Puedes describirme la imagen y te ayudo por texto.' },
+                    { reply: 'El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.' },
                     { status: 200 }
                 );
             }
@@ -692,7 +692,7 @@ export async function POST(req: NextRequest) {
 
         if (message.includes('Missing GEMINI_API_KEY')) {
             return NextResponse.json(
-                { reply: 'CoCo necesita ANTHROPIC_API_KEY o GEMINI_API_KEY configurada en Vercel para responder.' },
+                { reply: 'CoCo necesita OPENAI_API_KEY, ANTHROPIC_API_KEY o GEMINI_API_KEY configurada en Vercel para responder.' },
                 { status: 200 }
             );
         }

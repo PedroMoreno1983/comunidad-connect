@@ -74,6 +74,12 @@ let spotCounter = 0;
 
 async function seedParking(options: { hourlyRate?: number; commission?: number; haulmer?: boolean } = {}): Promise<ParkingCommunity> {
     const c = await seedMoneyCommunity(db, { shares: [500, 500] });
+    // La producción usa Haulmer por defecto. Estos escenarios declaran el
+    // método que ejercitan para no depender del valor por defecto de la base.
+    await asUser(db, c.adminId, tx => tx.query(
+        'SELECT public.admin_set_parking_billing_settings($1, NULL)',
+        [options.haulmer ? 'haulmer' : 'common_expenses'],
+    ));
     const [owner, tenant] = c.units;
     const conciergeId = await createUser(db, c.communityId, 'concierge', 'Conserjería');
     const spotId = crypto.randomUUID();
@@ -87,9 +93,6 @@ async function seedParking(options: { hourlyRate?: number; commission?: number; 
     if (options.commission !== undefined) {
         as(c.adminId);
         await ParkingPayoutService.adminSetCommissionPercent(options.commission);
-    }
-    if (options.haulmer) {
-        await asUser(db, c.adminId, tx => tx.query(`SELECT public.admin_set_parking_billing_settings('haulmer', NULL)`));
     }
     return { ...c, owner, tenant, spotId, conciergeId };
 }

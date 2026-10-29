@@ -56,6 +56,7 @@ export const FALLBACK_READ_ONLY_TOOLS: readonly string[] = [
     'list_active_polls',
     'get_pending_packages',
     'get_defaulters_list',
+    'get_monthly_finance_report',
     'preview_billing',
     'list_supermarket_group_orders',
     'compare_supermarket_group_order',
