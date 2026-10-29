@@ -116,7 +116,7 @@ export const PLATFORM_SCREENS: readonly PlatformScreen[] = [
         steps: ['Abre Espacios Comunes', 'Elige el espacio y el día', 'Toma un turno libre y confirma', 'Admin: "Crear tipo de espacio común" con aforo, tarifa y duración'],
         keywords: ['reservar', 'reserva', 'quincho', 'sala', 'piscina', 'espacio comun', 'gimnasio', 'turno'] },
     { route: '/estacionamientos', title: 'Estacionamientos', module: 'Estacionamientos', roles: ['resident', 'admin', 'concierge'],
-        does: 'Arrendar un estacionamiento por horas o días con pago vía Haulmer (o cargo opcional a gastos comunes), o publicar el propio. Admin aprueba espacios y fija reglas (?tab=admin).',
+        does: 'Arrendar estacionamientos por Haulmer o con cargo a gastos comunes, y publicar el propio. Administración aprueba espacios y fija reglas.',
         steps: ['Registra tu vehículo (patente)', 'Busca un espacio libre en el horario', 'Reserva: se paga por Haulmer (o se carga a gastos comunes si la comunidad así lo definió)', 'Para ofrecer el tuyo, publícalo y espera la aprobación'],
         keywords: ['estacionamiento', 'parking', 'patente', 'vehiculo', 'auto', 'arrendar estacionamiento'] },
     { route: '/marketplace', title: 'Marketplace', module: 'Marketplace', roles: ['resident', 'admin'],
