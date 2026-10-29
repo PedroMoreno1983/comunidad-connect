@@ -38,6 +38,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     list_active_polls: 'read',
     get_pending_packages: 'read',
     get_defaulters_list: 'read',
+    get_monthly_finance_report: 'read',
     // preview_billing calcula y muestra; issue_billing es la que emite.
     preview_billing: 'read',
     list_supermarket_group_orders: 'read',
@@ -76,6 +77,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     set_unit_alicuota: 'write_high',            // define cuanto paga una unidad
     distribute_alicuotas_equally: 'write_high', // batch sobre todas las unidades
     add_community_expense: 'write_high',        // dinero
+    record_payment: 'write_high',                // modifica saldos y notifica al residente
     issue_billing: 'write_high',                // emite cobros a todo el edificio
 };
 
