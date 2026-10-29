@@ -26,7 +26,9 @@ describe('lista blanca del respaldo', () => {
     it('deja fuera emitir cobros pero permite previsualizarlos', () => {
         expect(FALLBACK_READ_ONLY_TOOLS).not.toContain('issue_billing');
         expect(FALLBACK_READ_ONLY_TOOLS).not.toContain('add_community_expense');
+        expect(FALLBACK_READ_ONLY_TOOLS).not.toContain('record_payment');
         expect(FALLBACK_READ_ONLY_TOOLS).toContain('preview_billing');
+        expect(FALLBACK_READ_ONLY_TOOLS).toContain('get_monthly_finance_report');
     });
 
     it('solo nombra herramientas que existen de verdad', () => {
