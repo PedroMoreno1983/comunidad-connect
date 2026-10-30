@@ -54,6 +54,15 @@ export async function POST(request: NextRequest) {
         const contactPhone = cleanText(body.contactPhone, 40);
         const email = cleanText(body.email, 160);
         const external = body.external === true;
+        const serviceAddress = cleanText(body.serviceAddress, 160);
+        const serviceLatitude = Number(body.serviceLatitude);
+        const serviceLongitude = Number(body.serviceLongitude);
+        const hasLocation = serviceAddress.length >= 5
+            && body.serviceLatitude != null && body.serviceLongitude != null
+            && String(body.serviceLatitude).trim() !== '' && String(body.serviceLongitude).trim() !== ''
+            && Number.isFinite(serviceLatitude) && Number.isFinite(serviceLongitude)
+            && serviceLatitude >= -90 && serviceLatitude <= 90
+            && serviceLongitude >= -180 && serviceLongitude <= 180;
 
         if (!name || !category || !contactPhone) {
             return NextResponse.json(
@@ -117,6 +126,9 @@ export async function POST(request: NextRequest) {
                 verified: false,
                 user_id: external ? null : profile.id,
                 community_id: profile.community_id,
+                service_address: hasLocation ? serviceAddress : null,
+                service_latitude: hasLocation ? serviceLatitude : null,
+                service_longitude: hasLocation ? serviceLongitude : null,
             })
             .select('id, name, category, rating, review_count, contact_phone, email, photo, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, completed_jobs, verified')
             .single();

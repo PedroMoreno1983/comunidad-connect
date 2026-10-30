@@ -13,6 +13,7 @@ import remarkGfm from "remark-gfm";
 import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { findScreen } from "@/lib/coco/platformMap";
 import { CoCoMarkdownLink } from "./CoCoMarkdownLink";
+import type { BankTransactionInput, DepositSuggestion, ReconciliationData } from "@/lib/types";
 
 interface PendingAction {
     toolUseId: string;
@@ -103,6 +104,9 @@ export default function CoCo() {
     );
     const [input, setInput] = useState("");
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedStatement, setSelectedStatement] = useState<File | null>(null);
+    const [statementPreview, setStatementPreview] = useState<BankTransactionInput[] | null>(null);
+    const [depositSuggestions, setDepositSuggestions] = useState<DepositSuggestion[]>([]);
     const [loading, setLoading] = useState(false);
     
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -133,6 +137,19 @@ export default function CoCo() {
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        if (user.role === "admin" && /\.(pdf|csv|xlsx)$/i.test(file.name)) {
+            if (file.size > 5 * 1024 * 1024) {
+                toast({ title: "Cartola demasiado grande", description: "El máximo es 5 MB.", variant: "destructive" });
+                return;
+            }
+            setSelectedStatement(file);
+            setSelectedImage(null);
+            return;
+        }
+        if (!file.type.startsWith("image/")) {
+            toast({ title: "Formato no admitido", description: "Adjunta una imagen o una cartola PDF/CSV/XLSX.", variant: "destructive" });
+            return;
+        }
         
         // Limit to 5MB roughly
         if (file.size > 5 * 1024 * 1024) {
@@ -147,6 +164,7 @@ export default function CoCo() {
 
     const removeImage = () => {
         setSelectedImage(null);
+        setSelectedStatement(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
@@ -230,7 +248,30 @@ export default function CoCo() {
     };
 
     const send = async (text: string, imageStr: string | null = selectedImage) => {
-        if ((!text.trim() && !imageStr) || loading || hasUnresolvedPending) return;
+        if ((!text.trim() && !imageStr && !selectedStatement) || loading || hasUnresolvedPending || statementPreview) return;
+        if (selectedStatement) {
+            const statement = selectedStatement;
+            setMsgs(p => [...p, { id: Date.now().toString(), role: "user", text: text.trim() || `Revisa esta cartola: ${statement.name}` }]);
+            setInput("");
+            removeImage();
+            setLoading(true);
+            try {
+                const body = new FormData();
+                body.append("file", statement);
+                const response = await fetch("/api/admin/bank-reconciliation/parse", { method: "POST", body });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || "No pude leer la cartola.");
+                const rows = payload.rows as BankTransactionInput[];
+                if (!Array.isArray(rows) || rows.length === 0) throw new Error("La cartola no contiene movimientos para revisar.");
+                setStatementPreview(rows);
+                const deposits = rows.filter(row => row.amount > 0);
+                const total = deposits.reduce((sum, row) => sum + row.amount, 0);
+                setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: `Leí **${rows.length} movimientos** de ${statement.name}: ${deposits.length} abonos por **$${total.toLocaleString("es-CL")}**. Revisa la muestra y confirma si quieres importar los movimientos a conciliación. **Importar aún no registra pagos ni cambia saldos.**` }]);
+            } catch (error) {
+                setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: error instanceof Error ? error.message : "No pude leer la cartola." }]);
+            } finally { setLoading(false); }
+            return;
+        }
 
         setMsgs(p => [...p, {
             id: Date.now().toString(),
@@ -251,6 +292,53 @@ export default function CoCo() {
             console.error("CoCo connection failed details:", error);
             const errorMsg = error.message || "Tuve un problema de conexión 😅";
             setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: `${errorMsg} Inténtalo de nuevo.` }]);
+        } finally { setLoading(false); }
+    };
+
+    const resolveStatement = async (approved: boolean) => {
+        const rows = statementPreview;
+        if (!rows || loading) return;
+        setStatementPreview(null);
+        if (!approved) {
+            setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", text: "Descarté la cartola. No se importó ningún movimiento." }]);
+            return;
+        }
+        setLoading(true);
+        try {
+            const response = await fetch("/api/admin/bank-reconciliation", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "import", rows }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "No se pudieron importar los movimientos.");
+            const snapshotResponse = await fetch("/api/admin/bank-reconciliation");
+            const snapshot = snapshotResponse.ok ? await snapshotResponse.json() as ReconciliationData : null;
+            const importedKeys = new Set(rows.map(row => row.importKey));
+            const candidateIds = new Set((snapshot?.transactions ?? []).filter(txn => importedKeys.has(txn.importKey ?? '')).map(txn => txn.id));
+            const candidates = (snapshot?.depositSuggestions ?? []).filter(item => candidateIds.has(item.transactionId));
+            setDepositSuggestions(candidates);
+            const proposed = candidates.filter(item => item.kind === "record" && item.expenseId);
+            setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", text: `Importé **${result.imported} movimientos** a conciliación y omití ${result.skippedDuplicates} duplicados. **No registré pagos aún.** ${proposed.length ? `Encontré ${proposed.length} abono(s) con unidad y período propuestos. Confirma cada uno abajo.` : "No encontré abonos con unidad y período inequívocos."} [Revisar conciliación](/admin/finanzas/conciliacion).` }]);
+        } catch (error) {
+            setStatementPreview(rows);
+            setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", text: error instanceof Error ? error.message : "No se pudieron importar los movimientos." }]);
+        } finally { setLoading(false); }
+    };
+
+    const confirmDeposit = async (suggestion: DepositSuggestion) => {
+        if (loading || suggestion.kind !== "record" || !suggestion.expenseId) return;
+        setLoading(true);
+        try {
+            const response = await fetch("/api/admin/bank-reconciliation", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "record", transactionId: suggestion.transactionId, expenseId: suggestion.expenseId }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "No se pudo registrar el pago.");
+            setDepositSuggestions(items => items.filter(item => item.transactionId !== suggestion.transactionId));
+            setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", text: `Registré y concilié el pago de **${result.unitLabel}** para **${result.month}**. Comprobante: ${result.paymentId}.` }]);
+        } catch (error) {
+            setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", text: error instanceof Error ? error.message : "No se pudo registrar el pago." }]);
         } finally { setLoading(false); }
     };
 
@@ -424,6 +512,33 @@ export default function CoCo() {
 
                         {/* Input Area */}
                         <div className="bg-surface border-t border-subtle flex-shrink-0">
+                            {depositSuggestions.some(item => item.kind === "record" && item.expenseId) && (
+                                <div className="max-h-52 overflow-y-auto border-b border-subtle px-3 py-2 text-xs cc-text-secondary">
+                                    <p className="font-semibold">Abonos propuestos para confirmar</p>
+                                    {depositSuggestions.filter(item => item.kind === "record" && item.expenseId).map(item => (
+                                        <div key={item.transactionId} className="flex items-center justify-between gap-2 py-1">
+                                            <span>{item.unitLabel} · {item.month}</span>
+                                            <button type="button" onClick={() => void confirmDeposit(item)} disabled={loading} className="rounded bg-brand-500 px-2 py-1 font-semibold text-white disabled:opacity-40">Registrar pago</button>
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={() => setDepositSuggestions([])} className="mt-2 rounded border border-subtle px-2 py-1">Cerrar sugerencias</button>
+                                </div>
+                            )}
+                            {statementPreview && (
+                                <div className="max-h-52 overflow-y-auto border-b border-subtle px-3 py-2 text-xs cc-text-secondary">
+                                    <p className="font-semibold">Muestra de movimientos para confirmar</p>
+                                    {statementPreview.slice(0, 8).map((row, index) => (
+                                        <p key={`${row.importKey || row.txnDate}-${index}`} className="truncate py-1">
+                                            {row.txnDate} · {row.amount.toLocaleString("es-CL")} · {row.description || row.reference || "Sin glosa"}
+                                        </p>
+                                    ))}
+                                    {statementPreview.length > 8 && <p>…y {statementPreview.length - 8} más.</p>}
+                                    <div className="mt-2 flex gap-2">
+                                        <button type="button" onClick={() => void resolveStatement(true)} disabled={loading} className="rounded bg-brand-500 px-3 py-2 font-semibold text-white disabled:opacity-40">Importar movimientos</button>
+                                        <button type="button" onClick={() => void resolveStatement(false)} disabled={loading} className="rounded border border-subtle px-3 py-2 font-semibold">Descartar</button>
+                                    </div>
+                                </div>
+                            )}
                             {/* Image Preview Area */}
                             {selectedImage && (
                                 <div className="px-3 pt-3 pb-1 flex relative">
@@ -439,12 +554,13 @@ export default function CoCo() {
                                     </div>
                                 </div>
                             )}
+                            {selectedStatement && <div className="flex items-center justify-between px-3 pt-3 text-xs cc-text-secondary"><span className="truncate">Cartola: {selectedStatement.name}</span><button type="button" onClick={removeImage} aria-label="Quitar cartola"><X className="h-4 w-4" /></button></div>}
 
                             <form onSubmit={e => { e.preventDefault(); send(input, selectedImage); }} className="flex gap-2 p-3">
                                 {/* Hidden file input */}
                                 <input 
                                     type="file" 
-                                    accept="image/*" 
+                                    accept={user.role === "admin" ? "image/*,.pdf,.csv,.xlsx" : "image/*"}
                                     className="hidden" 
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}
@@ -452,7 +568,7 @@ export default function CoCo() {
                                 
                                 <button
                                     type="button"
-                                    aria-label="Adjuntar imagen"
+                                    aria-label={user.role === "admin" ? "Adjuntar imagen o cartola" : "Adjuntar imagen"}
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={loading || hasUnresolvedPending}
                                     className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-40"
@@ -462,11 +578,11 @@ export default function CoCo() {
 
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}
-                                    placeholder={hasUnresolvedPending ? "Aprueba o rechaza la acción pendiente" : selectedImage ? "Añade un comentario..." : "Pregúntale a CoCo..."}
+                                    placeholder={hasUnresolvedPending || statementPreview ? "Resuelve la acción pendiente" : selectedImage || selectedStatement ? "Añade un comentario..." : "Pregúntale a CoCo..."}
                                     className="flex-1 px-3.5 py-2.5 rounded-lg bg-elevated text-sm font-medium outline-none focus:ring-2 focus:ring-brand-400/30"
                                 />
                                 
-                                <button type="submit" disabled={(!input.trim() && !selectedImage) || loading || hasUnresolvedPending}
+                                <button type="submit" disabled={(!input.trim() && !selectedImage && !selectedStatement) || loading || hasUnresolvedPending || Boolean(statementPreview)}
                                     aria-label="Enviar mensaje a CoCo"
                                     className="p-2.5 bg-brand-500 rounded-lg text-white disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-md flex-shrink-0">
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
