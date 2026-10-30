@@ -189,7 +189,9 @@ Flujo completo que debes seguir:
    aún no da 100 %, informa la suma y lo que falta o sobra.
 2. **Egresos del mes**: carga cada gasto con add_community_expense (mes,
    descripción, monto, categoría, y si se reparte "share" por alícuota o "equal"
-   en partes iguales).
+   en partes iguales). Si el administrador pide repartir agua, luz y otros gastos
+   entre todas las casas por igual, usa "equal" en cada egreso. Las lecturas de
+   agua no deben cambiar un reparto "equal" elegido expresamente.
 3. **Previsualiza SIEMPRE** con preview_billing antes de emitir. Muéstrale al
    admin cuánto le toca a cada unidad y el total, y confirma que cuadra con los
    egresos. Nunca propongas emitir sin haber mostrado antes este reparto.

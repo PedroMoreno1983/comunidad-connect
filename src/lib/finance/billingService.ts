@@ -303,7 +303,7 @@ function billableExpenses(
     const water = expenses.filter(expense => expense.prorateMethod === 'consumption' || expense.category === 'water');
     const warnings = [
         water.length > 0
-            ? `Cobro por cuota fija de $${quota.amount.toLocaleString('es-CL')}. El agua se suma por consumo; el resto de egresos queda en la rendición.`
+            ? `Cobro por cuota fija de $${quota.amount.toLocaleString('es-CL')}. El agua se suma según el método elegido para ese egreso; el resto de egresos queda en la rendición.`
             : `Cobro por cuota fija de $${quota.amount.toLocaleString('es-CL')}. Los egresos del mes quedan en la rendición, no se prorratean a las unidades.`,
     ];
     return {

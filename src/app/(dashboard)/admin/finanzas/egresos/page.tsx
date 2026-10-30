@@ -425,7 +425,7 @@ export default function EgresosPage() {
                     <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <h2 className="font-semibold cc-text-primary">Cómo se cobra</h2>
                         <p className="mt-1 text-sm cc-text-secondary">
-                            Prorrateo suma los egresos del mes. Cuota fija cobra un monto acordado y deja los egresos solo en la rendición; el agua, si hay lecturas, se suma por m³.
+                            Prorrateo suma los egresos del mes. Cuota fija cobra un monto acordado y deja los egresos solo en la rendición; el agua se suma con el reparto elegido para ese egreso.
                         </p>
                         <div className="mt-4 flex flex-wrap gap-4">
                             <label className="flex items-center gap-2 text-sm">
