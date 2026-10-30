@@ -2150,6 +2150,7 @@ export interface BankTransaction {
     amount: number;
     description: string;
     reference: string | null;
+    importKey?: string | null;
     status: string;
     matchedPaymentId: string | null;
 }

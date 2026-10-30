@@ -32,6 +32,7 @@ import {
     parseGroupShoppingList,
 } from '@/lib/supermarketGroupOrders';
 import type { UserRole } from '@/lib/types';
+import { rankNearbyProviders } from './providerSearch';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -73,11 +74,12 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'list_services',
-        description: 'Consulta el directorio de servicios de mantenimiento (gasfíter, eléctrico, limpieza, etc.).',
+        description: 'Busca proveedores del directorio de la comunidad por oficio o especialidad. Si la comunidad y el proveedor tienen ubicación, devuelve distancia aproximada; nunca presupongas cercanía si falta ubicación.',
         input_schema: {
             type: 'object' as const,
             properties: {
                 category: { type: 'string', description: 'Categoría (ej: plumbing, electrical, locksmith, cleaning, general)' },
+                query: { type: 'string', description: 'Oficio o especialidad en palabras de la persona (ej: reparación de ascensores).' },
             },
             required: [],
         },
@@ -806,19 +808,26 @@ export async function executeTool(
             case 'list_services': {
                 const communityId = scopedCommunity(userCtx);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const category = (input.category || '').trim();
+                const search = (input.query || (!['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category) ? category : '')).trim();
                 const query = supabaseAdmin
                     .from('service_providers')
-                    .select('id, name, category, rating, contact_phone')
+                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude')
                     .eq('community_id', communityId)
                     .order('rating', { ascending: false });
                 
-                if (input.category) {
-                    query.eq('category', input.category);
+                if (['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category)) {
+                    query.eq('category', category);
                 }
                 
-                const { data, error } = await query.limit(10);
+                const [providers, community] = await Promise.all([
+                    query.limit(100),
+                    supabaseAdmin.from('communities').select('address_latitude,address_longitude').eq('id', communityId).maybeSingle(),
+                ]);
+                const { data, error } = providers;
                 if (error) return { error: 'No se pudo obtener el directorio de servicios' };
-                return data ?? [];
+                if (community.error) return { error: 'No se pudo consultar la ubicación de la comunidad.' };
+                return rankNearbyProviders(data ?? [], search, community.data, 10);
             }
 
             case 'search_marketplace': {

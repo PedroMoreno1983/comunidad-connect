@@ -2,6 +2,8 @@ import ExcelJS from 'exceljs';
 import { createHash } from 'node:crypto';
 import type { BankTransactionInput } from '@/lib/types';
 import { BillingError } from './billingService';
+import 'pdf-parse/worker';
+import { PDFParse } from 'pdf-parse';
 
 const HEADER_ALIASES = {
     date: ['fecha', 'fecha movimiento', 'fecha operacion', 'date'],
@@ -111,6 +113,22 @@ export async function readSpreadsheetTable(file: File, documentName: string): Pr
     if (file.size > 5 * 1024 * 1024) throw new BillingError('large_file', `${documentName} supera 5 MB.`);
     const extension = file.name.toLowerCase().split('.').pop();
     const bytes = Buffer.from(await file.arrayBuffer());
+    if (extension === 'pdf') {
+        if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new BillingError('bad_pdf', 'El archivo no es un PDF válido.');
+        const parser = new PDFParse({ data: bytes });
+        try {
+            const extracted = await parser.getTable();
+            const tables = extracted.mergedTables.length > 0
+                ? extracted.mergedTables
+                : extracted.pages.flatMap(page => page.tables);
+            return { table: tableFromPdf(tables), bytes };
+        } catch (error) {
+            if (error instanceof BillingError) throw error;
+            throw new BillingError('bad_pdf', 'No pude leer la tabla del PDF. Exporta la cartola a CSV o XLSX.');
+        } finally {
+            await parser.destroy();
+        }
+    }
     if (extension === 'csv') {
         return { table: csvRows(bytes.toString('utf8').replace(/^\uFEFF/, '')), bytes };
     }
@@ -123,7 +141,27 @@ export async function readSpreadsheetTable(file: File, documentName: string): Pr
         sheet.eachRow(row => table.push((row.values as unknown[]).slice(1).map(displayedCell)));
         return { table, bytes };
     }
-    throw new BillingError('bad_file', `Sube ${documentName.toLowerCase()} en CSV o XLSX.`);
+    throw new BillingError('bad_file', `Sube ${documentName.toLowerCase()} en PDF, CSV o XLSX.`);
+}
+
+/** Solo acepta tablas PDF con encabezados inequívocos; nunca interpreta saldos como pagos. */
+export function tableFromPdf(tables: string[][][]): string[][] {
+    const candidates = tables.filter(table => table.some(row => row.some(cell => HEADER_ALIASES.date.includes(normalize(cell)))));
+    if (!candidates.length) throw new BillingError('pdf_no_table', 'No encontré una tabla legible con Fecha y Monto en el PDF. Exporta CSV o XLSX.');
+    const first = candidates[0];
+    const firstHeader = first.findIndex(row => row.some(cell => HEADER_ALIASES.date.includes(normalize(cell))));
+    const header = first[firstHeader].map(normalize);
+    const hasAmount = header.some(cell => [...HEADER_ALIASES.amount, ...HEADER_ALIASES.inflow, ...HEADER_ALIASES.outflow].includes(cell));
+    if (!hasAmount) throw new BillingError('pdf_no_amount', 'La tabla PDF no identifica Monto o Abonos/Cargos. Exporta CSV o XLSX.');
+    const output = first.slice(firstHeader);
+    for (const table of candidates.slice(1)) {
+        const headerIndex = table.findIndex(row => row.some(cell => HEADER_ALIASES.date.includes(normalize(cell))));
+        if (table[headerIndex].map(normalize).join('|') !== header.join('|')) {
+            throw new BillingError('pdf_mixed_tables', 'El PDF contiene tablas con columnas distintas. Exporta CSV o XLSX.');
+        }
+        output.push(...table.slice(headerIndex + 1));
+    }
+    return output;
 }
 
 export async function parseBankStatement(file: File): Promise<BankTransactionInput[]> {

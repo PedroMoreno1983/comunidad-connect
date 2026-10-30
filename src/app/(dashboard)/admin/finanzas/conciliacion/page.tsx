@@ -193,8 +193,8 @@ export default function ConciliacionPage() {
 
                         <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                             <h2 className="mb-2 font-semibold cc-text-primary">Importar cartola</h2>
-                            <p className="mb-3 text-sm cc-text-secondary">Sube un CSV o XLSX con Fecha, Monto y, si están disponibles, Glosa y Referencia. También admite columnas Abonos y Cargos. Revisa los movimientos antes de guardarlos.</p>
-                            <input type="file" accept=".csv,.xlsx" disabled={busy} onChange={event => {
+                            <p className="mb-3 text-sm cc-text-secondary">Sube un PDF con tabla legible, CSV o XLSX con Fecha, Monto y, si están disponibles, Glosa y Referencia. También admite columnas Abonos y Cargos. Revisa los movimientos antes de guardarlos.</p>
+                            <input type="file" accept=".pdf,.csv,.xlsx" disabled={busy} onChange={event => {
                                 const file = event.target.files?.[0];
                                 if (file) void previewStatement(file);
                                 event.target.value = "";

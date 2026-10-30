@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useAuth } from "@/lib/authContext";
+import type { GeocodeSuggestion, GeocodeSuggestionsResponse } from "@/lib/types";
 
 type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
 
@@ -22,12 +23,17 @@ export default function ProviderRegisterPage() {
     const photoInputRef = useRef<HTMLInputElement>(null);
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [locationSuggestions, setLocationSuggestions] = useState<GeocodeSuggestion[]>([]);
+    const [locationBusy, setLocationBusy] = useState(false);
     const [formData, setFormData] = useState({
         // Basic Info
         name: '',
         email: '',
         phone: '',
         category: 'plumbing' as ProviderCategory,
+        serviceAddress: '',
+        serviceLatitude: null as number | null,
+        serviceLongitude: null as number | null,
 
         // Professional Info
         yearsExperience: '',
@@ -125,6 +131,9 @@ export default function ProviderRegisterPage() {
             responseTime: formData.responseTime,
             photo: formData.photo,
             external: isExternalRegistration,
+            serviceAddress: formData.serviceAddress,
+            serviceLatitude: formData.serviceLatitude,
+            serviceLongitude: formData.serviceLongitude,
         };
 
         try {
@@ -274,6 +283,33 @@ export default function ProviderRegisterPage() {
                                     placeholder="+56 9 1234 5678"
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium cc-text-secondary">Comuna o zona desde donde atiende (opcional)</label>
+                            <div className="flex gap-2">
+                                <Input value={formData.serviceAddress} onChange={e => {
+                                    setFormData({ ...formData, serviceAddress: e.target.value, serviceLatitude: null, serviceLongitude: null });
+                                    setLocationSuggestions([]);
+                                }} placeholder="Ej.: Las Condes, Santiago" />
+                                <Button type="button" disabled={locationBusy || formData.serviceAddress.trim().length < 5} onClick={async () => {
+                                    setLocationBusy(true);
+                                    try {
+                                        const response = await fetch(`/api/geocode/address?q=${encodeURIComponent(formData.serviceAddress)}`);
+                                        const result = await response.json() as GeocodeSuggestionsResponse;
+                                        setLocationSuggestions(response.ok ? result.suggestions : []);
+                                        if (!response.ok || !result.suggestions.length) toast({ title: "No encontré esa zona", variant: "destructive" });
+                                    } catch { toast({ title: "No pude buscar la zona", variant: "destructive" }); }
+                                    finally { setLocationBusy(false); }
+                                }}>Buscar</Button>
+                            </div>
+                            {locationSuggestions.length > 0 && <div className="space-y-1 rounded-lg border p-2" style={{ borderColor: "var(--cc-line)" }}>
+                                {locationSuggestions.map(suggestion => <button key={suggestion.placeId} type="button" onClick={() => {
+                                    setFormData({ ...formData, serviceAddress: suggestion.label, serviceLatitude: suggestion.latitude, serviceLongitude: suggestion.longitude });
+                                    setLocationSuggestions([]);
+                                }} className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-black/5">{suggestion.label}</button>)}
+                            </div>}
+                            {formData.serviceLatitude != null && <p className="text-xs cc-text-secondary">Zona seleccionada. CoCo podrá mostrar distancia aproximada desde la comunidad.</p>}
                         </div>
 
                         <div className="space-y-2">

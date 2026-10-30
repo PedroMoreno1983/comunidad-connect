@@ -42,7 +42,7 @@ export async function getReconciliation(communityId: string) {
 
     const [txnResult, paymentsResult, unitsResult, expensesResult, chargesResult] = await Promise.all([
         readAll((start, end) => admin.from('bank_transactions')
-            .select('id, txn_date, amount, description, reference, status, matched_payment_id, created_at')
+            .select('id, txn_date, amount, description, reference, import_key, status, matched_payment_id, created_at')
             .eq('community_id', communityId)
             .order('id').range(start, end)),
         readAll((start, end) => admin.from('unit_payments')
@@ -123,6 +123,7 @@ export async function getReconciliation(communityId: string) {
             amount: Math.round(Number(t.amount || 0)),
             description: String(t.description || ''),
             reference: t.reference ? String(t.reference) : null,
+            importKey: t.import_key ? String(t.import_key) : null,
             status: String(t.status),
             matchedPaymentId: t.matched_payment_id ? String(t.matched_payment_id) : null,
         })),
