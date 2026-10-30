@@ -47,6 +47,25 @@ describe('consumo de agua en el prorrateo', () => {
         expect(result.units[0].items[0].label).toContain('m³');
     });
 
+    it('respeta el reparto igual de agua y luz entre casas aunque existan lecturas', () => {
+        const result = applyWaterConsumption({
+            billingMonth: '2026-09',
+            expenses: [
+                { id: 'agua', category: 'water', label: 'Agua común', amount: 10_000, prorateMethod: 'equal' },
+                { id: 'luz', category: 'electricity', label: 'Luz común', amount: 5_000, prorateMethod: 'equal' },
+            ],
+            units: [unit('casa-1', null), unit('casa-2', null), unit('casa-3', null)],
+            readings: [
+                { unitId: 'casa-1', periodMonth: 'Agosto', year: 2026, value: 100 },
+                { unitId: 'casa-1', periodMonth: 'Septiembre', year: 2026, value: 130 },
+            ],
+        });
+        expect(result.expenses.map(expense => expense.prorateMethod)).toEqual(['equal', 'equal']);
+        const billing = prorateExpenses(result.expenses, result.units);
+        expect(billing.totalCharged).toBe(15_000);
+        expect(billing.units.map(row => row.total)).toEqual([5_001, 5_000, 4_999]);
+    });
+
     it('avisa y no cambia el método si nadie tiene dos lecturas', () => {
         const result = applyWaterConsumption({
             billingMonth: '2026-09',

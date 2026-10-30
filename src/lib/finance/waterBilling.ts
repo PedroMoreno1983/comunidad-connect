@@ -55,7 +55,8 @@ function formatM3(value: number): string {
 }
 
 /**
- * Si hay egresos de agua y lecturas consecutivas, pasa esos egresos a consumo.
+ * Si hay egresos de agua por alícuota y lecturas consecutivas, los pasa a consumo.
+ * Un reparto explícito en partes iguales siempre se respeta.
  * El total del egreso no cambia: se reparte por m³. La tarifa $/m³, si viene,
  * solo informa el desglose; no inventa cobros.
  */
@@ -67,7 +68,8 @@ export function applyWaterConsumption(input: {
     waterRatePerM3?: number;
 }): { expenses: ProrationExpense[]; units: ProrationUnit[]; warnings: string[] } {
     const warnings: string[] = [];
-    const waterExpenses = input.expenses.filter(expense => expense.category === 'water');
+    const waterExpenses = input.expenses.filter(expense =>
+        expense.category === 'water' && expense.prorateMethod !== 'equal');
     if (waterExpenses.length === 0 || input.units.length === 0) {
         return { expenses: input.expenses, units: input.units, warnings };
     }
@@ -102,7 +104,7 @@ export function applyWaterConsumption(input: {
 
     const rate = Number(input.waterRatePerM3 || 0);
     const expenses = input.expenses.map(expense => {
-        if (expense.category !== 'water') return expense;
+        if (expense.category !== 'water' || expense.prorateMethod === 'equal') return expense;
         const rateNote = rate > 0
             ? ` · tarifa informativa ${formatM3(rate)}/m³`
             : '';
