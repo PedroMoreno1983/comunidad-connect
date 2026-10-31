@@ -220,15 +220,19 @@ describe('cargo a gastos comunes → abono a GC del dueño (destino por defecto)
         expect(balances.get('2400')).toMatchObject({ debit: 3000, credit: 3000 });
         const reconciliation = await getReconciliation(p.communityId);
         expect(reconciliation.unmatchedPayments.map(item => item.id)).toEqual([tenantPayment.id]);
-        const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
-        expect(statements.cashFlow.totalInflow).toBe(3000);
-        expect(statements.income.lines.find(line => line.label.startsWith('Cargos extraordinarios'))?.total).toBe(3000);
-        expect(statements.income.expenseLines).toEqual([{ category: 'parking_owner_payouts', label: 'Liquidaciones a dueños de estacionamientos', total: 3000 }]);
-        // Solo queda el gasto común del dueño: el arriendo (3000 de ingreso, 3000 liquidados) da 0.
-        expect(statements.income.result).toBe(3000);
-        expect(statements.position.cash).toBe(3000);
-        expect(statements.position.journalBank).toBe(3000);
-        expect(statements.position.receivables).toBe(0);
+        // La reserva es mañana: el último día del mes el cargo queda en el mes siguiente.
+        // Incluimos ambos meses para comparar ingreso, liquidación y pago juntos.
+        // Un estado anual no combina diciembre con una reserva de enero siguiente.
+        if (chileMonth(0).slice(0, 4) === chileMonth(1).slice(0, 4)) {
+            const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(1), openingCash: 0 });
+            expect(statements.cashFlow.totalInflow).toBe(3000);
+            expect(statements.income.lines.find(line => line.label.startsWith('Cargos extraordinarios'))?.total).toBe(3000);
+            expect(statements.income.expenseLines).toEqual([{ category: 'parking_owner_payouts', label: 'Liquidaciones a dueños de estacionamientos', total: 3000 }]);
+            expect(statements.income.result).toBe(3000);
+            expect(statements.position.cash).toBe(3000);
+            expect(statements.position.journalBank).toBe(3000);
+            expect(statements.position.receivables).toBe(0);
+        }
 
         // RLS: el dueño ve lo suyo; la arrendataria, conserjería y otra comunidad, nada.
         as(p.owner.ownerId);
@@ -332,11 +336,13 @@ describe('transferencia al dueño, marcada por la administración', () => {
         // (el reconocimiento del primer pago se revirtió y se volvió a registrar).
         expect(net(balances.get('2400'))).toBe(0);
         expect(net(balances.get('4300'))).toBe(250);
-        const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(0), openingCash: 0 });
-        expect(statements.income.result).toBe(250);
-        expect(statements.cashFlow.totalOutflow).toBe(1749);
-        expect(statements.position.cash).toBe(250);
-        expect(statements.position.journalBank).toBe(250);
+        if (chileMonth(0).slice(0, 4) === chileMonth(1).slice(0, 4)) {
+            const statements = await getFinancialStatements(p.communityId, thisYear(), { cutoffMonth: chileMonth(1), openingCash: 0 });
+            expect(statements.income.result).toBe(250);
+            expect(statements.cashFlow.totalOutflow).toBe(1749);
+            expect(statements.position.cash).toBe(250);
+            expect(statements.position.journalBank).toBe(250);
+        }
     });
 
     it('cancelar sin costo un arriendo ya pagado pausa la transferencia pendiente; el reembolso la anula', async () => {
