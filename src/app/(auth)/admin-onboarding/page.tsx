@@ -11,6 +11,7 @@ import type {
     OnboardingConversationMessage,
     OnboardingGuideResponse,
 } from "@/lib/types";
+import { onboardingPrefillFromQuery } from "@/lib/onboardingPrefill";
 
 const INITIAL_DRAFT: OnboardingConversationDraft = {
     communityName: "",
@@ -48,6 +49,17 @@ export default function AdminOnboardingPage() {
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, [messages, ready]);
+
+    useEffect(() => {
+        const prefill = onboardingPrefillFromQuery(window.location.search);
+        if (!prefill) return;
+        setDraft(prefill);
+        setReady(true);
+        setMessages([{
+            role: "assistant",
+            content: `Preparé el borrador de ${prefill.communityName} con ${prefill.unitCount} sitios, numerados del ${prefill.unitNumbers[0]} al ${prefill.unitNumbers.at(-1)}. Revisa los datos abajo. Si algo debe cambiar, dímelo aquí antes de aprobar.`,
+        }]);
+    }, []);
 
     const sendMessage = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
