@@ -35,6 +35,7 @@ import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
 import { consultOfficialLegalSource } from './officialLegalSources';
 import { prepareLegalDraft } from './legalDrafts';
+import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalDraftMarker';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -390,7 +391,7 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'prepare_legal_draft',
-        description: 'Prepara la base de un BORRADOR de documento de la comunidad (reglamento de copropiedad, contrato de trabajo de conserje/mayordomo/aseo, contrato de administración o mantención, acta o convocatoria de asamblea). Consulta BCN para citar artículos reales, lista los datos faltantes y entrega la estructura. Solo lectura: no guarda ni envía nada.',
+        description: 'Prepara (SOLO administradores) la base de un BORRADOR de documento de la comunidad (reglamento de copropiedad, contrato de trabajo de conserje/mayordomo/aseo, contrato de administración o mantención, acta o convocatoria de asamblea). Consulta BCN para citar artículos reales, lista los datos faltantes y entrega la estructura. Solo lectura: no guarda ni envía nada.',
         input_schema: {
             type: 'object' as const,
             properties: {
@@ -581,7 +582,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
-    'remember_preference', 'get_platform_guide', 'consult_official_legal_source', 'prepare_legal_draft',
+    'remember_preference', 'get_platform_guide', 'consult_official_legal_source',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
@@ -596,6 +597,8 @@ const CONCIERGE_TOOLS = new Set([
 
 const ADMIN_TOOLS = new Set([
     ...CONCIERGE_TOOLS,
+    // Borradores legales: solo la administración (ver legalDraftMarker.ts).
+    'prepare_legal_draft',
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
@@ -1505,6 +1508,7 @@ export async function executeTool(
                 return consultOfficialLegalSource(input.source || '', (input.query || '').slice(0, 180));
             }
             case 'prepare_legal_draft': {
+                if (!canDraftLegalDocuments(userCtx.role)) return { error: LEGAL_DRAFT_ADMIN_ONLY_MESSAGE };
                 return prepareLegalDraft({
                     document_type: String(input.document_type || ''),
                     known_data: input.known_data && typeof input.known_data === 'object' ? input.known_data as Record<string, unknown> : {},
