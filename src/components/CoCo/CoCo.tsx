@@ -176,7 +176,7 @@ export default function CoCo() {
         const file = event.target.files?.[0];
         if (!file) return;
         if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
-            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX o TXT de hasta 5 MB.", variant: "destructive" });
+            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX o TXT de hasta 5 MB. Para planos en imagen, usa Adjuntar imagen.", variant: "destructive" });
             return;
         }
         setSelectedLegalDocument(file);
@@ -276,9 +276,9 @@ export default function CoCo() {
                 const form = new FormData();
                 form.append("file", file);
                 const extraction = await fetch("/api/coco/legal-document", { method: "POST", body: form });
-                const document = await extraction.json() as { name?: string; text?: string; truncated?: boolean; error?: string };
-                if (!extraction.ok || !document.name || !document.text) throw new Error(document.error || "No pude leer el documento.");
-                const reply = await postToCoCo({ message: question, legalDocument: { name: document.name, text: document.text, truncated: document.truncated === true } });
+                const document = await extraction.json() as { name?: string; text?: string; pageImages?: string[]; pageCount?: number; truncated?: boolean; error?: string };
+                if (!extraction.ok || !document.name || (!document.text && !document.pageImages?.length)) throw new Error(document.error || "No pude leer el documento.");
+                const reply = await postToCoCo({ message: question, legalDocument: { name: document.name, text: document.text || "", pageImages: document.pageImages || [], pageCount: document.pageCount || 0, truncated: document.truncated === true } });
                 appendAssistantReply(reply);
             } catch (error) {
                 setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: "assistant", text: error instanceof Error ? error.message : "No pude analizar el documento." }]);
@@ -613,7 +613,7 @@ export default function CoCo() {
                                 >
                                     <Paperclip className="h-5 w-5" />
                                 </button>
-                                  <button type="button" onClick={() => legalFileInputRef.current?.click()} disabled={loading || hasUnresolvedPending} className="px-1 text-[10px] font-semibold text-brand-600 disabled:opacity-40" aria-label="Adjuntar documento legal">Legal</button>
+                                  <button type="button" onClick={() => legalFileInputRef.current?.click()} disabled={loading || hasUnresolvedPending} className="px-1 text-[10px] font-semibold text-brand-600 disabled:opacity-40" aria-label="Adjuntar documento de dominio, urbanización o plano PDF">Documentos</button>
 
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}

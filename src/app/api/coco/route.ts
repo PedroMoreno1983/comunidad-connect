@@ -540,15 +540,22 @@ export async function POST(req: NextRequest) {
         }
         let imageAttachment: CoCoImageAttachment | null = null;
         const rawLegalDocument = body.legalDocument;
+        const legalPageImages = rawLegalDocument && typeof rawLegalDocument === 'object' && !Array.isArray(rawLegalDocument)
+            && Array.isArray(rawLegalDocument.pageImages) ? rawLegalDocument.pageImages : [];
+        if (legalPageImages.length > 2 || legalPageImages.some((value: unknown) => typeof value !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value) || value.length > 2_500_000)) {
+            return NextResponse.json({ reply: 'Las páginas visuales del documento no son válidas.' }, { status: 400 });
+        }
         const legalDocument = rawLegalDocument && typeof rawLegalDocument === 'object' && !Array.isArray(rawLegalDocument)
             && typeof rawLegalDocument.name === 'string' && typeof rawLegalDocument.text === 'string'
             ? {
                 name: sanitize(rawLegalDocument.name, 120),
                 text: sanitize(rawLegalDocument.text, 35_000),
                 truncated: rawLegalDocument.truncated === true,
+                pageCount: Number.isInteger(rawLegalDocument.pageCount) && rawLegalDocument.pageCount >= 0 && rawLegalDocument.pageCount <= 1000 ? rawLegalDocument.pageCount : 0,
+                pageImages: legalPageImages.map((value: string) => ({ mediaType: 'image/png' as const, data: value.slice('data:image/png;base64,'.length) })),
             }
             : undefined;
-        if (legalDocument && (!legalDocument.name || !legalDocument.text || resolutions)) {
+        if (legalDocument && (!legalDocument.name || (!legalDocument.text && !legalDocument.pageImages.length) || resolutions)) {
             return NextResponse.json({ reply: 'El documento adjunto no es válido para esta solicitud.' }, { status: 400 });
         }
         try {

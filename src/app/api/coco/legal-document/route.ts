@@ -21,12 +21,24 @@ export async function POST(request: Request) {
         if (!['pdf', 'docx', 'txt'].includes(extension || '')) return NextResponse.json({ error: 'Usa PDF, DOCX o TXT.' }, { status: 400 });
         const bytes = Buffer.from(await file.arrayBuffer());
         let text = '';
+        let pageCount = 0;
+        let pageImages: string[] = [];
         if (extension === 'pdf') {
             if (bytes.subarray(0, 5).toString() !== '%PDF-') return NextResponse.json({ error: 'El archivo no es un PDF válido.' }, { status: 400 });
             await import('pdf-parse/worker');
             const { PDFParse } = await import('pdf-parse');
             const parser = new PDFParse({ data: bytes });
-            try { text = (await parser.getText()).text; } finally { await parser.destroy(); }
+            try {
+                const extracted = await parser.getText();
+                text = extracted.text;
+                pageCount = extracted.total;
+                // Planos y certificados escaneados no contienen texto seleccionable.
+                // Solo se envían las dos primeras páginas para revisión visual.
+                if (text.trim().length < 80) {
+                    const screenshots = await parser.getScreenshot({ first: 2, desiredWidth: 1200, imageBuffer: false, imageDataUrl: true });
+                    pageImages = screenshots.pages.map(page => page.dataUrl).filter(value => value.startsWith('data:image/png;base64,') && value.length <= 2_500_000);
+                }
+            } finally { await parser.destroy(); }
         } else if (extension === 'docx') {
             const mammoth = await import('mammoth');
             text = (await mammoth.extractRawText({ buffer: bytes })).value;
@@ -34,8 +46,11 @@ export async function POST(request: Request) {
             text = bytes.toString('utf8');
         }
         text = text.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
-        if (!text) return NextResponse.json({ error: 'No pude extraer texto. Si es un PDF escaneado, usa una versión con OCR.' }, { status: 422 });
-        return NextResponse.json({ name: file.name.slice(0, 120), text: text.slice(0, MAX_TEXT_CHARS), truncated: text.length > MAX_TEXT_CHARS }, { headers: { 'Cache-Control': 'no-store' } });
+        if (!text && !pageImages.length) return NextResponse.json({ error: 'No pude leer el documento. Para un plano o PDF escaneado, adjunta una imagen legible o una versión con OCR.' }, { status: 422 });
+        return NextResponse.json({
+            name: file.name.slice(0, 120), text: text.slice(0, MAX_TEXT_CHARS), pageImages,
+            pageCount, truncated: text.length > MAX_TEXT_CHARS || pageCount > pageImages.length && pageImages.length > 0,
+        }, { headers: { 'Cache-Control': 'no-store' } });
     } catch {
         return NextResponse.json({ error: 'No pude leer el documento. Revisa que no esté dañado o protegido.' }, { status: 422 });
     }

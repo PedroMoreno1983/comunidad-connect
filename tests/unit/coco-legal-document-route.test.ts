@@ -39,4 +39,19 @@ describe('lectura de documentos legales para CoCo', () => {
         expect(response.status).toBe(200);
         expect((await response.json()).text).toContain('Reglamento de copropiedad');
     });
+
+    it('renderiza las primeras páginas de un plano PDF sin texto', async () => {
+        const pdf = await PDFDocument.create();
+        const page = pdf.addPage([600, 400]);
+        page.drawRectangle({ x: 80, y: 80, width: 300, height: 200 });
+        const bytes = await pdf.save();
+        const form = new FormData();
+        form.append('file', new File([bytes], 'plano.pdf', { type: 'application/pdf' }));
+        const response = await POST(new Request('http://localhost/api/coco/legal-document', { method: 'POST', body: form }));
+        expect(response.status).toBe(200);
+        const result = await response.json();
+        expect(result.pageImages).toHaveLength(1);
+        expect(result.pageImages[0]).toMatch(/^data:image\/png;base64,/);
+        expect(result.pageCount).toBe(1);
+    });
 });

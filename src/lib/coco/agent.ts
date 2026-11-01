@@ -262,7 +262,7 @@ export async function askCoCo(
     userCtx: CoCoUserContext,
     options: {
         image?: CoCoImageAttachment;
-        legalDocument?: { name: string; text: string; truncated: boolean };
+        legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number };
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
     } = {}
@@ -407,9 +407,15 @@ export async function askCoCo(
     } else {
         // 3b. Agregar mensaje del usuario al historial
         const documentText = options.legalDocument
-            ? `\n\nDocumento aportado: ${options.legalDocument.name}. ${options.legalDocument.truncated ? 'Extracto truncado; no es el documento completo.' : 'Texto extraído.'}\n<documento>\n${options.legalDocument.text}\n</documento>`
+            ? `\n\nDocumento aportado: ${options.legalDocument.name}. ${options.legalDocument.truncated ? 'Extracto parcial; no es el documento completo.' : 'Texto extraído.'} ${options.legalDocument.pageCount ? `Páginas del PDF: ${options.legalDocument.pageCount}.` : ''} Las páginas visuales son solo una muestra; no certifiques deslindes, superficies, firmas ni vigencia sin cotejo oficial.\n<documento>\n${options.legalDocument.text}\n</documento>`
             : '';
-        history.push({ role: 'user', content: buildUserContent(`${message}${documentText}`, options.image) });
+        const content = buildUserContent(`${message}${documentText}`, options.image);
+        const pages = options.legalDocument?.pageImages || [];
+        history.push({ role: 'user', content: pages.length ? [
+            ...(typeof content === 'string' ? [{ type: 'text' as const, text: content }] : content),
+            ...pages.map((page, index) => ({ type: 'text' as const, text: `Página visual ${index + 1} del documento aportado:` })),
+            ...pages.map(page => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: page.mediaType, data: page.data } })),
+        ] : content });
     }
 
     // 4. Loop agéntico
