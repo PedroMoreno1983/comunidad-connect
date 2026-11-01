@@ -153,6 +153,7 @@ const mutualAidPillars = [
 const faqs = [
   { q: '¿Qué pasa si un residente no tiene smartphone?', a: 'No hay problema. Los residentes también pueden acceder desde computadora o tablet navegando por la web.' },
   { q: '¿Cuánto tiempo toma activar el edificio?', a: 'Depende de la calidad de los datos, pero el flujo está pensado para que la administración suba archivos, CoCo detecte brechas y solo se guarde información aprobada.' },
+  { q: '¿Cómo comenzamos y cuánto cuesta?', a: 'Conversemos sobre el tamaño del edificio y sus datos actuales. Definimos un alcance inicial, la carga necesaria y una propuesta de precio antes de activar la comunidad.' },
 ];
 
 /* ── Main Page ────────────────────────────────────────── */
@@ -261,12 +262,12 @@ export default function LandingPage() {
                 className="mt-8 flex flex-col gap-3 sm:flex-row"
               >
                 <button
-                  onClick={() => router.push('/admin-onboarding')}
+                  onClick={() => setIsContactModalOpen(true)}
                   className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium shadow-xl transition-all hover:bg-amber-50 active:scale-[0.98]"
                   style={{ color: 'var(--cc-on-light)' }}
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Activar con CoCo <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                    Solicitar demo para mi edificio <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
                   </span>
                 </button>
                 <button
@@ -277,6 +278,10 @@ export default function LandingPage() {
                   Ver recorrido comercial
                 </button>
               </motion.div>
+
+              <p className="mt-3 max-w-xl text-sm text-white/75">
+                Para administraciones y comités: revisamos tu operación actual y definimos un primer alcance antes de cotizar.
+              </p>
 
               <motion.div
                 initial={{ opacity: 0 }}
