@@ -45,6 +45,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     compare_supermarket_group_order: 'read',
     // Solo devuelve el mapa estático de pantallas; no toca datos.
     get_platform_guide: 'read',
+    consult_official_legal_source: 'read',
 
     // ── Escritura acotada: una fila, sin dinero ni difusion ──────────────────
     // Equivalen a las `write_low` propias (create_service_request,
