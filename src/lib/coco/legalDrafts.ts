@@ -1,8 +1,8 @@
 import 'server-only';
 import { consultOfficialLegalSource, type OfficialLegalSource } from './officialLegalSources';
 
-/** Encabezado obligatorio de todo borrador. El chat lo usa para ofrecer la descarga DOCX. */
-export const LEGAL_DRAFT_MARKER = 'BORRADOR PARA REVISIÓN DE ABOGADO';
+import { LEGAL_DRAFT_MARKER } from './legalDraftMarker';
+export { LEGAL_DRAFT_MARKER };
 
 interface LegalBasis { source: OfficialLegalSource; query: string }
 interface DraftType {
