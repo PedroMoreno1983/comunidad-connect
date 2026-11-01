@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip, Bot, ShieldCheck, Check, XCircle } from "lucide-react";
+import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip, Bot, ShieldCheck, Check, XCircle, FileDown } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import { useToast } from "@/components/ui/Toast";
@@ -70,6 +70,23 @@ function quickActionsFor(role: string | undefined, pathname: string | null): Qui
     return findScreen(pathname)
         ? [{ label: "¿Qué puedo hacer en esta pantalla?", icon: Sparkles }, ...base]
         : base;
+}
+
+const LEGAL_DRAFT_MARKER = "BORRADOR PARA REVISIÓN DE ABOGADO";
+
+async function downloadLegalDraft(text: string) {
+    try {
+        const response = await fetch("/api/coco/legal-draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        if (!response.ok) throw new Error("download");
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "borrador-coco.docx";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+        window.alert("No pude generar el Word. Intenta de nuevo.");
+    }
 }
 
 function CoCoMarkdown({ text }: { text: string }) {
@@ -462,6 +479,11 @@ export default function CoCo() {
                                             >
                                                 <CoCoMarkdown text={msg.text} />
                                             </div>
+                                        )}
+                                        {msg.role === "assistant" && msg.text?.includes(LEGAL_DRAFT_MARKER) && (
+                                            <button type="button" onClick={() => downloadLegalDraft(msg.text || "")} className="inline-flex items-center gap-1.5 self-start rounded-lg border border-subtle bg-surface px-3 py-1.5 text-xs font-semibold cc-text-primary shadow-sm hover:bg-brand-50">
+                                                <FileDown className="h-3.5 w-3.5" /> Descargar borrador en Word
+                                            </button>
                                         )}
                                         {msg.role === "assistant" && msg.case?.created && (
                                             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">

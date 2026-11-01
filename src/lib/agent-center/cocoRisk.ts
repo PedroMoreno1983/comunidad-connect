@@ -46,6 +46,8 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     // Solo devuelve el mapa estático de pantallas; no toca datos.
     get_platform_guide: 'read',
     consult_official_legal_source: 'read',
+    // Arma la base de un borrador en el chat; no guarda ni envia nada.
+    prepare_legal_draft: 'read',
 
     // ── Escritura acotada: una fila, sin dinero ni difusion ──────────────────
     // Equivalen a las `write_low` propias (create_service_request,

@@ -34,6 +34,7 @@ import {
 import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
 import { consultOfficialLegalSource } from './officialLegalSources';
+import { prepareLegalDraft } from './legalDrafts';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -387,6 +388,19 @@ export const TOOL_DEFINITIONS = [
             required: ['source', 'query'],
         },
     },
+    {
+        name: 'prepare_legal_draft',
+        description: 'Prepara la base de un BORRADOR de documento de la comunidad (reglamento de copropiedad, contrato de trabajo de conserje/mayordomo/aseo, contrato de administración o mantención, acta o convocatoria de asamblea). Consulta BCN para citar artículos reales, lista los datos faltantes y entrega la estructura. Solo lectura: no guarda ni envía nada.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                document_type: { type: 'string', enum: ['reglamento_copropiedad', 'contrato_trabajo_conserje', 'contrato_administracion', 'contrato_mantencion', 'acta_asamblea', 'convocatoria_asamblea', 'otro'] },
+                known_data: { type: 'object', description: 'Solo datos que la persona entregó explícitamente (claves como nombre_condominio, direccion, trabajador, remuneracion, jornada...). Nunca inventes valores.' },
+                extra_queries: { type: 'array', description: 'Hasta 3 consultas oficiales adicionales.', items: { type: 'object', properties: { source: { type: 'string' }, query: { type: 'string' } } } },
+            },
+            required: ['document_type'],
+        },
+    },
 
     // ── MÓDULO: ADMIN · GASTO COMÚN (unidades, alícuotas, egresos, emisión) ──
     // Alícuotas en % (‰ en la base), por el servicio de derechos: alicuotaTools.ts.
@@ -567,7 +581,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
-    'remember_preference', 'get_platform_guide', 'consult_official_legal_source',
+    'remember_preference', 'get_platform_guide', 'consult_official_legal_source', 'prepare_legal_draft',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
@@ -1489,6 +1503,13 @@ export async function executeTool(
             }
             case 'consult_official_legal_source': {
                 return consultOfficialLegalSource(input.source || '', (input.query || '').slice(0, 180));
+            }
+            case 'prepare_legal_draft': {
+                return prepareLegalDraft({
+                    document_type: String(input.document_type || ''),
+                    known_data: input.known_data && typeof input.known_data === 'object' ? input.known_data as Record<string, unknown> : {},
+                    extra_queries: Array.isArray(input.extra_queries) ? input.extra_queries as Array<{ source?: string; query?: string }> : [],
+                });
             }
 
             case 'remember_preference': {
