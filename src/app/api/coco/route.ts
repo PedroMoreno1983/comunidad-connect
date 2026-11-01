@@ -539,6 +539,18 @@ export async function POST(req: NextRequest) {
             );
         }
         let imageAttachment: CoCoImageAttachment | null = null;
+        const rawLegalDocument = body.legalDocument;
+        const legalDocument = rawLegalDocument && typeof rawLegalDocument === 'object' && !Array.isArray(rawLegalDocument)
+            && typeof rawLegalDocument.name === 'string' && typeof rawLegalDocument.text === 'string'
+            ? {
+                name: sanitize(rawLegalDocument.name, 120),
+                text: sanitize(rawLegalDocument.text, 35_000),
+                truncated: rawLegalDocument.truncated === true,
+            }
+            : undefined;
+        if (legalDocument && (!legalDocument.name || !legalDocument.text || resolutions)) {
+            return NextResponse.json({ reply: 'El documento adjunto no es válido para esta solicitud.' }, { status: 400 });
+        }
         try {
             imageAttachment = parseImageAttachment(body.imageBase64);
         } catch {
@@ -548,7 +560,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!message && !resolutions) {
+        if (!message && !resolutions && !legalDocument) {
             return NextResponse.json(
                 { reply: 'Por favor envía un mensaje para que pueda ayudarte. 😊' },
                 { status: 400 }
@@ -577,7 +589,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-            if (imageAttachment) {
+            if (imageAttachment || legalDocument) {
                 return NextResponse.json(
                     { reply: 'El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.' },
                     { status: 200 }
@@ -611,6 +623,7 @@ export async function POST(req: NextRequest) {
                 },
                 {
                     ...(imageAttachment ? { image: imageAttachment } : {}),
+                    ...(legalDocument ? { legalDocument } : {}),
                     ...(resolutions ? { resolutions } : {}),
                 }
             );

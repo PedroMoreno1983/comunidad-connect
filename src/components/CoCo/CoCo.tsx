@@ -105,12 +105,14 @@ export default function CoCo() {
     const [input, setInput] = useState("");
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedStatement, setSelectedStatement] = useState<File | null>(null);
+    const [selectedLegalDocument, setSelectedLegalDocument] = useState<File | null>(null);
     const [statementPreview, setStatementPreview] = useState<BankTransactionInput[] | null>(null);
     const [depositSuggestions, setDepositSuggestions] = useState<DepositSuggestion[]>([]);
     const [loading, setLoading] = useState(false);
     
     const bottomRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const legalFileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const pathname = usePathname();
 
@@ -165,7 +167,21 @@ export default function CoCo() {
     const removeImage = () => {
         setSelectedImage(null);
         setSelectedStatement(null);
+        setSelectedLegalDocument(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
+        if (legalFileInputRef.current) legalFileInputRef.current.value = "";
+    };
+
+    const handleLegalFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
+            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX o TXT de hasta 5 MB.", variant: "destructive" });
+            return;
+        }
+        setSelectedLegalDocument(file);
+        setSelectedStatement(null);
+        setSelectedImage(null);
     };
 
     const postToCoCo = async (body: Record<string, unknown>) => {
@@ -248,7 +264,27 @@ export default function CoCo() {
     };
 
     const send = async (text: string, imageStr: string | null = selectedImage) => {
-        if ((!text.trim() && !imageStr && !selectedStatement) || loading || hasUnresolvedPending || statementPreview) return;
+        if ((!text.trim() && !imageStr && !selectedStatement && !selectedLegalDocument) || loading || hasUnresolvedPending || statementPreview) return;
+        if (selectedLegalDocument) {
+            const file = selectedLegalDocument;
+            const question = text.trim() || "Analiza este documento legal: explica qué establece, qué dudas quedan y qué debo consultar a la autoridad.";
+            setMsgs(previous => [...previous, { id: Date.now().toString(), role: "user", text: `${question}\nDocumento: ${file.name}` }]);
+            setInput("");
+            removeImage();
+            setLoading(true);
+            try {
+                const form = new FormData();
+                form.append("file", file);
+                const extraction = await fetch("/api/coco/legal-document", { method: "POST", body: form });
+                const document = await extraction.json() as { name?: string; text?: string; truncated?: boolean; error?: string };
+                if (!extraction.ok || !document.name || !document.text) throw new Error(document.error || "No pude leer el documento.");
+                const reply = await postToCoCo({ message: question, legalDocument: { name: document.name, text: document.text, truncated: document.truncated === true } });
+                appendAssistantReply(reply);
+            } catch (error) {
+                setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: "assistant", text: error instanceof Error ? error.message : "No pude analizar el documento." }]);
+            } finally { setLoading(false); }
+            return;
+        }
         if (selectedStatement) {
             const statement = selectedStatement;
             setMsgs(p => [...p, { id: Date.now().toString(), role: "user", text: text.trim() || `Revisa esta cartola: ${statement.name}` }]);
@@ -555,6 +591,7 @@ export default function CoCo() {
                                 </div>
                             )}
                             {selectedStatement && <div className="flex items-center justify-between px-3 pt-3 text-xs cc-text-secondary"><span className="truncate">Cartola: {selectedStatement.name}</span><button type="button" onClick={removeImage} aria-label="Quitar cartola"><X className="h-4 w-4" /></button></div>}
+                              {selectedLegalDocument && <div className="flex items-center justify-between px-3 pt-3 text-xs cc-text-secondary"><span className="truncate">Documento legal: {selectedLegalDocument.name}</span><button type="button" onClick={removeImage} aria-label="Quitar documento legal"><X className="h-4 w-4" /></button></div>}
 
                             <form onSubmit={e => { e.preventDefault(); send(input, selectedImage); }} className="flex gap-2 p-3">
                                 {/* Hidden file input */}
@@ -565,6 +602,7 @@ export default function CoCo() {
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}
                                 />
+                                  <input type="file" accept=".pdf,.docx,.txt" className="hidden" ref={legalFileInputRef} onChange={handleLegalFileSelect} />
                                 
                                 <button
                                     type="button"
@@ -575,14 +613,15 @@ export default function CoCo() {
                                 >
                                     <Paperclip className="h-5 w-5" />
                                 </button>
+                                  <button type="button" onClick={() => legalFileInputRef.current?.click()} disabled={loading || hasUnresolvedPending} className="px-1 text-[10px] font-semibold text-brand-600 disabled:opacity-40" aria-label="Adjuntar documento legal">Legal</button>
 
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}
-                                    placeholder={hasUnresolvedPending || statementPreview ? "Resuelve la acción pendiente" : selectedImage || selectedStatement ? "Añade un comentario..." : "Pregúntale a CoCo..."}
+                                     placeholder={hasUnresolvedPending || statementPreview ? "Resuelve la acción pendiente" : selectedImage || selectedStatement || selectedLegalDocument ? "Añade tu pregunta..." : "Pregúntale a CoCo..."}
                                     className="flex-1 px-3.5 py-2.5 rounded-lg bg-elevated text-sm font-medium outline-none focus:ring-2 focus:ring-brand-400/30"
                                 />
                                 
-                                <button type="submit" disabled={(!input.trim() && !selectedImage && !selectedStatement) || loading || hasUnresolvedPending || Boolean(statementPreview)}
+                                  <button type="submit" disabled={(!input.trim() && !selectedImage && !selectedStatement && !selectedLegalDocument) || loading || hasUnresolvedPending || Boolean(statementPreview)}
                                     aria-label="Enviar mensaje a CoCo"
                                     className="p-2.5 bg-brand-500 rounded-lg text-white disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-md flex-shrink-0">
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

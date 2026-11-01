@@ -33,6 +33,7 @@ import {
 } from '@/lib/supermarketGroupOrders';
 import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
+import { consultOfficialLegalSource } from './officialLegalSources';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -374,6 +375,18 @@ export const TOOL_DEFINITIONS = [
             required: ['query'],
         },
     },
+    {
+        name: 'consult_official_legal_source',
+        description: 'Consulta en tiempo real el texto oficial de BCN para orientar sobre copropiedad, administración, vivienda, construcción, DOM y SEREMI. Solo lectura. Cita el enlace y distingue norma de interpretación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                source: { type: 'string', enum: ['copropiedad', 'reglamento_copropiedad', 'administradores', 'lguc', 'oguc', 'datos_personales', 'privacidad_actual', 'procedimiento_administrativo', 'municipalidades', 'trabajo', 'mascotas'] },
+                query: { type: 'string', description: 'Artículo o tema específico, por ejemplo artículo 6 gastos comunes o permiso de edificación.' },
+            },
+            required: ['source', 'query'],
+        },
+    },
 
     // ── MÓDULO: ADMIN · GASTO COMÚN (unidades, alícuotas, egresos, emisión) ──
     // Alícuotas en % (‰ en la base), por el servicio de derechos: alicuotaTools.ts.
@@ -554,7 +567,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
-    'remember_preference', 'get_platform_guide',
+    'remember_preference', 'get_platform_guide', 'consult_official_legal_source',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
@@ -1473,6 +1486,9 @@ export async function executeTool(
                 const query = (input.query || '').trim().slice(0, 300);
                 if (!query) return { error: 'Dime qué quieres hacer o encontrar.' };
                 return platformGuide(query, userCtx.role, userCtx.currentPage, PUBLIC_SITE_URL);
+            }
+            case 'consult_official_legal_source': {
+                return consultOfficialLegalSource(input.source || '', (input.query || '').slice(0, 180));
             }
 
             case 'remember_preference': {
