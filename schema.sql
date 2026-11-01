@@ -233,14 +233,14 @@ CREATE TABLE IF NOT EXISTS public.poll_votes (
 --     aquí ni en ninguna migración: venía de antes del historial.
 --   - billing_run_id la agrega 20260728140000_community_expenses_and_billing,
 --     pero este retrato no la mostraba.
---   - unit_id es TEXT y NO tiene foreign key. Declararla como UUID REFERENCES
---     units(id) ON DELETE CASCADE prometía una integridad que la base no
---     aplica: borrar una unidad no borra sus cobros, y nada impide un cobro
---     apuntando a una unidad inexistente. Corregirlo en la base es una
---     migración con datos de por medio, así que aquí se declara lo que hay.
+--   - unit_id conserva TEXT por compatibilidad con servicios existentes.
+--     unit_uuid se genera desde ese valor y, junto a community_id, valida
+--     que el cobro corresponda a una unidad real de la misma comunidad.
+--     Se restringe borrar unidades con cobros para conservar el historial.
 CREATE TABLE IF NOT EXISTS public.expenses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   unit_id TEXT NOT NULL,
+  unit_uuid UUID GENERATED ALWAYS AS (unit_id::uuid) STORED,
   month TEXT NOT NULL, -- Formato YYYY-MM
   amount NUMERIC,
   status TEXT DEFAULT 'pending' CHECK (status IN ('paid', 'pending', 'overdue')),
@@ -252,6 +252,11 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(unit_id, month)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS units_id_community_uidx ON public.units (id, community_id);
+ALTER TABLE public.expenses ADD CONSTRAINT expenses_unit_community_fkey
+  FOREIGN KEY (unit_uuid, community_id) REFERENCES public.units (id, community_id)
+  ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS public.expense_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
