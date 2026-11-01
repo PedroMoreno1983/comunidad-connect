@@ -5104,8 +5104,8 @@ DECLARE
   subject_community uuid;
 BEGIN
   IF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'expenses'
-     AND to_jsonb(NEW) - 'status' - 'paid_at' - 'payment_metadata'
-         = to_jsonb(OLD) - 'status' - 'paid_at' - 'payment_metadata' THEN
+     AND to_jsonb(NEW) - 'status' - 'paid_at' - 'payment_metadata' - 'unit_uuid'
+         = to_jsonb(OLD) - 'status' - 'paid_at' - 'payment_metadata' - 'unit_uuid' THEN
     RETURN NEW;
   END IF;
   IF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'unit_charges'
@@ -5154,8 +5154,8 @@ DECLARE
 BEGIN
   IF TG_OP = 'UPDATE' THEN
     IF TG_TABLE_NAME = 'expenses' THEN
-      IF to_jsonb(NEW) - 'status' - 'paid_at' - 'payment_metadata'
-         = to_jsonb(OLD) - 'status' - 'paid_at' - 'payment_metadata' THEN
+      IF to_jsonb(NEW) - 'status' - 'paid_at' - 'payment_metadata' - 'unit_uuid'
+         = to_jsonb(OLD) - 'status' - 'paid_at' - 'payment_metadata' - 'unit_uuid' THEN
         RETURN NEW;
       END IF;
     ELSIF TG_TABLE_NAME = 'unit_charges' THEN
