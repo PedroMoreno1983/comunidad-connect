@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,7 +14,17 @@ import { postLoginPath } from "@/lib/roleAccess";
 import { isNativeApp } from "@/lib/native/biometricBridge";
 
 const subscribeToBrowserCapabilities = () => () => {};
-const getPasskeySupport = () => !isNativeApp() && window.isSecureContext && typeof window.PublicKeyCredential !== "undefined";
+// Face ID / huella / PIN solo se ofrece en celulares y tablets (no en PC de escritorio).
+const isMobileDevice = () => {
+    const ua = navigator.userAgent || "";
+    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Tablet|Silk|Kindle|Opera Mini|IEMobile/i.test(ua);
+    // iPadOS se presenta como "Macintosh" pero tiene pantalla táctil.
+    const iPadOs = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+    const coarse = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+    return coarse && (mobileUa || iPadOs);
+};
+const getPasskeySupport = () =>
+    !isNativeApp() && window.isSecureContext && typeof window.PublicKeyCredential !== "undefined" && isMobileDevice();
 const getServerPasskeySupport = () => false;
 
 export default function LoginPage() {
@@ -38,11 +48,26 @@ function LoginForm() {
     const [pendingPasskeyDestination, setPendingPasskeyDestination] = useState<string | null>(null);
     const [enrollingPasskey, setEnrollingPasskey] = useState(false);
     const { signIn, signInWithPasskey } = useAuth();
-    const passkeySupported = useSyncExternalStore(
+    const passkeyCandidate = useSyncExternalStore(
         subscribeToBrowserCapabilities,
         getPasskeySupport,
         getServerPasskeySupport,
     );
+    const [platformAuthenticator, setPlatformAuthenticator] = useState<boolean | null>(null);
+    useEffect(() => {
+        if (!passkeyCandidate) return;
+        let cancelled = false;
+        const check = window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable;
+        if (typeof check !== "function") {
+            Promise.resolve().then(() => { if (!cancelled) setPlatformAuthenticator(false); });
+            return () => { cancelled = true; };
+        }
+        check.call(window.PublicKeyCredential)
+            .then((available) => { if (!cancelled) setPlatformAuthenticator(available); })
+            .catch(() => { if (!cancelled) setPlatformAuthenticator(false); });
+        return () => { cancelled = true; };
+    }, [passkeyCandidate]);
+    const passkeySupported = passkeyCandidate && platformAuthenticator === true;
     const router = useRouter();
     const { toast } = useToast();
     const nextParam = searchParams.get("next");
@@ -349,7 +374,7 @@ function LoginForm() {
                                     </div>
                                 )}
 
-                                {enrollOnSubmit && (
+                                {enrollOnSubmit && passkeySupported && (
                                     <div role="status" className="rounded-xl border bg-[var(--cc-paper)] p-3.5 text-xs text-[var(--cc-ink)]" style={{ borderColor: "var(--cc-copper)" }}>
                                         <strong>Primera vez con Face ID en este celular:</strong> ingresa tu correo y contraseña una sola vez aquí abajo y pulsa <strong>Entrar y activar Face ID</strong>.
                                     </div>
@@ -418,7 +443,7 @@ function LoginForm() {
                                         className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-paper transition-colors disabled:opacity-50"
                                         style={{ background: "var(--cc-ink)", color: "var(--cc-paper)" }}
                                     >
-                                        {loading ? "Entrando..." : enrollOnSubmit ? "Entrar y activar Face ID" : "Entrar"}
+                                        {loading ? "Entrando..." : enrollOnSubmit && passkeySupported ? "Entrar y activar Face ID" : "Entrar"}
                                         <ArrowRight size={15} />
                                     </button>
                                 </form>
