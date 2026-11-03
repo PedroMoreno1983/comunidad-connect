@@ -33,18 +33,19 @@ export async function POST(request: NextRequest) {
             type: 'recovery', email,
         });
         if (linkError) throw linkError;
-        const tokenHash = link.properties?.hashed_token;
-        if (!tokenHash) throw new Error('Recovery token unavailable');
+        const code = link.properties?.email_otp;
+        if (!code) throw new Error('Recovery code unavailable');
 
-        const url = `${CANONICAL_SITE_URL}/api/auth/password-reset/confirm?token_hash=${encodeURIComponent(tokenHash)}`;
+        const url = `${CANONICAL_SITE_URL}/reset-password?email=${encodeURIComponent(email)}`;
         const { error: sendError } = await resend.emails.send({
             from: FROM_EMAIL,
             to: email,
-            subject: 'Crea una nueva contraseña para Convive Connect',
+            subject: 'Código para crear tu contraseña de Convive Connect',
             html: emailWrapper(`
                 <h1 style="color:${BRAND.ink};">Crea una nueva contraseña</h1>
-                <p>Solicitaste recuperar el acceso a Convive Connect. El enlace es personal y de un solo uso.</p>
-                <p style="margin:28px 0;"><a href="${escapeEmailHtml(url)}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:${BRAND.ink};color:#fff;text-decoration:none;">Crear contraseña</a></p>
+                <p>Solicitaste recuperar el acceso a Convive Connect. Escribe este código personal en la página:</p>
+                <p style="font-size:30px;font-weight:bold;letter-spacing:0.12em;">${escapeEmailHtml(code)}</p>
+                <p style="margin:28px 0;"><a href="${escapeEmailHtml(url)}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:${BRAND.ink};color:#fff;text-decoration:none;">Abrir página para ingresar el código</a></p>
                 <p>Si no lo solicitaste, ignora este correo.</p>
             `, 'Recuperar acceso'),
         });
