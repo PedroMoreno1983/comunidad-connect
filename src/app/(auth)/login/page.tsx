@@ -446,6 +446,9 @@ function LoginForm() {
                                         {loading ? "Entrando..." : enrollOnSubmit && passkeySupported ? "Entrar y activar Face ID" : "Entrar"}
                                         <ArrowRight size={15} />
                                     </button>
+                                    <Link href="/forgot-password" className="block text-center text-xs font-semibold text-[#9C5636]">
+                                        ¿No tienes contraseña? Crea una nueva
+                                    </Link>
                                 </form>
 
                                 {passkeySupported && (
