@@ -7,6 +7,8 @@ import { chileTodayISO, nextWeekdayISO } from '@/lib/agent-center/chileDate';
 
 export const CHILE_TIME_ZONE = 'America/Santiago';
 export const DEFAULT_REMINDER_TIME = '09:00';
+/** El plan Hobby solo permite un cron al día: 12:00 UTC es las 09:00 en Chile (horario de verano). */
+export const REMINDER_DAILY_REVIEW = 'Se entrega en la revisión diaria de las 09:00 (hora de Chile), cuando ya llegó la hora pedida.';
 export const MAX_REMINDER_NOTE = 240;
 export const MAX_ACTIVE_REMINDERS = 20;
 export const MAX_ACTIVE_OVERDUE_REMINDERS = 3;
@@ -217,12 +219,12 @@ export function describeReminderConfirmation(input: {
     if (input.audience === 'overdue_residents') {
         return {
             title: 'Avisar por los cobros pendientes',
-            summary: `El ${when} (hora de Chile) aviso dentro de la app a quien tenga cobros pendientes, sin montos.${repeat} WhatsApp sigue apagado.`,
+            summary: `Para el ${when} (hora de Chile) aviso dentro de la app a quien tenga cobros pendientes, sin montos.${repeat} ${REMINDER_DAILY_REVIEW} WhatsApp sigue apagado.`,
         };
     }
     return {
         title: 'Crear recordatorio',
-        summary: `El ${when} (hora de Chile): ${input.note}.${repeat} Llega como notificación en la app.`,
+        summary: `Para el ${when} (hora de Chile): ${input.note}.${repeat} ${REMINDER_DAILY_REVIEW}`,
     };
 }
 
