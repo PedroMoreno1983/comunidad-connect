@@ -66,6 +66,10 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     // Retomar puede continuar un flujo que escribe. La confirmación del chat sigue.
     resume_agent_task: 'write_high',
     draft_committee_report: 'write_high',
+    list_my_gmail: 'read',
+    list_my_calendar: 'read',
+    send_gmail: 'write_high',
+    create_calendar_event: 'write_high',
     // Un hecho del edificio. Lo confirma el admin en el chat; no mueve plata.
     remember_community_fact: 'write_low',
     // Puede avisar a una sola persona o a todas las unidades con cobros

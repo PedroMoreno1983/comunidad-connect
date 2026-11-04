@@ -22,6 +22,7 @@ import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
 import { createCommitteeReport } from './committeeReport';
+import { createCalendarEvent, listCalendar, listGmail, sendGmail, withAdminGoogle } from './googleApi';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -403,6 +404,42 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'list_my_gmail',
+        description: 'Lee los últimos correos de la bandeja del administrador que conectó su Google. Solo asunto, remitente y un extracto. No envía nada.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'list_my_calendar',
+        description: 'Lee los próximos eventos del calendario de Google del administrador conectado. No crea nada.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'send_gmail',
+        description: 'Prepara UN correo desde el Gmail del administrador. No sale hasta que confirme. No es un envío masivo.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                to: { type: 'string' },
+                subject: { type: 'string' },
+                body: { type: 'string' },
+            },
+            required: ['to', 'subject', 'body'],
+        },
+    },
+    {
+        name: 'create_calendar_event',
+        description: 'Prepara un evento en el Google Calendar del administrador. No se crea hasta que confirme.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string' },
+                start: { type: 'string', description: 'Inicio en ISO, por ejemplo 2026-11-10T15:00:00-03:00.' },
+                end: { type: 'string', description: 'Término en ISO, posterior al inicio.' },
+            },
+            required: ['title', 'start', 'end'],
+        },
+    },
+    {
         name: 'draft_committee_report',
         description: 'Arma un informe HTML y PDF para el comité, con la línea gráfica de Convive y solo totales (asambleas y reservas). Sin nombres, montos ni datos de contacto. SOLO administradores. Requiere confirmación. El PDF caduca en 15 minutos.',
         input_schema: {
@@ -688,6 +725,8 @@ export const MUTATING_TOOLS = new Set<string>([
     'cancel_reminder',
     'resume_agent_task',
     'draft_committee_report',
+    'send_gmail',
+    'create_calendar_event',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -720,6 +759,7 @@ const ADMIN_TOOLS = new Set([
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
     'draft_committee_report',
+    'list_my_gmail', 'list_my_calendar', 'send_gmail', 'create_calendar_event',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
@@ -822,6 +862,10 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
         case 'draft_committee_report':
             return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
+        case 'send_gmail':
+            return { title: 'Enviar correo de Gmail', summary: `De tu Gmail a ${str('to')}: ${str('subject')}. Sale solo si confirmas.` };
+        case 'create_calendar_event':
+            return { title: 'Crear evento en Google Calendar', summary: `${str('title')} desde ${str('start')} hasta ${str('end')}.` };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1662,6 +1706,30 @@ export async function executeTool(
                 });
             }
 
+            case 'list_my_gmail': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador conectado puede leer su Gmail.' };
+                return withAdminGoogle(userCtx.user_id, token => listGmail(token));
+            }
+            case 'list_my_calendar': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador conectado puede leer su calendario.' };
+                return withAdminGoogle(userCtx.user_id, token => listCalendar(token));
+            }
+            case 'send_gmail': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador puede enviar desde su Gmail.' };
+                return withAdminGoogle(userCtx.user_id, token => sendGmail(token, {
+                    to: input.to || '',
+                    subject: input.subject || '',
+                    body: input.body || '',
+                }));
+            }
+            case 'create_calendar_event': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador puede crear eventos en su calendario.' };
+                return withAdminGoogle(userCtx.user_id, token => createCalendarEvent(token, {
+                    title: input.title || '',
+                    start: input.start || '',
+                    end: input.end || '',
+                }));
+            }
             case 'draft_committee_report': {
                 if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
                     return { error: 'Solo la administración puede preparar el informe del comité.' };
