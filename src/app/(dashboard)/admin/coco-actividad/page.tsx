@@ -17,10 +17,8 @@ export default function CocoActivityPage() {
     const [events, setEvents] = useState<Row[]>([]);
     const [error, setError] = useState("");
 
-    async function load() {
-        const response = await fetch("/api/admin/coco-activity", { cache: "no-store" });
-        const data = await response.json();
-        if (!response.ok) {
+    function applyPayload(responseOk: boolean, data: { error?: string; autonomy?: boolean; events?: Row[] }) {
+        if (!responseOk) {
             setError(data.error || "No pude cargar la actividad.");
             return;
         }
@@ -29,7 +27,23 @@ export default function CocoActivityPage() {
         setError("");
     }
 
-    useEffect(() => { void load(); }, []);
+    useEffect(() => {
+        let cancelled = false;
+        fetch("/api/admin/coco-activity", { cache: "no-store" })
+            .then(async response => ({ ok: response.ok, data: await response.json() }))
+            .then(result => {
+                if (!cancelled) applyPayload(result.ok, result.data);
+            })
+            .catch(() => {
+                if (!cancelled) setError("No pude cargar la actividad.");
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    async function load() {
+        const response = await fetch("/api/admin/coco-activity", { cache: "no-store" });
+        applyPayload(response.ok, await response.json());
+    }
 
     async function toggle() {
         const response = await fetch("/api/admin/coco-activity", {
