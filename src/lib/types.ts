@@ -3069,6 +3069,7 @@ export interface CoCoChatMessage {
     id: string;
     role: 'user' | 'assistant';
     text: string;
+    imageBase64?: string;
     nav?: string;
     action?: string;
     pendingActions?: CoCoPendingAction[];

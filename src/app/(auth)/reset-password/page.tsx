@@ -53,7 +53,7 @@ function ResetPasswordForm() {
         const { error: updateError } = await supabase.auth.updateUser({ password });
         setBusy(false);
         if (updateError) { setError(updateError.message || 'No se pudo guardar la contraseña.'); return; }
-        router.replace('/admin');
+        router.replace('/chat');
         router.refresh();
     }
 

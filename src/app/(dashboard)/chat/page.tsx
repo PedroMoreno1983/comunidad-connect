@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
@@ -61,6 +62,7 @@ export default function CoCoChatPage() {
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(true);
     const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [whatsApp, setWhatsApp] = useState<WhatsAppStartStatus | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -105,6 +107,8 @@ export default function CoCoChatPage() {
         setActiveThreadId(id);
         setMsgs([WELCOME_MESSAGE]);
         setInput('');
+        setDocumentFile(null);
+        setSelectedImage(null);
         try {
             const response = await fetch(`/api/coco?threadId=${encodeURIComponent(id)}`, { cache: 'no-store' });
             if (!response.ok) throw new Error('No pude cargar esta conversación.');
@@ -126,6 +130,8 @@ export default function CoCoChatPage() {
             setActiveThreadId(payload.thread.id);
             setMsgs([WELCOME_MESSAGE]);
             setInput('');
+            setDocumentFile(null);
+            setSelectedImage(null);
         } catch (error) {
             setMsgs(current => [...current, { id: Date.now().toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude crear la conversación.' }]);
         } finally { setHistoryLoading(false); }
@@ -209,7 +215,7 @@ export default function CoCoChatPage() {
     };
 
     const send = async (text: string) => {
-        if ((!text.trim() && !documentFile) || loading || historyLoading || !activeThreadId || hasUnresolvedPending) return;
+        if ((!text.trim() && !documentFile && !selectedImage) || loading || historyLoading || !activeThreadId || hasUnresolvedPending) return;
 
         if (documentFile) {
             const file = documentFile;
@@ -231,6 +237,22 @@ export default function CoCoChatPage() {
                 } }));
             } catch (error) {
                 setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar el documento.' }]);
+            } finally { setLoading(false); }
+            return;
+        }
+
+        if (selectedImage) {
+            const image = selectedImage;
+            const question = text.trim() || 'Mira esta imagen y dime qué observas y qué debería revisar.';
+            setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'user', text: question, imageBase64: image }]);
+            setInput('');
+            setSelectedImage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setLoading(true);
+            try {
+                appendAssistantReply(await postToCoCo({ message: question, imageBase64: image }));
+            } catch (error) {
+                setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar la imagen.' }]);
             } finally { setLoading(false); }
             return;
         }
@@ -337,6 +359,7 @@ export default function CoCoChatPage() {
                                         </div>
                                     )}
                                     <div className="flex flex-col gap-2 max-w-[80%] min-w-0">
+                                        {msg.imageBase64 && <Image src={msg.imageBase64} alt="Imagen adjunta" width={240} height={180} unoptimized className="max-h-48 w-auto max-w-full rounded-xl object-contain" />}
                                         {msg.text && <div
                                             className={`px-4 py-3.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
                                                 isAssistant 
@@ -467,10 +490,10 @@ export default function CoCoChatPage() {
                         </div>
                     )}
 
-                    {documentFile && (
+                    {(documentFile || selectedImage) && (
                         <div className="mx-auto flex max-w-3xl items-center justify-between rounded-xl border border-white/15 px-4 py-2 text-xs text-slate-300">
-                            <span className="truncate">Documento: {documentFile.name}</span>
-                            <button type="button" onClick={() => { setDocumentFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label="Quitar documento"><X className="h-4 w-4" /></button>
+                            <span className="truncate">{documentFile ? `Documento: ${documentFile.name}` : 'Imagen lista para enviar'}</span>
+                            <button type="button" onClick={() => { setDocumentFile(null); setSelectedImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label="Quitar adjunto"><X className="h-4 w-4" /></button>
                         </div>
                     )}
                     {/* Input Bar: rounded pill with send button in copper */}
@@ -478,17 +501,24 @@ export default function CoCoChatPage() {
                         onSubmit={(e) => { e.preventDefault(); send(input); }}
                         className="relative flex items-center max-w-3xl w-full mx-auto"
                     >
-                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={event => {
+                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={event => {
                             const file = event.target.files?.[0];
                             if (!file) return;
+                            if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type) && file.size <= 5 * 1024 * 1024) {
+                                const reader = new FileReader();
+                                reader.onload = () => { setSelectedImage(typeof reader.result === 'string' ? reader.result : null); setDocumentFile(null); };
+                                reader.readAsDataURL(file);
+                                return;
+                            }
                             if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
-                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta PDF, DOCX o TXT de hasta 5 MB.' }]);
+                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta PDF, DOCX, TXT o una imagen JPG, PNG, GIF o WebP de hasta 5 MB.' }]);
                                 event.target.value = '';
                                 return;
                             }
                             setDocumentFile(file);
+                            setSelectedImage(null);
                         }} />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading || historyLoading || hasUnresolvedPending} aria-label="Adjuntar documento" title="Adjuntar PDF, DOCX o TXT" className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading || historyLoading || hasUnresolvedPending} aria-label="Adjuntar archivo" title="Adjuntar documento o imagen" className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40">
                             <Paperclip className="h-4 w-4" />
                         </button>
                         <input
@@ -501,7 +531,7 @@ export default function CoCoChatPage() {
                         />
                         <button
                             type="submit"
-                            disabled={loading || historyLoading || hasUnresolvedPending || (!input.trim() && !documentFile)}
+                            disabled={loading || historyLoading || hasUnresolvedPending || (!input.trim() && !documentFile && !selectedImage)}
                             className="absolute right-2 h-10 w-10 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors disabled:opacity-40 shadow-md"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
