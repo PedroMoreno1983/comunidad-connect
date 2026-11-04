@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle } from "lucide-react";
+import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import confetti from "canvas-confetti";
@@ -59,6 +59,8 @@ export default function CoCoChatPage() {
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(true);
+    const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [whatsApp, setWhatsApp] = useState<WhatsAppStartStatus | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const hasUnresolvedPending = msgs.some(message =>
@@ -160,7 +162,31 @@ export default function CoCoChatPage() {
     };
 
     const send = async (text: string) => {
-        if (!text.trim() || loading || historyLoading || hasUnresolvedPending) return;
+        if ((!text.trim() && !documentFile) || loading || historyLoading || hasUnresolvedPending) return;
+
+        if (documentFile) {
+            const file = documentFile;
+            const question = text.trim() || 'Analiza este documento y dime qué establece, qué falta y qué debo revisar.';
+            setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'user', text: `${question}\nDocumento: ${file.name}` }]);
+            setInput('');
+            setDocumentFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setLoading(true);
+            try {
+                const form = new FormData();
+                form.append('file', file);
+                const response = await fetch('/api/coco/legal-document', { method: 'POST', body: form });
+                const document = await response.json() as { name?: string; text?: string; pageImages?: string[]; pageCount?: number; truncated?: boolean; error?: string };
+                if (!response.ok || !document.name || (!document.text && !document.pageImages?.length)) throw new Error(document.error || 'No pude leer el documento.');
+                appendAssistantReply(await postToCoCo({ message: question, legalDocument: {
+                    name: document.name, text: document.text || '', pageImages: document.pageImages || [],
+                    pageCount: document.pageCount || 0, truncated: document.truncated === true,
+                } }));
+            } catch (error) {
+                setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar el documento.' }]);
+            } finally { setLoading(false); }
+            return;
+        }
 
         setMsgs(p => [...p, { id: Date.now().toString(), role: "user", text }]);
         setInput("");
@@ -384,22 +410,41 @@ export default function CoCoChatPage() {
                         </div>
                     )}
 
+                    {documentFile && (
+                        <div className="mx-auto flex max-w-3xl items-center justify-between rounded-xl border border-white/15 px-4 py-2 text-xs text-slate-300">
+                            <span className="truncate">Documento: {documentFile.name}</span>
+                            <button type="button" onClick={() => { setDocumentFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label="Quitar documento"><X className="h-4 w-4" /></button>
+                        </div>
+                    )}
                     {/* Input Bar: rounded pill with send button in copper */}
                     <form 
                         onSubmit={(e) => { e.preventDefault(); send(input); }}
                         className="relative flex items-center max-w-3xl w-full mx-auto"
                     >
+                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={event => {
+                            const file = event.target.files?.[0];
+                            if (!file) return;
+                            if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
+                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta PDF, DOCX o TXT de hasta 5 MB.' }]);
+                                event.target.value = '';
+                                return;
+                            }
+                            setDocumentFile(file);
+                        }} />
+                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading || historyLoading || hasUnresolvedPending} aria-label="Adjuntar documento" title="Adjuntar PDF, DOCX o TXT" className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40">
+                            <Paperclip className="h-4 w-4" />
+                        </button>
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder={hasUnresolvedPending ? "Aprueba o rechaza la acción pendiente" : "Pregúntale a CoCo..."}
                             disabled={loading || historyLoading || hasUnresolvedPending}
-                            className="w-full h-14 pl-6 pr-16 rounded-full bg-white/5 border border-white/10 text-slate-200 placeholder:text-slate-500 text-sm font-medium outline-none transition-all focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                            className="w-full h-14 pl-14 pr-16 rounded-full bg-white/5 border border-white/10 text-slate-200 placeholder:text-slate-500 text-sm font-medium outline-none transition-all focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                         />
                         <button
                             type="submit"
-                            disabled={loading || historyLoading || hasUnresolvedPending || !input.trim()}
+                            disabled={loading || historyLoading || hasUnresolvedPending || (!input.trim() && !documentFile)}
                             className="absolute right-2 h-10 w-10 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors disabled:opacity-40 shadow-md"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
