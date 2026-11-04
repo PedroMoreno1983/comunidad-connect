@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
             <div className="relative aspect-[32/9] min-h-[260px] overflow-hidden" style={{ borderRadius: 22 }}>
                 <Image
                     src={buildingCoverSrc}
-                    alt="Foto de tu edificio"
+                    alt={`Foto de ${user?.communityName || 'tu comunidad'}`}
                     fill
                     priority
                     sizes="100vw"
@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
                 <div className="absolute inset-y-0 left-6 flex max-w-2xl flex-col justify-center pr-8 sm:left-9 lg:left-11" style={{ color: "var(--cc-paper)" }}>
                     <Eyebrow className="mb-3" style={{ color: "rgba(244,239,230,0.74)" }}>Panel administrador</Eyebrow>
                     <DisplayHeading size={42} style={{ color: "var(--cc-paper)" }}>
-                        Tu edificio, <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>de un vistazo</em>
+                        {user?.communityName || 'Tu comunidad'}, <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>de un vistazo</em>
                     </DisplayHeading>
                     <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
                         Operación, cobranza y actividad comunitaria en una vista ejecutiva conectada a datos reales.

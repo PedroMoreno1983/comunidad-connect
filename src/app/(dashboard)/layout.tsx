@@ -119,8 +119,7 @@ function DashboardShell({
         concierge: "Conserjería",
         resident: "Residente",
     };
-    const communityUser = user as typeof user & { condoName?: string; communityName?: string };
-    const buildingName = communityUser.condoName || communityUser.communityName || "Mi Edificio";
+    const buildingName = user.communityName || "Mi comunidad";
 
 
     // Admin, Concierge, & Resident wrapped in responsive AdminShell layout

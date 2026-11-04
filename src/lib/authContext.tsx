@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*, communities!profiles_community_id_fkey(id, cover_photo_url, pricing_tiers!communities_tier_id_fkey(features))')
+                .select('*, communities!profiles_community_id_fkey(id, name, cover_photo_url, pricing_tiers!communities_tier_id_fkey(features))')
                 .eq('id', sbUser.id)
                 .single();
 
@@ -157,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     unitName: profileDepartmentNumber ? `Depto ${profileDepartmentNumber}` : undefined,
                     photo: profile.avatar_url,
                     communityId: profile.community_id,
+                    communityName: profile.communities?.name || undefined,
                     communityCoverPhotoUrl: profile.communities?.cover_photo_url || undefined,
                     features,
                 });
