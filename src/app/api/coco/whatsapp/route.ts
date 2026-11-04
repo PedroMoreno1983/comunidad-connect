@@ -16,6 +16,7 @@ import {
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { CANONICAL_SITE_URL, PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
 import { publicRequestUrl, verifyTwilioSignatureForUrls } from '@/lib/security/twilioSignature';
 import { checkDistributedRateLimitBySubject } from '@/lib/security/rateLimit';
@@ -101,6 +102,10 @@ function getUnitDisplay(candidates: string[]) {
 }
 
 export async function GET() {
+    // El webhook es público: sin un administrador no se cuenta cómo está armado
+    // Twilio (SID, número ni nombres de variables). El POST de los mensajes sigue abajo.
+    const profile = await getAuthenticatedAgentProfile();
+    if (profile?.role !== 'admin') return NextResponse.json({ ok: true });
     return NextResponse.json(getWhatsAppConfigStatus());
 }
 

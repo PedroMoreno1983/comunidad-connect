@@ -218,6 +218,7 @@ export type PlaybookKey =
     | 'iot_emergency_readiness'
     | 'community_broadcast'
     | 'committee_weekly_digest'
+    | 'coco_reminder'
     | 'multi_agent_mission'
     // Tarea persistente de un ciclo agentico pausado en una escritura.
     | 'agentic_loop';
@@ -445,7 +446,7 @@ export type AgentChatMessage = {
     };
 };
 
-export type AgentTriggerSignalKey = 'overdue_expenses' | 'maintenance_backlog' | 'onboarding_gap' | 'emergency_readiness';
+export type AgentTriggerSignalKey = 'overdue_expenses' | 'maintenance_backlog' | 'onboarding_gap' | 'emergency_readiness' | 'coco_reminder';
 
 export type AgentTriggerRuleSummary = {
     id: string;
@@ -465,6 +466,7 @@ export type AgentTriggerRuleRecord = AgentTriggerRuleSummary & {
     communityId: string;
     threshold: Record<string, unknown>;
     context: Record<string, unknown>;
+    createdBy?: string | null;
 };
 
 export type AgentSignalEvaluation = {
@@ -546,5 +548,14 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
         targetHref: '/agent-center#resumen-semanal',
         requiresAdmin: true,
         steps: ['Agregar datos de la semana', 'Redactar borrador', 'Revisión y aprobación del admin', 'Aviso al comité en la app'],
+    },
+    {
+        key: 'coco_reminder',
+        agentKey: 'community',
+        name: 'Recordatorio de CoCo',
+        description: 'Deja un aviso en la app a la hora que pidas, o avisa a las unidades con cobros pendientes. La confirmación queda en el chat; WhatsApp no sale salvo que se encienda a propósito.',
+        targetHref: '/chat',
+        requiresAdmin: false,
+        steps: ['Guardar la hora en Chile', 'Esperar el scheduler', 'Avisar en la app', 'Dejar constancia'],
     },
 ];

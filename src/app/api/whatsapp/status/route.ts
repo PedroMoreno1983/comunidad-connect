@@ -20,7 +20,12 @@ async function requirePlatformCreator(request: NextRequest, rateLimitKey: string
 
 export async function GET(request: NextRequest) {
     const auth = await requirePlatformCreator(request, "whatsapp.status");
-    if (auth.response) return auth.response;
+    // Sin el administrador de la plataforma no hay SID, número ni nombres de variables.
+    // El 429 se conserva: es un límite, no un diagnóstico.
+    if (auth.response) {
+        if (auth.response.status === 429) return auth.response;
+        return NextResponse.json({ ok: true });
+    }
 
     const payload: WhatsAppStatus = {
         ...getWhatsAppConfigStatus(),

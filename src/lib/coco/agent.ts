@@ -8,7 +8,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { askOpenAi } from './openai-agent';
 import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
-import { getUserMemory, buildMemoryContext } from './user-memory';
+import { loadCoCoMemoryContext } from './memory';
+import { formatChileNow } from './reminders';
 import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import { buildPlatformContext } from './platformMap';
@@ -239,6 +240,10 @@ function requiredMutationTool(message: string, role?: string) {
     if (role === 'system') return undefined;
     if (/\b(c[oó]mo|como)\b/.test(text)) return undefined;
 
+    if (/\b(recu[eé]rdame|recuerdame|av[ií]same|avisame)\b/.test(text)) return 'create_reminder';
+    if (role === 'admin' && /\b(avisa|avisar|notifica|notificar)\b/.test(text) && /\b(cobros pendientes|morosos|d[ií]a\s+\d{1,2})\b/.test(text)) return 'create_reminder';
+    if (role === 'admin' && /\b(guarda|anota|recuerda que)\b/.test(text) && /\b(reglamento|proveedor|acuerdo)\b/.test(text)) return 'remember_community_fact';
+
     if (/\b(cierra|cerrar|prepara|preparar|finaliza|finalizar)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'lock_supermarket_group_order';
     if (/\b(s[uú]mame|sumarme|agrega|agregar|a[nñ]ade|a[nñ]adir)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'join_supermarket_group_order';
     if (/\b(crea|crear|abre|abrir)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'create_supermarket_group_order';
@@ -300,7 +305,7 @@ export async function askCoCo(
 
     // 2. Contexto del usuario en el system prompt
     const contextLine = [
-        `Fecha actual: ${new Date().toISOString().slice(0, 10)}`,
+        `Fecha actual en Chile: ${formatChileNow()}`,
         userCtx.name && `Nombre: ${userCtx.name}`,
         userCtx.role && `Rol: ${userCtx.role}`,
         userCtx.unit_id && `Unidad: ${userCtx.unit_id}`,
@@ -310,7 +315,12 @@ export async function askCoCo(
     const legalKnowledge = needsLegalContext(message, session) ? COCO_LEGAL_KNOWLEDGE : '';
     const requiredTool = requiredMutationTool(message, userCtx.role);
     // Memoria entre sesiones: hechos durables que CoCo recuerda de esta persona.
-    const memoryContext = userCtx.user_id ? buildMemoryContext(await getUserMemory(userCtx.user_id)) : '';
+    const memoryContext = isResuming ? '' : await loadCoCoMemoryContext({
+        userId: userCtx.user_id,
+        communityId: userCtx.community_id,
+        role: userCtx.role,
+        message,
+    });
     // Proactividad: estado actual relevante (deuda, morosidad). Solo en el primer
     // turno de la conversación, para no consultar la base en cada mensaje.
     const isFirstTurn = !(session?.conversation && session.conversation.length > 0);

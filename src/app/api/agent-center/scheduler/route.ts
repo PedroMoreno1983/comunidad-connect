@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
     }
     try {
+        // También entrega los recordatorios de CoCo vencidos (señal coco_reminder).
         return NextResponse.json(await evaluateDueAgentTriggers());
     } catch (error) {
         console.error('[agent-center scheduler] evaluation failed', error);

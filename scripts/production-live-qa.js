@@ -58,8 +58,11 @@ async function main() {
   }
 
   const whatsapp = await readJson('/api/whatsapp/status');
-  if ([401, 403].includes(whatsapp.response.status)) {
-    pass('WhatsApp status endpoint requires an authenticated administrator', {
+  const whatsappBody = JSON.stringify(whatsapp.data || {});
+  const leaksConfig = /accountSid|fromMasked|requiredEnv|TWILIO_|COCO_TWILIO|WHATSAPP_WEBHOOK_SECRET/.test(whatsappBody);
+  const minimalOk = whatsapp.response.status === 200 && whatsapp.data?.ok === true && !leaksConfig;
+  if (([401, 403].includes(whatsapp.response.status) && !leaksConfig) || minimalOk) {
+    pass('WhatsApp status endpoint does not publish configuration without an administrator', {
       status: whatsapp.response.status,
     });
   } else {
