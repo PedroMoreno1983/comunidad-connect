@@ -3075,6 +3075,12 @@ export interface CoCoChatMessage {
     resolvedActions?: CoCoResolutions;
 }
 
+export interface CoCoThread {
+    id: string;
+    title: string;
+    updatedAt: string;
+}
+
 // ─── Marketplace: resumen de la publicación recién creada ───────────────────
 
 export interface MarketplacePublicationSummary {

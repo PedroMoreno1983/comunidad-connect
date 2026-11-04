@@ -20,10 +20,18 @@ import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/c
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-export async function GET() {
+function threadKey(userId: string, threadId: unknown): string | null {
+    if (threadId === undefined || threadId === null || threadId === 'legacy') return `web:${userId}`;
+    if (typeof threadId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(threadId)) return null;
+    return `web:${userId}:${threadId}`;
+}
+
+export async function GET(request: NextRequest) {
     const profile = await getAuthenticatedAgentProfile();
     if (!profile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    const session = await getSession(`web:${profile.id}`);
+    const key = threadKey(profile.id, request.nextUrl.searchParams.get('threadId'));
+    if (!key) return NextResponse.json({ error: 'Conversación inválida' }, { status: 400 });
+    const session = await getSession(key);
     if (!session || session.user_context.community_id !== profile.community_id) {
         return NextResponse.json({ messages: [] });
     }
@@ -607,6 +615,8 @@ export async function POST(req: NextRequest) {
         const userId = profile.id;
         const unitId = profile.unit_id || '';
         const communityId = profile.community_id || '';
+        const selectedThreadKey = threadKey(userId, body.threadId);
+        if (!selectedThreadKey) return NextResponse.json({ reply: 'Conversación inválida.' }, { status: 400 });
 
         if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
             return NextResponse.json(
@@ -629,9 +639,14 @@ export async function POST(req: NextRequest) {
         }
 
         // ── 3. Cargar sesión ─────────────────────────────────────────────────
-        const sessionKey = userId || ip;
-        const storedSession = await getSession(`web:${sessionKey}`);
+        const storedSession = await getSession(selectedThreadKey);
+        if (body.threadId && body.threadId !== 'legacy' && !storedSession) {
+            return NextResponse.json({ reply: 'La conversación ya no está disponible. Abre una nueva.' }, { status: 404 });
+        }
         const session = storedSession?.user_context.community_id === communityId ? storedSession : null;
+        const recentConversation = session?.conversation.slice(-20) || [];
+        const archivedConversation = session?.conversation.slice(0, -20) || [];
+        const agentSession = session ? { ...session, conversation: recentConversation } : null;
 
         // ── 4. Llamar al agente ──────────────────────────────────────────────
         let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
@@ -639,7 +654,7 @@ export async function POST(req: NextRequest) {
         try {
             agentResponse = await askCoCo(
                 message,
-                session,
+                agentSession,
                 {
                     user_id:     userId,
                     name:        userName,
@@ -682,14 +697,17 @@ export async function POST(req: NextRequest) {
         const { reply, navigate, action, updatedHistory, pendingActions } = agentResponse;
 
         // ── 5. Guardar sesión actualizada ────────────────────────────────────
-        await saveSession(`web:${sessionKey}`, {
-            conversation: updatedHistory,
+        await saveSession(selectedThreadKey, {
+            conversation: [...archivedConversation, ...updatedHistory],
             user_context: {
                 role:         safeRole,
                 unit_id:      unitId,
                 community_id: communityId,
                 name:         userName,
                 channel:      'web',
+                title:        session?.user_context.title && session.user_context.title !== 'Nueva conversación'
+                    ? session.user_context.title
+                    : message.slice(0, 56) || 'Nueva conversación',
             },
         });
 

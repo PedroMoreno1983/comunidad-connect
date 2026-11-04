@@ -14,7 +14,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabase/supabaseAdmin';
 // de cualquier otro usuario solo con la key pública. Ver migración
 // 037_coco_sessions_lockdown.sql.
 
-const MAX_HISTORY = 20; // máximo de mensajes a persistir por sesión
+const MAX_HISTORY = 200; // historial visible por conversación; el modelo recibe una ventana menor
 
 export interface ConversationMessage {
     role: 'user' | 'assistant';
@@ -31,6 +31,7 @@ export interface SessionData {
         token?: string;
         channel?: string;
         name?: string;
+        title?: string;
     };
     auth_state?: 'pending' | 'verified';
     auth_attempts?: number;
@@ -54,9 +55,10 @@ export async function getSession(userKey: string): Promise<SessionData | null> {
 export async function saveSession(userKey: string, session: SessionData): Promise<void> {
     // Limitar historial para no explotar tokens de contexto
     const conversation = (session.conversation || []).slice(-MAX_HISTORY);
-    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const retentionDays = userKey.startsWith('web:') ? 30 : 1;
+    const expires_at = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
 
-    await supabase
+    const { error } = await supabase
         .from('coco_sessions')
         .upsert({
             user_key: userKey,
@@ -67,10 +69,28 @@ export async function saveSession(userKey: string, session: SessionData): Promis
             last_activity: new Date().toISOString(),
             expires_at,
         }, { onConflict: 'user_key' });
+    if (error) throw error;
 }
 
 export async function deleteSession(userKey: string): Promise<void> {
     await supabase.from('coco_sessions').delete().eq('user_key', userKey);
+}
+
+export async function listWebThreads(userId: string, communityId: string) {
+    const { data, error } = await supabase.from('coco_sessions')
+        .select('user_key,user_context,last_activity')
+        .like('user_key', `web:${userId}:%`)
+        .gt('expires_at', new Date().toISOString())
+        .order('last_activity', { ascending: false })
+        .limit(30);
+    if (error) throw error;
+    return (data || [])
+        .filter(row => row.user_context?.community_id === communityId)
+        .map(row => ({
+            id: String(row.user_key).slice(`web:${userId}:`.length),
+            title: typeof row.user_context?.title === 'string' ? row.user_context.title : 'Nueva conversación',
+            updatedAt: String(row.last_activity || ''),
+        }));
 }
 
 // ── Rate limiting simple en memoria ─────────────────────────────────────────

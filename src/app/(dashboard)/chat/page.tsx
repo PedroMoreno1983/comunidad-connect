@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X } from "lucide-react";
+import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import confetti from "canvas-confetti";
@@ -11,7 +11,7 @@ import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
 import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
-import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, WhatsAppStartStatus } from "@/lib/types";
+import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, WhatsAppStartStatus } from "@/lib/types";
 
 function CoCoMarkdown({ text }: { text: string }) {
     return (
@@ -46,16 +46,17 @@ const ADMIN_CHIPS = [
     { label: "Revisemos los gastos comunes", icon: DollarSign },
 ];
 
+const WELCOME_MESSAGE: CoCoChatMessage = {
+    id: 'welcome', role: 'assistant',
+    text: 'Hola. Soy **CoCo**, tu asistente de Convive Connect. ¿En qué te puedo ayudar?',
+};
+
 export default function CoCoChatPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
-    const [msgs, setMsgs] = useState<CoCoChatMessage[]>([
-        {
-            id: "welcome",
-            role: "assistant",
-            text: "Hola. Soy **CoCo**, tu asistente virtual e inteligencia operacional del edificio. ¿En qué te puedo ayudar hoy?",
-        }
-    ]);
+    const [msgs, setMsgs] = useState<CoCoChatMessage[]>([WELCOME_MESSAGE]);
+    const [threads, setThreads] = useState<CoCoThread[]>([]);
+    const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(true);
@@ -75,15 +76,60 @@ export default function CoCoChatPage() {
         if (!user?.id) return;
         let active = true;
         setHistoryLoading(true);
-        fetch(getApiUrl('/api/coco'), { cache: 'no-store' })
-            .then(response => response.ok ? response.json() as Promise<{ messages?: CoCoChatMessage[] }> : null)
-            .then(result => {
-                if (active && result?.messages?.length) setMsgs(result.messages);
+        fetch('/api/coco/threads', { cache: 'no-store' })
+            .then(response => response.ok ? response.json() as Promise<{ threads: CoCoThread[] }> : Promise.reject(new Error('No pude cargar las conversaciones.')))
+            .then(async result => {
+                let items = result.threads;
+                if (!items.length) {
+                    const created = await fetch('/api/coco/threads', { method: 'POST' });
+                    if (!created.ok) throw new Error('No pude iniciar la conversación.');
+                    const payload = await created.json() as { thread: CoCoThread };
+                    items = [payload.thread];
+                }
+                if (!active) return;
+                setThreads(items);
+                setActiveThreadId(items[0].id);
+                const response = await fetch(`/api/coco?threadId=${encodeURIComponent(items[0].id)}`, { cache: 'no-store' });
+                if (!response.ok) throw new Error('No pude cargar el historial.');
+                const history = await response.json() as { messages: CoCoChatMessage[] };
+                if (active) setMsgs(history.messages.length ? history.messages : [WELCOME_MESSAGE]);
             })
-            .catch(() => {})
+            .catch(error => { if (active) setMsgs([{ ...WELCOME_MESSAGE, text: error instanceof Error ? error.message : 'No pude cargar el chat.' }]); })
             .finally(() => { if (active) setHistoryLoading(false); });
         return () => { active = false; };
     }, [user?.id]);
+
+    async function selectThread(id: string) {
+        if (loading || historyLoading || id === activeThreadId) return;
+        setHistoryLoading(true);
+        setActiveThreadId(id);
+        setMsgs([WELCOME_MESSAGE]);
+        setInput('');
+        try {
+            const response = await fetch(`/api/coco?threadId=${encodeURIComponent(id)}`, { cache: 'no-store' });
+            if (!response.ok) throw new Error('No pude cargar esta conversación.');
+            const history = await response.json() as { messages: CoCoChatMessage[] };
+            setMsgs(history.messages.length ? history.messages : [WELCOME_MESSAGE]);
+        } catch (error) {
+            setMsgs([{ ...WELCOME_MESSAGE, text: error instanceof Error ? error.message : 'No pude cargar esta conversación.' }]);
+        } finally { setHistoryLoading(false); }
+    }
+
+    async function createThread() {
+        if (loading || historyLoading) return;
+        setHistoryLoading(true);
+        try {
+            const response = await fetch('/api/coco/threads', { method: 'POST' });
+            const payload = await response.json() as { thread?: CoCoThread; error?: string };
+            if (!response.ok || !payload.thread) throw new Error(payload.error || 'No pude crear la conversación.');
+            setThreads(current => [payload.thread!, ...current]);
+            setActiveThreadId(payload.thread.id);
+            setMsgs([WELCOME_MESSAGE]);
+            setInput('');
+        } catch (error) {
+            setMsgs(current => [...current, { id: Date.now().toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude crear la conversación.' }]);
+        } finally { setHistoryLoading(false); }
+    }
 
     useEffect(() => {
         if (!user) return;
@@ -99,7 +145,7 @@ export default function CoCoChatPage() {
         const res = await fetch(getApiUrl("/api/coco"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ currentPage: "/chat", ...body }),
+            body: JSON.stringify({ currentPage: "/chat", threadId: activeThreadId, ...body }),
         });
         const data = await res.json().catch(() => ({})) as CoCoApiResponse;
         if (!res.ok) throw new Error(data.reply || `HTTP ${res.status}`);
@@ -117,9 +163,10 @@ export default function CoCoChatPage() {
             pendingActions: data.pendingActions,
         }]);
 
-        if (safeNavigate) {
-            setTimeout(() => router.push(safeNavigate), 800);
-        }
+        void fetch('/api/coco/threads', { cache: 'no-store' })
+            .then(response => response.ok ? response.json() as Promise<{ threads: CoCoThread[] }> : null)
+            .then(result => { if (result) setThreads(result.threads); })
+            .catch(() => {});
 
         if (!data.action) return;
         setTimeout(() => {
@@ -162,7 +209,7 @@ export default function CoCoChatPage() {
     };
 
     const send = async (text: string) => {
-        if ((!text.trim() && !documentFile) || loading || historyLoading || hasUnresolvedPending) return;
+        if ((!text.trim() && !documentFile) || loading || historyLoading || !activeThreadId || hasUnresolvedPending) return;
 
         if (documentFile) {
             const file = documentFile;
@@ -249,6 +296,16 @@ export default function CoCoChatPage() {
             className="w-full min-h-[calc(100vh-4rem)] flex flex-col justify-between"
             style={{ backgroundColor: "#0E0B08", color: "#f3efe8" }}
         >
+            <div className="mx-auto flex w-full max-w-4xl items-center gap-3 overflow-x-auto border-b border-white/10 px-4 py-3 sm:px-6" aria-label="Conversaciones con CoCo">
+                <button type="button" onClick={createThread} disabled={loading || historyLoading} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-500/50 px-3 py-2 text-xs font-semibold text-brand-300 hover:bg-brand-500/10 disabled:opacity-40">
+                    <Plus className="h-3.5 w-3.5" /> Nueva conversación
+                </button>
+                {threads.map(thread => (
+                    <button key={thread.id} type="button" onClick={() => selectThread(thread.id)} disabled={loading || historyLoading} title={thread.title} aria-current={thread.id === activeThreadId ? 'page' : undefined} className={`max-w-52 shrink-0 truncate rounded-full px-3 py-2 text-xs disabled:opacity-40 ${thread.id === activeThreadId ? 'bg-white/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                        {thread.title}
+                    </button>
+                ))}
+            </div>
             {/* Main Chat Flow Container */}
             <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:px-6 flex flex-col justify-between">
                 
