@@ -34,6 +34,7 @@ import {
     whatsappSubjectForReminder,
 } from '@/lib/coco/reminders';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { planCoCoWhatsAppDelivery } from '@/lib/coco/whatsappDelivery';
 import { sendWhatsAppNotificationForUser } from '@/lib/server/whatsappNotify';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
@@ -294,8 +295,31 @@ async function notifyInApp(rows: Array<Record<string, unknown>>) {
     if (error) throw error;
 }
 
-async function maybeWhatsApp(userId: string, communityId: string, actorId: string, subject: string, requested: boolean) {
+async function maybeWhatsApp(
+    userId: string,
+    communityId: string,
+    actorId: string,
+    subject: string,
+    requested: boolean,
+    payment?: { unitLabel: string; amountLabel: string },
+) {
     if (!reminderWhatsAppActive(requested)) return { status: 'skipped' as const, reason: 'disabled' };
+    const planned = planCoCoWhatsAppDelivery({
+        purpose: payment ? 'payment_reminder' : 'community_notice',
+        windowOpen: false,
+        title: subject,
+        unitLabel: payment?.unitLabel,
+        amountLabel: payment?.amountLabel,
+    });
+    if (planned.mode === 'skip') return { status: 'skipped' as const, reason: planned.reason };
+    if (planned.mode === 'free') {
+        return sendWhatsAppNotificationForUser({
+            userId, title: subject, body: planned.body, type: 'info', communityId, actorId,
+            delivery: 'window_or_template',
+            mediaUrl: planned.mediaUrl,
+            metadata: { source: 'coco.reminder' },
+        });
+    }
     return sendWhatsAppNotificationForUser({
         userId,
         title: subject,
@@ -303,9 +327,10 @@ async function maybeWhatsApp(userId: string, communityId: string, actorId: strin
         type: 'info',
         communityId,
         actorId,
-        templateKey: 'community_notice',
-        templateVariables: { '1': subject },
-        metadata: { source: 'coco.reminder', template: 'convive_aviso_comunidad' },
+        delivery: 'window_or_template',
+        templateKey: planned.templateKey,
+        templateVariables: planned.variables,
+        metadata: { source: 'coco.reminder', template: planned.templateKey },
     });
 }
 

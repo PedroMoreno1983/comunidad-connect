@@ -9,6 +9,7 @@ import { askOpenAi } from './openai-agent';
 import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { loadCoCoMemoryContext } from './memory';
+import { interpretCoCoConfirmation } from './confirmation';
 import { formatChileNow } from './reminders';
 import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
@@ -89,12 +90,7 @@ export function restorePendingActions(session: SessionData | null): CoCoPendingA
 
 function textualResolution(message: string, toolUses: Anthropic.ToolUseBlock[]): CoCoResolutions | undefined {
     if (!toolUses.some(toolUse => MUTATING_TOOLS.has(toolUse.name))) return undefined;
-    const normalized = message.trim().toLocaleLowerCase('es-CL').replace(/[.!]+$/g, '');
-    const decision = ['aprobar', 'apruebo', 'confirmar', 'confirmo', 'si, apruebo', 'si, confirmo', 'sí, apruebo', 'sí, confirmo'].includes(normalized)
-        ? 'approved'
-        : ['rechazar', 'rechazo', 'cancelar', 'cancelo', 'no, rechazar', 'no, cancelo'].includes(normalized)
-            ? 'rejected'
-            : undefined;
+    const decision = interpretCoCoConfirmation(message);
     if (!decision) return undefined;
     return Object.fromEntries(
         toolUses
