@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
+import { extractPdfText } from '@/lib/coco/pdfText';
 
 export const dynamic = 'force-dynamic';
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -24,21 +25,29 @@ export async function POST(request: Request) {
         let pageCount = 0;
         let pageImages: string[] = [];
         if (extension === 'pdf') {
-            if (bytes.subarray(0, 5).toString() !== '%PDF-') return NextResponse.json({ error: 'El archivo no es un PDF válido.' }, { status: 400 });
-            await import('pdf-parse/worker');
-            const { PDFParse } = await import('pdf-parse');
-            const parser = new PDFParse({ data: bytes });
             try {
-                const extracted = await parser.getText();
+                const extracted = await extractPdfText(bytes);
                 text = extracted.text;
-                pageCount = extracted.total;
-                // Planos y certificados escaneados no contienen texto seleccionable.
-                // Solo se envían las dos primeras páginas para revisión visual.
-                if (text.trim().length < 80) {
+                pageCount = extracted.pageCount;
+            } catch (error) {
+                if (error instanceof Error && error.message === 'INVALID_PDF') {
+                    return NextResponse.json({ error: 'El archivo no es un PDF válido.' }, { status: 400 });
+                }
+                throw error;
+            }
+            // Planos y certificados escaneados no contienen texto seleccionable.
+            // Solo se envían las dos primeras páginas para revisión visual.
+            if (text.trim().length < 80) {
+                await import('pdf-parse/worker');
+                const { PDFParse } = await import('pdf-parse');
+                const parser = new PDFParse({ data: bytes });
+                try {
                     const screenshots = await parser.getScreenshot({ first: 2, desiredWidth: 1200, imageBuffer: false, imageDataUrl: true });
                     pageImages = screenshots.pages.map(page => page.dataUrl).filter(value => value.startsWith('data:image/png;base64,') && value.length <= 2_500_000);
+                } finally {
+                    await parser.destroy();
                 }
-            } finally { await parser.destroy(); }
+            }
         } else if (extension === 'docx') {
             const mammoth = await import('mammoth');
             text = (await mammoth.extractRawText({ buffer: bytes })).value;
