@@ -21,6 +21,7 @@ import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/
 import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
+import { createCommitteeReport } from './committeeReport';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -402,6 +403,15 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'draft_committee_report',
+        description: 'Arma un informe HTML y PDF para el comité, con la línea gráfica de Convive y solo totales (asambleas y reservas). Sin nombres, montos ni datos de contacto. SOLO administradores. Requiere confirmación. El PDF caduca en 15 minutos.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { title: { type: 'string', description: 'Título opcional, sin nombres ni montos.' } },
+            required: [],
+        },
+    },
+    {
         name: 'resume_agent_task',
         description: 'Retoma una tarea larga del Agent Center (cobranza, mantención o un ciclo pausado). SOLO administradores. No aprueba sola una escritura pendiente: si falta confirmación, la tarea sigue esperando. Requiere confirmación.',
         input_schema: {
@@ -677,6 +687,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_reminder',
     'cancel_reminder',
     'resume_agent_task',
+    'draft_committee_report',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -708,6 +719,7 @@ const ADMIN_TOOLS = new Set([
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
+    'draft_committee_report',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
@@ -808,6 +820,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Cancelar recordatorio', summary: 'No se enviará el aviso pendiente.' };
         case 'resume_agent_task':
             return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
+        case 'draft_committee_report':
+            return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1648,6 +1662,16 @@ export async function executeTool(
                 });
             }
 
+            case 'draft_committee_report': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede preparar el informe del comité.' };
+                }
+                return createCommitteeReport({
+                    communityId: userCtx.community_id,
+                    createdBy: userCtx.user_id,
+                    requestedTitle: input.title,
+                });
+            }
             case 'resume_agent_task': {
                 if (userCtx.role !== 'admin') return { error: 'Solo la administración puede retomar una tarea.' };
                 if (!userCtx.user_id || !userCtx.community_id) return { error: 'No pude identificar la comunidad.' };
