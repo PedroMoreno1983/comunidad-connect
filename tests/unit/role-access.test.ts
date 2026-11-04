@@ -13,7 +13,7 @@ describe("roleAccess", () => {
         });
     });
     it("sends each role to its own home without bouncing through /home", () => {
-        expect(homePathForRole("admin")).toBe("/admin");
+        expect(homePathForRole("admin")).toBe("/chat");
         expect(homePathForRole("concierge")).toBe("/concierge");
         expect(homePathForRole("resident")).toBe("/home");
     });
@@ -30,6 +30,6 @@ describe("roleAccess", () => {
         expect(postLoginPath("/admin/finanzas", "resident")).toBe("/home");
         expect(postLoginPath("/expenses", "concierge")).toBe("/concierge");
         expect(postLoginPath("/expenses", "resident")).toBe("/expenses");
-        expect(postLoginPath("/home", "admin")).toBe("/admin");
+        expect(postLoginPath("/home", "admin")).toBe("/chat");
     });
 });

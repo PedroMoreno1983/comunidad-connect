@@ -40,6 +40,12 @@ const CHIPS = [
     { label: "Muéstrame el tour", icon: Sparkles },
 ];
 
+const ADMIN_CHIPS = [
+    { label: "Ayúdame a poner en marcha mi comunidad", icon: Sparkles },
+    { label: "¿Qué falta para incorporar a los residentes?", icon: Bot },
+    { label: "Revisemos los gastos comunes", icon: DollarSign },
+];
+
 export default function CoCoChatPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
@@ -52,6 +58,7 @@ export default function CoCoChatPage() {
     ]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(true);
     const [whatsApp, setWhatsApp] = useState<WhatsAppStartStatus | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const hasUnresolvedPending = msgs.some(message =>
@@ -61,6 +68,20 @@ export default function CoCoChatPage() {
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        let active = true;
+        setHistoryLoading(true);
+        fetch(getApiUrl('/api/coco'), { cache: 'no-store' })
+            .then(response => response.ok ? response.json() as Promise<{ messages?: CoCoChatMessage[] }> : null)
+            .then(result => {
+                if (active && result?.messages?.length) setMsgs(result.messages);
+            })
+            .catch(() => {})
+            .finally(() => { if (active) setHistoryLoading(false); });
+        return () => { active = false; };
+    }, [user?.id]);
 
     useEffect(() => {
         if (!user) return;
@@ -139,7 +160,7 @@ export default function CoCoChatPage() {
     };
 
     const send = async (text: string) => {
-        if (!text.trim() || loading || hasUnresolvedPending) return;
+        if (!text.trim() || loading || historyLoading || hasUnresolvedPending) return;
 
         setMsgs(p => [...p, { id: Date.now().toString(), role: "user", text }]);
         setInput("");
@@ -195,6 +216,7 @@ export default function CoCoChatPage() {
     };
 
     const firstName = user?.name ? user.name.split(" ")[0] : "vecino/a";
+    const chips = user?.role === 'admin' ? ADMIN_CHIPS : CHIPS;
 
     return (
         <div 
@@ -214,7 +236,9 @@ export default function CoCoChatPage() {
                             ¿En qué te <em className="text-italic-serif text-brand-500">ayudo</em> hoy, {firstName}?
                         </DisplayHeading>
                         <p className="text-sm text-slate-400 max-w-md mx-auto">
-                            Puedes pedirme reportar una filtración, agendar un quincho, revisar tu cobro de gastos comunes o consultar reglamentos.
+                            {user?.role === 'admin'
+                                ? `Conversemos sobre ${user.communityName || 'tu comunidad'}. Puedo revisar lo que falta, ayudarte a operar y pedirte aprobación antes de aplicar cambios.`
+                                : 'Puedes pedirme reportar una filtración, agendar un quincho, revisar tu cobro de gastos comunes o consultar reglamentos.'}
                         </p>
                     </div>
                 ) : (
@@ -344,7 +368,7 @@ export default function CoCoChatPage() {
                     {/* Suggestion Chips */}
                     {msgs.length <= 2 && (
                         <div className="flex flex-wrap gap-2 justify-center">
-                            {CHIPS.map(chip => {
+                            {chips.map(chip => {
                                 const Icon = chip.icon;
                                 return (
                                     <button
@@ -370,12 +394,12 @@ export default function CoCoChatPage() {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder={hasUnresolvedPending ? "Aprueba o rechaza la acción pendiente" : "Pregúntale a CoCo..."}
-                            disabled={loading || hasUnresolvedPending}
+                            disabled={loading || historyLoading || hasUnresolvedPending}
                             className="w-full h-14 pl-6 pr-16 rounded-full bg-white/5 border border-white/10 text-slate-200 placeholder:text-slate-500 text-sm font-medium outline-none transition-all focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                         />
                         <button
                             type="submit"
-                            disabled={loading || hasUnresolvedPending || !input.trim()}
+                            disabled={loading || historyLoading || hasUnresolvedPending || !input.trim()}
                             className="absolute right-2 h-10 w-10 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors disabled:opacity-40 shadow-md"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

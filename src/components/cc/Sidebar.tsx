@@ -178,6 +178,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "INTELIGENCIA OPERATIVA",
       links: [
+        { href: "/chat", label: "Hablar con CoCo", icon: Bot, roles: ["admin", "resident", "concierge"] },
         { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin"], premium: true },
         { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true, creatorOnly: true, capability: "marketingReels" as ProductCapabilityKey },
       ]

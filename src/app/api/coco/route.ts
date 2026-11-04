@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo, CoCoPendingResolutionError, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
-import type { CoCoApiResponse, CoCoResolutions } from '@/lib/types';
+import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
+import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
@@ -19,6 +19,26 @@ import { TOOL_DEFINITIONS, executeTool, isToolAllowedForRole } from '@/lib/coco/
 import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/coco/platformMap';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+export async function GET() {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const session = await getSession(`web:${profile.id}`);
+    if (!session || session.user_context.community_id !== profile.community_id) {
+        return NextResponse.json({ messages: [] });
+    }
+    const messages: CoCoChatMessage[] = session.conversation.flatMap((turn, index) =>
+        typeof turn.content === 'string' && turn.content.trim()
+            ? [{ id: `history-${index}`, role: turn.role, text: turn.content }]
+            : [],
+    );
+    const pendingActions = restorePendingActions(session);
+    if (pendingActions.length) messages.push({
+        id: 'history-pending', role: 'assistant', text: 'Antes de continuar, revisa esta acción pendiente:',
+        pendingActions,
+    });
+    return NextResponse.json({ messages }, { headers: { 'Cache-Control': 'private, no-store' } });
+}
 const GEMINI_MODELS = [
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
@@ -610,7 +630,8 @@ export async function POST(req: NextRequest) {
 
         // ── 3. Cargar sesión ─────────────────────────────────────────────────
         const sessionKey = userId || ip;
-        const session = await getSession(`web:${sessionKey}`);
+        const storedSession = await getSession(`web:${sessionKey}`);
+        const session = storedSession?.user_context.community_id === communityId ? storedSession : null;
 
         // ── 4. Llamar al agente ──────────────────────────────────────────────
         let agentResponse: Awaited<ReturnType<typeof askCoCo>>;

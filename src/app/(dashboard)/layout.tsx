@@ -144,9 +144,11 @@ function DashboardShell({
                     </ErrorBoundary>
                 </AdminShell>
             </ErrorBoundary>
-            <ErrorBoundary name="CoCo Widget">
-                <CoCo />
-            </ErrorBoundary>
+            {pathname !== "/chat" && (
+                <ErrorBoundary name="CoCo Widget">
+                    <CoCo />
+                </ErrorBoundary>
+            )}
             <ErrorBoundary name="Bloqueo biométrico">
                 <BiometricLockGate userId={user.id} />
             </ErrorBoundary>

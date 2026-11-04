@@ -12,7 +12,7 @@ export function normalizeAppRole(role: string | null | undefined): AppRole {
 
 export function homePathForRole(role: string | null | undefined): string {
     const normalized = normalizeAppRole(role);
-    if (normalized === "admin") return "/admin";
+    if (normalized === "admin") return "/chat";
     if (normalized === "concierge") return "/concierge";
     return "/home";
 }

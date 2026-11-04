@@ -82,6 +82,10 @@ function pendingActionsFrom(toolUses: Anthropic.ToolUseBlock[]): CoCoPendingActi
         });
 }
 
+export function restorePendingActions(session: SessionData | null): CoCoPendingAction[] {
+    return pendingActionsFrom(pendingToolUses(session));
+}
+
 function textualResolution(message: string, toolUses: Anthropic.ToolUseBlock[]): CoCoResolutions | undefined {
     if (!toolUses.some(toolUse => MUTATING_TOOLS.has(toolUse.name))) return undefined;
     const normalized = message.trim().toLocaleLowerCase('es-CL').replace(/[.!]+$/g, '');
