@@ -2213,6 +2213,19 @@ CREATE TABLE IF NOT EXISTS "public"."coco_sessions" (
     "expires_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval)
 );
 
+CREATE TABLE IF NOT EXISTS public.coco_google_connections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  google_email text NOT NULL,
+  access_token text NOT NULL,
+  refresh_token text,
+  scopes text[] NOT NULL DEFAULT '{}',
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.coco_email_drafts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
