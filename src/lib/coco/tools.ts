@@ -20,6 +20,7 @@ import { summarizeAccountPaymentStatus } from './paymentStatus';
 import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/collectionService';
 import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
+import { resumeCoCoTask } from './resumeTask';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -401,6 +402,15 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'resume_agent_task',
+        description: 'Retoma una tarea larga del Agent Center (cobranza, mantención o un ciclo pausado). SOLO administradores. No aprueba sola una escritura pendiente: si falta confirmación, la tarea sigue esperando. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { task_id: { type: 'string', description: 'Id de la tarea a retomar.' } },
+            required: ['task_id'],
+        },
+    },
+    {
         name: 'remember_preference',
         description: 'Guarda un hecho durable y útil que la persona te contó sobre sí misma o sus preferencias (ej: "es electrodependiente", "prefiere que le avisen por la mañana", "tiene un perro"), para recordarlo en futuras conversaciones. Úsala solo con datos que la persona compartió y que valga la pena recordar. No la uses para datos sensibles innecesarios ni para cada detalle trivial.',
         input_schema: {
@@ -666,6 +676,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'remember_community_fact',
     'create_reminder',
     'cancel_reminder',
+    'resume_agent_task',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -696,6 +707,7 @@ const ADMIN_TOOLS = new Set([
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
+    'resume_agent_task',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
@@ -794,6 +806,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return reminderConfirmationFromInput(input);
         case 'cancel_reminder':
             return { title: 'Cancelar recordatorio', summary: 'No se enviará el aviso pendiente.' };
+        case 'resume_agent_task':
+            return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1632,6 +1646,22 @@ export async function executeTool(
                     known_data: input.known_data && typeof input.known_data === 'object' ? input.known_data as Record<string, unknown> : {},
                     extra_queries: Array.isArray(input.extra_queries) ? input.extra_queries as Array<{ source?: string; query?: string }> : [],
                 });
+            }
+
+            case 'resume_agent_task': {
+                if (userCtx.role !== 'admin') return { error: 'Solo la administración puede retomar una tarea.' };
+                if (!userCtx.user_id || !userCtx.community_id) return { error: 'No pude identificar la comunidad.' };
+                try {
+                    const resumed = await resumeCoCoTask({
+                        id: userCtx.user_id,
+                        role: 'admin',
+                        community_id: userCtx.community_id,
+                        name: userCtx.name,
+                    }, (input.task_id || '').trim());
+                    return { success: true, task_id: input.task_id, message: resumed.message };
+                } catch (resumeError) {
+                    return { error: resumeError instanceof Error ? resumeError.message : 'No se pudo retomar la tarea.' };
+                }
             }
 
             case 'remember_preference': {
