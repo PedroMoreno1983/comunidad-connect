@@ -13,6 +13,7 @@ import {
     addCommunityExpense,
     previewBilling,
     issueBilling,
+    cancelBilling,
 } from '@/lib/finance/billingService';
 import { maybeCreateCoCoCase } from './caseService';
 import { summarizeAccountPaymentStatus } from './paymentStatus';
@@ -20,6 +21,8 @@ import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/
 import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
+import { blockCoCoWrite } from './autonomyGate';
+import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
 import { platformGuide } from './platformMap';
 import { PUBLIC_SITE_URL } from '@/lib/config';
@@ -520,6 +523,46 @@ export const TOOL_DEFINITIONS = [
             required: ['month', 'due_date'],
         },
     },
+    {
+        name: 'cancel_issued_billing',
+        description: 'Anula una emisión de gasto común que todavía no tiene pagos. Es el deshacer de issue_billing. SOLO administradores. Requiere confirmación. Pide antes el id de la emisión que devolvió issue_billing.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { run_id: { type: 'string', description: 'Id de la emisión a anular.' } },
+            required: ['run_id'],
+        },
+    },
+    {
+        name: 'schedule_community_notice',
+        description: 'Programa un aviso para toda la comunidad. Se publica en la app en la revisión diaria de las 09:00 (hora de Chile), cuando llega la fecha. SOLO administradores. Muestra el texto y pide confirmación. Se cancela con cancel_reminder.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                text: { type: 'string', description: 'Texto del aviso, sin montos ni apodos de cobranza.' },
+                when: { type: 'string', description: 'viernes, AAAA-MM-DD o día del mes.' },
+                time: { type: 'string', description: 'HH:MM en hora de Chile. Por defecto 09:00.' },
+                repeat: { type: 'string', enum: ['once', 'monthly'] },
+            },
+            required: ['text', 'when'],
+        },
+    },
+    {
+        name: 'list_pending_bookings',
+        description: 'Lista reservas de espacios comunes que están pendientes o confirmadas, para que la administración apruebe o anule. SOLO administradores. Solo lectura.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'decide_booking',
+        description: 'Aprueba una reserva pendiente o la anula (también una ya confirmada: es el deshacer). SOLO administradores. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                booking_id: { type: 'string' },
+                decision: { type: 'string', enum: ['approve', 'reject'] },
+            },
+            required: ['booking_id', 'decision'],
+        },
+    },
 
     // ── MÓDULO: IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
     {
@@ -627,6 +670,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'add_community_expense',
     'record_payment',
     'issue_billing',
+    'cancel_issued_billing',
+    'schedule_community_notice',
+    'decide_booking',
     'remember_community_fact',
     'create_reminder',
     'cancel_reminder',
@@ -662,6 +708,7 @@ const ADMIN_TOOLS = new Set([
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
+    'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
 
@@ -731,6 +778,15 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Registrar pago recibido', summary: `Unidad ${unit('unit_id')} · $${str('amount')} · ${str('paid_at')} · ${str('method')} · referencia ${str('reference')}. Confirma solo si verificaste el pago fuera de CoCo; esto actualiza el saldo de la unidad.` };
         case 'issue_billing':
             return { title: 'Emitir gasto común', summary: `Emitir ${str('month')} (vence ${str('due_date')}): crea el cobro real a las unidades. Revisa el reparto antes de aprobar.` };
+        case 'cancel_issued_billing':
+            return { title: 'Anular emisión de gasto común', summary: 'Anula los cobros de esa emisión si nadie ha pagado todavía.' };
+        case 'schedule_community_notice':
+            return { title: 'Programar aviso a la comunidad', summary: `${str('text')} · ${str('when') || 'fecha'} ${str('time') || '09:00'}. Sale en la revisión diaria.` };
+        case 'decide_booking':
+            return {
+                title: str('decision') === 'approve' ? 'Aprobar reserva' : 'Anular reserva',
+                summary: str('decision') === 'approve' ? 'La reserva pendiente queda confirmada.' : 'La reserva queda anulada.',
+            };
         case 'request_urgent_access_approval':
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':
@@ -854,6 +910,10 @@ export async function executeTool(
 ): Promise<unknown> {
     try {
         if (!isToolAllowedForRole(name, userCtx.role)) return forbidden();
+        if (MUTATING_TOOLS.has(name)) {
+            const blocked = await blockCoCoWrite(userCtx);
+            if (blocked) return blocked;
+        }
         switch (name) {
 
             // ── RESIDENTE / FINANZAS ─────────────────────────────────────────
@@ -1748,6 +1808,70 @@ export async function executeTool(
                     if (billingError instanceof BillingError) return { error: billingError.message };
                     throw billingError;
                 }
+            }
+
+            case 'cancel_issued_billing': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden anular una emisión.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                try {
+                    const result = await cancelBilling(communityId, (input.run_id || '').trim(), userCtx.user_id ?? null);
+                    return { success: true, run_id: (input.run_id || '').trim(), message: `Emisión de ${result.month} anulada.` };
+                } catch (billingError) {
+                    if (billingError instanceof BillingError) return { error: billingError.message };
+                    throw billingError;
+                }
+            }
+
+            case 'schedule_community_notice': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden programar un aviso.' };
+                return createCoCoReminder(userCtx, { ...input, audience: 'community_notice', whatsapp: 'false' });
+            }
+
+            case 'list_pending_bookings': {
+                if (!isAdmin(userCtx)) return forbidden('Solo los administradores pueden ver las reservas por decidir.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data, error } = await supabaseAdmin
+                    .from('bookings')
+                    .select('id, date, start_time, end_time, status, amenities(name)')
+                    .eq('community_id', communityId)
+                    .in('status', ['pending', 'confirmed'])
+                    .order('date', { ascending: true })
+                    .limit(30);
+                if (error) return { error: 'No pude leer las reservas.' };
+                return { bookings: data || [] };
+            }
+
+            case 'decide_booking': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden decidir una reserva.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const decision = input.decision === 'approve' ? 'approve' : input.decision === 'reject' ? 'reject' : null;
+                if (!decision) return { error: 'La decisión tiene que ser approve o reject.' };
+                const { data: current, error: readError } = await supabaseAdmin
+                    .from('bookings')
+                    .select('id, status')
+                    .eq('id', input.booking_id || '')
+                    .eq('community_id', communityId)
+                    .maybeSingle();
+                if (readError || !current) return { error: 'No encontré esa reserva en tu comunidad.' };
+                const next = nextBookingStatus(String(current.status), decision);
+                if (!next) return { error: 'Esa reserva ya no se puede cambiar de esa forma.' };
+                const { data: updated, error } = await supabaseAdmin
+                    .from('bookings')
+                    .update({ status: next })
+                    .eq('id', current.id)
+                    .eq('community_id', communityId)
+                    .eq('status', current.status)
+                    .select('id')
+                    .maybeSingle();
+                if (error || !updated) return { error: 'No pude actualizar la reserva. Vuelve a mirarla.' };
+                return {
+                    success: true,
+                    booking_id: updated.id,
+                    message: next === 'confirmed' ? 'Reserva confirmada.' : 'Reserva anulada.',
+                };
             }
 
             // ── IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────

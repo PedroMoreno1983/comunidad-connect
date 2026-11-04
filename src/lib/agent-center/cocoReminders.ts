@@ -27,6 +27,7 @@ import {
     type ReminderSchedule,
     chileDateISO,
     describeReminderConfirmation,
+    noticeHasDebtLanguage,
     nextMonthlyRun,
     reminderAudienceAllowed,
     reminderWhatsAppActive,
@@ -34,6 +35,7 @@ import {
     whatsappSubjectForReminder,
 } from '@/lib/coco/reminders';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { planCoCoWhatsAppDelivery } from '@/lib/coco/whatsappDelivery';
 import { sendWhatsAppNotificationForUser } from '@/lib/server/whatsappNotify';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
@@ -73,7 +75,11 @@ function objectValue(value: unknown) {
 
 function parseContext(value: unknown): ReminderContext | null {
     const raw = objectValue(value);
-    const audience = raw.audience === 'overdue_residents' ? 'overdue_residents' : raw.audience === 'self' ? 'self' : null;
+    const audience = raw.audience === 'overdue_residents'
+        ? 'overdue_residents'
+        : raw.audience === 'community_notice'
+            ? 'community_notice'
+            : raw.audience === 'self' ? 'self' : null;
     const cadence = raw.cadence === 'monthly' ? 'monthly' : raw.cadence === 'once' ? 'once' : null;
     const note = typeof raw.note === 'string' ? raw.note.trim() : '';
     const timeLocal = typeof raw.timeLocal === 'string' ? raw.timeLocal : '';
@@ -294,8 +300,31 @@ async function notifyInApp(rows: Array<Record<string, unknown>>) {
     if (error) throw error;
 }
 
-async function maybeWhatsApp(userId: string, communityId: string, actorId: string, subject: string, requested: boolean) {
+async function maybeWhatsApp(
+    userId: string,
+    communityId: string,
+    actorId: string,
+    subject: string,
+    requested: boolean,
+    payment?: { unitLabel: string; amountLabel: string },
+) {
     if (!reminderWhatsAppActive(requested)) return { status: 'skipped' as const, reason: 'disabled' };
+    const planned = planCoCoWhatsAppDelivery({
+        purpose: payment ? 'payment_reminder' : 'community_notice',
+        windowOpen: false,
+        title: subject,
+        unitLabel: payment?.unitLabel,
+        amountLabel: payment?.amountLabel,
+    });
+    if (planned.mode === 'skip') return { status: 'skipped' as const, reason: planned.reason };
+    if (planned.mode === 'free') {
+        return sendWhatsAppNotificationForUser({
+            userId, title: subject, body: planned.body, type: 'info', communityId, actorId,
+            delivery: 'window_or_template',
+            mediaUrl: planned.mediaUrl,
+            metadata: { source: 'coco.reminder' },
+        });
+    }
     return sendWhatsAppNotificationForUser({
         userId,
         title: subject,
@@ -303,13 +332,43 @@ async function maybeWhatsApp(userId: string, communityId: string, actorId: strin
         type: 'info',
         communityId,
         actorId,
-        templateKey: 'community_notice',
-        templateVariables: { '1': subject },
-        metadata: { source: 'coco.reminder', template: 'convive_aviso_comunidad' },
+        delivery: 'window_or_template',
+        templateKey: planned.templateKey,
+        templateVariables: planned.variables,
+        metadata: { source: 'coco.reminder', template: planned.templateKey },
     });
 }
 
 async function deliver(rule: AgentTriggerRuleRecord, parsed: ReminderContext, occurrence: string, owner: string) {
+    if (parsed.audience === 'community_notice') {
+        const { data: residents, error } = await getSupabaseAdmin()
+            .from('profiles')
+            .select('id')
+            .eq('community_id', rule.communityId)
+            .eq('role', 'resident')
+            .limit(500);
+        if (error) throw error;
+        const safeBody = noticeHasDebtLanguage(parsed.note)
+            ? 'La administración publicó un aviso. Entra a Convive Connect para leerlo.'
+            : parsed.note;
+        const ids = (residents || []).map(row => String(row.id));
+        await notifyInApp(ids.map(userId => ({
+            id: stableNotificationId('coco-notice', rule.id, occurrence, userId),
+            user_id: userId,
+            community_id: rule.communityId,
+            type: 'info',
+            category: 'coco_notice',
+            title: 'Aviso de la administración',
+            body: safeBody,
+            link: '/feed',
+        })));
+        if (parsed.whatsappRequested) {
+            for (const userId of ids) {
+                await maybeWhatsApp(userId, rule.communityId, owner, whatsappSubjectForReminder('self', safeBody), true);
+            }
+        }
+        return { notified: ids.length };
+    }
     if (parsed.audience === 'self') {
         await notifyInApp([{
             id: stableNotificationId('coco-reminder', rule.id, occurrence, owner),

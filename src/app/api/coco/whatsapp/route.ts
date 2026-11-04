@@ -16,18 +16,23 @@ import {
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
+import { whatsappPendingReply } from '@/lib/coco/confirmation';
+import { LEGAL_DRAFT_MARKER, canDraftLegalDocuments } from '@/lib/coco/legalDraftMarker';
+import { markdownToPdf } from '@/lib/coco/pdf';
+import { storeOutboundMedia } from '@/lib/coco/outboundMediaStore';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { CANONICAL_SITE_URL, PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
 import { publicRequestUrl, verifyTwilioSignatureForUrls } from '@/lib/security/twilioSignature';
 import { checkDistributedRateLimitBySubject } from '@/lib/security/rateLimit';
 
-function twiml(text: string): NextResponse {
-    const safe = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+function xml(value: string) {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function twiml(text: string, mediaUrl?: string): NextResponse {
+    const media = mediaUrl ? `<Media>${xml(mediaUrl)}</Media>` : '';
     return new NextResponse(
-        `<Response><Message>${safe}</Message></Response>`,
+        `<Response><Message>${media}<Body>${xml(text)}</Body></Message></Response>`,
         { headers: { 'Content-Type': 'text/xml' } }
     );
 }
@@ -101,6 +106,23 @@ function getUnitDisplay(candidates: string[]) {
     return candidates[0] || 'Unidad';
 }
 
+async function maybeDraftMediaUrl(reply: string, user: { user_id: string; role: string; community_id: string }): Promise<string | undefined> {
+    if (!reply.includes(LEGAL_DRAFT_MARKER) || !canDraftLegalDocuments(user.role)) return undefined;
+    try {
+        const pdf = await markdownToPdf(reply);
+        return await storeOutboundMedia({
+            communityId: user.community_id,
+            createdBy: user.user_id,
+            filename: 'borrador-convive.pdf',
+            contentType: 'application/pdf',
+            body: Buffer.from(pdf),
+        });
+    } catch (error) {
+        console.error('[CoCo WhatsApp] No se pudo adjuntar el borrador', error);
+        return undefined;
+    }
+}
+
 export async function GET() {
     // El webhook es público: sin un administrador no se cuenta cómo está armado
     // Twilio (SID, número ni nombres de variables). El POST de los mensajes sigue abajo.
@@ -138,9 +160,9 @@ export async function POST(req: NextRequest) {
         return new NextResponse('', { status: 401 });
     }
 
-    const respond = (text: string) => relayedFromNorma
-        ? NextResponse.json({ reply: text })
-        : twiml(text);
+    const respond = (text: string, mediaUrl?: string) => relayedFromNorma
+        ? NextResponse.json({ reply: text, ...(mediaUrl ? { mediaUrl } : {}) })
+        : twiml(text, mediaUrl);
 
     const message = (formData.get('Body') as string)?.trim();
     const waId    = formData.get('WaId') as string; // número sin +
@@ -243,10 +265,11 @@ export async function POST(req: NextRequest) {
             const { reply, updatedHistory, pendingActions } = agentResponse;
             await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext }, Boolean(pendingActions?.length));
             if (pendingActions?.length) {
-                const actionList = pendingActions.map(action => `- ${action.title}: ${action.summary}`).join('\n');
-                return respond(`${reply || 'Necesito tu confirmacion antes de continuar.'}\n\n${actionList}\n\nResponde APROBAR para ejecutar o RECHAZAR para cancelar.`);
+                const lines = pendingActions.map(action => `${action.title}: ${action.summary}`);
+                return respond(whatsappPendingReply(lines));
             }
-            return respond(reply || 'La solicitud fue procesada.');
+            const draftUrl = await maybeDraftMediaUrl(reply, verifiedContext);
+            return respond(draftUrl ? `${reply}\n\nTe dejo el PDF del borrador en este mensaje. Caduca en 15 minutos.` : (reply || 'La solicitud fue procesada.'), draftUrl);
         }
 
         // ── Flujo de autenticación ───────────────────────────────────────────

@@ -26,6 +26,9 @@ type WhatsAppNotificationInput = {
     metadata?: Record<string, unknown>;
     templateKey?: WhatsAppTemplateKey;
     templateVariables?: Record<string, string>;
+    /** Con la ventana abierta manda texto (y archivo). Cerrada, usa la plantilla. */
+    delivery?: 'always_template' | 'window_or_template';
+    mediaUrl?: string;
 };
 
 function clean(value: unknown, max = 500) {
@@ -123,9 +126,11 @@ async function sendWhatsApp(
     const params = new URLSearchParams({ From: from, To: formattedTo });
     // Con la ventana abierta el texto libre llega tal cual y sale más barato;
     // cerrada, la unica via es la plantilla.
-    const templateKey: WhatsAppTemplateKey | null = input.templateKey
-        ? input.templateKey
-        : windowOpen ? null : 'community_notice';
+    const templateKey: WhatsAppTemplateKey | null = input.delivery === 'window_or_template'
+        ? (windowOpen ? null : (input.templateKey || 'community_notice'))
+        : input.templateKey
+            ? input.templateKey
+            : windowOpen ? null : 'community_notice';
 
     if (templateKey) {
         const contentSid = await findTemplateSid(templateKey, { accountSid, authToken });
@@ -142,6 +147,7 @@ async function sendWhatsApp(
         ));
     } else {
         params.set('Body', message);
+        if (input.mediaUrl) params.set('MediaUrl', input.mediaUrl);
     }
     params.set('StatusCallback', 'https://conviveconnect.com/api/whatsapp/status-callback');
 

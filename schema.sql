@@ -1445,6 +1445,7 @@ COMMIT;
 -- can no longer be used to spoof sensor events for OTHER communities once a
 -- per-community secret is set.
 ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS iot_webhook_secret TEXT;
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS coco_autonomy boolean NOT NULL DEFAULT true;
 
 -- Twilio's webhook signature scheme has no timestamp/nonce, so a captured
 -- valid request can otherwise be replayed indefinitely. Twilio's own
@@ -2210,6 +2211,17 @@ CREATE TABLE IF NOT EXISTS "public"."coco_sessions" (
     "auth_attempts" integer DEFAULT 0,
     "last_activity" timestamp with time zone DEFAULT "now"(),
     "expires_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval)
+);
+
+CREATE TABLE IF NOT EXISTS public.coco_outbound_media (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  filename text NOT NULL,
+  content_type text NOT NULL,
+  body text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "public"."coco_user_memory" (
@@ -3877,6 +3889,8 @@ CREATE POLICY "chat_insert" ON "public"."chat_messages" FOR INSERT WITH CHECK ((
 ALTER TABLE "public"."chat_messages" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."coco_sessions" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.coco_outbound_media ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."coco_user_memory" ENABLE ROW LEVEL SECURITY;
 

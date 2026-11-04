@@ -13,7 +13,7 @@ export const MAX_REMINDER_NOTE = 240;
 export const MAX_ACTIVE_REMINDERS = 20;
 export const MAX_ACTIVE_OVERDUE_REMINDERS = 3;
 
-export type ReminderAudience = 'self' | 'overdue_residents';
+export type ReminderAudience = 'self' | 'overdue_residents' | 'community_notice';
 export type ReminderCadence = 'once' | 'monthly';
 
 export type ReminderSchedule = {
@@ -216,6 +216,12 @@ export function describeReminderConfirmation(input: {
         hourCycle: 'h23',
     });
     const repeat = input.schedule.cadence === 'monthly' ? ' Se repite cada mes.' : '';
+    if (input.audience === 'community_notice') {
+        return {
+            title: 'Programar aviso a la comunidad',
+            summary: `Para el ${when} (hora de Chile): ${input.note}.${repeat} ${REMINDER_DAILY_REVIEW}`,
+        };
+    }
     if (input.audience === 'overdue_residents') {
         return {
             title: 'Avisar por los cobros pendientes',
