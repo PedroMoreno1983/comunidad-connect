@@ -139,9 +139,12 @@ export default function CoCo() {
     useEffect(() => { setMounted(true); }, []);
     useEffect(() => {
         const handleCompose = (event: Event) => {
-            const detail = (event as CustomEvent<{ message?: string }>).detail;
+            const detail = (event as CustomEvent<{ message?: string; greeting?: string }>).detail;
             setOpen(true);
             if (detail?.message) setInput(detail.message);
+            if (detail?.greeting) setMsgs(current => current.length === 1 && current[0].id === "w"
+                ? [{ ...current[0], text: detail.greeting! }]
+                : current);
         };
 
         window.addEventListener("coco:compose", handleCompose);

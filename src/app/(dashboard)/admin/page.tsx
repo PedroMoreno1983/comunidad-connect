@@ -65,6 +65,27 @@ export default function AdminDashboardPage() {
     const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-patio.jpg";
     const showWelcome = !loading && data?.residentsActive === 0;
 
+    useEffect(() => {
+        if (!showWelcome || !user?.id || !user.communityId || !data) return;
+        const key = `coco:admin-welcome:${user.id}:${user.communityId}`;
+        try {
+            if (window.localStorage.getItem(key)) return;
+        } catch {
+            return;
+        }
+        const timer = window.setTimeout(() => {
+            const community = user.communityName || "tu comunidad";
+            window.dispatchEvent(new CustomEvent("coco:compose", {
+                detail: {
+                    greeting: `Hola, **${user.name || "administrador"}**. Soy **CoCo**. Bienvenido a **${community}**. Veo ${data.unitsTotal} unidades registradas y aún no hay residentes activos. ¿Comenzamos revisando lo que falta para poner en marcha la comunidad?`,
+                    message: `Sí, CoCo. Revisa qué falta para poner en marcha ${community} y guíame paso a paso en una conversación. No inventes datos ni hagas cambios sin mostrármelos.`,
+                },
+            }));
+            try { window.localStorage.setItem(key, "shown"); } catch { /* El saludo sigue disponible en esta visita. */ }
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [showWelcome, user?.id, user?.communityId, user?.communityName, user?.name, data]);
+
     function startCocoWelcome() {
         const community = user?.communityName || "mi comunidad";
         const units = data?.unitsTotal || 0;
