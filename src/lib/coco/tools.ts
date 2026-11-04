@@ -22,6 +22,7 @@ import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
 import { createCommitteeReport } from './committeeReport';
+import { createRoutine, deleteRoutine, listRoutines, pauseRoutine } from './routineRunner';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -403,6 +404,38 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'create_routine',
+        description: 'Crea una rutina recurrente pedida por el administrador, por ejemplo "cada lunes mándame el resumen". Hora de Chile. El aviso queda en la app. Requiere confirmación. No manda correos sola.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { request: { type: 'string', description: 'La frase del administrador, con el día y, si la dijo, la hora.' } },
+            required: ['request'],
+        },
+    },
+    {
+        name: 'list_routines',
+        description: 'Lista las rutinas activas o pausadas de esta comunidad. Solo lectura.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'pause_routine',
+        description: 'Pausa una rutina para que deje de correr. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { routine_id: { type: 'string' } },
+            required: ['routine_id'],
+        },
+    },
+    {
+        name: 'delete_routine',
+        description: 'Deja una rutina como borrada para que no vuelva a correr. Requiere confirmación. No borra el historial.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { routine_id: { type: 'string' } },
+            required: ['routine_id'],
+        },
+    },
+    {
         name: 'draft_committee_report',
         description: 'Arma un informe HTML y PDF para el comité, con la línea gráfica de Convive y solo totales (asambleas y reservas). Sin nombres, montos ni datos de contacto. SOLO administradores. Requiere confirmación. El PDF caduca en 15 minutos.',
         input_schema: {
@@ -688,6 +721,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'cancel_reminder',
     'resume_agent_task',
     'draft_committee_report',
+    'create_routine',
+    'pause_routine',
+    'delete_routine',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -720,6 +756,7 @@ const ADMIN_TOOLS = new Set([
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
     'draft_committee_report',
+    'create_routine', 'list_routines', 'pause_routine', 'delete_routine',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
@@ -822,6 +859,12 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
         case 'draft_committee_report':
             return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
+        case 'create_routine':
+            return { title: 'Crear rutina', summary: `${str('request')}. Corre en hora de Chile y te avisa en la app.` };
+        case 'pause_routine':
+            return { title: 'Pausar rutina', summary: 'Deja de correr hasta que la actives de nuevo.' };
+        case 'delete_routine':
+            return { title: 'Borrar rutina', summary: 'No vuelve a correr. El registro queda.' };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1662,6 +1705,27 @@ export async function executeTool(
                 });
             }
 
+            case 'create_routine': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede crear una rutina.' };
+                }
+                return createRoutine({ communityId: userCtx.community_id, userId: userCtx.user_id, request: input.request || '' });
+            }
+            case 'list_routines': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || userCtx.role !== 'admin') return { error: 'Solo la administración puede ver las rutinas.' };
+                return listRoutines(communityId);
+            }
+            case 'pause_routine': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || userCtx.role !== 'admin') return { error: 'Solo la administración puede pausar una rutina.' };
+                return pauseRoutine(communityId, input.routine_id || '');
+            }
+            case 'delete_routine': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || userCtx.role !== 'admin') return { error: 'Solo la administración puede borrar una rutina.' };
+                return deleteRoutine(communityId, input.routine_id || '');
+            }
             case 'draft_committee_report': {
                 if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
                     return { error: 'Solo la administración puede preparar el informe del comité.' };

@@ -2213,6 +2213,22 @@ CREATE TABLE IF NOT EXISTS "public"."coco_sessions" (
     "expires_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval)
 );
 
+CREATE TABLE IF NOT EXISTS public.coco_routines (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  instruction text NOT NULL,
+  cadence text NOT NULL,
+  weekday smallint,
+  day_of_month smallint,
+  time_local text NOT NULL,
+  status text NOT NULL DEFAULT 'active',
+  next_run_at timestamptz NOT NULL,
+  last_run_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.coco_memory_proposals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
