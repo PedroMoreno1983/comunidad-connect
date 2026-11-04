@@ -22,6 +22,7 @@ import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
 import { createCommitteeReport } from './committeeReport';
+import { coordinateSpecialists } from './specialistHandoff';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -403,6 +404,15 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'coordinate_specialists',
+        description: 'Reparte un pedido entre los Cocos de cobranza, legal y mantención. Audita el traspaso. No avisa, no paga y no contrata: cada escritura sigue pidiendo confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { request: { type: 'string', description: 'El pedido, diciendo si es cobranza, legal, mantención o más de uno.' } },
+            required: ['request'],
+        },
+    },
+    {
         name: 'draft_committee_report',
         description: 'Arma un informe HTML y PDF para el comité, con la línea gráfica de Convive y solo totales (asambleas y reservas). Sin nombres, montos ni datos de contacto. SOLO administradores. Requiere confirmación. El PDF caduca en 15 minutos.',
         input_schema: {
@@ -688,6 +698,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'cancel_reminder',
     'resume_agent_task',
     'draft_committee_report',
+    'coordinate_specialists',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -720,6 +731,7 @@ const ADMIN_TOOLS = new Set([
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
     'draft_committee_report',
+    'coordinate_specialists',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
@@ -822,6 +834,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
         case 'draft_committee_report':
             return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
+        case 'coordinate_specialists':
+            return { title: 'Coordinar Cocos especializados', summary: `${str('request') || 'Pedido'}. Se audita el traspaso y no se cambia ningún dato.` };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1662,6 +1676,17 @@ export async function executeTool(
                 });
             }
 
+            case 'coordinate_specialists': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede coordinar a los Cocos.' };
+                }
+                return coordinateSpecialists({
+                    id: userCtx.user_id,
+                    role: 'admin',
+                    community_id: userCtx.community_id,
+                    name: userCtx.name,
+                }, input.request || '');
+            }
             case 'draft_committee_report': {
                 if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
                     return { error: 'Solo la administración puede preparar el informe del comité.' };

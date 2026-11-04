@@ -221,7 +221,9 @@ export type PlaybookKey =
     | 'coco_reminder'
     | 'multi_agent_mission'
     // Tarea persistente de un ciclo agentico pausado en una escritura.
-    | 'agentic_loop';
+    | 'agentic_loop'
+    // Traspaso auditado entre Cocos especializados. No ejecuta escrituras.
+    | 'coco_specialist_handoff';
 
 export type AgentProfile = ServerAgentProfile;
 
