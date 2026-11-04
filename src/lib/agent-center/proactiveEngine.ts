@@ -11,6 +11,7 @@ import {
     type PlaybookKey,
 } from '@/lib/agent-center/domain';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { runDueCocoReminder } from '@/lib/agent-center/cocoReminders';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 function objectValue(value: unknown) {
@@ -42,6 +43,7 @@ function mapRule(row: Record<string, unknown>): AgentTriggerRuleRecord {
         lastEvaluatedAt: typeof row.last_evaluated_at === 'string' ? row.last_evaluated_at : null,
         lastTriggeredAt: typeof row.last_triggered_at === 'string' ? row.last_triggered_at : null,
         nextRunAt: String(row.next_run_at || new Date().toISOString()),
+        createdBy: typeof row.created_by === 'string' ? row.created_by : null,
     };
 }
 
@@ -226,6 +228,7 @@ async function createProactiveProposal(rule: AgentTriggerRuleRecord, signal: Age
 }
 
 async function evaluateRule(rule: AgentTriggerRuleRecord) {
+    if (rule.signalKey === 'coco_reminder') return runDueCocoReminder(rule);
     const admin = getSupabaseAdmin();
     const now = new Date();
     const nextRunAt = new Date(now.getTime() + rule.intervalMinutes * 60_000).toISOString();

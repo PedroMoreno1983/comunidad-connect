@@ -63,6 +63,13 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     join_supermarket_group_order: 'write_low',
     // No esta en MUTATING_TOOLS de CoCo, pero escribe memoria del usuario.
     remember_preference: 'write_low',
+    // Un hecho del edificio. Lo confirma el admin en el chat; no mueve plata.
+    remember_community_fact: 'write_low',
+    // Puede avisar a una sola persona o a todas las unidades con cobros
+    // pendientes. El caso mas pesado manda: confirmacion en el chat.
+    create_reminder: 'write_high',
+    list_reminders: 'read',
+    cancel_reminder: 'write_low',
 
     // ── Dinero, difusion a terceros o batch ─────────────────────────────────
     book_parking: 'write_high',                 // cobra

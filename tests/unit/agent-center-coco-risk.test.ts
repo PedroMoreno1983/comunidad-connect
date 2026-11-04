@@ -133,6 +133,7 @@ describe('que deja de pedir confirmacion con la politica de fabrica', () => {
             .sort();
 
         expect(seEjecutanSolas).toEqual([
+            'cancel_reminder',
             'create_claim',
             'create_reservation',
             'create_social_post',
@@ -140,6 +141,7 @@ describe('que deja de pedir confirmacion con la politica de fabrica', () => {
             'join_supermarket_group_order',
             'register_package',
             'register_visitor',
+            'remember_community_fact',
             'remember_preference',
             'vote_in_poll',
         ]);

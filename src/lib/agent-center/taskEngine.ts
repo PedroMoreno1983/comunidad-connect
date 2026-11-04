@@ -164,6 +164,20 @@ export async function failAgentTask(taskId: string, error: unknown) {
     await updateTask(taskId, { status: 'escalated', last_error: errorMessage(error) });
 }
 
+/** El recordatorio mensual vuelve a esperar la próxima fecha. */
+export async function rearmAgentTask(taskId: string, position: number) {
+    await updateStep(taskId, position, { status: 'pending', error: null, completed_at: null, output: {} });
+    await updateTask(taskId, { status: 'planned', current_step: position, completed_at: null, last_error: null });
+}
+
+export async function cancelAgentTask(taskId: string, reason: string) {
+    await updateTask(taskId, {
+        status: 'cancelled',
+        last_error: reason.slice(0, 300),
+        completed_at: new Date().toISOString(),
+    });
+}
+
 function taskStatus(value: unknown): AgentTaskStatus {
     const allowed: AgentTaskStatus[] = ['planned', 'running', 'waiting_human', 'completed', 'failed', 'escalated', 'cancelled'];
     return allowed.includes(value as AgentTaskStatus) ? value as AgentTaskStatus : 'failed';

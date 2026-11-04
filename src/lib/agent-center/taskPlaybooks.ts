@@ -14,6 +14,7 @@ import { planPreventiveMaintenance, type PlanTask, type PreventivePlan } from '@
 import { scoreAssetRisks, type RiskAsset, type RiskLog } from '@/lib/maintenance/assetRisk';
 import { approveCommitteeDigest, generateCommitteeDigest } from '@/lib/committeeDigest/service';
 import { periodLabel } from '@/lib/committeeDigest/week';
+import { runCocoReminderPlaybook } from '@/lib/agent-center/cocoReminders';
 
 function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -465,5 +466,20 @@ export async function runAgentPlaybook(action: AgentAction, profile: AgentProfil
     if (playbookKey === 'iot_emergency_readiness') return runIotReadinessTask(profile, goal);
     if (playbookKey === 'community_broadcast') return runBroadcastTask(profile, goal, cleanText(action.args.requestedText, 700));
     if (playbookKey === 'committee_weekly_digest') return runCommitteeDigestPlaybook(profile, cleanText(action.args.digestId, 60));
+    if (playbookKey === 'coco_reminder') {
+        const ruleId = cleanText(action.args.triggerRuleId, 80);
+        if (!ruleId) throw new Error('Falta el recordatorio a entregar.');
+        const result = await runCocoReminderPlaybook(ruleId);
+        return {
+            entityType: 'agent_trigger_rule',
+            entityId: ruleId,
+            title: 'Recordatorio entregado',
+            targetHref: '/chat',
+            message: result.status === 'delivered'
+                ? `Entregué el recordatorio en la app (${result.metric} aviso(s)). WhatsApp no sale salvo que esté activado.`
+                : 'El recordatorio ya lo estaba tomando otra corrida del scheduler.',
+            data: result,
+        };
+    }
     throw new Error('Accion no soportada.');
 }

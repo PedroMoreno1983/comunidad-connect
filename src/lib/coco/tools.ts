@@ -18,7 +18,8 @@ import { maybeCreateCoCoCase } from './caseService';
 import { summarizeAccountPaymentStatus } from './paymentStatus';
 import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/collectionService';
 import { getMonthlyReport } from '@/lib/finance/reportingService';
-import { rememberFact } from './user-memory';
+import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
+import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
 import { platformGuide } from './platformMap';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import { processParkingCharge, type ParkingChargesDb } from '@/lib/payments/parkingCharges';
@@ -354,6 +355,49 @@ export const TOOL_DEFINITIONS = [
 
     // ── MÓDULO: MEMORIA (todos los perfiles) ────────────────────────────────
     {
+        name: 'remember_community_fact',
+        description: 'Guarda o borra un hecho de la COMUNIDAD (reglamento interno, proveedor habitual o acuerdo del edificio) para que CoCo lo recuerde con todos. SOLO administradores. Requiere confirmación. No la uses para preferencias personales: eso es remember_preference.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                action: { type: 'string', enum: ['save', 'forget'], description: 'save guarda; forget borra el hecho indicado.' },
+                fact: { type: 'string', description: 'El hecho, en una frase corta. Ej: "El quincho cierra a las 22:00".' },
+                category: { type: 'string', enum: ['reglamento', 'proveedor', 'acuerdo', 'general'] },
+            },
+            required: ['fact'],
+        },
+    },
+    {
+        name: 'create_reminder',
+        description: 'Agenda un recordatorio que el scheduler entrega dentro de la app (notificación y, si hay hilo, un mensaje de CoCo). Ej: "recuérdame el viernes cobrar a la 302" o, solo administración, "avisa a las unidades con cobros pendientes el día 5". Las horas son de Chile (America/Santiago). WhatsApp NO se envía salvo que la plataforma lo tenga encendido; por defecto queda apagado. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                text: { type: 'string', description: 'Qué hay que recordar, en una frase.' },
+                when: { type: 'string', description: 'viernes, AAAA-MM-DD, o día del mes ("5" o "día 5").' },
+                time: { type: 'string', description: 'HH:MM en hora de Chile. Si no viene, 09:00.' },
+                repeat: { type: 'string', enum: ['once', 'monthly'], description: 'once (por defecto) o monthly.' },
+                audience: { type: 'string', enum: ['self', 'overdue_residents'], description: 'self avisa a quien lo pidió. overdue_residents solo lo puede pedir la administración.' },
+                whatsapp: { type: 'string', enum: ['true', 'false'], description: 'true solo si la persona pidió WhatsApp. Igual queda apagado hasta activar el gancho.' },
+            },
+            required: ['text', 'when'],
+        },
+    },
+    {
+        name: 'list_reminders',
+        description: 'Lista los recordatorios activos de quien habla. Solo lectura.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'cancel_reminder',
+        description: 'Cancela un recordatorio activo. Requiere confirmación. Usa el id que devolvió list_reminders o create_reminder.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { reminder_id: { type: 'string' } },
+            required: ['reminder_id'],
+        },
+    },
+    {
         name: 'remember_preference',
         description: 'Guarda un hecho durable y útil que la persona te contó sobre sí misma o sus preferencias (ej: "es electrodependiente", "prefiere que le avisen por la mañana", "tiene un perro"), para recordarlo en futuras conversaciones. Úsala solo con datos que la persona compartió y que valga la pena recordar. No la uses para datos sensibles innecesarios ni para cada detalle trivial.',
         input_schema: {
@@ -573,6 +617,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'add_community_expense',
     'record_payment',
     'issue_billing',
+    'remember_community_fact',
+    'create_reminder',
+    'cancel_reminder',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -582,7 +629,8 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
-    'remember_preference', 'get_platform_guide', 'consult_official_legal_source',
+    'remember_preference', 'create_reminder', 'list_reminders', 'cancel_reminder',
+    'get_platform_guide', 'consult_official_legal_source',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
@@ -602,6 +650,7 @@ const ADMIN_TOOLS = new Set([
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
+    'remember_community_fact',
 ]);
 
 const SYSTEM_TOOLS = new Set([
@@ -680,6 +729,15 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Sumarme a la compra grupal', summary: str('shopping_list') || 'Agregar mis productos y cantidades.' };
         case 'lock_supermarket_group_order':
             return { title: 'Preparar compra grupal final', summary: 'Seleccionar la mejor canasta completa vigente y cerrar nuevos aportes.' };
+        case 'remember_community_fact':
+            return {
+                title: input.action === 'forget' ? 'Olvidar un dato de la comunidad' : 'Recordar un dato de la comunidad',
+                summary: `${str('category') || 'general'}: ${str('fact')}`,
+            };
+        case 'create_reminder':
+            return reminderConfirmationFromInput(input);
+        case 'cancel_reminder':
+            return { title: 'Cancelar recordatorio', summary: 'No se enviará el aviso pendiente.' };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1520,9 +1578,26 @@ export async function executeTool(
                 if (!userCtx.user_id) return { error: 'No pude identificarte para guardar el recuerdo.' };
                 const fact = (input.fact || '').trim();
                 if (!fact) return { error: 'No hay nada que recordar.' };
-                const facts = await rememberFact(userCtx.user_id, userCtx.community_id ?? null, fact);
+                const facts = await rememberFact(userCtx.user_id, userCtx.community_id ?? null, fact, userCtx.role || 'resident');
                 return { success: true, remembered: fact, total_facts: facts.length };
             }
+
+            case 'remember_community_fact': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración puede guardar la memoria de la comunidad.' };
+                const actor = { userId: userCtx.user_id, role: userCtx.role, communityId: userCtx.community_id };
+                const action = (input.action || 'save').trim();
+                if (action === 'forget') return forgetCommunityFact(actor, input.fact || '');
+                return rememberCommunityFact(actor, input.fact || '', (input.category || 'general').trim());
+            }
+
+            case 'create_reminder':
+                return createCoCoReminder(userCtx, input);
+
+            case 'list_reminders':
+                return listCoCoReminders(userCtx);
+
+            case 'cancel_reminder':
+                return cancelCoCoReminder(userCtx, input.reminder_id || '');
 
             // ── ADMIN · GASTO COMÚN ──────────────────────────────────────────
             case 'create_unit': {

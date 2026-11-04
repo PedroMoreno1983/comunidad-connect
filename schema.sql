@@ -1933,7 +1933,13 @@ CREATE TABLE IF NOT EXISTS "public"."agent_memories" (
     "embedding" "public"."vector"(1024),
     "importance" double precision NOT NULL,
     "metadata" "jsonb" DEFAULT '{}'::"jsonb",
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "scope" "text" DEFAULT 'user'::"text" NOT NULL,
+    "category" "text" DEFAULT 'general'::"text" NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "agent_memories_scope_check" CHECK (("scope" = ANY (ARRAY['user'::"text", 'community'::"text"]))),
+    CONSTRAINT "agent_memories_category_check" CHECK (("category" = ANY (ARRAY['general'::"text", 'preferencia'::"text", 'reglamento'::"text", 'proveedor'::"text", 'acuerdo'::"text"]))),
+    CONSTRAINT "agent_memories_scope_category_check" CHECK (((("scope" = 'user'::"text") AND ("category" = ANY (ARRAY['preferencia'::"text", 'general'::"text"]))) OR (("scope" = 'community'::"text") AND ("category" = ANY (ARRAY['reglamento'::"text", 'proveedor'::"text", 'acuerdo'::"text", 'general'::"text"])))))
 );
 
 CREATE TABLE IF NOT EXISTS "public"."agent_policies" (
@@ -2064,7 +2070,7 @@ CREATE TABLE IF NOT EXISTS "public"."agent_trigger_rules" (
     CONSTRAINT "agent_trigger_rules_agent_key_check" CHECK (("agent_key" = ANY (ARRAY['finance'::"text", 'maintenance'::"text", 'concierge'::"text", 'community'::"text"]))),
     CONSTRAINT "agent_trigger_rules_cooldown_minutes_check" CHECK ((("cooldown_minutes" >= 15) AND ("cooldown_minutes" <= 43200))),
     CONSTRAINT "agent_trigger_rules_interval_minutes_check" CHECK ((("interval_minutes" >= 15) AND ("interval_minutes" <= 43200))),
-    CONSTRAINT "agent_trigger_rules_signal_key_check" CHECK (("signal_key" = ANY (ARRAY['overdue_expenses'::"text", 'maintenance_backlog'::"text", 'onboarding_gap'::"text", 'emergency_readiness'::"text"])))
+    CONSTRAINT "agent_trigger_rules_signal_key_check" CHECK (("signal_key" = ANY (ARRAY['overdue_expenses'::"text", 'maintenance_backlog'::"text", 'onboarding_gap'::"text", 'emergency_readiness'::"text", 'coco_reminder'::"text"])))
 );
 
 CREATE TABLE IF NOT EXISTS "public"."ai_budgets" (
@@ -2957,9 +2963,6 @@ ALTER TABLE ONLY "public"."agent_trigger_events"
     ADD CONSTRAINT "agent_trigger_events_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."agent_trigger_rules"
-    ADD CONSTRAINT "agent_trigger_rules_community_id_signal_key_key" UNIQUE ("community_id", "signal_key");
-
-ALTER TABLE ONLY "public"."agent_trigger_rules"
     ADD CONSTRAINT "agent_trigger_rules_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."ai_budgets"
@@ -3522,6 +3525,10 @@ CREATE INDEX "idx_agent_trigger_events_community_created" ON "public"."agent_tri
 
 CREATE INDEX "idx_agent_trigger_rules_due" ON "public"."agent_trigger_rules" USING "btree" ("enabled", "next_run_at");
 
+CREATE UNIQUE INDEX "agent_trigger_rules_community_signal_unique" ON "public"."agent_trigger_rules" USING "btree" ("community_id", "signal_key") WHERE ("signal_key" <> 'coco_reminder'::"text");
+
+CREATE INDEX "idx_agent_memories_coco_facts" ON "public"."agent_memories" USING "btree" ("condominio_id", "scope", "user_id");
+
 CREATE INDEX "idx_ai_usage_events_community_created" ON "public"."ai_usage_events" USING "btree" ("community_id", "created_at" DESC);
 
 CREATE INDEX "idx_ai_usage_events_module_created" ON "public"."ai_usage_events" USING "btree" ("module", "created_at" DESC);
@@ -3713,6 +3720,12 @@ CREATE POLICY "agent_activity_log_tenant_select" ON "public"."agent_activity_log
   WHERE ("profiles"."id" = "auth"."uid"()))));
 
 ALTER TABLE "public"."agent_memories" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "agent_memories_select_community" ON "public"."agent_memories" FOR SELECT TO "authenticated" USING ((("condominio_id" = "public"."current_profile_community_id"()) AND ((("scope" = 'user'::"text") AND ("user_id" = "auth"."uid"())) OR ("scope" = 'community'::"text"))));
+
+CREATE POLICY "agent_memories_write_own" ON "public"."agent_memories" TO "authenticated" USING ((("scope" = 'user'::"text") AND ("user_id" = "auth"."uid"()) AND ("condominio_id" = "public"."current_profile_community_id"()))) WITH CHECK ((("scope" = 'user'::"text") AND ("user_id" = "auth"."uid"()) AND ("condominio_id" = "public"."current_profile_community_id"()) AND ("category" = ANY (ARRAY['preferencia'::"text", 'general'::"text"]))));
+
+CREATE POLICY "agent_memories_admin_community_write" ON "public"."agent_memories" TO "authenticated" USING ((("scope" = 'community'::"text") AND ("condominio_id" = "public"."current_profile_community_id"()) AND ("public"."current_profile_role"() = 'admin'::"text"))) WITH CHECK ((("scope" = 'community'::"text") AND ("user_id" = "auth"."uid"()) AND ("condominio_id" = "public"."current_profile_community_id"()) AND ("public"."current_profile_role"() = 'admin'::"text")));
 
 ALTER TABLE "public"."agent_policies" ENABLE ROW LEVEL SECURITY;
 

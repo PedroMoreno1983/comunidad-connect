@@ -6,8 +6,6 @@
  * Se mantiene acotada por usuario para que no crezca sin límite.
  */
 
-import { supabaseAdmin as supabase } from '@/lib/supabase/supabaseAdmin';
-
 export const MAX_MEMORY_FACTS = 20;
 const MAX_FACT_LENGTH = 240;
 
@@ -29,43 +27,12 @@ export function mergeFacts(existing: string[], incoming: string, max = MAX_MEMOR
     return [...kept, fact].slice(-max);
 }
 
-/** Hechos recordados de un usuario. [] si no hay o si algo falla. */
-export async function getUserMemory(userId: string): Promise<string[]> {
-    if (!userId) return [];
-    const { data, error } = await supabase
-        .from('coco_user_memory')
-        .select('facts')
-        .eq('user_id', userId)
-        .maybeSingle();
-    if (error || !data) return [];
-    return Array.isArray(data.facts) ? (data.facts as unknown[]).map(String) : [];
-}
+/**
+ * Lectura y escritura: `memory.ts` (tabla `agent_memories`, con copia en
+ * `coco_user_memory`). Aquí queda solo el cálculo puro que usan los tests.
+ */
 
-/** Guarda un hecho nuevo, acotando la memoria. Best-effort. */
-export async function rememberFact(
-    userId: string,
-    communityId: string | null,
-    fact: string,
-): Promise<string[]> {
-    if (!userId) return [];
-    const current = await getUserMemory(userId);
-    const facts = mergeFacts(current, fact);
-
-    const { error } = await supabase
-        .from('coco_user_memory')
-        .upsert({ user_id: userId, community_id: communityId, facts, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-    if (error) {
-        console.warn('[coco] rememberFact failed:', error);
-        return current;
-    }
-    return facts;
-}
-
-/** Borra toda la memoria de un usuario (derecho a olvido / "olvida todo"). */
-export async function forgetUserMemory(userId: string): Promise<void> {
-    if (!userId) return;
-    await supabase.from('coco_user_memory').delete().eq('user_id', userId);
-}
+export { forgetUserMemory, getUserMemory, rememberFact } from './memory';
 
 /** Bloque de contexto para inyectar en el prompt de CoCo. '' si no hay memoria. */
 export function buildMemoryContext(facts: string[]): string {
