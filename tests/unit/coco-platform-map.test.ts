@@ -68,6 +68,10 @@ describe('mapa de la plataforma de CoCo', () => {
         expect(getSafeCoCoNavigation('/showcase')).toBeUndefined();
         expect(getSafeCoCoNavigation('/superadmin')).toBeUndefined();
         expect(getSafeCoCoNavigation('/login')).toBeUndefined();
+        expect(findScreen('/forgot-password')?.title).toBe('Recuperar acceso');
+        expect(findScreen('/reset-password')?.title).toBe('Nueva contraseña');
+        expect(getSafeCoCoNavigation('/forgot-password')).toBeUndefined();
+        expect(getSafeCoCoNavigation('/reset-password')).toBeUndefined();
     });
 });
 

@@ -72,6 +72,23 @@ export async function saveSession(userKey: string, session: SessionData): Promis
     if (error) throw error;
 }
 
+/**
+ * Guarda un turno que CoCo ya respondió. Si Supabase falla, la respuesta de
+ * texto igual se entrega: perder el historial de ese turno es mejor que
+ * ocultarla. Una confirmación pendiente vive en la sesión, así que ahí el
+ * error sigue subiendo y el cliente no ofrece aprobar algo que no quedó
+ * guardado. Crear un hilo o avanzar la verificación de WhatsApp sigue usando
+ * saveSession, que sí falla si la base no escribe.
+ */
+export async function saveDeliveredTurn(userKey: string, session: SessionData, pending: boolean): Promise<void> {
+    try {
+        await saveSession(userKey, session);
+    } catch (error) {
+        console.error('[CoCo] No se pudo guardar la conversación', error);
+        if (pending) throw error;
+    }
+}
+
 export async function deleteSession(userKey: string): Promise<void> {
     await supabase.from('coco_sessions').delete().eq('user_key', userKey);
 }

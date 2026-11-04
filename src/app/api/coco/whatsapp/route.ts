@@ -11,6 +11,7 @@ import { isAiBudgetExceededError } from '@/lib/ai/budget';
 import {
     getSession,
     saveSession,
+    saveDeliveredTurn,
     deleteSession,
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
@@ -235,7 +236,7 @@ export async function POST(req: NextRequest) {
                 agentResponse = await askCoCoWhatsAppFallback(message, session, verifiedContext);
             }
             const { reply, updatedHistory, pendingActions } = agentResponse;
-            await saveSession(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext });
+            await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext }, Boolean(pendingActions?.length));
             if (pendingActions?.length) {
                 const actionList = pendingActions.map(action => `- ${action.title}: ${action.summary}`).join('\n');
                 return respond(`${reply || 'Necesito tu confirmacion antes de continuar.'}\n\n${actionList}\n\nResponde APROBAR para ejecutar o RECHAZAR para cancelar.`);
