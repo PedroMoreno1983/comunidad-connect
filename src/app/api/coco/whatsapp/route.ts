@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
+import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import { askCoCoWhatsAppFallback } from '@/lib/coco/whatsapp-fallback';
 import { isAiBudgetExceededError } from '@/lib/ai/budget';
 import {
@@ -24,6 +25,8 @@ import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { CANONICAL_SITE_URL, PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
 import { publicRequestUrl, verifyTwilioSignatureForUrls } from '@/lib/security/twilioSignature';
 import { checkDistributedRateLimitBySubject } from '@/lib/security/rateLimit';
+import { parseTwilioMedia } from '@/lib/coco/inboundMedia';
+import { readWhatsAppAttachments } from '@/lib/coco/inboundMediaFetch';
 
 function xml(value: string) {
     return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -164,11 +167,12 @@ export async function POST(req: NextRequest) {
         ? NextResponse.json({ reply: text, ...(mediaUrl ? { mediaUrl } : {}) })
         : twiml(text, mediaUrl);
 
-    const message = (formData.get('Body') as string)?.trim();
+    const message = ((formData.get('Body') as string) || '').trim();
     const waId    = formData.get('WaId') as string; // número sin +
     const messageSid = formData.get('MessageSid') as string | null;
+    const inboundMedia = parseTwilioMedia(params);
 
-    if (!message || !waId) return new NextResponse('', { status: 400 });
+    if (!waId || (!message && inboundMedia.length === 0)) return new NextResponse('', { status: 400 });
 
     if (relayedFromNorma) {
         const sessionKey = `wa:${waId}`;
@@ -247,9 +251,25 @@ export async function POST(req: NextRequest) {
                 name: String(currentProfile.name || currentProfile.full_name || 'vecino/a'),
                 channel: 'whatsapp',
             };
+            let understood: Awaited<ReturnType<typeof readWhatsAppAttachments>> | null = null;
+            if (inboundMedia.length) {
+                try {
+                    understood = await readWhatsAppAttachments(inboundMedia);
+                } catch (mediaError) {
+                    console.error('[CoCo WhatsApp] No se pudo leer el adjunto', mediaError);
+                }
+            }
+            const messageForAgent = [message, understood?.note].filter(Boolean).join('\n\n')
+                || (understood?.image || understood?.document ? 'Te envío un archivo.' : '');
+            if (!messageForAgent && !understood?.image && !understood?.document) {
+                return respond('Recibí el archivo, pero no pude leerlo. Prueba con una foto, un audio corto o un PDF con texto.');
+            }
             let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
             try {
-                agentResponse = await askCoCo(message, session, verifiedContext);
+                agentResponse = await askCoCo(messageForAgent, session, verifiedContext, {
+                    ...(understood?.image ? { image: understood.image } : {}),
+                    ...(understood?.document?.text ? { legalDocument: understood.document } : {}),
+                });
             } catch (agentError) {
                 if (isAiBudgetExceededError(agentError)) throw agentError;
                 const lastContent = session.conversation.at(-1)?.content;
@@ -260,10 +280,15 @@ export async function POST(req: NextRequest) {
                 // Nunca se cambia a otro proveedor a mitad de esa confirmación.
                 if (hasPendingAction) throw agentError;
                 console.warn('[CoCo WhatsApp] Motor principal no disponible; usando respaldo de solo lectura');
-                agentResponse = await askCoCoWhatsAppFallback(message, session, verifiedContext);
+                agentResponse = await askCoCoWhatsAppFallback(messageForAgent, session, verifiedContext);
             }
             const { reply, updatedHistory, pendingActions } = agentResponse;
             await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext }, Boolean(pendingActions?.length));
+            if (isConversationClosing(message)) {
+                void learnFromClosing(verifiedContext.community_id, linesFromConversation(updatedHistory)).catch(error => {
+                    console.error('[coco] no se pudieron proponer recuerdos', error);
+                });
+            }
             if (pendingActions?.length) {
                 const lines = pendingActions.map(action => `${action.title}: ${action.summary}`);
                 return respond(whatsappPendingReply(lines));
@@ -274,6 +299,10 @@ export async function POST(req: NextRequest) {
 
         // ── Flujo de autenticación ───────────────────────────────────────────
         const attempts = session?.auth_attempts ?? 0;
+
+        if (!message) {
+            return respond('Escríbeme tu número de depto para verificarte. Las fotos, los audios y los PDF los leo cuando ya estés verificado.');
+        }
 
         if (attempts === 0) {
             // Primer mensaje → pedir número de depto

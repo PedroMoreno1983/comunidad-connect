@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
+import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveDeliveredTurn, checkRateLimit } from '@/lib/coco/session-store';
@@ -726,6 +727,12 @@ export async function POST(req: NextRequest) {
 
         // Un caso operativo solo se crea si el residente confirma create_claim
         // (herramienta que muta). No abrir casos al consultar gastos, parking, etc.
+        if (communityId && isConversationClosing(message)) {
+            void learnFromClosing(communityId, linesFromConversation(updatedHistory)).catch(error => {
+                console.error('[coco] no se pudieron proponer recuerdos', error);
+            });
+        }
+
         const answer: CoCoApiResponse = {
             reply,
             navigate: getSafeCoCoNavigation(navigate),
