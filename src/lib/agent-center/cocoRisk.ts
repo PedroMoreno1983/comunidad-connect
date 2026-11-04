@@ -71,6 +71,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     resume_agent_task: 'write_high',
     delegate_background_task: 'write_high',
     draft_committee_report: 'write_high',
+    coordinate_specialists: 'write_high',
     list_my_gmail: 'read',
     list_my_calendar: 'read',
     send_gmail: 'write_high',

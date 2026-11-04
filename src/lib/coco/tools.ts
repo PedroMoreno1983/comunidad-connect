@@ -23,6 +23,7 @@ import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memo
 import { resumeCoCoTask } from './resumeTask';
 import { enqueueDelegatedTask, kickDelegatedTasks, parseDelegateNotice } from './delegatedTasks';
 import { createCommitteeReport } from './committeeReport';
+import { coordinateSpecialists } from './specialistHandoff';
 import { createCalendarEvent, listCalendar, listGmail, sendGmail, withAdminGoogle } from './googleApi';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
@@ -408,6 +409,15 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'coordinate_specialists',
+        description: 'Reparte un pedido entre los Cocos de cobranza, legal y mantención. Audita el traspaso. No avisa, no paga y no contrata: cada escritura sigue pidiendo confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { request: { type: 'string', description: 'El pedido, diciendo si es cobranza, legal, mantención o más de uno.' } },
+            required: ['request'],
+        },
+    },
+    {
         name: 'list_my_gmail',
         description: 'Lee los últimos correos de la bandeja del administrador que conectó su Google. Solo asunto, remitente y un extracto. No envía nada.',
         input_schema: { type: 'object' as const, properties: {}, required: [] },
@@ -782,6 +792,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'delegate_background_task',
     'draft_outbound_email',
     'draft_committee_report',
+    'coordinate_specialists',
     'send_gmail',
     'create_calendar_event',
 ]);
@@ -818,6 +829,7 @@ const ADMIN_TOOLS = new Set([
     'resume_agent_task',
     'delegate_background_task',
     'draft_committee_report',
+    'coordinate_specialists',
     'list_my_gmail', 'list_my_calendar', 'send_gmail', 'create_calendar_event',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
@@ -929,6 +941,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Dejar una tarea en segundo plano', summary: `${str('goal') || 'Revisión'}. Te aviso cuando termine. No cambia datos.` };
         case 'draft_committee_report':
             return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
+        case 'coordinate_specialists':
+            return { title: 'Coordinar Cocos especializados', summary: `${str('request') || 'Pedido'}. Se audita el traspaso y no se cambia ningún dato.` };
         case 'send_gmail':
             return { title: 'Enviar correo de Gmail', summary: `De tu Gmail a ${str('to')}: ${str('subject')}. Sale solo si confirmas.` };
         case 'create_calendar_event':
@@ -1796,6 +1810,17 @@ export async function executeTool(
                 });
             }
 
+            case 'coordinate_specialists': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede coordinar a los Cocos.' };
+                }
+                return coordinateSpecialists({
+                    id: userCtx.user_id,
+                    role: 'admin',
+                    community_id: userCtx.community_id,
+                    name: userCtx.name,
+                }, input.request || '');
+            }
             case 'list_my_gmail': {
                 if (userCtx.role !== 'admin') return { error: 'Solo el administrador conectado puede leer su Gmail.' };
                 return withAdminGoogle(userCtx.user_id, token => listGmail(token));
