@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
 import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
-import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
+import { getSession, saveDeliveredTurn, checkRateLimit } from '@/lib/coco/session-store';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
@@ -697,7 +697,9 @@ export async function POST(req: NextRequest) {
         const { reply, navigate, action, updatedHistory, pendingActions } = agentResponse;
 
         // ── 5. Guardar sesión actualizada ────────────────────────────────────
-        await saveSession(selectedThreadKey, {
+        // Un fallo de Supabase no esconde la respuesta ya generada. Sí impide
+        // entregar una confirmación: esa acción solo existe si quedó en la sesión.
+        await saveDeliveredTurn(selectedThreadKey, {
             conversation: [...archivedConversation, ...updatedHistory],
             user_context: {
                 role:         safeRole,
@@ -709,7 +711,7 @@ export async function POST(req: NextRequest) {
                     ? session.user_context.title
                     : message.slice(0, 56) || 'Nueva conversación',
             },
-        });
+        }, Boolean(pendingActions?.length));
 
         // CoCo propuso una accion que muta datos: no hay respuesta final todavia
         // (y por lo tanto tampoco un "caso" que registrar) hasta que el usuario
