@@ -21,8 +21,10 @@ import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/
 import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
+import { enqueueDelegatedTask, kickDelegatedTasks, parseDelegateNotice } from './delegatedTasks';
 import { createCommitteeReport } from './committeeReport';
 import { coordinateSpecialists } from './specialistHandoff';
+import { createCalendarEvent, listCalendar, listGmail, sendGmail, withAdminGoogle } from './googleApi';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -41,6 +43,9 @@ import {
 import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
 import { consultOfficialLegalSource } from './officialLegalSources';
+import { readOfficialPage, searchPublicWeb } from './externalInfo';
+import { listCommunityAgenda } from './communityAgenda';
+import { sendConfirmedEmailDraft } from './emailDraft';
 import { prepareLegalDraft } from './legalDrafts';
 import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalDraftMarker';
 
@@ -413,6 +418,54 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'list_my_gmail',
+        description: 'Lee los últimos correos de la bandeja del administrador que conectó su Google. Solo asunto, remitente y un extracto. No envía nada.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'list_my_calendar',
+        description: 'Lee los próximos eventos del calendario de Google del administrador conectado. No crea nada.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'send_gmail',
+        description: 'Prepara UN correo desde el Gmail del administrador. No sale hasta que confirme. No es un envío masivo.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                to: { type: 'string' },
+                subject: { type: 'string' },
+                body: { type: 'string' },
+            },
+            required: ['to', 'subject', 'body'],
+        },
+    },
+    {
+        name: 'create_calendar_event',
+        description: 'Prepara un evento en el Google Calendar del administrador. No se crea hasta que confirme.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string' },
+                start: { type: 'string', description: 'Inicio en ISO, por ejemplo 2026-11-10T15:00:00-03:00.' },
+                end: { type: 'string', description: 'Término en ISO, posterior al inicio.' },
+            },
+            required: ['title', 'start', 'end'],
+        },
+    },
+    {
+        name: 'delegate_background_task',
+        description: 'Deja una revisión larga en segundo plano y avisa cuando termina, en la app o también por WhatsApp. SOLO administradores. No cambia datos ni envía avisos a los vecinos. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                goal: { type: 'string', description: 'Qué hay que revisar, en una frase.' },
+                notify: { type: 'string', enum: ['app', 'whatsapp', 'both'], description: 'Dónde avisar al terminar. Por defecto, la app.' },
+            },
+            required: ['goal'],
+        },
+    },
+    {
         name: 'draft_committee_report',
         description: 'Arma un informe HTML y PDF para el comité, con la línea gráfica de Convive y solo totales (asambleas y reservas). Sin nombres, montos ni datos de contacto. SOLO administradores. Requiere confirmación. El PDF caduca en 15 minutos.',
         input_schema: {
@@ -452,6 +505,45 @@ export const TOOL_DEFINITIONS = [
                 query: { type: 'string', description: 'Lo que la persona quiere hacer o encontrar, en sus palabras (ej: "reservar el quincho").' },
             },
             required: ['query'],
+        },
+    },
+    {
+        name: 'search_public_web',
+        description: 'Busca en la web pública. Úsala para encontrar la página oficial y luego léela con read_official_page. No inventes resultados si la búsqueda viene vacía.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { query: { type: 'string', description: 'Qué buscar, en pocas palabras.' } },
+            required: ['query'],
+        },
+    },
+    {
+        name: 'read_official_page',
+        description: 'Lee un fragmento de una página HTTPS oficial: MINVU, SEREMI (gob.cl), DOM municipal (mun.cl o minvu.cl) o BCN. No lee otros sitios. Cita el enlace y no concluyas si la lectura falla.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                url: { type: 'string', description: 'URL https de la página oficial.' },
+                query: { type: 'string', description: 'Tema o artículo que hay que ubicar en la página.' },
+            },
+            required: ['url', 'query'],
+        },
+    },
+    {
+        name: 'list_community_agenda',
+        description: 'Agenda dentro de Convive: próximas asambleas y reservas de espacios. No crea asambleas ni muestra nombres de vecinos. Para anotar un recordatorio usa create_reminder.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'draft_outbound_email',
+        description: 'Prepara UN correo a una persona que ya está en la comunidad. No se envía hasta que la administración confirme. No sirve para avisos masivos.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                to: { type: 'string', description: 'Un solo correo, de alguien de esta comunidad.' },
+                subject: { type: 'string' },
+                body: { type: 'string', description: 'Texto del correo, sin lista de destinatarios.' },
+            },
+            required: ['to', 'subject', 'body'],
         },
     },
     {
@@ -697,8 +789,12 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_reminder',
     'cancel_reminder',
     'resume_agent_task',
+    'delegate_background_task',
+    'draft_outbound_email',
     'draft_committee_report',
     'coordinate_specialists',
+    'send_gmail',
+    'create_calendar_event',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -710,6 +806,7 @@ const RESIDENT_TOOLS = new Set([
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
     'remember_preference', 'create_reminder', 'list_reminders', 'cancel_reminder',
     'get_platform_guide', 'consult_official_legal_source',
+    'search_public_web', 'read_official_page', 'list_community_agenda',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
@@ -730,10 +827,13 @@ const ADMIN_TOOLS = new Set([
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
+    'delegate_background_task',
     'draft_committee_report',
     'coordinate_specialists',
+    'list_my_gmail', 'list_my_calendar', 'send_gmail', 'create_calendar_event',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
+    'draft_outbound_email',
 ]);
 
 const SYSTEM_TOOLS = new Set([
@@ -811,6 +911,11 @@ export function describePendingAction(name: string, input: Record<string, unknow
                 title: str('decision') === 'approve' ? 'Aprobar reserva' : 'Anular reserva',
                 summary: str('decision') === 'approve' ? 'La reserva pendiente queda confirmada.' : 'La reserva queda anulada.',
             };
+        case 'draft_outbound_email':
+            return {
+                title: 'Enviar un correo',
+                summary: `Borrador para ${str('to')}: ${str('subject')}. Al confirmar se envía un solo correo. No es un aviso masivo.`,
+            };
         case 'request_urgent_access_approval':
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':
@@ -832,10 +937,16 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Cancelar recordatorio', summary: 'No se enviará el aviso pendiente.' };
         case 'resume_agent_task':
             return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
+        case 'delegate_background_task':
+            return { title: 'Dejar una tarea en segundo plano', summary: `${str('goal') || 'Revisión'}. Te aviso cuando termine. No cambia datos.` };
         case 'draft_committee_report':
             return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
         case 'coordinate_specialists':
             return { title: 'Coordinar Cocos especializados', summary: `${str('request') || 'Pedido'}. Se audita el traspaso y no se cambia ningún dato.` };
+        case 'send_gmail':
+            return { title: 'Enviar correo de Gmail', summary: `De tu Gmail a ${str('to')}: ${str('subject')}. Sale solo si confirmas.` };
+        case 'create_calendar_event':
+            return { title: 'Crear evento en Google Calendar', summary: `${str('title')} desde ${str('start')} hasta ${str('end')}.` };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1667,6 +1778,29 @@ export async function executeTool(
             case 'consult_official_legal_source': {
                 return consultOfficialLegalSource(input.source || '', (input.query || '').slice(0, 180));
             }
+            case 'search_public_web': {
+                return searchPublicWeb(input.query || '');
+            }
+            case 'read_official_page': {
+                return readOfficialPage(input.url || '', input.query || '');
+            }
+            case 'list_community_agenda': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                return listCommunityAgenda(communityId, userCtx.role, userCtx.user_id);
+            }
+            case 'draft_outbound_email': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración puede preparar un correo.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar la comunidad.');
+                return sendConfirmedEmailDraft({
+                    communityId,
+                    createdBy: userCtx.user_id,
+                    to: input.to || '',
+                    subject: input.subject || '',
+                    body: input.body || '',
+                });
+            }
             case 'prepare_legal_draft': {
                 if (!canDraftLegalDocuments(userCtx.role)) return { error: LEGAL_DRAFT_ADMIN_ONLY_MESSAGE };
                 return prepareLegalDraft({
@@ -1686,6 +1820,45 @@ export async function executeTool(
                     community_id: userCtx.community_id,
                     name: userCtx.name,
                 }, input.request || '');
+            }
+            case 'list_my_gmail': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador conectado puede leer su Gmail.' };
+                return withAdminGoogle(userCtx.user_id, token => listGmail(token));
+            }
+            case 'list_my_calendar': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador conectado puede leer su calendario.' };
+                return withAdminGoogle(userCtx.user_id, token => listCalendar(token));
+            }
+            case 'send_gmail': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador puede enviar desde su Gmail.' };
+                return withAdminGoogle(userCtx.user_id, token => sendGmail(token, {
+                    to: input.to || '',
+                    subject: input.subject || '',
+                    body: input.body || '',
+                }));
+            }
+            case 'create_calendar_event': {
+                if (userCtx.role !== 'admin') return { error: 'Solo el administrador puede crear eventos en su calendario.' };
+                return withAdminGoogle(userCtx.user_id, token => createCalendarEvent(token, {
+                    title: input.title || '',
+                    start: input.start || '',
+                    end: input.end || '',
+                }));
+            }
+            case 'delegate_background_task': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede dejar una tarea en segundo plano.' };
+                }
+                const goal = (input.goal || '').trim();
+                if (goal.length < 8) return { error: 'Dime qué hay que revisar.' };
+                const taskId = await enqueueDelegatedTask({
+                    id: userCtx.user_id,
+                    role: 'admin',
+                    community_id: userCtx.community_id,
+                    name: userCtx.name,
+                }, goal, parseDelegateNotice(input.notify));
+                await kickDelegatedTasks();
+                return { success: true, task_id: taskId, message: 'La dejé en segundo plano. Te aviso cuando termine.' };
             }
             case 'draft_committee_report': {
                 if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
