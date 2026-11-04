@@ -21,6 +21,7 @@ import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/
 import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
 import { resumeCoCoTask } from './resumeTask';
+import { enqueueDelegatedTask, kickDelegatedTasks, parseDelegateNotice } from './delegatedTasks';
 import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
@@ -402,6 +403,18 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'delegate_background_task',
+        description: 'Deja una revisión larga en segundo plano y avisa cuando termina, en la app o también por WhatsApp. SOLO administradores. No cambia datos ni envía avisos a los vecinos. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                goal: { type: 'string', description: 'Qué hay que revisar, en una frase.' },
+                notify: { type: 'string', enum: ['app', 'whatsapp', 'both'], description: 'Dónde avisar al terminar. Por defecto, la app.' },
+            },
+            required: ['goal'],
+        },
+    },
+    {
         name: 'resume_agent_task',
         description: 'Retoma una tarea larga del Agent Center (cobranza, mantención o un ciclo pausado). SOLO administradores. No aprueba sola una escritura pendiente: si falta confirmación, la tarea sigue esperando. Requiere confirmación.',
         input_schema: {
@@ -677,6 +690,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_reminder',
     'cancel_reminder',
     'resume_agent_task',
+    'delegate_background_task',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -708,6 +722,7 @@ const ADMIN_TOOLS = new Set([
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
+    'delegate_background_task',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
 ]);
@@ -808,6 +823,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Cancelar recordatorio', summary: 'No se enviará el aviso pendiente.' };
         case 'resume_agent_task':
             return { title: 'Retomar tarea de CoCo', summary: 'Continúa la tarea guardada. Si hay una escritura pendiente, sigue esperando tu aprobación.' };
+        case 'delegate_background_task':
+            return { title: 'Dejar una tarea en segundo plano', summary: `${str('goal') || 'Revisión'}. Te aviso cuando termine. No cambia datos.` };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1648,6 +1665,21 @@ export async function executeTool(
                 });
             }
 
+            case 'delegate_background_task': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede dejar una tarea en segundo plano.' };
+                }
+                const goal = (input.goal || '').trim();
+                if (goal.length < 8) return { error: 'Dime qué hay que revisar.' };
+                const taskId = await enqueueDelegatedTask({
+                    id: userCtx.user_id,
+                    role: 'admin',
+                    community_id: userCtx.community_id,
+                    name: userCtx.name,
+                }, goal, parseDelegateNotice(input.notify));
+                await kickDelegatedTasks();
+                return { success: true, task_id: taskId, message: 'La dejé en segundo plano. Te aviso cuando termine.' };
+            }
             case 'resume_agent_task': {
                 if (userCtx.role !== 'admin') return { error: 'Solo la administración puede retomar una tarea.' };
                 if (!userCtx.user_id || !userCtx.community_id) return { error: 'No pude identificar la comunidad.' };
