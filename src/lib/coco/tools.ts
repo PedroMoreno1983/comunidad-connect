@@ -20,6 +20,7 @@ import { summarizeAccountPaymentStatus } from './paymentStatus';
 import { getUnitStatement, recordPayment, PAYMENT_METHODS } from '@/lib/finance/collectionService';
 import { getMonthlyReport } from '@/lib/finance/reportingService';
 import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memory';
+import { blockCoCoWrite } from './autonomyGate';
 import { nextBookingStatus } from './bookingDecision';
 import { cancelCoCoReminder, createCoCoReminder, listCoCoReminders, reminderConfirmationFromInput } from '@/lib/agent-center/cocoReminders';
 import { platformGuide } from './platformMap';
@@ -895,6 +896,10 @@ export async function executeTool(
 ): Promise<unknown> {
     try {
         if (!isToolAllowedForRole(name, userCtx.role)) return forbidden();
+        if (MUTATING_TOOLS.has(name)) {
+            const blocked = await blockCoCoWrite(userCtx);
+            if (blocked) return blocked;
+        }
         switch (name) {
 
             // ── RESIDENTE / FINANZAS ─────────────────────────────────────────

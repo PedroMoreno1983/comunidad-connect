@@ -1445,6 +1445,7 @@ COMMIT;
 -- can no longer be used to spoof sensor events for OTHER communities once a
 -- per-community secret is set.
 ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS iot_webhook_secret TEXT;
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS coco_autonomy boolean NOT NULL DEFAULT true;
 
 -- Twilio's webhook signature scheme has no timestamp/nonce, so a captured
 -- valid request can otherwise be replayed indefinitely. Twilio's own
