@@ -553,7 +553,7 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
         key: 'coco_reminder',
         agentKey: 'community',
         name: 'Recordatorio de CoCo',
-        description: 'Deja un aviso en la app a la hora que pidas, o avisa a las unidades con cobros pendientes. La confirmación queda en el chat; WhatsApp no sale salvo que se encienda a propósito.',
+        description: 'Deja un aviso en la app en la revisión diaria de las 09:00 (hora de Chile), o avisa a las unidades con cobros pendientes. La confirmación queda en el chat; WhatsApp no sale salvo que se encienda a propósito.',
         targetHref: '/chat',
         requiresAdmin: false,
         steps: ['Guardar la hora en Chile', 'Esperar el scheduler', 'Avisar en la app', 'Dejar constancia'],

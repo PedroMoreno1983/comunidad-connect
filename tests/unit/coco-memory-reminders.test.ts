@@ -3,6 +3,8 @@ import { MUTATING_TOOLS, isToolAllowedForRole } from '@/lib/coco/tools';
 import { buildUnifiedMemoryContext, selectRelevantFacts } from '@/lib/coco/memory';
 import {
     OVERDUE_REMINDER_NOTICE,
+    REMINDER_DAILY_REVIEW,
+    describeReminderConfirmation,
     noticeHasDebtLanguage,
     reminderAudienceAllowed,
     reminderWhatsAppActive,
@@ -49,6 +51,19 @@ describe('recordatorios en hora de Chile', () => {
         expect(after.ok).toBe(true);
         if (!after.ok) return;
         expect(chileClock(after.schedule.runAt)).toContain('2026-12-05');
+    });
+
+    it('avisa que sale en la revisión diaria de las 09:00, no cada hora', () => {
+        const resolved = resolveReminderSchedule({ when: 'viernes', time: '18:00' }, WEDNESDAY);
+        expect(resolved.ok).toBe(true);
+        if (!resolved.ok) return;
+        const summary = describeReminderConfirmation({
+            audience: 'self',
+            note: 'cobrar a la 302',
+            schedule: resolved.schedule,
+        }).summary;
+        expect(summary).toContain(REMINDER_DAILY_REVIEW);
+        expect(summary).not.toMatch(/cada hora/i);
     });
 
     it('rechaza una fecha que ya pasó y un día que febrero no tiene', () => {

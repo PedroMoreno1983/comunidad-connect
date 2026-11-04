@@ -3,7 +3,8 @@
  *
  * No tienen tabla propia: cada uno es una fila de `agent_trigger_rules` con
  * señal `coco_reminder`. El scheduler existente (`evaluateDueAgentTriggers`)
- * los toma cuando `next_run_at` ya llegó y los entrega en la app. La tarea
+ * corre una vez al día (12:00 UTC, 09:00 en Chile) y entrega los que ya
+ * vencieron. La tarea
  * queda en `agent_tasks` para que se vea en el Agent Center.
  *
  * Crear, listar y cancelar pasa por las herramientas de CoCo, con la misma

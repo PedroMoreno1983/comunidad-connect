@@ -369,7 +369,7 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'create_reminder',
-        description: 'Agenda un recordatorio que el scheduler entrega dentro de la app (notificación y, si hay hilo, un mensaje de CoCo). Ej: "recuérdame el viernes cobrar a la 302" o, solo administración, "avisa a las unidades con cobros pendientes el día 5". Las horas son de Chile (America/Santiago). WhatsApp NO se envía salvo que la plataforma lo tenga encendido; por defecto queda apagado. Requiere confirmación.',
+        description: 'Agenda un recordatorio que la revisión diaria de las 09:00 (hora de Chile) entrega dentro de la app cuando ya llegó la hora pedida (notificación y, si hay hilo, un mensaje de CoCo). Ej: "recuérdame el viernes cobrar a la 302" o, solo administración, "avisa a las unidades con cobros pendientes el día 5". Las horas son de Chile (America/Santiago). No prometas la entrega en el minuto exacto: sale en esa revisión diaria. WhatsApp NO se envía salvo que la plataforma lo tenga encendido; por defecto queda apagado. Requiere confirmación.',
         input_schema: {
             type: 'object' as const,
             properties: {
