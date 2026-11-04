@@ -2213,6 +2213,18 @@ CREATE TABLE IF NOT EXISTS "public"."coco_sessions" (
     "expires_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval)
 );
 
+CREATE TABLE IF NOT EXISTS public.coco_memory_proposals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  fact text NOT NULL,
+  fact_key text NOT NULL,
+  category text NOT NULL,
+  status text NOT NULL DEFAULT 'proposed',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz,
+  decided_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS public.coco_outbound_media (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
@@ -2222,6 +2234,26 @@ CREATE TABLE IF NOT EXISTS public.coco_outbound_media (
   body text NOT NULL,
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.coco_proactive_proposals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  status text NOT NULL DEFAULT 'proposed',
+  title text NOT NULL,
+  body text NOT NULL,
+  href text NOT NULL,
+  subject_count integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz,
+  decided_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.coco_scheduler_ticks (
+  mode text NOT NULL,
+  bucket timestamptz NOT NULL,
+  started_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "public"."coco_user_memory" (
