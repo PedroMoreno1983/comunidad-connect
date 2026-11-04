@@ -2213,6 +2213,18 @@ CREATE TABLE IF NOT EXISTS "public"."coco_sessions" (
     "expires_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval)
 );
 
+CREATE TABLE IF NOT EXISTS public.coco_email_drafts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  to_email text NOT NULL,
+  subject text NOT NULL,
+  body text NOT NULL,
+  status text NOT NULL DEFAULT 'saved',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  sent_at timestamptz
+);
+
 CREATE TABLE IF NOT EXISTS public.coco_memory_proposals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   community_id uuid NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
