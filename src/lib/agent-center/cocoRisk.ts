@@ -89,6 +89,10 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     add_community_expense: 'write_high',        // dinero
     record_payment: 'write_high',                // modifica saldos y notifica al residente
     issue_billing: 'write_high',                // emite cobros a todo el edificio
+    cancel_issued_billing: 'write_high',        // deshace esa emisión
+    schedule_community_notice: 'write_high',    // aviso a toda la comunidad
+    list_pending_bookings: 'read',
+    decide_booking: 'write_high',               // aprueba o anula una reserva
 };
 
 /** Riesgo de una herramienta de CoCo. Lo desconocido pesa lo maximo. */
