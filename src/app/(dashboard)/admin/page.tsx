@@ -63,6 +63,17 @@ export default function AdminDashboardPage() {
     const residentsFilled = data ? Math.min(data.residentsActive, 96) : 0;
     const hasRequests = Boolean(data?.activeRequests.length);
     const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-patio.jpg";
+    const showWelcome = !loading && data?.residentsActive === 0;
+
+    function startCocoWelcome() {
+        const community = user?.communityName || "mi comunidad";
+        const units = data?.unitsTotal || 0;
+        window.dispatchEvent(new CustomEvent("coco:compose", {
+            detail: {
+                message: `Soy administrador de ${community}. Estoy comenzando a usar ConviveConnect. Tenemos ${units} unidades registradas y todavía no hay residentes activos. Guíame en una conversación para poner en marcha la comunidad: comprueba qué está configurado, dime qué información falta y ayúdame con el siguiente paso. No inventes datos ni hagas cambios sin mostrarme lo que harás.`,
+            },
+        }));
+    }
 
     return (
         <div className="space-y-6">
@@ -98,6 +109,27 @@ export default function AdminDashboardPage() {
                     </p>
                 </div>
             </div>
+
+            {showWelcome && (
+                <section className="flex flex-col gap-4 rounded-2xl border bg-paper p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line)" }}>
+                    <div className="flex items-start gap-3">
+                        <div className="rounded-xl p-2.5" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
+                            <Sparkles size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-semibold cc-text-primary">Bienvenido a {user?.communityName || "tu comunidad"}</h2>
+                            <p className="mt-1 max-w-2xl text-sm cc-text-secondary">
+                                {data?.unitsTotal
+                                    ? `Ya hay ${data.unitsTotal} unidades registradas. CoCo puede ayudarte a incorporar a las personas y preparar la operación de la comunidad.`
+                                    : "CoCo puede ayudarte a crear las unidades e incorporar a las personas de tu comunidad."}
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={startCocoWelcome} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ background: "var(--cc-copper)" }}>
+                        Empezar con CoCo <ArrowRight size={16} />
+                    </button>
+                </section>
+            )}
 
             {loading ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
