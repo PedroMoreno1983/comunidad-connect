@@ -23,6 +23,7 @@ import { rememberFact, rememberCommunityFact, forgetCommunityFact } from './memo
 import { resumeCoCoTask } from './resumeTask';
 import { enqueueDelegatedTask, kickDelegatedTasks, parseDelegateNotice } from './delegatedTasks';
 import { createCommitteeReport } from './committeeReport';
+import { createRoutine, deleteRoutine, listRoutines, pauseRoutine } from './routineRunner';
 import { coordinateSpecialists } from './specialistHandoff';
 import { createCalendarEvent, listCalendar, listGmail, sendGmail, withAdminGoogle } from './googleApi';
 import { blockCoCoWrite } from './autonomyGate';
@@ -409,12 +410,44 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'create_routine',
+        description: 'Crea una rutina recurrente pedida por el administrador, por ejemplo "cada lunes mándame el resumen". Hora de Chile. El aviso queda en la app. Requiere confirmación. No manda correos sola.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { request: { type: 'string', description: 'La frase del administrador, con el día y, si la dijo, la hora.' } },
+            required: ['request'],
+        },
+    },
+    {
         name: 'coordinate_specialists',
         description: 'Reparte un pedido entre los Cocos de cobranza, legal y mantención. Audita el traspaso. No avisa, no paga y no contrata: cada escritura sigue pidiendo confirmación. SOLO administradores.',
         input_schema: {
             type: 'object' as const,
             properties: { request: { type: 'string', description: 'El pedido, diciendo si es cobranza, legal, mantención o más de uno.' } },
             required: ['request'],
+        },
+    },
+    {
+        name: 'list_routines',
+        description: 'Lista las rutinas activas o pausadas de esta comunidad. Solo lectura.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'pause_routine',
+        description: 'Pausa una rutina para que deje de correr. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { routine_id: { type: 'string' } },
+            required: ['routine_id'],
+        },
+    },
+    {
+        name: 'delete_routine',
+        description: 'Deja una rutina como borrada para que no vuelva a correr. Requiere confirmación. No borra el historial.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { routine_id: { type: 'string' } },
+            required: ['routine_id'],
         },
     },
     {
@@ -792,6 +825,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'delegate_background_task',
     'draft_outbound_email',
     'draft_committee_report',
+    'create_routine',
+    'pause_routine',
+    'delete_routine',
     'coordinate_specialists',
     'send_gmail',
     'create_calendar_event',
@@ -829,6 +865,7 @@ const ADMIN_TOOLS = new Set([
     'resume_agent_task',
     'delegate_background_task',
     'draft_committee_report',
+    'create_routine', 'list_routines', 'pause_routine', 'delete_routine',
     'coordinate_specialists',
     'list_my_gmail', 'list_my_calendar', 'send_gmail', 'create_calendar_event',
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
@@ -941,6 +978,12 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Dejar una tarea en segundo plano', summary: `${str('goal') || 'Revisión'}. Te aviso cuando termine. No cambia datos.` };
         case 'draft_committee_report':
             return { title: 'Preparar informe del comité', summary: 'Un HTML y un PDF con totales de asambleas y reservas. Sin nombres ni montos.' };
+        case 'create_routine':
+            return { title: 'Crear rutina', summary: `${str('request')}. Corre en hora de Chile y te avisa en la app.` };
+        case 'pause_routine':
+            return { title: 'Pausar rutina', summary: 'Deja de correr hasta que la actives de nuevo.' };
+        case 'delete_routine':
+            return { title: 'Borrar rutina', summary: 'No vuelve a correr. El registro queda.' };
         case 'coordinate_specialists':
             return { title: 'Coordinar Cocos especializados', summary: `${str('request') || 'Pedido'}. Se audita el traspaso y no se cambia ningún dato.` };
         case 'send_gmail':
@@ -1810,6 +1853,27 @@ export async function executeTool(
                 });
             }
 
+            case 'create_routine': {
+                if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
+                    return { error: 'Solo la administración puede crear una rutina.' };
+                }
+                return createRoutine({ communityId: userCtx.community_id, userId: userCtx.user_id, request: input.request || '' });
+            }
+            case 'list_routines': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || userCtx.role !== 'admin') return { error: 'Solo la administración puede ver las rutinas.' };
+                return listRoutines(communityId);
+            }
+            case 'pause_routine': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || userCtx.role !== 'admin') return { error: 'Solo la administración puede pausar una rutina.' };
+                return pauseRoutine(communityId, input.routine_id || '');
+            }
+            case 'delete_routine': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || userCtx.role !== 'admin') return { error: 'Solo la administración puede borrar una rutina.' };
+                return deleteRoutine(communityId, input.routine_id || '');
+            }
             case 'coordinate_specialists': {
                 if (userCtx.role !== 'admin' || !userCtx.user_id || !userCtx.community_id) {
                     return { error: 'Solo la administración puede coordinar a los Cocos.' };

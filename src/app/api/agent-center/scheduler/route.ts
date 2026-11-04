@@ -3,6 +3,7 @@ import { evaluateDueAgentTriggers } from '@/lib/agent-center/proactiveEngine';
 import { claimSchedulerTick, releaseSchedulerTick, runProactiveProposals } from '@/lib/agent-center/proactiveProposals';
 import { authorizeScheduler, parseSchedulerMode, schedulerBucket, schedulerSecrets } from '@/lib/agent-center/schedulerAuth';
 import { drainDelegatedTasks } from '@/lib/coco/delegatedTasks';
+import { runDueRoutines } from '@/lib/coco/routineRunner';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,11 +31,15 @@ async function handle(req: NextRequest) {
     try {
         const triggers = mode === 'proposals' ? null : await evaluateDueAgentTriggers();
         const proposals = mode === 'triggers' ? null : await runProactiveProposals();
+        const routines = mode === 'proposals' ? null : await runDueRoutines().catch(error => {
+            console.error('[agent-center scheduler] routines failed', error);
+            return { ran: [], error: true };
+        });
         const delegated = await drainDelegatedTasks().catch(error => {
             console.error('[agent-center scheduler] background tasks failed', error);
             return { finished: [], error: true };
         });
-        return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, delegated });
+        return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, routines, delegated });
     } catch (error) {
         await releaseSchedulerTick(mode, bucket);
         console.error('[agent-center scheduler] evaluation failed', error);
