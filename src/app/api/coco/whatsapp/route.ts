@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
+import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import { askCoCoWhatsAppFallback } from '@/lib/coco/whatsapp-fallback';
 import { isAiBudgetExceededError } from '@/lib/ai/budget';
 import {
@@ -283,6 +284,11 @@ export async function POST(req: NextRequest) {
             }
             const { reply, updatedHistory, pendingActions } = agentResponse;
             await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext }, Boolean(pendingActions?.length));
+            if (isConversationClosing(message)) {
+                void learnFromClosing(verifiedContext.community_id, linesFromConversation(updatedHistory)).catch(error => {
+                    console.error('[coco] no se pudieron proponer recuerdos', error);
+                });
+            }
             if (pendingActions?.length) {
                 const lines = pendingActions.map(action => `${action.title}: ${action.summary}`);
                 return respond(whatsappPendingReply(lines));
