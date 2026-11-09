@@ -321,6 +321,16 @@ export async function askCoCo(
     // turno de la conversación, para no consultar la base en cada mensaje.
     const isFirstTurn = !(session?.conversation && session.conversation.length > 0);
     const proactiveContext = isFirstTurn && !isResuming ? await getProactiveContext(userCtx) : '';
+    let communityContext = '';
+    if (userCtx.community_id && userCtx.role === 'admin') {
+        const { count, error } = await getSupabaseAdmin()
+            .from('units')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', userCtx.community_id);
+        if (!error && count !== null) {
+            communityContext = `Datos actuales de esta comunidad: ${count} unidades registradas. Si preguntan cuántos sitios, casas o unidades hay, usa esta cifra y aclara que corresponde a las unidades registradas en Convive.`;
+        }
+    }
     // Todo lo que varía por request (ley, memoria, proactivo, contexto del usuario)
     // va DESPUÉS del prefijo cacheado; si se colara antes invalidaría la cache.
     // Mapa de la plataforma: solo la pantalla actual (el resto, vía get_platform_guide).
@@ -330,6 +340,7 @@ export async function askCoCo(
         legalKnowledge,
         memoryContext,
         proactiveContext,
+        communityContext,
         platformContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
     ].filter(Boolean);
