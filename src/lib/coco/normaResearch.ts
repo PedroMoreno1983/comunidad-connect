@@ -15,7 +15,8 @@ const DEFAULT_URL = 'https://norma.datawiseconsultoria.com/api/mcp';
 // Medido el 2026-11-10: jurisprudencia y normativa tardan ~12 s (consultan en vivo);
 // dictámenes, sanciones e indicadores, menos de 1 s.
 const TIMEOUT_MS = 25_000;
-// Por WhatsApp CoCo responde dentro del webhook de Twilio, que corta a los 15 s.
+// Solo la vía directa de Twilio responde dentro del webhook (corte a los 15 s). El número
+// compartido de Norma procesa en segundo plano y espera hasta 90 s: ahí sí caben.
 const SLOW_SOURCES = new Set<string>(['jurisprudencia', 'tribunal_constitucional', 'normativa', 'corpus']);
 const MAX_RESULT_CHARS = 12_000;
 
@@ -42,8 +43,8 @@ export type NormaResearchInput = {
     limit?: number;
     date?: string;
     convert?: Array<{ monto: number; unidad: string; etiqueta?: string }>;
-    /** Canal de la conversación. En 'whatsapp' las búsquedas lentas se derivan a la app. */
-    channel?: string;
+    /** La respuesta va dentro del webhook síncrono de Twilio: las búsquedas lentas se derivan a la app. */
+    syncReply?: boolean;
 };
 
 type RpcResponse = {
@@ -88,7 +89,7 @@ export async function researchChileanLaw(input: NormaResearchInput) {
     if (!Object.prototype.hasOwnProperty.call(SOURCES, source || '')) {
         return { error: `Fuente no disponible. Usa una de: ${NORMA_SOURCES.join(', ')}.` };
     }
-    if (input.channel === 'whatsapp' && SLOW_SOURCES.has(source)) {
+    if (input.syncReply && SLOW_SOURCES.has(source)) {
         return { error: 'Esa búsqueda tarda más de lo que permite WhatsApp. Dile a la persona que la pida en el chat de CoCo en la app; por aquí puedes usar dictamenes_cgr, sanciones o indicadores.' };
     }
     const key = process.env.NORMA_MCP_KEY;

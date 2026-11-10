@@ -49,13 +49,15 @@ describe('CoCo: investigación jurídica en Norma', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('por WhatsApp no lanza búsquedas lentas que pasarían el corte de Twilio', async () => {
+    it('en la respuesta síncrona de Twilio no lanza búsquedas lentas; por el número compartido sí', async () => {
         const fetchMock = vi.fn().mockResolvedValue(rpcOk('{"ok":true}'));
         vi.stubGlobal('fetch', fetchMock);
-        expect((await researchChileanLaw({ source: 'jurisprudencia', query: 'ruidos', channel: 'whatsapp' })).error).toContain('app');
+        expect((await researchChileanLaw({ source: 'jurisprudencia', query: 'ruidos', syncReply: true })).error).toContain('app');
         expect(fetchMock).not.toHaveBeenCalled();
-        await researchChileanLaw({ source: 'dictamenes_cgr', query: 'administrador', channel: 'whatsapp' });
+        await researchChileanLaw({ source: 'dictamenes_cgr', query: 'administrador', syncReply: true });
         expect(fetchMock).toHaveBeenCalledTimes(1);
+        await researchChileanLaw({ source: 'jurisprudencia', query: 'ruidos', syncReply: false });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('sin llave, deriva a la fuente BCN en vez de fingir', async () => {

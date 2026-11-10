@@ -1034,6 +1034,8 @@ interface UserContext {
     name?: string;
     channel?: string;
     currentPage?: string;
+    /** Ver CoCoUserContext.syncReply en agent.ts. */
+    syncReply?: boolean;
 }
 
 function isStaff(userCtx: UserContext) {
@@ -1853,7 +1855,7 @@ export async function executeTool(
             case 'research_chilean_law': {
                 // El modelo manda limit como número y convert como arreglo, aunque la
                 // firma de executeTool diga string. researchChileanLaw valida cada campo.
-                return researchChileanLaw({ ...(input as unknown as NormaResearchInput), channel: userCtx.channel });
+                return researchChileanLaw({ ...(input as unknown as NormaResearchInput), syncReply: userCtx.syncReply });
             }
             case 'search_public_web': {
                 return searchPublicWeb(input.query || '');

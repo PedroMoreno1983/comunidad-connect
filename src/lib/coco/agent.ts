@@ -31,10 +31,11 @@ const anthropic = new Anthropic({
 // aunque otras tareas del sistema sí lo hagan.
 const MODEL = anthropicModelFor('coco.chat');
 const OPENAI_MODEL = process.env.COCO_OPENAI_MODEL || 'gpt-5.4-mini';
-// Rondas de tool use por mensaje. La web aguanta tareas largas (consultar, cruzar, proponer);
-// WhatsApp responde dentro del webhook y Twilio corta a los 15 s, así que pide menos.
+// Rondas de tool use por mensaje. La web y el número compartido de Norma (+56 9 9947 4056,
+// que procesa en segundo plano y espera hasta 90 s) aguantan tareas largas. Solo la vía
+// directa de Twilio responde con TwiML dentro del webhook, que Twilio corta a los 15 s.
 const MAX_TOOL_ROUNDS = 8;
-export const WHATSAPP_MAX_TOOL_ROUNDS = 5;
+export const SYNC_REPLY_MAX_TOOL_ROUNDS = 5;
 
 export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
@@ -68,6 +69,8 @@ type CoCoUserContext = {
     name?: string;
     currentPage?: string;
     channel?: string;
+    /** La respuesta viaja en el mismo HTTP que el mensaje (TwiML directo, Twilio corta a los 15 s). */
+    syncReply?: boolean;
 };
 
 function pendingToolUses(session: SessionData | null): Anthropic.ToolUseBlock[] {

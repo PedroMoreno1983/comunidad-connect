@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo, WHATSAPP_MAX_TOOL_ROUNDS } from '@/lib/coco/agent';
+import { askCoCo, SYNC_REPLY_MAX_TOOL_ROUNDS } from '@/lib/coco/agent';
 import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import { askCoCoWhatsAppFallback } from '@/lib/coco/whatsapp-fallback';
 import { isAiBudgetExceededError } from '@/lib/ai/budget';
@@ -250,6 +250,9 @@ export async function POST(req: NextRequest) {
                 community_id: String(currentProfile.community_id),
                 name: String(currentProfile.name || currentProfile.full_name || 'vecino/a'),
                 channel: 'whatsapp',
+                // Por el número compartido, Norma espera la respuesta en segundo plano (90 s);
+                // por la vía directa, la respuesta va en el TwiML y Twilio corta a los 15 s.
+                syncReply: !relayedFromNorma,
             };
             let understood: Awaited<ReturnType<typeof readWhatsAppAttachments>> | null = null;
             if (inboundMedia.length) {
@@ -267,7 +270,7 @@ export async function POST(req: NextRequest) {
             let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
             try {
                 agentResponse = await askCoCo(messageForAgent, session, verifiedContext, {
-                    maxToolRounds: WHATSAPP_MAX_TOOL_ROUNDS,
+                    ...(relayedFromNorma ? {} : { maxToolRounds: SYNC_REPLY_MAX_TOOL_ROUNDS }),
                     ...(understood?.image ? { image: understood.image } : {}),
                     ...(understood?.document?.text ? { legalDocument: understood.document } : {}),
                 });

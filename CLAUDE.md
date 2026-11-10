@@ -53,8 +53,10 @@ NORMA_MCP_KEY=           # Investigación jurídica de CoCo en Norma (jurisprude
 # Emails
 RESEND_API_KEY=          # Proveedor de emails transaccionales
 
-# WhatsApp (en producción: webhook /api/coco/whatsapp, ver docs/whatsapp-twilio-webhook.md)
-TWILIO_ACCOUNT_SID=
+# WhatsApp (ver docs/whatsapp-twilio-webhook.md)
+COCO_WHATSAPP_FROM=      # Número compartido con Norma (+56 9 9947 4056)
+COCO_TWILIO_AUTH_TOKEN=  # Token del Twilio de DataWise: valida la firma del reenvío de Norma
+TWILIO_ACCOUNT_SID=      # Vía directa (cuenta de un compañero, en desuso)
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=
 WHATSAPP_WEBHOOK_SECRET=
@@ -227,7 +229,7 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 | Anthropic Claude | ✅ Funcionando | Motor del agente CoCo |
 | Resend (emails) | ✅ Clave disponible | Integración básica en `email.ts` |
 | Haulmer (pagos) | ⏸️ Pendiente | Real pero sin permisos API aún |
-| Twilio WhatsApp | ✅ Funcionando | CoCo responde por `/api/coco/whatsapp` (TwiML síncrono: Twilio corta a los 15 s, por eso WhatsApp usa 5 rondas de herramientas y la web 8) |
+| WhatsApp | ✅ Funcionando | Número real: **+56 9 9947 4056**, compartido con Norma y AgroSilvestre (Twilio de DataWise). El backend de Scrapp en el VPS lo recibe y reenvía a `/api/coco/whatsapp` con `X-CoCo-Shared-Number: 1` cuando la persona escribe "Hola CoCo"; "Norma" vuelve a Norma. Esa vía espera hasta 90 s. La vía directa (`TWILIO_*`, +1 555 397 5500, cuenta de un compañero) responde TwiML síncrono con corte de 15 s y está en desuso |
 | Norma (DataWise) | ✅ Funcionando | `research_chilean_law`: jurisprudencia, TC, dictámenes CGR, sanciones, UF/UTM. Llave MCP del espacio DataWise, revocable desde Norma |
 | VPS Hostinger | ✅ Funcionando | Scheduler de CoCo cada 15 min (log en `/var/log/coco-scheduler.log`) y cart-worker del supermercado. Ver `docs/hostinger-coco-scheduler.md` |
 | Capacitor (mobile) | 🟡 Estructura lista | Android e iOS listos, no desplegados |
@@ -302,6 +304,5 @@ npm run lint             # ESLint
 - [ ] **Búsqueda híbrida** — pgvector + Full Text Search en Supabase para Marketplace y Directorio (Anthropic embeddings)
 - [ ] **Email.ts** — Completar integración Resend: alerta gastos, confirmación amenities, bienvenida
 - [ ] **Haulmer** — Integrar pagos reales cuando se obtengan los permisos API
-- [ ] **WhatsApp** — Confirmar que producción use el número aprobado por Meta y no uno de prueba
 - [ ] **Empty states** — Mejorar UX de estados vacíos en módulos
 - [ ] **SEO** — Meta tags en todas las páginas del dashboard
