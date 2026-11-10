@@ -70,10 +70,15 @@ export async function askOpenAi(input: {
     for (const call of choice.message.tool_calls ?? []) {
         if (call.type !== 'function') continue;
         let argumentsValue: unknown;
-        try { argumentsValue = JSON.parse(call.function.arguments); } catch { argumentsValue = {}; }
-        if (!argumentsValue || typeof argumentsValue !== 'object' || Array.isArray(argumentsValue)) argumentsValue = {};
+        try { argumentsValue = JSON.parse(call.function.arguments); } catch {
+            throw new Error(`OpenAI devolvió argumentos inválidos para ${call.function.name}. No se ejecutó la acción.`);
+        }
+        if (!argumentsValue || typeof argumentsValue !== 'object' || Array.isArray(argumentsValue)) {
+            throw new Error(`OpenAI devolvió argumentos inválidos para ${call.function.name}. No se ejecutó la acción.`);
+        }
         content.push({ type: 'tool_use', id: call.id, name: call.function.name, input: argumentsValue, caller: { type: 'direct' } });
     }
+    if (content.length === 0) throw new Error('OpenAI no devolvió texto ni herramientas para CoCo.');
     return {
         content,
         stop_reason: content.some(block => block.type === 'tool_use') ? 'tool_use' : 'end_turn',

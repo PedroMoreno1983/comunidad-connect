@@ -11,6 +11,7 @@ import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { loadCoCoMemoryContext } from './memory';
 import { interpretCoCoConfirmation } from './confirmation';
 import { formatChileNow } from './reminders';
+import { chileMonthISO } from '@/lib/agent-center/chileDate';
 import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import { buildPlatformContext } from './platformMap';
@@ -525,7 +526,7 @@ export async function askCoCo(
                 (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
             );
             if (/\b(este mes|mes actual)\b/i.test(message)) {
-                const currentMonth = new Date().toISOString().slice(0, 7);
+                const currentMonth = chileMonthISO();
                 for (const toolUse of toolUses) {
                     if (['get_payment_status', 'get_water_consumption', 'get_defaulters_list'].includes(toolUse.name)) {
                         toolUse.input = { ...(toolUse.input as Record<string, unknown>), month: currentMonth };
