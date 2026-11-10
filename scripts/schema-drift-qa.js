@@ -123,6 +123,11 @@ const UNDECLARED_TABLES_BASELINE = new Set([
     // Vacio desde el 2026-09-06: las 55 tablas que faltaban se declararon con su
     // DDL real, sacado de `supabase db dump`. Si algo entra aca de nuevo, tiene
     // que venir con la razon por la que no corresponde declararlo.
+    //
+    // Copia de seguridad hecha a mano el 2026-10-05 antes de tocar las fotos de
+    // service_providers. No es parte del producto y declararla la volveria
+    // esquema oficial. Sale de aca cuando Pedro decida borrarla (pendiente suyo).
+    '_backup_service_providers_photo_20261005',
 ]);
 
 function checkUndeclaredTables(created, live) {
