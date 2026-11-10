@@ -34,7 +34,7 @@ from full_catalog import (
     parse_jumbo_html,
     parse_jumbo_payload,
     parse_lider_browse_page,
-    parse_lider_page,
+    parse_lider_browse_products,
     parse_santa_render_data,
     parse_santa_listing_html,
     parse_santa_vtex_products,
@@ -568,6 +568,27 @@ class FullCatalogParserTests(unittest.TestCase):
         vtex_calls = [url for url in requested if "vtexcommercestable" in url]
         self.assertEqual(len(vtex_calls), 1)
 
+    def test_santa_crawl_retries_a_repeated_page_mid_listing(self) -> None:
+        tree = json.dumps([{"id": 27, "url": "https://x/despensa"}])
+        first = self._santa_listing_html([("1", "Producto 1", 1150)], 2)
+        second = self._santa_listing_html([("2", "Producto 2", 1150)], 2)
+
+        def fake_fetch_many(urls, optional=False):
+            for url in urls:
+                if "santaisabel.cl/despensa?page=" in url:
+                    # Bajo carga, la página 2 vuelve repetida (la 1) la primera vez.
+                    yield first if url.endswith("page=1") or url.endswith("page=2") else ""
+                else:
+                    yield json.dumps([self._santa_vtex_product(n, f"780290000130{n}") for n in ("1", "2")])
+
+        with patch("full_catalog.fetch_text", return_value=tree), \
+                patch("full_catalog._santa_fetch_many", side_effect=fake_fetch_many), \
+                patch("full_catalog._santa_fetch", return_value=second) as refetch, \
+                patch("full_catalog.time.sleep"):
+            products = list(crawl_santa())
+        self.assertEqual([product.sku for product in products], ["1", "2"])
+        self.assertTrue(refetch.call_args.args[0].endswith("page=2"))
+
     def test_santa_crawl_flags_listing_far_below_advertised(self) -> None:
         tree = json.dumps([{"id": 27, "url": "https://x/despensa"}])
         page = self._santa_listing_html([("1", "Producto 1", 1150)], 500)
@@ -577,7 +598,8 @@ class FullCatalogParserTests(unittest.TestCase):
                 yield page if url.endswith("page=1") else ("[]" if optional else "")
 
         with patch("full_catalog.fetch_text", return_value=tree), \
-                patch("full_catalog._santa_fetch_many", side_effect=fake_fetch_many):
+                patch("full_catalog._santa_fetch_many", side_effect=fake_fetch_many), \
+                patch("full_catalog.time.sleep"):
             with self.assertRaises(CatalogCoverageWarning):
                 list(crawl_santa())
 
@@ -623,69 +645,98 @@ class FullCatalogParserTests(unittest.TestCase):
         self.assertIn("ft=leche%20entera%20colun", requested[0])
         self.assertEqual(requested[0], santa_isabel_search_url("leche entera colun"))
 
-    def test_lider_json_ld_parses_product_and_pagination(self) -> None:
-        page_html = """
-        <h1>Catalogo Lider <span>(10.000)</span></h1>
-        <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "ItemList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "item": {
-                "@type": "Product",
-                "name": "Arroz Grado 2 Bolsa 1 kg Lider",
-                "url": "https://super.lider.cl:443/ip/arroz/arroz-grado-2/00780000000001?utm_source=verbolia",
-                "image": "https://img.lider/arroz.jpg",
-                "offers": {
-                  "@type": "Offer",
-                  "price": "1.090",
-                  "priceCurrency": "CLP",
-                  "availability": "https://schema.org/InStock"
-                }
-              }
-            }
-          ]
-        }
-        </script>
-        <div class="pagination">
-          <span class="pagination__link active">1</span>
-          <span class="ve-nflw pagination__link">2</span>
-          <span class="ve-nflw pagination__link">208</span>
-        </div>
-        """
-        products, total, page_count = parse_lider_page(page_html)
-        self.assertEqual((total, page_count), (10000, 208))
-        self.assertEqual(products[0].store, "Lider")
-        self.assertEqual(products[0].price, 1090)
-        self.assertEqual(products[0].sku, "00780000000001")
-        self.assertEqual(products[0].ean, "00780000000001")
-        self.assertEqual(
-            products[0].product_url,
-            "https://super.lider.cl/ip/arroz/arroz-grado-2/00780000000001",
-        )
+    @staticmethod
+    def _lider_browse_html(items: list[dict], max_page: int = 1, aggregated: int = 0) -> str:
+        payload = {"props": {"pageProps": {"initialData": {"searchResult": {
+            "aggregatedCount": aggregated,
+            "paginationV2": {"maxPage": max_page},
+            "itemStacks": [{"items": items}],
+        }}}}}
+        return ('<script id="__NEXT_DATA__" type="application/json">'
+                + json.dumps(payload) + "</script>")
 
-    def test_lider_offer_needs_same_current_price_in_both_listings(self) -> None:
-        catalog = {"@type": "ItemList", "itemListElement": [{"item": {
-            "@type": "Product", "name": "Arroz 1 kg",
-            "url": "https://super.lider.cl/ip/arroz/00780000000001",
-            "offers": {"price": 1090, "availability": "https://schema.org/InStock"},
-        }}]}
-        page = (f'<h1>Catálogo <span>(96)</span></h1>'
-                f'<script type="application/ld+json">{json.dumps(catalog)}</script>'
-                '<span class="pagination__link">2</span>')
+    @staticmethod
+    def _lider_item(sku: str, price: int = 1090, **extra: object) -> dict:
+        item = {
+            "usItemId": sku, "name": f"Producto {sku}", "brand": "Lider", "price": price,
+            "canonicalUrl": f"/ip/arroz/{sku}?athbdg=L1600",
+            "image": f"https://img.lider/{sku}.jpg",
+            "availabilityStatusV2": {"value": "IN_STOCK"},
+            "priceInfo": {"wasPrice": ""},
+        }
+        item.update(extra)
+        return item
+
+    def test_lider_browse_products_parse_stock_offer_and_url(self) -> None:
+        page = self._lider_browse_html([
+            self._lider_item("00780000000001", 1090, priceInfo={"wasPrice": "$1.590"}),
+            self._lider_item("00780000000002", 990, availabilityStatusV2={"value": "OUT_OF_STOCK"}),
+            self._lider_item("00780000000003", 0),
+        ], max_page=23, aggregated=1636)
+        products, max_page, aggregated = parse_lider_browse_products(page)
+        self.assertEqual((max_page, aggregated), (23, 1636))
+        self.assertEqual([p.sku for p in products], ["00780000000001", "00780000000002"])
+        offer, sold_out = products
+        self.assertEqual((offer.price, offer.list_price, offer.in_stock), (1090, 1590, True))
+        self.assertEqual(offer.ean, "00780000000001")
+        self.assertEqual(offer.product_url, "https://super.lider.cl/ip/arroz/00780000000001")
+        self.assertEqual(offer.brand, "Lider")
+        self.assertFalse(sold_out.in_stock)
+        self.assertIsNone(sold_out.list_price)
+
+    def _crawl_lider_with_pages(self, pages: dict[str, str]) -> tuple[list, list[str]]:
+        requested: list[str] = []
+        taxonomy = self._lider_next_data_html({})
+
+        def fake_fetch(url: str, **_: object) -> str:
+            requested.append(url)
+            if "search?query=" in url:
+                return taxonomy
+            return pages.get(url.split("browse/", 1)[1], self._lider_browse_html([]))
+
+        with patch("full_catalog.fetch_text", side_effect=fake_fetch), patch(
+            "full_catalog.lider_department_browse_urls",
+            return_value=["https://super.lider.cl/browse/despensa/1"],
+        ), patch("full_catalog.time.sleep"), patch("full_catalog.LIDER_MIN_CATALOG_SIZE", 1):
+            products = list(crawl_lider())
+        return products, requested
+
+    def test_lider_crawl_walks_both_price_orders_past_the_page_cap(self) -> None:
+        low = [self._lider_item(f"0078000000{n:04d}") for n in (1, 2)]
+        high = [self._lider_item(f"0078000000{n:04d}") for n in (3, 2)]
+        products, requested = self._crawl_lider_with_pages({
+            "despensa/1?sort=price_low&page=1": self._lider_browse_html(low, max_page=1, aggregated=3),
+            "despensa/1?sort=price_high&page=1": self._lider_browse_html(high, max_page=1, aggregated=3),
+        })
+        self.assertEqual(sorted(p.sku for p in products), ["00780000000001", "00780000000002", "00780000000003"])
+        self.assertTrue(any("sort=price_high" in url for url in requested))
+
+    def test_lider_crawl_skips_second_order_when_first_covers_department(self) -> None:
+        items = [self._lider_item(f"0078000000{n:04d}") for n in (1, 2)]
+        _, requested = self._crawl_lider_with_pages({
+            "despensa/1?sort=price_low&page=1": self._lider_browse_html(items, max_page=1, aggregated=2),
+        })
+        self.assertFalse(any("sort=price_high" in url for url in requested))
+
+    def test_lider_crawl_reports_short_department_after_yielding(self) -> None:
+        items = [self._lider_item("00780000000001")]
+        page = self._lider_browse_html(items, max_page=1, aggregated=50)
+        with self.assertRaises(CatalogCoverageWarning) as raised:
+            self._crawl_lider_with_pages({
+                "despensa/1?sort=price_low&page=1": page,
+                "despensa/1?sort=price_high&page=1": page,
+            })
+        self.assertIn("despensa/1: 1 of 50", str(raised.exception))
+
+    def test_lider_crawl_refuses_a_catalog_too_small_to_be_real(self) -> None:
+        items = [self._lider_item("00780000000001")]
+        page = self._lider_browse_html(items, max_page=1, aggregated=1)
         with patch("full_catalog.fetch_text", return_value=page), patch(
-            "full_catalog.harvest_lider_offer_prices",
-            return_value={"00780000000001": (1090, 1590)},
-        ):
-            self.assertEqual(list(crawl_lider(max_pages=1))[0].list_price, 1590)
-        with patch("full_catalog.fetch_text", return_value=page), patch(
-            "full_catalog.harvest_lider_offer_prices",
-            return_value={"00780000000001": (1190, 1590)},
-        ):
-            self.assertIsNone(list(crawl_lider(max_pages=1))[0].list_price)
+            "full_catalog.lider_department_browse_urls",
+            return_value=["https://super.lider.cl/browse/despensa/1"],
+        ), patch("full_catalog.time.sleep"):
+            with self.assertRaises(RuntimeError):
+                list(crawl_lider())
 
     @staticmethod
     def _lider_next_data_html(search_result: dict) -> str:
