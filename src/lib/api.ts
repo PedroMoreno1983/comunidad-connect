@@ -18,3 +18,4 @@ export * from './api/supermarket';
 export * from './api/parking';
 export * from './api/access';
 export * from './api/passkeys';
+export * from './api/storage';

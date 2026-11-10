@@ -6591,3 +6591,71 @@ CREATE TABLE IF NOT EXISTS public.unit_rights_revisions (
     CONSTRAINT unit_rights_revisions_source_note_check CHECK ((char_length(source_note) <= 500)),
     CONSTRAINT unit_rights_revisions_verified_has_source CHECK (((NOT verified) OR (char_length(btrim(source_note)) > 0)))
 );
+
+-- Bodegas: arriendo mensual entre vecinos (migración 20261110200000_storage_rentals).
+
+CREATE TABLE IF NOT EXISTS public.storage_units (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  floor_level TEXT NOT NULL DEFAULT '',
+  area_m2 NUMERIC(6,2),
+  monthly_rate INTEGER NOT NULL,
+  min_months INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'pending_approval',
+  approved_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  approved_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT storage_units_label_check CHECK (char_length(btrim(label)) BETWEEN 1 AND 40),
+  CONSTRAINT storage_units_description_check CHECK (char_length(description) <= 500),
+  CONSTRAINT storage_units_floor_level_check CHECK (char_length(floor_level) <= 20),
+  CONSTRAINT storage_units_area_check CHECK (area_m2 IS NULL OR (area_m2 > 0 AND area_m2 <= 200)),
+  CONSTRAINT storage_units_monthly_rate_check CHECK (monthly_rate > 0 AND monthly_rate <= 2000000),
+  CONSTRAINT storage_units_min_months_check CHECK (min_months BETWEEN 1 AND 24),
+  CONSTRAINT storage_units_status_check CHECK (status IN ('pending_approval', 'published', 'paused', 'rejected'))
+);
+
+CREATE TABLE IF NOT EXISTS public.storage_rentals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  storage_id UUID NOT NULL REFERENCES public.storage_units(id) ON DELETE RESTRICT,
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  tenant_unit_id UUID NOT NULL REFERENCES public.units(id) ON DELETE RESTRICT,
+  starts_on DATE NOT NULL,
+  months INTEGER NOT NULL,
+  ends_on DATE NOT NULL,
+  monthly_rate INTEGER NOT NULL,
+  total_amount INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  cancelled_at TIMESTAMPTZ,
+  cancelled_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  cancel_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT storage_rentals_months_check CHECK (months BETWEEN 1 AND 24),
+  CONSTRAINT storage_rentals_range_valid CHECK (ends_on > starts_on),
+  CONSTRAINT storage_rentals_amount_check CHECK (monthly_rate > 0 AND total_amount = monthly_rate * months),
+  CONSTRAINT storage_rentals_status_check CHECK (status IN ('active', 'cancelled', 'completed')),
+  CONSTRAINT storage_rentals_cancel_reason_check CHECK (cancel_reason IS NULL OR char_length(cancel_reason) <= 300),
+  CONSTRAINT storage_rentals_no_overlap EXCLUDE USING gist (
+    storage_id WITH =,
+    daterange(starts_on, ends_on, '[)') WITH &&
+  ) WHERE (status = 'active')
+);
+
+CREATE TABLE IF NOT EXISTS public.storage_rental_charges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  rental_id UUID NOT NULL REFERENCES public.storage_rentals(id) ON DELETE CASCADE,
+  period TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  unit_charge_id UUID NOT NULL REFERENCES public.unit_charges(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT storage_rental_charges_period_check CHECK (period ~ '^\d{4}-\d{2}$'),
+  CONSTRAINT storage_rental_charges_amount_check CHECK (amount > 0),
+  CONSTRAINT storage_rental_charges_unique_period UNIQUE (rental_id, period)
+);

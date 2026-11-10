@@ -3688,3 +3688,62 @@ export interface InvoicingSettingsView {
     apiKeyHint: string | null;
     encryptionReady: boolean;
 }
+
+/* ── Bodegas: arriendo mensual entre vecinos ───────────────── */
+
+export type StorageUnitStatus = 'pending_approval' | 'published' | 'paused' | 'rejected';
+export type StorageRentalStatus = 'active' | 'cancelled' | 'completed';
+
+export interface StorageUnit {
+  id: string;
+  communityId: string;
+  ownerId: string;
+  ownerName?: string;
+  label: string;
+  description: string;
+  floorLevel: string;
+  areaM2: number | null;
+  monthlyRate: number;
+  minMonths: number;
+  status: StorageUnitStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export interface StorageUnitInput {
+  label: string;
+  description?: string;
+  floorLevel?: string;
+  areaM2?: number | null;
+  monthlyRate: number;
+  minMonths?: number;
+}
+
+export interface StorageSearchResult {
+  id: string;
+  label: string;
+  description: string;
+  floorLevel: string;
+  areaM2: number | null;
+  monthlyRate: number;
+  minMonths: number;
+  ownerId: string;
+  ownerName: string;
+  totalAmount: number;
+}
+
+export interface StorageRental {
+  id: string;
+  storageId: string;
+  storageLabel: string;
+  ownerId: string;
+  tenantId: string;
+  startsOn: string;
+  endsOn: string;
+  months: number;
+  monthlyRate: number;
+  totalAmount: number;
+  status: StorageRentalStatus;
+  cancelReason: string | null;
+  createdAt: string;
+}
