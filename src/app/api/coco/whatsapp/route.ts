@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo } from '@/lib/coco/agent';
+import { askCoCo, WHATSAPP_MAX_TOOL_ROUNDS } from '@/lib/coco/agent';
 import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import { askCoCoWhatsAppFallback } from '@/lib/coco/whatsapp-fallback';
 import { isAiBudgetExceededError } from '@/lib/ai/budget';
@@ -267,6 +267,7 @@ export async function POST(req: NextRequest) {
             let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
             try {
                 agentResponse = await askCoCo(messageForAgent, session, verifiedContext, {
+                    maxToolRounds: WHATSAPP_MAX_TOOL_ROUNDS,
                     ...(understood?.image ? { image: understood.image } : {}),
                     ...(understood?.document?.text ? { legalDocument: understood.document } : {}),
                 });

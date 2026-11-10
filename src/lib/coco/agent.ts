@@ -31,7 +31,10 @@ const anthropic = new Anthropic({
 // aunque otras tareas del sistema sí lo hagan.
 const MODEL = anthropicModelFor('coco.chat');
 const OPENAI_MODEL = process.env.COCO_OPENAI_MODEL || 'gpt-5.4-mini';
-const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
+// Rondas de tool use por mensaje. La web aguanta tareas largas (consultar, cruzar, proponer);
+// WhatsApp responde dentro del webhook y Twilio corta a los 15 s, así que pide menos.
+const MAX_TOOL_ROUNDS = 8;
+export const WHATSAPP_MAX_TOOL_ROUNDS = 5;
 
 export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
@@ -271,8 +274,11 @@ export async function askCoCo(
         legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number };
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
+        /** Tope de rondas de herramientas. Por defecto MAX_TOOL_ROUNDS. */
+        maxToolRounds?: number;
     } = {}
 ): Promise<CoCoResponse> {
+    const maxToolRounds = Math.max(1, Math.min(MAX_TOOL_ROUNDS, options.maxToolRounds ?? MAX_TOOL_ROUNDS));
     const persistedToolUses = pendingToolUses(session);
     const persistedActions = pendingActionsFrom(persistedToolUses);
     const effectiveResolutions = options.resolutions || textualResolution(message, persistedToolUses);
@@ -575,11 +581,11 @@ export async function askCoCo(
         }
 
         rounds++;
-    } while (response.stop_reason === 'tool_use' && rounds < MAX_TOOL_ROUNDS);
+    } while (response.stop_reason === 'tool_use' && rounds < maxToolRounds);
 
     // Se agotaron las rondas de herramientas sin que el modelo produjera una
     // respuesta final: mejor un mensaje honesto que un reply vacio y silencioso.
-    if (response.stop_reason === 'tool_use' && rounds >= MAX_TOOL_ROUNDS) {
+    if (response.stop_reason === 'tool_use' && rounds >= maxToolRounds) {
         return {
             reply: 'Estoy procesando varias consultas para responderte bien y me tome mas tiempo del esperado. Intenta reformular tu pregunta de forma mas especifica.',
             updatedHistory: history.map(historyMessage => ({

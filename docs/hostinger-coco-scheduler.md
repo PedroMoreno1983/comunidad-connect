@@ -30,7 +30,13 @@ El cron de Vercel sigue enviando `CRON_SECRET` y también es válido.
 
 Copia `docs/scripts/coco-scheduler.sh` a `/opt/convive/coco-scheduler.sh` y
 dale permiso de ejecución (`chmod 755`). El script no imprime el secreto ni la
-respuesta.
+respuesta. Copiarlo con LF, no CRLF: con CRLF el shebang falla y cron no avisa
+(`.gitattributes` lo fuerza para los `.sh`).
+
+Cada ejecución deja una línea en `/var/log/coco-scheduler.log` con la hora UTC,
+el código HTTP y la duración; `/etc/logrotate.d/coco-scheduler` lo rota cada mes.
+Para ver si está sano: `tail /var/log/coco-scheduler.log` y buscar algo que no
+sea `200`.
 
 ## Crontab
 
