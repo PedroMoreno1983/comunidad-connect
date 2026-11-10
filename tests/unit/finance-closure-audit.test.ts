@@ -31,7 +31,7 @@ describe('financial close audit', () => {
             GRANT INSERT ON public.finance_period_closures TO service_role;
             GRANT USAGE ON SCHEMA public TO service_role;
         `);
-        const migration = await readFile(resolve('supabase/migrations/20261014160711_finance_closure_atomic_audit.sql'), 'utf8');
+        const migration = await readFile(resolve('supabase/migrations/20261014161741_finance_closure_atomic_audit.sql'), 'utf8');
         await db.exec(migration);
     });
 
