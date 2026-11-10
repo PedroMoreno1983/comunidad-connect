@@ -9,6 +9,7 @@ import {
   joinSupermarketGroupOrder,
   listSupermarketGroupOrders,
   lockSupermarketGroupOrder,
+  recordSupermarketGroupPurchase,
   settleSupermarketGroupMember,
   parseGroupShoppingList,
   reviewSupermarketGroupOrder,
@@ -70,7 +71,9 @@ export async function POST(request: NextRequest) {
         parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS)),
       );
     } else if (action === 'lock') {
-      order = await lockSupermarketGroupOrder(profile, orderId);
+      order = await lockSupermarketGroupOrder(profile, orderId, clean(body.store, 40) || undefined);
+    } else if (action === 'record_purchase') {
+      order = await recordSupermarketGroupPurchase(profile, orderId, Number(body.finalTotal));
     } else if (action === 'settle') {
       order = await settleSupermarketGroupMember(
         profile,
@@ -99,13 +102,16 @@ export async function POST(request: NextRequest) {
           ? 'Aporte agregado a compra grupal'
           : action === 'settle'
             ? (body.paid === true ? 'Pago recibido en compra grupal' : 'Pago revertido en compra grupal')
-            : 'Compra grupal preparada para el supermercado',
+            : action === 'record_purchase'
+              ? 'Total pagado registrado en compra grupal'
+              : 'Compra grupal preparada para el supermercado',
       metadata: {
         title: order.title,
         members: order.members.length,
         items: order.items.length,
         selectedStore: order.selectedStore || null,
         selectedTotal: order.selectedTotal || null,
+        finalTotal: order.finalTotal || null,
       },
       requestId: getRequestId(request),
     });
