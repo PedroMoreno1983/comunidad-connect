@@ -39,6 +39,7 @@ import {
     joinSupermarketGroupOrder,
     listSupermarketGroupOrders,
     lockSupermarketGroupOrder,
+    recordSupermarketGroupPurchase,
     parseGroupShoppingList,
 } from '@/lib/supermarketGroupOrders';
 import type { UserRole } from '@/lib/types';
@@ -815,11 +816,26 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'lock_supermarket_group_order',
-        description: 'Cierra una compra grupal usando la mejor canasta completa vigente. Solo organizador o admin; requiere confirmacion.',
+        description: 'Cierra una compra grupal con la canasta completa del supermercado elegido (sin store, la completa mas barata). Despues el organizador abre el carro desde la app, igual que en la compra individual. Solo organizador o admin; requiere confirmacion.',
         input_schema: {
             type: 'object' as const,
-            properties: { order_id: { type: 'string' } },
+            properties: {
+                order_id: { type: 'string' },
+                store: { type: 'string', description: 'Supermercado donde comprar, por ejemplo Jumbo o Lider. Usa compare_supermarket_group_order antes para ver cuales estan completos.' },
+            },
             required: ['order_id'],
+        },
+    },
+    {
+        name: 'record_supermarket_group_purchase',
+        description: 'Registra el total de la boleta de una compra grupal ya cerrada. El reparto entre vecinos pasa a calcularse sobre lo realmente pagado. Solo organizador o admin; requiere confirmacion.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                order_id: { type: 'string' },
+                final_total: { type: 'integer', description: 'Total pagado en pesos, tal como dice la boleta.' },
+            },
+            required: ['order_id', 'final_total'],
         },
     },
 
@@ -849,6 +865,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_supermarket_group_order',
     'join_supermarket_group_order',
     'lock_supermarket_group_order',
+    'record_supermarket_group_purchase',
     'create_unit',
     'set_unit_alicuota',
     'distribute_alicuotas_equally',
@@ -880,6 +897,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
+    'record_supermarket_group_purchase',
     'remember_preference', 'create_reminder', 'list_reminders', 'cancel_reminder',
     'get_platform_guide', 'consult_official_legal_source',
     'search_public_web', 'read_official_page', 'list_community_agenda',
@@ -1010,7 +1028,17 @@ export function describePendingAction(name: string, input: Record<string, unknow
         case 'join_supermarket_group_order':
             return { title: 'Sumarme a la compra grupal', summary: str('shopping_list') || 'Agregar mis productos y cantidades.' };
         case 'lock_supermarket_group_order':
-            return { title: 'Preparar compra grupal final', summary: 'Seleccionar la mejor canasta completa vigente y cerrar nuevos aportes.' };
+            return {
+                title: 'Cerrar compra grupal',
+                summary: str('store')
+                    ? `Cerrar nuevos aportes y comprar en ${str('store')}.`
+                    : 'Cerrar nuevos aportes con la canasta completa mas barata.',
+            };
+        case 'record_supermarket_group_purchase':
+            return {
+                title: 'Registrar total de la compra grupal',
+                summary: `Total pagado: ${Number(input.final_total || 0).toLocaleString('es-CL')}. El reparto entre vecinos se ajusta a ese monto.`,
+            };
         case 'remember_community_fact':
             return {
                 title: input.action === 'forget' ? 'Olvidar un dato de la comunidad' : 'Recordar un dato de la comunidad',
@@ -2384,10 +2412,11 @@ export async function executeTool(
                     id: userCtx.user_id,
                     role: (userCtx.role || 'resident') as UserRole,
                     community_id: userCtx.community_id,
-                }, input.order_id);
+                }, input.order_id, input.store || undefined);
                 return {
                     success: true,
                     order_id: order.id,
+                    next_step: 'Abrir el carro desde /convivencia?lane=abasto y, al pagar, registrar el total de la boleta.',
                     selected_store: order.selectedStore || '',
                     selected_total: String(order.selectedTotal || ''),
                     retailer_url: order.retailerUrl || '',
@@ -2399,6 +2428,31 @@ export async function executeTool(
                         product_url: item.productUrl || '',
                     })),
                 };
+            }
+
+            case 'record_supermarket_group_purchase': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                try {
+                    const order = await recordSupermarketGroupPurchase({
+                        id: userCtx.user_id,
+                        role: (userCtx.role || 'resident') as UserRole,
+                        community_id: userCtx.community_id,
+                    }, input.order_id, Number(input.final_total));
+                    return {
+                        success: true,
+                        order_id: order.id,
+                        store: order.selectedStore || '',
+                        final_total: order.finalTotal,
+                        estimated_total: order.selectedTotal,
+                        shares: order.settlements
+                            .filter(item => !item.isOrganizer)
+                            .map(item => ({ member: item.memberName, amount: item.amount, paid: Boolean(item.paidAt) })),
+                    };
+                } catch (error) {
+                    // Las validaciones (boleta muy lejos de lo estimado, compra sin cerrar) son
+                    // para la persona: se devuelven tal cual en vez del error genérico.
+                    return { error: error instanceof Error ? error.message : 'No se pudo registrar el total.' };
+                }
             }
 
             default:

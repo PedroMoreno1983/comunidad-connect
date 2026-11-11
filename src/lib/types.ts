@@ -239,6 +239,9 @@ export interface SupermarketGroupOrder {
   selectedChannelType?: SupermarketChannelType | null;
   retailerUrl?: string | null;
   selectedItems: SupermarketGroupComparisonItem[];
+  /** Lo que realmente se pagó en el supermercado (boleta). Desde aquí se reparte. */
+  finalTotal?: number | null;
+  purchasedAt?: string | null;
   members: SupermarketGroupOrderMember[];
   items: SupermarketGroupOrderItem[];
   settlements: SupermarketGroupSettlement[];
@@ -272,6 +275,12 @@ export interface SupermarketGroupComparisonItem {
   suppliedQuantity: number;
   lineTotal: number;
   productUrl?: string;
+  /** Mismos identificadores que la compra individual: sin sku no se carga el carro por API. */
+  id?: string;
+  sku?: string;
+  offerId?: string;
+  salesUnit?: string;
+  imageUrl?: string;
 }
 
 export interface SupermarketGroupComparison {
