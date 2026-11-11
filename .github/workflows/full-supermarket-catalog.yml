@@ -189,7 +189,9 @@ jobs:
         if: matrix.store == 'lider' && github.event_name != 'push' && steps.coverage.outcome == 'success' && !inputs.dry_run && !inputs.max_pages
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          # 24, igual que ci.yml: npm 10 (Node 22) no entiende los overrides anidados
+          # de package.json y npm ci falla con "lock file out of sync".
+          node-version: '24'
           cache: npm
 
       - name: Complete Lider cart identifiers
