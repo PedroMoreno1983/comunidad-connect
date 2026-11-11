@@ -35,6 +35,8 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     check_availability: 'read',
     get_my_parking: 'read',
     search_parking: 'read',
+    get_my_storage: 'read',
+    search_storage: 'read',
     list_active_polls: 'read',
     get_pending_packages: 'read',
     get_defaulters_list: 'read',
@@ -90,6 +92,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
 
     // ── Dinero, difusion a terceros o batch ─────────────────────────────────
     book_parking: 'write_high',                 // cobra
+    rent_storage: 'write_high',                 // cargos mensuales a gastos comunes
     create_circular: 'write_high',              // difusion a toda la comunidad
     create_poll: 'write_high',                  // difusion a toda la comunidad
     send_whatsapp_notification: 'write_high',   // sale del edificio
