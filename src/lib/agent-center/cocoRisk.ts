@@ -35,6 +35,8 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     check_availability: 'read',
     get_my_parking: 'read',
     search_parking: 'read',
+    get_my_storage: 'read',
+    search_storage: 'read',
     list_active_polls: 'read',
     get_pending_packages: 'read',
     get_defaulters_list: 'read',
@@ -91,12 +93,14 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
 
     // ── Dinero, difusion a terceros o batch ─────────────────────────────────
     book_parking: 'write_high',                 // cobra
+    rent_storage: 'write_high',                 // cargos mensuales a gastos comunes
     create_circular: 'write_high',              // difusion a toda la comunidad
     create_poll: 'write_high',                  // difusion a toda la comunidad
     send_whatsapp_notification: 'write_high',   // sale del edificio
     request_urgent_access_approval: 'write_high', // interrumpe a terceros
     dispatch_provider: 'write_high',            // compromete a un proveedor
     lock_supermarket_group_order: 'write_high', // cierra la compra de varios vecinos
+    record_supermarket_group_purchase: 'write_high', // fija cuánto debe cada vecino
     create_unit: 'write_high',                  // estructura del condominio
     // Cambia el dato de contacto de OTRA familia, que no se entera y por lo
     // tanto no puede deshacerlo: no cumple la condicion de write_low. Ademas

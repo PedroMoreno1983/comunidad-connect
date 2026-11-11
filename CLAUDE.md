@@ -141,6 +141,7 @@ src/
 | `platform.ts` | `NavigationService`, `ProductCapabilitiesService`, `CommercialService`, `ApiKeysService`, `OversightLinksService` |
 | `supermarket.ts` | `SupermarketCartService`, `SupermarketCatalogService`, `SupermarketGroupService` |
 | `parking.ts` | `ParkingService` |
+| `storage.ts` | `StorageService` (bodegas: arriendo mensual entre vecinos, cobrado en gastos comunes) |
 | `access.ts` | `IntercomService`, `AccessGateService` |
 | `_shared.ts` | Helpers internos usados por más de un dominio (`readApi`, `financeWrite`, `isUuid`, `textValue`, `nullableText`, `mapCocoCase`, `DbRow`). No se re-exporta. |
 

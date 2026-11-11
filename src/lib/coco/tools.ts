@@ -39,12 +39,19 @@ import {
     joinSupermarketGroupOrder,
     listSupermarketGroupOrders,
     lockSupermarketGroupOrder,
+    recordSupermarketGroupPurchase,
     parseGroupShoppingList,
 } from '@/lib/supermarketGroupOrders';
 import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
 import { consultOfficialLegalSource } from './officialLegalSources';
 import { researchChileanLaw, NORMA_SOURCES, NORMA_TRIBUNALS, type NormaResearchInput } from './normaResearch';
+import {
+    myStorageForResident,
+    rentStorageForResident,
+    searchStorageForResident,
+    validStoragePeriod,
+} from './storageTools';
 import { readOfficialPage, searchPublicWeb } from './externalInfo';
 import { listCommunityAgenda } from './communityAgenda';
 import { sendConfirmedEmailDraft } from './emailDraft';
@@ -215,6 +222,38 @@ export const TOOL_DEFINITIONS = [
                 ends_at: { type: 'string', description: 'Fin en ISO 8601' },
             },
             required: ['spot_id', 'starts_at', 'ends_at'],
+        },
+    },
+
+    // ── MÓDULO: BODEGAS ──────────────────────────────────────────────────────
+    {
+        name: 'get_my_storage',
+        description: 'Bodegas del residente: las que arrienda a un vecino (fechas y cobro mensual), las que publicó y a quién están arrendadas. Úsalo para "¿hasta cuándo tengo la bodega?" o "¿mi bodega está arrendada?".',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'search_storage',
+        description: 'Busca bodegas de vecinos libres para arrendar por meses en la comunidad. Se arriendan desde 1 hasta 24 meses y cada mes se carga a los gastos comunes. Úsalo cuando pidan una bodega o pregunten precios.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                starts_on: { type: 'string', description: 'Fecha de inicio AAAA-MM-DD. Si no la dicen, el primer día del mes siguiente.' },
+                months: { type: 'integer', description: 'Cuántos meses (1 a 24).' },
+            },
+            required: ['starts_on', 'months'],
+        },
+    },
+    {
+        name: 'rent_storage',
+        description: 'Arrienda una bodega para el residente. Usa antes search_storage para obtener el storage_id y mostrarle precio mensual y total; nunca inventes un storage_id. Genera un cargo mensual en sus gastos comunes. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                storage_id: { type: 'string', description: 'ID tal como lo devolvió search_storage.' },
+                starts_on: { type: 'string', description: 'Fecha de inicio AAAA-MM-DD.' },
+                months: { type: 'integer', description: 'Cuántos meses (1 a 24).' },
+            },
+            required: ['storage_id', 'starts_on', 'months'],
         },
     },
 
@@ -806,11 +845,26 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'lock_supermarket_group_order',
-        description: 'Cierra una compra grupal usando la mejor canasta completa vigente. Solo organizador o admin; requiere confirmacion.',
+        description: 'Cierra una compra grupal con la canasta completa del supermercado elegido (sin store, la completa mas barata). Despues el organizador abre el carro desde la app, igual que en la compra individual. Solo organizador o admin; requiere confirmacion.',
         input_schema: {
             type: 'object' as const,
-            properties: { order_id: { type: 'string' } },
+            properties: {
+                order_id: { type: 'string' },
+                store: { type: 'string', description: 'Supermercado donde comprar, por ejemplo Jumbo o Lider. Usa compare_supermarket_group_order antes para ver cuales estan completos.' },
+            },
             required: ['order_id'],
+        },
+    },
+    {
+        name: 'record_supermarket_group_purchase',
+        description: 'Registra el total de la boleta de una compra grupal ya cerrada. El reparto entre vecinos pasa a calcularse sobre lo realmente pagado. Solo organizador o admin; requiere confirmacion.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                order_id: { type: 'string' },
+                final_total: { type: 'integer', description: 'Total pagado en pesos, tal como dice la boleta.' },
+            },
+            required: ['order_id', 'final_total'],
         },
     },
 
@@ -825,6 +879,8 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_reservation',
     // Compromete dinero y un cupo del edificio: el residente confirma antes.
     'book_parking',
+    // Genera cargos mensuales en gastos comunes: el residente confirma antes.
+    'rent_storage',
     'create_circular',
     'create_social_post',
     'vote_in_poll',
@@ -838,6 +894,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_supermarket_group_order',
     'join_supermarket_group_order',
     'lock_supermarket_group_order',
+    'record_supermarket_group_purchase',
     'create_unit',
     'set_unit_alicuota',
     'distribute_alicuotas_equally',
@@ -869,6 +926,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
+    'record_supermarket_group_purchase',
     'remember_preference', 'create_reminder', 'list_reminders', 'cancel_reminder',
     'get_platform_guide', 'consult_official_legal_source', 'research_chilean_law',
     'search_public_web', 'read_official_page', 'list_community_agenda',
@@ -876,6 +934,7 @@ const RESIDENT_TOOLS = new Set([
     // comunidad del residente. book_parking si muta, y por eso figura tambien
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
     'get_my_parking', 'search_parking', 'book_parking',
+    'get_my_storage', 'search_storage', 'rent_storage',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -940,6 +999,13 @@ export function describePendingAction(name: string, input: Record<string, unknow
                 summary: `Desde el ${legible('starts_at')} hasta el ${legible('ends_at')}. El monto se calcula con la tarifa del cupo y se carga a la cuenta de gastos comunes de tu unidad (o se paga en línea si la comunidad lo habilitó).`,
             };
         }
+        case 'rent_storage': {
+            const meses = Number(input.months) || 0;
+            return {
+                title: 'Arrendar bodega',
+                summary: `Desde el ${str('starts_on')} por ${meses} ${meses === 1 ? 'mes' : 'meses'}. Cada mes se carga el arriendo a la cuenta de gastos comunes de tu unidad.`,
+            };
+        }
         case 'create_circular':
             return { title: 'Publicar circular', summary: str('title') || 'Aviso oficial para la comunidad.' };
         case 'create_social_post':
@@ -991,7 +1057,17 @@ export function describePendingAction(name: string, input: Record<string, unknow
         case 'join_supermarket_group_order':
             return { title: 'Sumarme a la compra grupal', summary: str('shopping_list') || 'Agregar mis productos y cantidades.' };
         case 'lock_supermarket_group_order':
-            return { title: 'Preparar compra grupal final', summary: 'Seleccionar la mejor canasta completa vigente y cerrar nuevos aportes.' };
+            return {
+                title: 'Cerrar compra grupal',
+                summary: str('store')
+                    ? `Cerrar nuevos aportes y comprar en ${str('store')}.`
+                    : 'Cerrar nuevos aportes con la canasta completa mas barata.',
+            };
+        case 'record_supermarket_group_purchase':
+            return {
+                title: 'Registrar total de la compra grupal',
+                summary: `Total pagado: ${Number(input.final_total || 0).toLocaleString('es-CL')}. El reparto entre vecinos se ajusta a ese monto.`,
+            };
         case 'remember_community_fact':
             return {
                 title: input.action === 'forget' ? 'Olvidar un dato de la comunidad' : 'Recordar un dato de la comunidad',
@@ -1416,6 +1492,31 @@ export async function executeTool(
                         ? 'Hay estacionamientos en la comunidad, pero todos estan reservados en ese horario.'
                         : undefined,
                 };
+            }
+
+            case 'get_my_storage': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                return myStorageForResident(supabaseAdmin, communityId, userCtx.user_id);
+            }
+
+            case 'search_storage': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                const period = validStoragePeriod(input.starts_on, input.months);
+                if ('error' in period) return period;
+                return searchStorageForResident(supabaseAdmin, communityId, userCtx.user_id, period.startsOn, period.months);
+            }
+
+            case 'rent_storage': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                if (!isUuid(String(input.storage_id ?? ''))) return { error: 'Necesito el storage_id que devuelve search_storage.' };
+                const period = validStoragePeriod(input.starts_on, input.months);
+                if ('error' in period) return period;
+                return rentStorageForResident(
+                    supabaseAdmin, communityId, userCtx.user_id, String(input.storage_id), period.startsOn, period.months,
+                );
             }
 
             case 'book_parking': {
@@ -2347,10 +2448,11 @@ export async function executeTool(
                     id: userCtx.user_id,
                     role: (userCtx.role || 'resident') as UserRole,
                     community_id: userCtx.community_id,
-                }, input.order_id);
+                }, input.order_id, input.store || undefined);
                 return {
                     success: true,
                     order_id: order.id,
+                    next_step: 'Abrir el carro desde /convivencia?lane=abasto y, al pagar, registrar el total de la boleta.',
                     selected_store: order.selectedStore || '',
                     selected_total: String(order.selectedTotal || ''),
                     retailer_url: order.retailerUrl || '',
@@ -2362,6 +2464,31 @@ export async function executeTool(
                         product_url: item.productUrl || '',
                     })),
                 };
+            }
+
+            case 'record_supermarket_group_purchase': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                try {
+                    const order = await recordSupermarketGroupPurchase({
+                        id: userCtx.user_id,
+                        role: (userCtx.role || 'resident') as UserRole,
+                        community_id: userCtx.community_id,
+                    }, input.order_id, Number(input.final_total));
+                    return {
+                        success: true,
+                        order_id: order.id,
+                        store: order.selectedStore || '',
+                        final_total: order.finalTotal,
+                        estimated_total: order.selectedTotal,
+                        shares: order.settlements
+                            .filter(item => !item.isOrganizer)
+                            .map(item => ({ member: item.memberName, amount: item.amount, paid: Boolean(item.paidAt) })),
+                    };
+                } catch (error) {
+                    // Las validaciones (boleta muy lejos de lo estimado, compra sin cerrar) son
+                    // para la persona: se devuelven tal cual en vez del error genérico.
+                    return { error: error instanceof Error ? error.message : 'No se pudo registrar el total.' };
+                }
             }
 
             default:

@@ -3,6 +3,7 @@
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  Archive,
   Car,
   Search,
   Zap,
@@ -58,6 +59,7 @@ import { ParkingOwnerDashboard } from "@/components/parking/ParkingOwnerDashboar
 import { ParkingConciergeGate } from "@/components/parking/ParkingConciergeGate";
 import { ParkingChargesAdmin } from "@/components/parking/ParkingChargesAdmin";
 import { ParkingPayoutsAdmin } from "@/components/parking/ParkingPayoutsAdmin";
+import { StoragePanel } from "@/components/storage/StoragePanel";
 import { validateCommissionPercent } from "@/lib/parkingPayouts/payouts";
 import type {
   ParkingAccessRequest,
@@ -74,7 +76,7 @@ import type {
   ParkingSpotInput,
 } from "@/lib/types";
 
-type ParkingTab = "search" | "owner" | "bookings" | "gate" | "admin";
+type ParkingTab = "search" | "owner" | "bookings" | "storage" | "gate" | "admin";
 
 function DriverForm({
   driver,
@@ -816,6 +818,18 @@ function EstacionamientosContent() {
             Mis Reservas ({myBookings.length})
           </button>
 
+          <button
+            onClick={() => setActiveTab("storage")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
+              activeTab === "storage"
+                ? "bg-surface shadow-xs font-semibold cc-text-primary border border-subtle"
+                : "cc-text-secondary hover:cc-text-primary"
+            }`}
+          >
+            <Archive size={15} style={{ color: "var(--cc-copper)" }} />
+            Bodegas
+          </button>
+
           {(isConcierge || isAdmin) && (
             <button
               onClick={() => setActiveTab("gate")}
@@ -845,6 +859,8 @@ function EstacionamientosContent() {
           )}
         </div>
       </header>
+
+      {activeTab === "storage" && <StoragePanel />}
 
       {/* TAB 1: MODO CONDUCTOR (BUSCAR) */}
       {activeTab === "search" && (

@@ -239,6 +239,9 @@ export interface SupermarketGroupOrder {
   selectedChannelType?: SupermarketChannelType | null;
   retailerUrl?: string | null;
   selectedItems: SupermarketGroupComparisonItem[];
+  /** Lo que realmente se pagó en el supermercado (boleta). Desde aquí se reparte. */
+  finalTotal?: number | null;
+  purchasedAt?: string | null;
   members: SupermarketGroupOrderMember[];
   items: SupermarketGroupOrderItem[];
   settlements: SupermarketGroupSettlement[];
@@ -272,6 +275,12 @@ export interface SupermarketGroupComparisonItem {
   suppliedQuantity: number;
   lineTotal: number;
   productUrl?: string;
+  /** Mismos identificadores que la compra individual: sin sku no se carga el carro por API. */
+  id?: string;
+  sku?: string;
+  offerId?: string;
+  salesUnit?: string;
+  imageUrl?: string;
 }
 
 export interface SupermarketGroupComparison {
@@ -3687,4 +3696,63 @@ export interface InvoicingSettingsView {
     /** Últimos 4 caracteres de la API key, para reconocerla sin mostrarla. */
     apiKeyHint: string | null;
     encryptionReady: boolean;
+}
+
+/* ── Bodegas: arriendo mensual entre vecinos ───────────────── */
+
+export type StorageUnitStatus = 'pending_approval' | 'published' | 'paused' | 'rejected';
+export type StorageRentalStatus = 'active' | 'cancelled' | 'completed';
+
+export interface StorageUnit {
+  id: string;
+  communityId: string;
+  ownerId: string;
+  ownerName?: string;
+  label: string;
+  description: string;
+  floorLevel: string;
+  areaM2: number | null;
+  monthlyRate: number;
+  minMonths: number;
+  status: StorageUnitStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export interface StorageUnitInput {
+  label: string;
+  description?: string;
+  floorLevel?: string;
+  areaM2?: number | null;
+  monthlyRate: number;
+  minMonths?: number;
+}
+
+export interface StorageSearchResult {
+  id: string;
+  label: string;
+  description: string;
+  floorLevel: string;
+  areaM2: number | null;
+  monthlyRate: number;
+  minMonths: number;
+  ownerId: string;
+  ownerName: string;
+  totalAmount: number;
+}
+
+export interface StorageRental {
+  id: string;
+  storageId: string;
+  storageLabel: string;
+  ownerId: string;
+  tenantId: string;
+  startsOn: string;
+  endsOn: string;
+  months: number;
+  monthlyRate: number;
+  totalAmount: number;
+  status: StorageRentalStatus;
+  cancelReason: string | null;
+  createdAt: string;
 }

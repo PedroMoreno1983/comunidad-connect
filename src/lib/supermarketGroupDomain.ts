@@ -1,4 +1,8 @@
-import type { SupermarketMeasurementUnit } from '@/lib/types';
+import type {
+  SupermarketGroupComparisonItem,
+  SupermarketMeasurementUnit,
+  SupermarketSearchCandidate,
+} from '@/lib/types';
 
 export type GroupItemInput = { term: string; quantity: number; unit?: SupermarketMeasurementUnit };
 export type GroupSettlementContribution = { userId: string; term: string; quantity: number };
@@ -152,6 +156,34 @@ export function parseGroupShoppingList(value: string, preservePackageSize = fals
   return [...consolidated.values()].slice(0, MAX_SHOPPING_LIST_ITEMS);
 }
 
+/**
+ * Ajusta un reparto calculado con precios de catálogo al total que de verdad se
+ * pagó en el supermercado. Proporcional a lo que le tocaba a cada uno, sin
+ * perder ni inventar pesos: los sobrantes del redondeo van a las fracciones
+ * más grandes, como en allocateGroupCosts.
+ */
+export function scaleAllocationToTotal(
+  allocation: Record<string, number>,
+  finalTotal: number,
+): Record<string, number> {
+  const entries = Object.entries(allocation).filter(([, amount]) => amount > 0);
+  const estimated = entries.reduce((sum, [, amount]) => sum + amount, 0);
+  const target = Math.max(0, Math.round(finalTotal));
+  if (estimated === 0 || entries.length === 0) return { ...allocation };
+  const shares = entries.map(([userId, amount]) => {
+    const exact = target * amount / estimated;
+    return { userId, amount: Math.floor(exact), fraction: exact - Math.floor(exact) };
+  });
+  let remainder = target - shares.reduce((sum, share) => sum + share.amount, 0);
+  shares.sort((left, right) => right.fraction - left.fraction || left.userId.localeCompare(right.userId));
+  for (let index = 0; remainder > 0; index += 1, remainder -= 1) {
+    shares[index % shares.length].amount += 1;
+  }
+  const scaled: Record<string, number> = { ...allocation };
+  for (const share of shares) scaled[share.userId] = share.amount;
+  return scaled;
+}
+
 export function allocateGroupCosts(
   contributions: GroupSettlementContribution[],
   basketItems: GroupSettlementBasketItem[],
@@ -190,4 +222,39 @@ export function allocateGroupCosts(
   }
 
   return totals;
+}
+
+/**
+ * La canasta cerrada de una compra comunitaria, en el formato que usa el carro
+ * de la compra individual (RemoteCartButton). Así ambas llegan al supermercado
+ * por el mismo camino.
+ */
+export function groupItemsForCart(items: SupermarketGroupComparisonItem[]): SupermarketSearchCandidate[] {
+  return items.map((item, index) => ({
+    id: item.id || item.sku || `${item.store}:${item.productUrl || item.name}:${index}`,
+    name: item.name,
+    requestedTerm: item.requestedTerm,
+    requestedQuantity: item.requestedQuantity,
+    quantity: item.quantity,
+    packUnits: item.packUnits,
+    suppliedQuantity: item.suppliedQuantity,
+    price: item.price,
+    lineTotal: item.lineTotal,
+    store: item.store,
+    productUrl: item.productUrl,
+    imageUrl: item.imageUrl,
+    sku: item.sku,
+    offerId: item.offerId,
+    salesUnit: item.salesUnit,
+  }));
+}
+
+/** Una compra con boleta registrada sigue visible mientras alguien deba su parte. */
+export function groupOrderStillActive(order: {
+  status: string;
+  settlements: Array<{ isOrganizer: boolean; paidAt: string | null; amount: number }>;
+}): boolean {
+  if (order.status === 'cancelled') return false;
+  if (order.status !== 'completed') return true;
+  return order.settlements.some(item => !item.isOrganizer && !item.paidAt && item.amount > 0);
 }

@@ -8,6 +8,7 @@ import {
     SupermarketGroupComparison,
     SupermarketGroupCreateInput,
     SupermarketGroupOrder,
+    SupermarketSimulationResult,
 } from '../types';
 import { readApi } from './_shared';
 
@@ -30,6 +31,26 @@ export const SupermarketCartService = {
             body: JSON.stringify({ store, items }),
         });
         return readJsonResponse<SupermarketCartHandoff>(response);
+    },
+
+    /**
+     * Total que cobra la tienda por esta canasta (simulación VTEX). Lider y aCuenta
+     * no la exponen: responden supported:false y la pantalla debe decirlo.
+     */
+    async quoteRealTotal(
+        store: string,
+        items: Array<{ sku: string; quantity: number }>,
+    ): Promise<SupermarketSimulationResult> {
+        const response = await fetch('/api/supermarket/real-total', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ store, items }),
+        });
+        const data = await response.json().catch(() => null) as SupermarketSimulationResult | null;
+        if (!response.ok || !data) {
+            return { supported: true, complete: false, reason: data?.error || 'No se pudo consultar el total en la tienda.' };
+        }
+        return data;
     },
 };
 
@@ -134,11 +155,23 @@ export const SupermarketGroupService = {
         return data.comparisons;
     },
 
-    async lock(orderId: string): Promise<SupermarketGroupOrder> {
+    /** Cierra la compra con la canasta de `store`; sin store, la completa más barata. */
+    async lock(orderId: string, store?: string): Promise<SupermarketGroupOrder> {
         const response = await fetch('/api/supermarket/group-orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'lock', orderId }),
+            body: JSON.stringify({ action: 'lock', orderId, store }),
+        });
+        const data = await readJsonResponse<{ order: SupermarketGroupOrder }>(response);
+        return data.order;
+    },
+
+    /** Registra el total de la boleta; el reparto entre vecinos se ajusta a ese monto. */
+    async recordPurchase(orderId: string, finalTotal: number): Promise<SupermarketGroupOrder> {
+        const response = await fetch('/api/supermarket/group-orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'record_purchase', orderId, finalTotal }),
         });
         const data = await readJsonResponse<{ order: SupermarketGroupOrder }>(response);
         return data.order;
