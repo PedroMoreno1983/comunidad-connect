@@ -3756,3 +3756,85 @@ export interface StorageRental {
   cancelReason: string | null;
   createdAt: string;
 }
+
+/* ── Convenios comunitarios ────────────────────────────────── */
+
+export type CommunityDealKind = 'vendor_visit' | 'bulk_service' | 'space_income';
+export type CommunityDealStatus = 'proposed' | 'gauging' | 'quoting' | 'active' | 'closed' | 'rejected';
+export type CommunityDealPriceUnit = 'unit_month' | 'unit_once' | 'community_month' | 'discount_percent';
+
+export interface CommunityDeal {
+  id: string;
+  title: string;
+  kind: CommunityDealKind;
+  description: string;
+  status: CommunityDealStatus;
+  interestGoal: number | null;
+  needsAssembly: boolean;
+  assemblyNote: string;
+  referencePrice: number | null;
+  dealPrice: number | null;
+  priceUnit: CommunityDealPriceUnit;
+  selectedQuoteId: string | null;
+  terms: string;
+  schedule: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  reviewNote: string | null;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  interestedCount: number;
+  iAmInterested: boolean;
+}
+
+export interface CommunityDealQuote {
+  id: string;
+  dealId: string;
+  providerName: string;
+  contact: string;
+  offer: string;
+  price: number | null;
+  priceUnit: CommunityDealPriceUnit;
+  createdAt: string;
+}
+
+export interface CommunityDealInput {
+  title: string;
+  kind: CommunityDealKind;
+  description?: string;
+}
+
+/** Lo que la administración ajusta al avanzar un convenio. */
+export interface CommunityDealUpdate {
+  status?: CommunityDealStatus;
+  interestGoal?: number | null;
+  needsAssembly?: boolean;
+  assemblyNote?: string;
+  referencePrice?: number | null;
+  dealPrice?: number | null;
+  priceUnit?: CommunityDealPriceUnit;
+  selectedQuoteId?: string | null;
+  terms?: string;
+  schedule?: string;
+  startsOn?: string | null;
+  endsOn?: string | null;
+  reviewNote?: string | null;
+}
+
+export interface CommunityDealQuoteInput {
+  providerName: string;
+  contact?: string;
+  offer?: string;
+  price?: number | null;
+  priceUnit?: CommunityDealPriceUnit;
+}
+
+export interface CommunityDealOpportunity {
+  theme: string;
+  kind: CommunityDealKind;
+  title: string;
+  why: string;
+  households: number;
+  source: 'cases' | 'purchases';
+}

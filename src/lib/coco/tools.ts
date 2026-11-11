@@ -46,6 +46,13 @@ import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
 import { consultOfficialLegalSource } from './officialLegalSources';
 import {
+    addDealQuoteForAdmin,
+    listDealsForUser,
+    proposeDealForUser,
+    setDealInterestForUser,
+    suggestDealsForCommunity,
+} from './dealTools';
+import {
     myStorageForResident,
     rentStorageForResident,
     searchStorageForResident,
@@ -253,6 +260,60 @@ export const TOOL_DEFINITIONS = [
                 months: { type: 'integer', description: 'Cuántos meses (1 a 24).' },
             },
             required: ['storage_id', 'starts_on', 'months'],
+        },
+    },
+
+    // ── MÓDULO: CONVENIOS COMUNITARIOS ───────────────────────────────────────
+    {
+        name: 'list_community_deals',
+        description: 'Convenios de la comunidad: ferias o proveedores que venden en el edificio a cambio del espacio, servicios contratados para todo el edificio (internet, seguros, fumigación) e ingresos por espacios comunes. Devuelve estado, interesados y ahorro estimado.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'suggest_community_deals',
+        description: 'Detecta oportunidades de convenio a partir de reclamos y compras comunitarias de los últimos 90 días (por ejemplo, muchos vecinos con problemas de internet o comprando agua en bidón). Son señales, no demanda confirmada: preséntalas como ideas para proponer.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'propose_community_deal',
+        description: 'Propone un convenio comunitario. Si lo pide un residente queda para revisión de la administración; si lo pide la administración queda abierto a interesados. Si el convenio usa un espacio común o compromete a la comunidad en un contrato, advierte que puede requerir acuerdo de asamblea (Ley 21.442) y verifica el texto con consult_official_legal_source antes de afirmarlo.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string', description: 'Idea en pocas palabras, por ejemplo Feria los martes en el hall.' },
+                kind: { type: 'string', enum: ['vendor_visit', 'bulk_service', 'space_income'], description: 'vendor_visit: feria o proveedor en el edificio. bulk_service: servicio para todo el edificio. space_income: arrendar un espacio común a un tercero.' },
+                description: { type: 'string', description: 'Qué se ofrece, qué se pide a cambio, qué días.' },
+            },
+            required: ['title', 'kind'],
+        },
+    },
+    {
+        name: 'join_community_deal',
+        description: 'Suma (o saca) al usuario de los interesados de un convenio abierto. Usa list_community_deals para obtener el deal_id.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                deal_id: { type: 'string' },
+                interested: { type: 'boolean', description: 'true para sumarse, false para salirse.' },
+                note: { type: 'string', description: 'Opcional, por ejemplo qué proveedor tiene hoy.' },
+            },
+            required: ['deal_id', 'interested'],
+        },
+    },
+    {
+        name: 'add_community_deal_quote',
+        description: 'SOLO administradores. Registra la cotización de un proveedor para un convenio que suma interesados o está cotizando. Elegir la cotización y activar el convenio se hace desde la app.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                deal_id: { type: 'string' },
+                provider_name: { type: 'string' },
+                price: { type: 'integer', description: 'Precio en pesos, o porcentaje si price_unit es discount_percent.' },
+                price_unit: { type: 'string', enum: ['unit_month', 'unit_once', 'community_month', 'discount_percent'] },
+                offer: { type: 'string', description: 'Qué ofrece y condiciones.' },
+                contact: { type: 'string', description: 'Contacto del proveedor (solo lo ve la administración).' },
+            },
+            required: ['deal_id', 'provider_name'],
         },
     },
 
@@ -852,6 +913,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'book_parking',
     // Genera cargos mensuales en gastos comunes: el residente confirma antes.
     'rent_storage',
+    'propose_community_deal',
+    'join_community_deal',
+    'add_community_deal_quote',
     'create_circular',
     'create_social_post',
     'vote_in_poll',
@@ -906,6 +970,7 @@ const RESIDENT_TOOLS = new Set([
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
     'get_my_parking', 'search_parking', 'book_parking',
     'get_my_storage', 'search_storage', 'rent_storage',
+    'list_community_deals', 'suggest_community_deals', 'propose_community_deal', 'join_community_deal',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -918,6 +983,7 @@ const ADMIN_TOOLS = new Set([
     ...CONCIERGE_TOOLS,
     // Borradores legales: solo la administración (ver legalDraftMarker.ts).
     'prepare_legal_draft',
+    'add_community_deal_quote',
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
@@ -970,6 +1036,15 @@ export function describePendingAction(name: string, input: Record<string, unknow
                 summary: `Desde el ${legible('starts_at')} hasta el ${legible('ends_at')}. El monto se calcula con la tarifa del cupo y se carga a la cuenta de gastos comunes de tu unidad (o se paga en línea si la comunidad lo habilitó).`,
             };
         }
+        case 'propose_community_deal':
+            return { title: 'Proponer convenio', summary: `${str('title')}. ${str('description')}`.trim() };
+        case 'join_community_deal':
+            return {
+                title: input.interested === false ? 'Salir de un convenio' : 'Sumarme a un convenio',
+                summary: input.interested === false ? 'Dejar de figurar como interesado.' : 'Quedar como interesado; no compromete pago.',
+            };
+        case 'add_community_deal_quote':
+            return { title: 'Registrar cotización', summary: `${str('provider_name')}${input.price ? ` · ${input.price}` : ''}. ${str('offer')}`.trim() };
         case 'rent_storage': {
             const meses = Number(input.months) || 0;
             return {
@@ -1461,6 +1536,42 @@ export async function executeTool(
                         ? 'Hay estacionamientos en la comunidad, pero todos estan reservados en ese horario.'
                         : undefined,
                 };
+            }
+
+            case 'list_community_deals': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                return listDealsForUser(supabaseAdmin, communityId, userCtx.user_id, userCtx.role === 'admin');
+            }
+
+            case 'suggest_community_deals': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                return suggestDealsForCommunity(supabaseAdmin, communityId);
+            }
+
+            case 'propose_community_deal': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                return proposeDealForUser(supabaseAdmin, communityId, userCtx.user_id, userCtx.role === 'admin', {
+                    title: input.title, kind: input.kind, description: input.description,
+                });
+            }
+
+            case 'join_community_deal': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                if (!isUuid(String(input.deal_id ?? ''))) return { error: 'Necesito el deal_id que devuelve list_community_deals.' };
+                const interested = (input as Record<string, unknown>).interested !== false;
+                return setDealInterestForUser(supabaseAdmin, communityId, userCtx.user_id, String(input.deal_id), interested, input.note);
+            }
+
+            case 'add_community_deal_quote': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                if (userCtx.role !== 'admin') return forbidden('Solo la administración registra cotizaciones.');
+                if (!isUuid(String(input.deal_id ?? ''))) return { error: 'Necesito el deal_id que devuelve list_community_deals.' };
+                return addDealQuoteForAdmin(supabaseAdmin, communityId, userCtx.user_id, input as unknown as Parameters<typeof addDealQuoteForAdmin>[3]);
             }
 
             case 'get_my_storage': {
