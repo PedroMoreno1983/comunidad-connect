@@ -6662,3 +6662,69 @@ CREATE TABLE IF NOT EXISTS public.storage_rental_charges (
   CONSTRAINT storage_rental_charges_amount_check CHECK (amount > 0),
   CONSTRAINT storage_rental_charges_unique_period UNIQUE (rental_id, period)
 );
+
+-- Convenios comunitarios (migración 20261111120000_community_deals).
+
+CREATE TABLE IF NOT EXISTS public.community_deals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  created_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'proposed',
+  interest_goal INTEGER,
+  needs_assembly BOOLEAN NOT NULL DEFAULT FALSE,
+  assembly_note TEXT NOT NULL DEFAULT '',
+  reference_price INTEGER,
+  deal_price INTEGER,
+  price_unit TEXT NOT NULL DEFAULT 'unit_month',
+  selected_quote_id UUID,
+  terms TEXT NOT NULL DEFAULT '',
+  schedule TEXT NOT NULL DEFAULT '',
+  starts_on DATE,
+  ends_on DATE,
+  review_note TEXT,
+  reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT community_deals_title_check CHECK (char_length(btrim(title)) BETWEEN 3 AND 120),
+  CONSTRAINT community_deals_kind_check CHECK (kind IN ('vendor_visit', 'bulk_service', 'space_income')),
+  CONSTRAINT community_deals_description_check CHECK (char_length(description) <= 2000),
+  CONSTRAINT community_deals_status_check CHECK (status IN ('proposed', 'gauging', 'quoting', 'active', 'closed', 'rejected')),
+  CONSTRAINT community_deals_interest_goal_check CHECK (interest_goal IS NULL OR interest_goal BETWEEN 1 AND 5000),
+  CONSTRAINT community_deals_assembly_note_check CHECK (char_length(assembly_note) <= 1000),
+  CONSTRAINT community_deals_prices_check CHECK (
+    (reference_price IS NULL OR reference_price >= 0) AND (deal_price IS NULL OR deal_price >= 0)
+  ),
+  CONSTRAINT community_deals_price_unit_check CHECK (price_unit IN ('unit_month', 'unit_once', 'community_month', 'discount_percent')),
+  CONSTRAINT community_deals_terms_check CHECK (char_length(terms) <= 3000 AND char_length(schedule) <= 300),
+  CONSTRAINT community_deals_dates_check CHECK (ends_on IS NULL OR starts_on IS NULL OR ends_on >= starts_on)
+);
+
+CREATE TABLE IF NOT EXISTS public.community_deal_interests (
+  deal_id UUID NOT NULL REFERENCES public.community_deals(id) ON DELETE CASCADE,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (deal_id, user_id),
+  CONSTRAINT community_deal_interests_note_check CHECK (char_length(note) <= 300)
+);
+
+CREATE TABLE IF NOT EXISTS public.community_deal_quotes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id UUID NOT NULL REFERENCES public.community_deals(id) ON DELETE CASCADE,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  provider_name TEXT NOT NULL,
+  contact TEXT NOT NULL DEFAULT '',
+  offer TEXT NOT NULL DEFAULT '',
+  price INTEGER,
+  price_unit TEXT NOT NULL DEFAULT 'unit_month',
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT community_deal_quotes_provider_check CHECK (char_length(btrim(provider_name)) BETWEEN 2 AND 120),
+  CONSTRAINT community_deal_quotes_text_check CHECK (char_length(contact) <= 200 AND char_length(offer) <= 2000),
+  CONSTRAINT community_deal_quotes_price_check CHECK (price IS NULL OR price >= 0),
+  CONSTRAINT community_deal_quotes_price_unit_check CHECK (price_unit IN ('unit_month', 'unit_once', 'community_month', 'discount_percent'))
+);

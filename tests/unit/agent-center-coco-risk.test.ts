@@ -133,12 +133,17 @@ describe('que deja de pedir confirmacion con la politica de fabrica', () => {
             .sort();
 
         expect(seEjecutanSolas).toEqual([
+            // Convenios (2026-11-11): cotizar es solo de la administración y no
+            // activa nada; proponer y sumarse son reversibles y no comprometen pago.
+            'add_community_deal_quote',
             'cancel_reminder',
             'create_claim',
             'create_reservation',
             'create_social_post',
             'create_supermarket_group_order',
+            'join_community_deal',
             'join_supermarket_group_order',
+            'propose_community_deal',
             'register_package',
             'register_visitor',
             'remember_community_fact',

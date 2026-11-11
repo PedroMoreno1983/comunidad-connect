@@ -14,6 +14,7 @@ import {
     Send,
     ShoppingBasket,
     Users,
+    Handshake,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { CommunityCollaborationService } from "@/lib/api";
@@ -29,13 +30,15 @@ import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import { MutualSupportExperience } from "@/components/convivencia/MutualSupportExperience";
 import { CommunitySupplyPanel } from "@/components/convivencia/CommunitySupplyPanel";
+import { CommunityDealsPanel } from "@/components/convivencia/CommunityDealsPanel";
 
-type ActiveLane = "mediation" | "timebank" | "abasto" | "projects" | "support";
+type ActiveLane = "mediation" | "timebank" | "abasto" | "convenios" | "projects" | "support";
 
 const LANES: Array<{ id: ActiveLane; label: string; icon: typeof HeartHandshake }> = [
     { id: "mediation", label: "Mediacion CNV", icon: MessageSquareHeart },
     { id: "timebank", label: "Banco de tiempo", icon: HandCoins },
     { id: "abasto", label: "Abasto comunitario", icon: ShoppingBasket },
+    { id: "convenios", label: "Convenios", icon: Handshake },
     { id: "projects", label: "Plaza social", icon: Leaf },
     { id: "support", label: "Apoyo mutuo", icon: HeartHandshake },
 ];
@@ -572,6 +575,8 @@ export default function ConvivenciaPage() {
                     </div>
                 </section>
             )}
+
+            {activeLane === "convenios" && <CommunityDealsPanel />}
 
             {activeLane === "projects" && (
                 <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
