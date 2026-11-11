@@ -5,6 +5,7 @@ import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
 import {
   allocateGroupCosts,
   parseGroupShoppingList,
+  scaleAllocationToTotal,
   type GroupItemInput,
 } from '@/lib/supermarketGroupDomain';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
@@ -56,6 +57,11 @@ function asSelectedItems(value: unknown): SupermarketGroupComparisonItem[] {
     const name = asString(row.name);
     if (!requestedTerm || !name || !store) return [];
     const productUrl = asString(row.productUrl);
+    const identifiers = Object.fromEntries(
+      (['id', 'sku', 'offerId', 'salesUnit', 'imageUrl'] as const)
+        .map(key => [key, asString(row[key])] as const)
+        .filter(([, value]) => value),
+    ) as Pick<SupermarketGroupComparisonItem, 'id' | 'sku' | 'offerId' | 'salesUnit' | 'imageUrl'>;
     return [{
       requestedTerm,
       requestedQuantity: asNumber(row.requestedQuantity),
@@ -67,6 +73,7 @@ function asSelectedItems(value: unknown): SupermarketGroupComparisonItem[] {
       suppliedQuantity: asNumber(row.suppliedQuantity),
       lineTotal: asNumber(row.lineTotal),
       ...(productUrl ? { productUrl } : {}),
+      ...identifiers,
     }];
   });
 }
@@ -145,7 +152,7 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
         updatedAt: asString(item.updated_at),
       }));
     const selectedItems = asSelectedItems(row.selected_items);
-    const allocation = allocateGroupCosts(
+    const estimatedAllocation = allocateGroupCosts(
       items.map(item => ({
         userId: item.userId,
         term: item.requestedTerm,
@@ -157,6 +164,11 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
       })),
       createdBy,
     );
+    const finalTotal = typeof row.final_total === 'number' && row.final_total > 0 ? row.final_total : null;
+    // Con la boleta registrada, cada uno paga su parte de lo que realmente costó.
+    const allocation = finalTotal === null
+      ? estimatedAllocation
+      : scaleAllocationToTotal(estimatedAllocation, finalTotal);
     const participantIds = [...new Set([
       ...members.map(member => member.userId),
       ...items.map(item => item.userId),
@@ -190,6 +202,8 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
       selectedChannelType: (asString(row.selected_channel_type) || null) as SupermarketChannelType | null,
       retailerUrl: asString(row.retailer_url) || null,
       selectedItems,
+      finalTotal,
+      purchasedAt: asString(row.purchased_at) || null,
       members,
       items,
       canManage: createdBy === profile.id || profile.role === 'admin',
@@ -376,12 +390,26 @@ export async function compareSupermarketGroupOrder(
       suppliedQuantity: item.suppliedQuantity,
       lineTotal: item.lineTotal,
       productUrl: item.productUrl,
+      id: item.id,
+      sku: item.sku,
+      offerId: item.offerId,
+      salesUnit: item.salesUnit,
+      imageUrl: item.imageUrl,
     })),
     retailerUrl: STORE_URLS[basket.store as SupermarketStore],
   }));
 }
 
-export async function lockSupermarketGroupOrder(profile: GroupProfile, orderId: string): Promise<SupermarketGroupOrder> {
+/**
+ * Cierra la compra con la canasta del supermercado elegido. Sin elección, la
+ * canasta completa más barata. Igual que la compra individual, la persona
+ * decide dónde comprar: el más barato no siempre es el que le queda cerca.
+ */
+export async function lockSupermarketGroupOrder(
+  profile: GroupProfile,
+  orderId: string,
+  store?: string,
+): Promise<SupermarketGroupOrder> {
   const order = await assertVisibleOrder(profile, orderId);
   if (asString(order.governance_status) !== 'approved') throw new Error('La compra espera validación de Administración.');
   if (asString(order.created_by) !== profile.id && profile.role !== 'admin') {
@@ -389,8 +417,15 @@ export async function lockSupermarketGroupOrder(profile: GroupProfile, orderId: 
   }
   if (!['open', 'ready'].includes(asString(order.status))) throw new Error('La compra ya está cerrada.');
   const comparisons = await compareSupermarketGroupOrder(profile, orderId);
-  const selected = comparisons.find(item => item.complete);
-  if (!selected) throw new Error('Aún no existe una canasta completa y vigente para cerrar esta compra.');
+  const complete = comparisons.filter(item => item.complete);
+  const selected = store
+    ? complete.find(item => item.store === store)
+    : [...complete].sort((left, right) => left.subtotal - right.subtotal)[0];
+  if (!selected) {
+    throw new Error(store
+      ? `${store} no tiene hoy una canasta completa y vigente para esta compra. Elige otro supermercado.`
+      : 'Aún no existe una canasta completa y vigente para cerrar esta compra.');
+  }
   const { data, error } = await getSupabaseAdmin()
     .from('supermarket_group_orders')
     .update({
@@ -408,6 +443,47 @@ export async function lockSupermarketGroupOrder(profile: GroupProfile, orderId: 
     .select('*')
     .single();
   if (error || !data) throw error || new Error('No se pudo cerrar la compra grupal.');
+  return (await hydrateOrders(profile, [data as Record<string, unknown>]))[0];
+}
+
+/**
+ * Registra lo que se pagó en el supermercado (el total de la boleta) y da la
+ * compra por hecha. Desde ese momento el reparto entre vecinos sale de ese
+ * total, no del precio de catálogo con que se cerró.
+ */
+export async function recordSupermarketGroupPurchase(
+  profile: GroupProfile,
+  orderId: string,
+  finalTotal: number,
+): Promise<SupermarketGroupOrder> {
+  const order = await assertVisibleOrder(profile, orderId);
+  if (asString(order.created_by) !== profile.id && profile.role !== 'admin') {
+    throw new Error('Solo quien organizó la compra o la administración puede registrar lo que se pagó.');
+  }
+  if (!['locked', 'completed'].includes(asString(order.status))) {
+    throw new Error('Primero cierra la compra y elige el supermercado.');
+  }
+  const total = Math.round(finalTotal);
+  if (!Number.isFinite(total) || total <= 0) throw new Error('Indica el total pagado en pesos, mayor que cero.');
+  const estimated = asNumber(order.selected_total);
+  // Una boleta 3 veces sobre lo estimado casi siempre es un dígito de más.
+  if (estimated > 0 && (total > estimated * 3 || total < estimated / 3)) {
+    throw new Error(`El total (${total}) está muy lejos de lo estimado (${estimated}). Revisa la boleta.`);
+  }
+  const { data, error } = await getSupabaseAdmin()
+    .from('supermarket_group_orders')
+    .update({
+      status: 'completed',
+      final_total: total,
+      purchased_at: asString(order.purchased_at) || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+    .eq('community_id', requireIdentity(profile))
+    .in('status', ['locked', 'completed'])
+    .select('*')
+    .single();
+  if (error || !data) throw error || new Error('No se pudo registrar el total de la compra.');
   return (await hydrateOrders(profile, [data as Record<string, unknown>]))[0];
 }
 

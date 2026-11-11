@@ -96,6 +96,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     request_urgent_access_approval: 'write_high', // interrumpe a terceros
     dispatch_provider: 'write_high',            // compromete a un proveedor
     lock_supermarket_group_order: 'write_high', // cierra la compra de varios vecinos
+    record_supermarket_group_purchase: 'write_high', // fija cuánto debe cada vecino
     create_unit: 'write_high',                  // estructura del condominio
     // Cambia el dato de contacto de OTRA familia, que no se entera y por lo
     // tanto no puede deshacerlo: no cumple la condicion de write_low. Ademas

@@ -9,12 +9,19 @@ import {
   PackagePlus,
   RefreshCw,
   Share2,
+  Receipt,
   Users,
 } from 'lucide-react';
-import { SupermarketGroupService } from '@/lib/api';
-import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
-import type { SupermarketGroupComparison, SupermarketGroupOrder } from '@/lib/types';
+import { SupermarketCartService, SupermarketGroupService } from '@/lib/api';
+import {
+  MAX_SHOPPING_LIST_CHARS,
+  MAX_SHOPPING_LIST_ITEMS,
+  groupItemsForCart,
+  groupOrderStillActive,
+} from '@/lib/supermarketGroupDomain';
+import type { SupermarketGroupComparison, SupermarketGroupOrder, SupermarketSimulationResult } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
+import { RemoteCartButton } from '@/components/resident/supermarket/RemoteCartButton';
 import { useToast } from '@/components/ui/Toast';
 
 function plusDays(days: number) {
@@ -37,6 +44,8 @@ export function CommunitySupplyPanel() {
   const [shoppingList, setShoppingList] = useState('');
   const [contributions, setContributions] = useState<Record<string, string>>({});
   const [comparisons, setComparisons] = useState<Record<string, SupermarketGroupComparison[]>>({});
+  const [quotes, setQuotes] = useState<Record<string, SupermarketSimulationResult>>({});
+  const [paidTotals, setPaidTotals] = useState<Record<string, string>>({});
 
   const createInFlight = useRef(false);
   const refresh = async () => {
@@ -72,7 +81,7 @@ export function CommunitySupplyPanel() {
   }, [loading, orders]);
 
   const visibleOrders = useMemo(
-    () => orders.filter(order => !['completed', 'cancelled'].includes(order.status)),
+    () => orders.filter(groupOrderStillActive),
     [orders],
   );
 
@@ -152,19 +161,61 @@ export function CommunitySupplyPanel() {
     }
   };
 
-  const lock = async (orderId: string) => {
+  const lock = async (orderId: string, store?: string) => {
     setBusy(`lock:${orderId}`);
     try {
-      const order = await SupermarketGroupService.lock(orderId);
+      const order = await SupermarketGroupService.lock(orderId, store);
       setOrders(previous => previous.map(item => item.id === order.id ? order : item));
       toast({
-        title: 'Compra preparada',
-        description: `CoCo seleccionó ${order.selectedStore} por ${money(order.selectedTotal || 0)} y repartió el gasto.`,
+        title: 'Compra cerrada',
+        description: `Canasta en ${order.selectedStore} por ${money(order.selectedTotal || 0)}. Abre el carro y, al pagar, registra el total de la boleta.`,
         variant: 'success',
       });
     } catch (error) {
       toast({
         title: 'No se pudo preparar',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Mismo cálculo que la compra individual: lo que la tienda cobraría hoy por esta canasta.
+  const quoteRealTotal = async (order: SupermarketGroupOrder) => {
+    if (!order.selectedStore) return;
+    setBusy(`quote:${order.id}`);
+    try {
+      const result = await SupermarketCartService.quoteRealTotal(
+        order.selectedStore,
+        order.selectedItems.map(item => ({ sku: item.sku || '', quantity: item.quantity })),
+      );
+      setQuotes(previous => ({ ...previous, [order.id]: result }));
+      if (result.complete && result.total) {
+        const total = result.total;
+        setPaidTotals(previous => ({ ...previous, [order.id]: previous[order.id] || String(total) }));
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const recordPurchase = async (order: SupermarketGroupOrder) => {
+    const raw = paidTotals[order.id] ?? (order.finalTotal ? String(order.finalTotal) : '');
+    const total = Number(raw.replace(/[^0-9]/g, ''));
+    setBusy(`record:${order.id}`);
+    try {
+      const updated = await SupermarketGroupService.recordPurchase(order.id, total);
+      setOrders(previous => previous.map(item => item.id === updated.id ? updated : item));
+      toast({
+        title: 'Total registrado',
+        description: `El reparto ahora suma ${money(updated.finalTotal || total)}, lo que se pagó en ${updated.selectedStore}.`,
+        variant: 'success',
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo registrar el total',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
@@ -294,8 +345,16 @@ export function CommunitySupplyPanel() {
               (aggregate.get(item.requestedTerm) || 0) + item.quantity,
             ));
             const orderComparisons = comparisons[order.id] || [];
-            const prepared = order.status === 'locked';
-            const best = prepared ? undefined : orderComparisons.find(item => item.complete) || orderComparisons[0];
+            const prepared = order.status === 'locked' || order.status === 'completed';
+            const purchased = order.status === 'completed';
+            const completeOptions = orderComparisons
+              .filter(item => item.complete)
+              .sort((left, right) => left.subtotal - right.subtotal);
+            const best = prepared ? undefined : completeOptions[0] || orderComparisons[0];
+            const cartItems = prepared ? groupItemsForCart(order.selectedItems) : [];
+            const canQuote = prepared && cartItems.length > 0 && cartItems.every(item => item.sku);
+            const quote = quotes[order.id];
+            const paidInput = paidTotals[order.id] ?? (order.finalTotal ? String(order.finalTotal) : '');
             const selectedItems = prepared ? order.selectedItems : best?.items || [];
             const selectedStore = prepared ? order.selectedStore : best?.store;
             const retailerUrl = prepared ? order.retailerUrl : best?.retailerUrl;
@@ -322,7 +381,7 @@ export function CommunitySupplyPanel() {
                       <Share2 className="mr-2 h-4 w-4" /> Invitar
                     </Button>
                     <span className="rounded-full px-3 py-2 text-xs font-bold" style={{ background: 'var(--cc-copper-tint)', color: 'var(--cc-copper)' }}>
-                      {prepared ? 'Compra preparada' : `${order.items.length} aportes`}
+                      {purchased ? 'Compra pagada' : prepared ? 'Compra cerrada' : `${order.items.length} aportes`}
                     </span>
                   </div>
                 </div>
@@ -368,11 +427,14 @@ export function CommunitySupplyPanel() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-xs font-bold uppercase cc-text-tertiary">
-                          {prepared ? 'Selección final de CoCo' : best?.channelType === 'wholesale' ? 'Mejor opción mayorista' : 'Mejor opción disponible'}
+                          {purchased ? 'Pagado en el supermercado' : prepared ? 'Canasta elegida' : best?.channelType === 'wholesale' ? 'Mejor opción mayorista' : 'Mejor opción disponible'}
                         </p>
                         <p className="font-bold cc-text-primary">
-                          {selectedStore} · {money(prepared ? order.selectedTotal || 0 : best?.subtotal || 0)}
+                          {selectedStore} · {money(purchased ? order.finalTotal || 0 : prepared ? order.selectedTotal || 0 : best?.subtotal || 0)}
                         </p>
+                        {purchased && order.selectedTotal ? (
+                          <p className="text-xs cc-text-tertiary">Estimado al cerrar: {money(order.selectedTotal)}</p>
+                        ) : null}
                       </div>
                       {retailerUrl && (
                         <a href={retailerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-bold" style={{ color: 'var(--cc-copper)' }}>
@@ -382,6 +444,69 @@ export function CommunitySupplyPanel() {
                     </div>
                     {best && !best.complete && (
                       <p className="mt-2 text-xs cc-text-tertiary">Faltan: {best.missingTerms.join(', ')}</p>
+                    )}
+
+                    {!prepared && order.canManage && completeOptions.length > 0 && (
+                      <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
+                        <p className="text-xs font-bold uppercase cc-text-tertiary">Elige dónde comprar</p>
+                        {completeOptions.map(option => (
+                          <div key={option.store} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
+                            <p className="text-sm cc-text-primary">
+                              <span className="font-semibold">{option.store}</span> · {money(option.subtotal)}
+                              {option.channelType === 'wholesale' ? ' · mayorista' : ''}
+                            </p>
+                            <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => void lock(order.id, option.store)} disabled={busy === `lock:${order.id}`}>
+                              <LockKeyhole className="mr-1 h-3.5 w-3.5" /> Cerrar aquí
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {prepared && order.canManage && selectedStore && (
+                      <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: 'var(--cc-line)' }}>
+                        <p className="text-xs font-bold uppercase cc-text-tertiary">Comprar en {selectedStore}</p>
+                        {!purchased && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <RemoteCartButton store={selectedStore} items={cartItems} complete />
+                            {canQuote && (
+                              <Button variant="outline" className="h-9 px-3 text-xs" onClick={() => void quoteRealTotal(order)} disabled={busy === `quote:${order.id}`}>
+                                {busy === `quote:${order.id}` ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+                                Ver total real en la tienda
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                        {quote && (
+                          <p className="text-xs cc-text-secondary">
+                            {!quote.supported
+                              ? `${selectedStore} no publica el total antes de pagar: usa el de la boleta.`
+                              : quote.complete && quote.total
+                                ? `La tienda cobraría hoy ${money(quote.total)}${quote.minimumOrder ? ` (pedido mínimo ${money(quote.minimumOrder)})` : ''}.`
+                                : quote.reason || 'La tienda no confirmó todos los productos.'}
+                          </p>
+                        )}
+                        <form
+                          className="flex flex-col gap-2 sm:flex-row sm:items-center"
+                          onSubmit={event => { event.preventDefault(); void recordPurchase(order); }}
+                        >
+                          <label className="sr-only" htmlFor={`paid-total-${order.id}`}>Total pagado</label>
+                          <input
+                            id={`paid-total-${order.id}`}
+                            className="input-premium h-10 flex-1"
+                            inputMode="numeric"
+                            value={paidInput}
+                            onChange={event => setPaidTotals(previous => ({ ...previous, [order.id]: event.target.value }))}
+                            placeholder="Total de la boleta, ej. 84590"
+                          />
+                          <Button type="submit" className="h-10" disabled={busy === `record:${order.id}` || !paidInput.trim()}>
+                            <Receipt className="mr-2 h-4 w-4" /> {purchased ? 'Corregir total' : 'Registrar lo pagado'}
+                          </Button>
+                        </form>
+                        <p className="text-xs cc-text-tertiary">
+                          Con el total de la boleta, cada vecino paga su parte de lo que realmente costó, no del precio estimado.
+                        </p>
+                      </div>
                     )}
 
                     {prepared && order.settlements.length > 0 && (
@@ -477,9 +602,9 @@ export function CommunitySupplyPanel() {
                   </div>
                 )}
 
-                {order.canManage && !prepared && (
+                {order.canManage && !prepared && completeOptions.length === 0 && (
                   <Button className="mt-3" variant="outline" onClick={() => void lock(order.id)} disabled={busy === `lock:${order.id}`}>
-                    <LockKeyhole className="mr-2 h-4 w-4" /> Cerrar, elegir tienda y repartir
+                    <LockKeyhole className="mr-2 h-4 w-4" /> Cerrar con la canasta más barata
                   </Button>
                 )}
               </article>
