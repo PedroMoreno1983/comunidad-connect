@@ -50,6 +50,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     // Solo devuelve el mapa estático de pantallas; no toca datos.
     get_platform_guide: 'read',
     consult_official_legal_source: 'read',
+    research_chilean_law: 'read',
     search_public_web: 'read',
     read_official_page: 'read',
     list_community_agenda: 'read',

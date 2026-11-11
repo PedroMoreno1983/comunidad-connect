@@ -1,0 +1,2 @@
+# Los scripts de shell se copian tal cual al VPS: con CRLF el shebang falla.
+*.sh text eol=lf

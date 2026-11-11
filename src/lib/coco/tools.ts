@@ -45,6 +45,7 @@ import {
 import type { UserRole } from '@/lib/types';
 import { rankNearbyProviders } from './providerSearch';
 import { consultOfficialLegalSource } from './officialLegalSources';
+import { researchChileanLaw, NORMA_SOURCES, NORMA_TRIBUNALS, type NormaResearchInput } from './normaResearch';
 import {
     addDealQuoteForAdmin,
     listDealsForUser,
@@ -692,6 +693,34 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'research_chilean_law',
+        description: 'Investigación jurídica ampliada en Norma, solo lectura. source: jurisprudencia (sentencias del Poder Judicial, p. ej. cobro de gastos comunes, ruidos, filtraciones), tribunal_constitucional, dictamenes_cgr (Contraloría), sanciones (de reguladores), normativa o corpus (buscar en todo el derecho vigente, incluidas circulares y decretos fuera de las 11 leyes de consult_official_legal_source), indicadores (UF/UTM/UTA/USD del día y conversión de multas a pesos). Cita rol, tribunal, fecha y enlace tal como vienen; si el resultado no trae el texto de la sentencia, dilo.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                source: { type: 'string', enum: NORMA_SOURCES },
+                query: { type: 'string', description: 'Materia en lenguaje jurídico, como la escribiría una sentencia o dictamen. No requerido para indicadores.' },
+                tribunal: { type: 'string', enum: [...NORMA_TRIBUNALS], description: 'Solo para jurisprudencia. Por defecto Corte Suprema.' },
+                limit: { type: 'integer', description: 'Cuántos resultados (2 a 8).' },
+                date: { type: 'string', description: 'Solo indicadores: AAAA-MM-DD. Por defecto hoy.' },
+                convert: {
+                    type: 'array',
+                    description: 'Solo indicadores: montos a pasar a pesos, p. ej. una multa de 3 UTM.',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            monto: { type: 'number' },
+                            unidad: { type: 'string', enum: ['UF', 'UTM', 'UTA', 'USD'] },
+                            etiqueta: { type: 'string' },
+                        },
+                        required: ['monto', 'unidad'],
+                    },
+                },
+            },
+            required: ['source'],
+        },
+    },
+    {
         name: 'prepare_legal_draft',
         description: 'Prepara (SOLO administradores) la base de un BORRADOR de documento de la comunidad (reglamento de copropiedad, contrato de trabajo de conserje/mayordomo/aseo, contrato de administración o mantención, acta o convocatoria de asamblea). Consulta BCN para citar artículos reales, lista los datos faltantes y entrega la estructura. Solo lectura: no guarda ni envía nada.',
         input_schema: {
@@ -963,7 +992,7 @@ const RESIDENT_TOOLS = new Set([
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
     'record_supermarket_group_purchase',
     'remember_preference', 'create_reminder', 'list_reminders', 'cancel_reminder',
-    'get_platform_guide', 'consult_official_legal_source',
+    'get_platform_guide', 'consult_official_legal_source', 'research_chilean_law',
     'search_public_web', 'read_official_page', 'list_community_agenda',
     // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
     // comunidad del residente. book_parking si muta, y por eso figura tambien
@@ -1156,6 +1185,8 @@ interface UserContext {
     name?: string;
     channel?: string;
     currentPage?: string;
+    /** Ver CoCoUserContext.syncReply en agent.ts. */
+    syncReply?: boolean;
 }
 
 function isStaff(userCtx: UserContext) {
@@ -2032,6 +2063,11 @@ export async function executeTool(
             }
             case 'consult_official_legal_source': {
                 return consultOfficialLegalSource(input.source || '', (input.query || '').slice(0, 180));
+            }
+            case 'research_chilean_law': {
+                // El modelo manda limit como número y convert como arreglo, aunque la
+                // firma de executeTool diga string. researchChileanLaw valida cada campo.
+                return researchChileanLaw({ ...(input as unknown as NormaResearchInput), syncReply: userCtx.syncReply });
             }
             case 'search_public_web': {
                 return searchPublicWeb(input.query || '');

@@ -11,6 +11,7 @@ import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { loadCoCoMemoryContext } from './memory';
 import { interpretCoCoConfirmation } from './confirmation';
 import { formatChileNow } from './reminders';
+import { chileMonthISO } from '@/lib/agent-center/chileDate';
 import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import { buildPlatformContext } from './platformMap';
@@ -30,7 +31,11 @@ const anthropic = new Anthropic({
 // aunque otras tareas del sistema sí lo hagan.
 const MODEL = anthropicModelFor('coco.chat');
 const OPENAI_MODEL = process.env.COCO_OPENAI_MODEL || 'gpt-5.4-mini';
-const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
+// Rondas de tool use por mensaje. La web y el número compartido de Norma (+56 9 9947 4056,
+// que procesa en segundo plano y espera hasta 90 s) aguantan tareas largas. Solo la vía
+// directa de Twilio responde con TwiML dentro del webhook, que Twilio corta a los 15 s.
+const MAX_TOOL_ROUNDS = 8;
+export const SYNC_REPLY_MAX_TOOL_ROUNDS = 5;
 
 export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
@@ -64,6 +69,8 @@ type CoCoUserContext = {
     name?: string;
     currentPage?: string;
     channel?: string;
+    /** La respuesta viaja en el mismo HTTP que el mensaje (TwiML directo, Twilio corta a los 15 s). */
+    syncReply?: boolean;
 };
 
 function pendingToolUses(session: SessionData | null): Anthropic.ToolUseBlock[] {
@@ -270,8 +277,11 @@ export async function askCoCo(
         legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number };
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
+        /** Tope de rondas de herramientas. Por defecto MAX_TOOL_ROUNDS. */
+        maxToolRounds?: number;
     } = {}
 ): Promise<CoCoResponse> {
+    const maxToolRounds = Math.max(1, Math.min(MAX_TOOL_ROUNDS, options.maxToolRounds ?? MAX_TOOL_ROUNDS));
     const persistedToolUses = pendingToolUses(session);
     const persistedActions = pendingActionsFrom(persistedToolUses);
     const effectiveResolutions = options.resolutions || textualResolution(message, persistedToolUses);
@@ -525,7 +535,7 @@ export async function askCoCo(
                 (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
             );
             if (/\b(este mes|mes actual)\b/i.test(message)) {
-                const currentMonth = new Date().toISOString().slice(0, 7);
+                const currentMonth = chileMonthISO();
                 for (const toolUse of toolUses) {
                     if (['get_payment_status', 'get_water_consumption', 'get_defaulters_list'].includes(toolUse.name)) {
                         toolUse.input = { ...(toolUse.input as Record<string, unknown>), month: currentMonth };
@@ -574,11 +584,11 @@ export async function askCoCo(
         }
 
         rounds++;
-    } while (response.stop_reason === 'tool_use' && rounds < MAX_TOOL_ROUNDS);
+    } while (response.stop_reason === 'tool_use' && rounds < maxToolRounds);
 
     // Se agotaron las rondas de herramientas sin que el modelo produjera una
     // respuesta final: mejor un mensaje honesto que un reply vacio y silencioso.
-    if (response.stop_reason === 'tool_use' && rounds >= MAX_TOOL_ROUNDS) {
+    if (response.stop_reason === 'tool_use' && rounds >= maxToolRounds) {
         return {
             reply: 'Estoy procesando varias consultas para responderte bien y me tome mas tiempo del esperado. Intenta reformular tu pregunta de forma mas especifica.',
             updatedHistory: history.map(historyMessage => ({

@@ -48,14 +48,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ANTHROPIC_API_KEY=       # Motor principal del agente CoCo
 GEMINI_API_KEY=          # Legado / fallback + extracción de PDFs escaneados
 DEEPSEEK_API_KEY=        # Opcional. Tareas simples de solo texto; sin ella caen a Claude Haiku
+NORMA_MCP_KEY=           # Investigación jurídica de CoCo en Norma (jurisprudencia, dictámenes CGR, UF/UTM). Sin ella, solo BCN
 
 # Emails
 RESEND_API_KEY=          # Proveedor de emails transaccionales
 
-# WhatsApp (pendiente configuración)
-TWILIO_ACCOUNT_SID=
+# WhatsApp (ver docs/whatsapp-twilio-webhook.md)
+COCO_WHATSAPP_FROM=      # Número compartido con Norma (+56 9 9947 4056)
+COCO_TWILIO_AUTH_TOKEN=  # Token del Twilio de DataWise: valida la firma del reenvío de Norma
+TWILIO_ACCOUNT_SID=      # Vía directa (cuenta de un compañero, en desuso)
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=
+WHATSAPP_WEBHOOK_SECRET=
+TWILIO_WHATSAPP_PAYMENT_CONTENT_SID=   # Plantilla de aviso de cobro (fuera de la ventana de 24 h)
+TWILIO_WHATSAPP_NOTICE_CONTENT_SID=    # Plantilla de aviso general
 
 # Pagos (pendiente credenciales Haulmer/Tuu)
 HAULMER_ACCOUNT_ID=
@@ -225,7 +231,9 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 | Anthropic Claude | ✅ Funcionando | Motor del agente CoCo |
 | Resend (emails) | ✅ Clave disponible | Integración básica en `email.ts` |
 | Haulmer (pagos) | ⏸️ Pendiente | Real pero sin permisos API aún |
-| Twilio WhatsApp | ❌ No configurado | Placeholder en `.env.local` |
+| WhatsApp | ✅ Funcionando | Número real: **+56 9 9947 4056**, compartido con Norma y AgroSilvestre (Twilio de DataWise). El backend de Scrapp en el VPS lo recibe y reenvía a `/api/coco/whatsapp` con `X-CoCo-Shared-Number: 1` cuando la persona escribe "Hola CoCo"; "Norma" vuelve a Norma. Esa vía espera hasta 90 s. La vía directa (`TWILIO_*`, +1 555 397 5500, cuenta de un compañero) responde TwiML síncrono con corte de 15 s y está en desuso |
+| Norma (DataWise) | ✅ Funcionando | `research_chilean_law`: jurisprudencia, TC, dictámenes CGR, sanciones, UF/UTM. Llave MCP del espacio DataWise, revocable desde Norma |
+| VPS Hostinger | ✅ Funcionando | Scheduler de CoCo cada 15 min (log en `/var/log/coco-scheduler.log`) y cart-worker del supermercado. Ver `docs/hostinger-coco-scheduler.md` |
 | Capacitor (mobile) | 🟡 Estructura lista | Android e iOS listos, no desplegados |
 
 ---
@@ -298,6 +306,5 @@ npm run lint             # ESLint
 - [ ] **Búsqueda híbrida** — pgvector + Full Text Search en Supabase para Marketplace y Directorio (Anthropic embeddings)
 - [ ] **Email.ts** — Completar integración Resend: alerta gastos, confirmación amenities, bienvenida
 - [ ] **Haulmer** — Integrar pagos reales cuando se obtengan los permisos API
-- [ ] **Twilio** — Configurar WhatsApp notifications
 - [ ] **Empty states** — Mejorar UX de estados vacíos en módulos
 - [ ] **SEO** — Meta tags en todas las páginas del dashboard

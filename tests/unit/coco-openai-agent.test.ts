@@ -33,4 +33,17 @@ describe('CoCo OpenAI conversation adapter', () => {
             type: 'tool_use', id: 'call_123', name: 'create_claim', input: { description: 'Fuga de agua' },
         }));
     });
+
+    it('rechaza argumentos malformados antes de proponer una acción', async () => {
+        create.mockResolvedValueOnce({
+            choices: [{ finish_reason: 'tool_calls', message: { content: null, tool_calls: [{
+                id: 'call_bad', type: 'function', function: { name: 'create_claim', arguments: '{malformed' },
+            }] } }],
+        });
+        await expect(askOpenAi({
+            apiKey: 'test-key', model: 'gpt-5.4-mini', systemPrompt: 'Eres CoCo',
+            history: [{ role: 'user', content: 'Reporta una fuga' }],
+            tools: [{ name: 'create_claim', description: 'Crear reclamo', input_schema: { type: 'object', properties: {} } }],
+        })).rejects.toThrow('argumentos inválidos');
+    });
 });
