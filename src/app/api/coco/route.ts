@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
 import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
@@ -16,9 +17,10 @@ import { getSafeCoCoNavigation } from '@/lib/coco/navigation';
 import { resolveAiModel } from '@/lib/ai/modelRouter';
 import { runDeepSeekToolLoop } from '@/lib/ai/deepseek';
 import { fallbackToolsForRole, isFallbackReadOnlyTool, type AnthropicStyleTool } from '@/lib/ai/toolBridge';
-import { TOOL_DEFINITIONS, executeTool, isToolAllowedForRole } from '@/lib/coco/tools';
+import { TOOL_DEFINITIONS, describePendingAction, executeTool, isToolAllowedForRole } from '@/lib/coco/tools';
 import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/coco/platformMap';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -643,14 +645,39 @@ export async function POST(req: NextRequest) {
         const session = storedSession?.user_context.community_id === communityId ? storedSession : null;
         const recentConversation = session?.conversation.slice(-20) || [];
 
-        if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+        // Una lista concreta no necesita el modelo para convertirse en una accion
+        // real. Se conserva la misma confirmacion y ejecucion auditada de CoCo.
+        if (!resolutions && !imageAttachment && !legalDocument && !restorePendingActions(session).length
+            && isToolAllowedForRole('save_shopping_list', safeRole)) {
+            const shoppingList = shoppingListFromConversation(message, recentConversation);
+            if (shoppingList) {
+                const toolUseId = `shopping_${randomUUID()}`;
+                const input = { body: shoppingList };
+                const { title, summary } = describePendingAction('save_shopping_list', input);
+                const reply = 'Preparé tu lista de compras. Revísala y confirma si quieres guardarla en Supermercado.';
+                await saveDeliveredTurn(selectedThreadKey, {
+                    conversation: [
+                        ...(session?.conversation || []),
+                        { role: 'user', content: message },
+                        { role: 'assistant', content: [
+                            { type: 'text', text: reply },
+                            { type: 'tool_use', id: toolUseId, name: 'save_shopping_list', input },
+                        ] },
+                    ],
+                    user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
+                }, true);
+                return NextResponse.json({ reply, pendingActions: [{ toolUseId, name: 'save_shopping_list', input, title, summary }] } satisfies CoCoApiResponse);
+            }
+        }
+
+        if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !restorePendingActions(session).length) {
             return NextResponse.json(
                 { reply: 'No pude confirmar la acción porque el motor principal no está disponible en este momento. Intenta de nuevo en unos segundos.' },
                 { status: 503 }
             );
         }
 
-        if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+        if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !resolutions && !restorePendingActions(session).length) {
             if (imageAttachment || legalDocument) {
                 return NextResponse.json(
                     { reply: 'El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.' },

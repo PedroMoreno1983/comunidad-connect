@@ -148,6 +148,7 @@ describe('que deja de pedir confirmacion con la politica de fabrica', () => {
             'register_visitor',
             'remember_community_fact',
             'remember_preference',
+            'save_shopping_list', // lista propia, reversible y sin compra
             'vote_in_poll',
         ]);
     });
