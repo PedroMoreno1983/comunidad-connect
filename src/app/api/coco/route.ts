@@ -22,7 +22,7 @@ import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/c
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
-import { latestShoppingListId, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
+import { latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -259,9 +259,11 @@ async function resolveNavigation(input: {
     if (target === '/resident/supermercado' || target === '/resident/supermercado/comparador') {
         // Primero la lista de esta conversación (la que se guardó o comparó aquí);
         // la más reciente de la base solo si la conversación no nombra ninguna.
-        const listId = latestShoppingListId(input.conversation)
-            ?? (input.userId ? await recentSavedListId(supabaseAdmin, input.userId).catch(() => undefined) : undefined);
-        if (listId) target = supermarketListLink(listId);
+        const fromConversation = latestShoppingListLink(input.conversation);
+        const recentId = fromConversation || !input.userId
+            ? undefined
+            : await recentSavedListId(supabaseAdmin, input.userId).catch(() => undefined);
+        target = fromConversation ?? (recentId ? supermarketListLink(recentId) : target);
     }
     return { navigate: target, autoNavigate: Boolean(target) && isGoIntent(input.message) };
 }

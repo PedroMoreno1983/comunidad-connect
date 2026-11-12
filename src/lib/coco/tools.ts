@@ -1103,10 +1103,14 @@ const SYSTEM_TOOLS = new Set([
 // que lo rechaza.
 const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item', 'compare_shopping_list', 'save_shopping_list']);
 
+// Conserjería no abre /services (roleAccess.ts): pedir un servicio lo dejaría
+// sin forma de revisar ni gestionar la solicitud que creó.
+const NOT_FOR_CONCIERGE_TOOLS = new Set(['request_service']);
+
 export function isToolAllowedForRole(name: string, role?: string) {
     if (role === 'system') return SYSTEM_TOOLS.has(name);
     if (role === 'admin') return ADMIN_TOOLS.has(name) && !RESIDENT_ONLY_TOOLS.has(name);
-    if (role === 'concierge') return CONCIERGE_TOOLS.has(name) && !RESIDENT_ONLY_TOOLS.has(name);
+    if (role === 'concierge') return CONCIERGE_TOOLS.has(name) && !RESIDENT_ONLY_TOOLS.has(name) && !NOT_FOR_CONCIERGE_TOOLS.has(name);
     return RESIDENT_TOOLS.has(name);
 }
 

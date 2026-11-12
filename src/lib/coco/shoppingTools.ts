@@ -100,6 +100,23 @@ export async function recentSavedListId(admin: SupabaseClient, userId: string, m
     return data?.id ? String(data.id) : undefined;
 }
 
+/**
+ * Enlace completo a la última lista de la conversación, con la tienda si CoCo
+ * la recomendó al comparar: "llévame ahí" abre el mismo carro que se mostró.
+ */
+export function latestShoppingListLink(conversation: Array<{ role: string; content: unknown }>, turns = 8): string | undefined {
+    for (let index = conversation.length - 1, seen = 0; index >= 0 && seen < turns; index -= 1, seen += 1) {
+        const raw = typeof conversation[index].content === 'string'
+            ? conversation[index].content as string
+            : JSON.stringify(conversation[index].content);
+        const link = raw.match(/\/resident\/supermercado\?list=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:&store=([A-Za-z+%0-9]{2,30}))?/i);
+        if (link) return supermarketListLink(link[1], link[2] ? decodeURIComponent(link[2].replace(/\+/g, ' ')) : undefined);
+        const id = raw.match(/list_id\\?"\s*:\s*\\?"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+        if (id) return supermarketListLink(id[1]);
+    }
+    return undefined;
+}
+
 /** Lista recién guardada o comparada en la conversación, para "llévame ahí". */
 export function latestShoppingListId(conversation: Array<{ role: string; content: unknown }>, turns = 8): string | undefined {
     for (let index = conversation.length - 1, seen = 0; index >= 0 && seen < turns; index -= 1, seen += 1) {

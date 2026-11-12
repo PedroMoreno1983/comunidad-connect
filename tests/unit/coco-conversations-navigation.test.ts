@@ -132,3 +132,20 @@ describe('revisión: casos borde de navegación y acciones', () => {
         expect(result).toEqual({ error: expect.stringContaining('ya pasó') });
     });
 });
+
+describe('revisión: tienda recomendada y destinos por rol', () => {
+    it('conserva la tienda que recomendó la comparación', async () => {
+        const { latestShoppingListLink } = await import('@/lib/coco/shoppingTools');
+        const reply = `La mejor opción es Santa Isabel: [Abrir carro en Santa Isabel](/resident/supermercado?list=${LIST_ID}&store=Santa+Isabel)`;
+        expect(latestShoppingListLink([{ role: 'assistant', content: reply }])).toBe(`/resident/supermercado?list=${LIST_ID}&store=Santa+Isabel`);
+        expect(latestShoppingListLink([{ role: 'user', content: [{ type: 'tool_result', content: JSON.stringify({ list_id: LIST_ID }) }] }]))
+            .toBe(`/resident/supermercado?list=${LIST_ID}`);
+    });
+
+    it('conserjería no pide servicios: no puede abrir /services para gestionarlos', async () => {
+        const { isToolAllowedForRole } = await import('@/lib/coco/tools');
+        expect(isToolAllowedForRole('request_service', 'concierge')).toBe(false);
+        expect(isToolAllowedForRole('request_service', 'resident')).toBe(true);
+        expect(isToolAllowedForRole('request_service', 'admin')).toBe(true);
+    });
+});
