@@ -92,3 +92,15 @@ describe('supermercado con la lista cargada', () => {
         expect(latestShoppingListId([{ role: 'assistant', content: 'nada' }])).toBeUndefined();
     });
 });
+
+describe('acciones nuevas de CoCo por rol', () => {
+    it('publicar en el Marketplace es solo de residentes; pedir servicios, de todos', async () => {
+        const { isToolAllowedForRole } = await import('@/lib/coco/tools');
+        expect(isToolAllowedForRole('publish_marketplace_item', 'resident')).toBe(true);
+        expect(isToolAllowedForRole('publish_marketplace_item', 'admin')).toBe(false);
+        expect(isToolAllowedForRole('publish_marketplace_item', 'concierge')).toBe(false);
+        expect(isToolAllowedForRole('request_service', 'admin')).toBe(true);
+        expect(isToolAllowedForRole('compare_shopping_list', 'resident')).toBe(true);
+        expect(isToolAllowedForRole('vote_in_poll', 'admin')).toBe(false);
+    });
+});

@@ -12,9 +12,7 @@ export const runtime = 'nodejs';
 
 const THREAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Context = { params: Promise<{ id: string }> };
-
-export async function PATCH(request: NextRequest, context: Context) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
     const profile = await getAuthenticatedAgentProfile();
     if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await context.params;
@@ -33,7 +31,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_request: NextRequest, context: Context) {
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
     const profile = await getAuthenticatedAgentProfile();
     if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await context.params;

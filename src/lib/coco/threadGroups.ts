@@ -1,14 +1,9 @@
-import type { CoCoThread } from '@/lib/types';
+import type { CoCoThread, CoCoThreadGroup } from '@/lib/types';
 
 /**
  * Agrupa las conversaciones como lo hacen los chats conocidos: fijadas arriba y
  * el resto por antigüedad. Sin acceso a datos: se puede usar en cliente y tests.
  */
-
-export interface CoCoThreadGroup {
-    label: string;
-    threads: CoCoThread[];
-}
 
 const DAY = 86_400_000;
 

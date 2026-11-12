@@ -1095,10 +1095,15 @@ const SYSTEM_TOOLS = new Set([
     'list_services', 'create_claim', 'request_urgent_access_approval', 'dispatch_provider',
 ]);
 
+// Herramientas de residente que el personal no usa aunque herede el conjunto:
+// votar es de los copropietarios, y la administración modera el Marketplace,
+// no vende en él (política de roles del prompt).
+const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item']);
+
 export function isToolAllowedForRole(name: string, role?: string) {
     if (role === 'system') return SYSTEM_TOOLS.has(name);
-    if (role === 'admin') return ADMIN_TOOLS.has(name) && name !== 'vote_in_poll';
-    if (role === 'concierge') return CONCIERGE_TOOLS.has(name) && name !== 'vote_in_poll';
+    if (role === 'admin') return ADMIN_TOOLS.has(name) && !RESIDENT_ONLY_TOOLS.has(name);
+    if (role === 'concierge') return CONCIERGE_TOOLS.has(name) && !RESIDENT_ONLY_TOOLS.has(name);
     return RESIDENT_TOOLS.has(name);
 }
 

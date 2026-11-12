@@ -3097,6 +3097,23 @@ export interface CoCoThread {
     empty?: boolean;
 }
 
+/** Conversaciones agrupadas para la lista lateral (Fijadas, Hoy, Ayer…). */
+export interface CoCoThreadGroup {
+    label: string;
+    threads: CoCoThread[];
+}
+
+export interface CoCoThreadSidebarProps {
+    threads: CoCoThread[];
+    activeId: string | null;
+    disabled: boolean;
+    onSelect: (id: string) => void;
+    onCreate: () => void;
+    onRename: (id: string, title: string) => void;
+    onTogglePin: (id: string, pinned: boolean) => void;
+    onDelete: (id: string) => void;
+}
+
 // ─── Marketplace: resumen de la publicación recién creada ───────────────────
 
 export interface MarketplacePublicationSummary {

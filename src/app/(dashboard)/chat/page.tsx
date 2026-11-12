@@ -60,6 +60,16 @@ export default function CoCoChatPage() {
     const [threads, setThreads] = useState<CoCoThread[]>([]);
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
     const [threadsOpen, setThreadsOpen] = useState(false);
+    // Navegación pedida por la última respuesta. Se cancela si la persona cambia
+    // de conversación o sale del chat antes de que se cumpla.
+    const pendingNavigation = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const activeThreadRef = useRef<string | null>(null);
+    const cancelPendingNavigation = () => {
+        if (pendingNavigation.current) clearTimeout(pendingNavigation.current);
+        pendingNavigation.current = null;
+    };
+    useEffect(() => { activeThreadRef.current = activeThreadId; }, [activeThreadId]);
+    useEffect(() => cancelPendingNavigation, []);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(true);
@@ -105,6 +115,7 @@ export default function CoCoChatPage() {
 
     async function selectThread(id: string) {
         if (loading || historyLoading || id === activeThreadId) return;
+        cancelPendingNavigation();
         setHistoryLoading(true);
         setActiveThreadId(id);
         setThreadsOpen(false);
@@ -156,6 +167,7 @@ export default function CoCoChatPage() {
 
     async function createThread() {
         if (loading || historyLoading) return;
+        cancelPendingNavigation();
         setHistoryLoading(true);
         try {
             const response = await fetch('/api/coco/threads', { method: 'POST' });
@@ -208,7 +220,12 @@ export default function CoCoChatPage() {
 
         // La persona pidió ir ("llévame ahí"): se navega sin esperar el clic.
         if (safeNavigate && data.autoNavigate && !data.pendingActions?.length) {
-            setTimeout(() => router.push(safeNavigate), 900);
+            cancelPendingNavigation();
+            const originThread = activeThreadRef.current;
+            pendingNavigation.current = setTimeout(() => {
+                pendingNavigation.current = null;
+                if (activeThreadRef.current === originThread) router.push(safeNavigate);
+            }, 900);
         }
 
         void fetch('/api/coco/threads', { cache: 'no-store' })

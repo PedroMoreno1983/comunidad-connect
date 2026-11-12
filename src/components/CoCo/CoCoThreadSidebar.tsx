@@ -3,24 +3,13 @@
 import { useState } from "react";
 import { Check, MessageSquare, Pencil, Pin, PinOff, Plus, Search, Trash2, X } from "lucide-react";
 import { groupThreads } from "@/lib/coco/threadGroups";
-import type { CoCoThread } from "@/lib/types";
-
-interface Props {
-    threads: CoCoThread[];
-    activeId: string | null;
-    disabled: boolean;
-    onSelect: (id: string) => void;
-    onCreate: () => void;
-    onRename: (id: string, title: string) => void;
-    onTogglePin: (id: string, pinned: boolean) => void;
-    onDelete: (id: string) => void;
-}
+import type { CoCoThread, CoCoThreadSidebarProps } from "@/lib/types";
 
 /**
  * Lista de conversaciones de CoCo, como en los chats conocidos: fijadas arriba,
  * el resto por fecha, con buscador y acciones por conversación.
  */
-export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCreate, onRename, onTogglePin, onDelete }: Props) {
+export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCreate, onRename, onTogglePin, onDelete }: CoCoThreadSidebarProps) {
     const [query, setQuery] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draft, setDraft] = useState("");
