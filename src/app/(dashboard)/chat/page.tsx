@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus } from "lucide-react";
+import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus, PanelLeft } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import confetti from "canvas-confetti";
@@ -10,8 +10,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
-import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
+import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
+import { CoCoThreadSidebar } from "@/components/CoCo/CoCoThreadSidebar";
 import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, WhatsAppStartStatus } from "@/lib/types";
 
 function CoCoMarkdown({ text }: { text: string }) {
@@ -58,6 +59,7 @@ export default function CoCoChatPage() {
     const [msgs, setMsgs] = useState<CoCoChatMessage[]>([WELCOME_MESSAGE]);
     const [threads, setThreads] = useState<CoCoThread[]>([]);
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+    const [threadsOpen, setThreadsOpen] = useState(false);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(true);
@@ -105,6 +107,7 @@ export default function CoCoChatPage() {
         if (loading || historyLoading || id === activeThreadId) return;
         setHistoryLoading(true);
         setActiveThreadId(id);
+        setThreadsOpen(false);
         setMsgs([WELCOME_MESSAGE]);
         setInput('');
         setDocumentFile(null);
@@ -119,6 +122,38 @@ export default function CoCoChatPage() {
         } finally { setHistoryLoading(false); }
     }
 
+    async function renameThread(id: string, title: string) {
+        const previous = threads;
+        setThreads(current => current.map(thread => thread.id === id ? { ...thread, title } : thread));
+        const response = await fetch(`/api/coco/threads/${encodeURIComponent(id)}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }),
+        }).catch(() => null);
+        if (!response?.ok) setThreads(previous);
+    }
+
+    async function togglePinThread(id: string, pinned: boolean) {
+        const previous = threads;
+        setThreads(current => current.map(thread => thread.id === id ? { ...thread, pinned } : thread));
+        const response = await fetch(`/api/coco/threads/${encodeURIComponent(id)}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pinned }),
+        }).catch(() => null);
+        if (!response?.ok) setThreads(previous);
+    }
+
+    async function deleteThread(id: string) {
+        const thread = threads.find(item => item.id === id);
+        if (!window.confirm(`¿Borrar "${thread?.title || 'esta conversación'}"? No se puede deshacer.`)) return;
+        const response = await fetch(`/api/coco/threads/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
+        if (!response?.ok) return;
+        const remaining = threads.filter(item => item.id !== id);
+        setThreads(remaining);
+        if (id !== activeThreadId) return;
+        const next = remaining.find(item => !item.empty) || remaining[0];
+        setActiveThreadId(null);
+        if (next) await selectThread(next.id);
+        else await createThread();
+    }
+
     async function createThread() {
         if (loading || historyLoading) return;
         setHistoryLoading(true);
@@ -126,8 +161,10 @@ export default function CoCoChatPage() {
             const response = await fetch('/api/coco/threads', { method: 'POST' });
             const payload = await response.json() as { thread?: CoCoThread; error?: string };
             if (!response.ok || !payload.thread) throw new Error(payload.error || 'No pude crear la conversación.');
-            setThreads(current => [payload.thread!, ...current]);
-            setActiveThreadId(payload.thread.id);
+            const thread = payload.thread;
+            setThreads(current => current.some(item => item.id === thread.id) ? current : [thread, ...current]);
+            setActiveThreadId(thread.id);
+            setThreadsOpen(false);
             setMsgs([WELCOME_MESSAGE]);
             setInput('');
             setDocumentFile(null);
@@ -168,6 +205,11 @@ export default function CoCoChatPage() {
             action: data.action,
             pendingActions: data.pendingActions,
         }]);
+
+        // La persona pidió ir ("llévame ahí"): se navega sin esperar el clic.
+        if (safeNavigate && data.autoNavigate && !data.pendingActions?.length) {
+            setTimeout(() => router.push(safeNavigate), 900);
+        }
 
         void fetch('/api/coco/threads', { cache: 'no-store' })
             .then(response => response.ok ? response.json() as Promise<{ threads: CoCoThread[] }> : null)
@@ -314,19 +356,57 @@ export default function CoCoChatPage() {
     const chips = user?.role === 'admin' ? ADMIN_CHIPS : CHIPS;
 
     return (
-        <div 
-            className="w-full min-h-[calc(100vh-4rem)] flex flex-col justify-between"
+        <div
+            className="flex w-full min-h-[calc(100vh-4rem)]"
             style={{ backgroundColor: "#0E0B08", color: "#f3efe8" }}
         >
-            <div className="mx-auto flex w-full max-w-4xl items-center gap-3 overflow-x-auto border-b border-white/10 px-4 py-3 sm:px-6" aria-label="Conversaciones con CoCo">
-                <button type="button" onClick={createThread} disabled={loading || historyLoading} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-500/50 px-3 py-2 text-xs font-semibold text-brand-300 hover:bg-brand-500/10 disabled:opacity-40">
-                    <Plus className="h-3.5 w-3.5" /> Nueva conversación
+            <aside className="hidden w-72 shrink-0 border-r border-white/10 lg:block">
+                <div className="sticky top-0 h-[calc(100vh-4rem)]">
+                    <CoCoThreadSidebar
+                        threads={threads}
+                        activeId={activeThreadId}
+                        disabled={loading || historyLoading}
+                        onSelect={id => void selectThread(id)}
+                        onCreate={() => void createThread()}
+                        onRename={(id, title) => void renameThread(id, title)}
+                        onTogglePin={(id, pinned) => void togglePinThread(id, pinned)}
+                        onDelete={id => void deleteThread(id)}
+                    />
+                </div>
+            </aside>
+            {threadsOpen && (
+                <div className="fixed inset-0 z-50 flex lg:hidden" role="dialog" aria-modal="true" aria-label="Conversaciones">
+                    <div className="h-full w-80 max-w-[85vw] border-r border-white/10" style={{ backgroundColor: "#0E0B08" }}>
+                        <div className="flex justify-end px-3 pt-3">
+                            <button type="button" onClick={() => setThreadsOpen(false)} aria-label="Cerrar conversaciones" className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
+                        </div>
+                        <div className="h-[calc(100%-3.5rem)]">
+                            <CoCoThreadSidebar
+                        threads={threads}
+                        activeId={activeThreadId}
+                        disabled={loading || historyLoading}
+                        onSelect={id => void selectThread(id)}
+                        onCreate={() => void createThread()}
+                        onRename={(id, title) => void renameThread(id, title)}
+                        onTogglePin={(id, pinned) => void togglePinThread(id, pinned)}
+                        onDelete={id => void deleteThread(id)}
+                            />
+                        </div>
+                    </div>
+                    <button type="button" className="flex-1 bg-black/60" aria-label="Cerrar conversaciones" onClick={() => setThreadsOpen(false)} />
+                </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col justify-between">
+            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5 lg:hidden">
+                <button type="button" onClick={() => setThreadsOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10">
+                    <PanelLeft className="h-4 w-4" /> Conversaciones
                 </button>
-                {threads.map(thread => (
-                    <button key={thread.id} type="button" onClick={() => selectThread(thread.id)} disabled={loading || historyLoading} title={thread.title} aria-current={thread.id === activeThreadId ? 'page' : undefined} className={`max-w-52 shrink-0 truncate rounded-full px-3 py-2 text-xs disabled:opacity-40 ${thread.id === activeThreadId ? 'bg-white/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
-                        {thread.title}
-                    </button>
-                ))}
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-500">
+                    {threads.find(thread => thread.id === activeThreadId)?.title || ''}
+                </span>
+                <button type="button" onClick={() => void createThread()} disabled={loading || historyLoading} aria-label="Nueva conversación" className="rounded-lg p-2 text-brand-300 hover:bg-white/10 disabled:opacity-40">
+                    <Plus className="h-4 w-4" />
+                </button>
             </div>
             {/* Main Chat Flow Container */}
             <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:px-6 flex flex-col justify-between">
@@ -425,7 +505,7 @@ export default function CoCoChatPage() {
                                                     href={msg.nav}
                                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-400 hover:text-brand-300 transition-colors"
                                                 >
-                                                    Ir a la sección <ArrowRight className="h-3 w-3" />
+                                                    Ir a {COCO_NAV_MAP[msg.nav] || 'la sección'} <ArrowRight className="h-3 w-3" />
                                                 </a>
                                             </div>
                                         )}
@@ -539,6 +619,7 @@ export default function CoCoChatPage() {
                     </form>
                 </div>
 
+            </div>
             </div>
         </div>
     );

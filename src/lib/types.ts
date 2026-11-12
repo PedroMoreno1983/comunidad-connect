@@ -3070,6 +3070,8 @@ export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
 export interface CoCoApiResponse {
     reply?: string;
     navigate?: string;
+    /** La persona pidió ir ("llévame ahí"): el chat navega sin esperar el clic. */
+    autoNavigate?: boolean;
     action?: string;
     pendingActions?: CoCoPendingAction[];
 }
@@ -3089,6 +3091,10 @@ export interface CoCoThread {
     id: string;
     title: string;
     updatedAt: string;
+    /** Fijada por la persona: va arriba y no vence. */
+    pinned?: boolean;
+    /** Sin mensajes todavía. */
+    empty?: boolean;
 }
 
 // ─── Marketplace: resumen de la publicación recién creada ───────────────────

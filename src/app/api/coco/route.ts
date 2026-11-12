@@ -21,6 +21,8 @@ import { TOOL_DEFINITIONS, describePendingAction, executeTool, isToolAllowedForR
 import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/coco/platformMap';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
+import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
+import { latestShoppingListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -778,6 +780,9 @@ export async function POST(req: NextRequest) {
                 title:        session?.user_context.title && session.user_context.title !== 'Nueva conversación'
                     ? session.user_context.title
                     : message.slice(0, 56) || 'Nueva conversación',
+                // Lo que la persona decidió sobre la conversación sobrevive a cada mensaje.
+                pinned:       session?.user_context.pinned,
+                title_locked: session?.user_context.title_locked,
             },
         }, Boolean(pendingActions?.length));
 
@@ -800,9 +805,19 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // "Llévame ahí": si el modelo no escribió NAVEGAR, se deduce el destino
+        // del mensaje o de lo último que dijo CoCo, y el chat navega solo.
+        let safeNavigate = getSafeCoCoNavigation(navigate)
+            ?? inferNavigation(message, [reply, ...recentAssistantTexts(session?.conversation || [])], safeRole);
+        // Al supermercado después de guardar o comparar una lista: se abre con esa lista.
+        if (safeNavigate === '/resident/supermercado' || safeNavigate === '/resident/supermercado/comparador') {
+            const listId = latestShoppingListId([...(session?.conversation || []), ...updatedHistory]);
+            if (listId) safeNavigate = supermarketListLink(listId);
+        }
         const answer: CoCoApiResponse = {
             reply,
-            navigate: getSafeCoCoNavigation(navigate),
+            navigate: safeNavigate,
+            autoNavigate: Boolean(safeNavigate) && isGoIntent(message),
             action,
         };
         return NextResponse.json(answer, { status: 200 });

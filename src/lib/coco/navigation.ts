@@ -65,6 +65,16 @@ export const COCO_NAV_MAP: Record<string, string> = {
 
 const COCO_HIDDEN_NAV_ROUTES = new Set(["/showcase", "/marketing/reels"]);
 
+// Única ruta con parámetros permitida: el supermercado con una lista cargada.
+// El patrón es estricto (id uuid y nombre de tienda) porque el destino puede
+// venir de texto del modelo.
+const SUPERMARKET_LIST_QUERY = /^list=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(&store=[A-Za-z][A-Za-z+%0-9]{1,30})?$/i;
+
 export function getSafeCoCoNavigation(target?: string): string | undefined {
-    return target && target in COCO_NAV_MAP && !COCO_HIDDEN_NAV_ROUTES.has(target) ? target : undefined;
+    if (!target) return undefined;
+    const [path, query] = target.split('?', 2);
+    if (query !== undefined) {
+        return path === '/resident/supermercado' && SUPERMARKET_LIST_QUERY.test(query) ? target : undefined;
+    }
+    return target in COCO_NAV_MAP && !COCO_HIDDEN_NAV_ROUTES.has(target) ? target : undefined;
 }

@@ -7,6 +7,8 @@
 import { randomUUID } from 'node:crypto';
 import { MAX_SHOPPING_LIST_CHARS, parseGroupShoppingList as parsePersonalShoppingList } from '@/lib/supermarketGroupDomain';
 import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
+import { compareShoppingListForUser, supermarketListLink } from './shoppingTools';
+import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
@@ -130,8 +132,50 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'publish_marketplace_item',
+        description: 'Publica un artículo del usuario en el Marketplace de la comunidad (venta o permuta), sin fotos. Requiere confirmación. Las fotos se agregan después en Marketplace.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string', description: 'Qué vende, en pocas palabras.' },
+                description: { type: 'string', description: 'Estado, medidas, detalles.' },
+                price: { type: 'integer', description: 'Precio en pesos. 0 solo si es solo permuta.' },
+                category: { type: 'string', enum: ['electronics', 'furniture', 'clothing', 'other'] },
+                allow_swap: { type: 'boolean', description: 'Acepta permuta.' },
+                swap_details: { type: 'string', description: 'Qué aceptaría a cambio.' },
+            },
+            required: ['title', 'price'],
+        },
+    },
+    {
+        name: 'request_service',
+        description: 'Pide un servicio a un proveedor del directorio (gasfiter, electricista, cerrajero, aseo…). Usa antes list_services para obtener provider_id. Requiere confirmación; el proveedor acepta o propone otro horario.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                provider_id: { type: 'string', description: 'ID tal como lo devolvió list_services.' },
+                preferred_date: { type: 'string', description: 'Fecha AAAA-MM-DD.' },
+                preferred_time: { type: 'string', description: 'Hora HH:MM.' },
+                description: { type: 'string', description: 'Qué necesita, con el detalle que dio la persona.' },
+            },
+            required: ['provider_id', 'preferred_date', 'preferred_time', 'description'],
+        },
+    },
+    {
+        name: 'compare_shopping_list',
+        description: 'Compara la lista de supermercado del usuario en todas las tiendas (Jumbo, Lider, Santa Isabel, Unimarc, aCuenta) con precios del catálogo: total por tienda, qué falta y la mejor opción, más el enlace que abre esa lista lista para cargar el carro. Úsala cuando pida comprar, comparar o "hacer la compra". Sin list_id ni body usa su última lista guardada. Solo lectura.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                list_id: { type: 'string', description: 'ID de una lista guardada (lo devuelve save_shopping_list).' },
+                body: { type: 'string', description: 'Productos y cantidades, si aún no la guardó.' },
+            },
+            required: [],
+        },
+    },
+    {
         name: 'save_shopping_list',
-        description: 'Guarda la lista personal de supermercado del usuario autenticado en Convive. No compra productos ni cobra dinero. Requiere confirmación.',
+        description: 'Guarda la lista personal de supermercado del usuario autenticado en Convive. No compra productos ni cobra dinero. Requiere confirmación. Después de guardarla, ofrece compararla con compare_shopping_list.',
         input_schema: {
             type: 'object' as const,
             properties: {
@@ -958,6 +1002,8 @@ export const MUTATING_TOOLS = new Set<string>([
     'book_parking',
     // Genera cargos mensuales en gastos comunes: el residente confirma antes.
     'rent_storage',
+    'publish_marketplace_item',
+    'request_service',
     'propose_community_deal',
     'join_community_deal',
     'add_community_deal_quote',
@@ -1016,6 +1062,7 @@ const RESIDENT_TOOLS = new Set([
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
     'get_my_parking', 'search_parking', 'book_parking',
     'get_my_storage', 'search_storage', 'rent_storage',
+    'compare_shopping_list', 'publish_marketplace_item', 'request_service',
     'list_community_deals', 'suggest_community_deals', 'propose_community_deal', 'join_community_deal',
 ]);
 
@@ -1091,6 +1138,16 @@ export function describePendingAction(name: string, input: Record<string, unknow
             };
         case 'add_community_deal_quote':
             return { title: 'Registrar cotización', summary: `${str('provider_name')}${input.price ? ` · ${input.price}` : ''}. ${str('offer')}`.trim() };
+        case 'publish_marketplace_item':
+            return {
+                title: 'Publicar en el Marketplace',
+                summary: `${str('title')} · ${Number(input.price) ? `${Number(input.price).toLocaleString('es-CL')}` : 'permuta'}${str('description') ? `. ${str('description')}` : ''}`,
+            };
+        case 'request_service':
+            return {
+                title: 'Pedir servicio',
+                summary: `${str('description')} · ${str('preferred_date')} a las ${str('preferred_time')}. El proveedor confirma el horario.`,
+            };
         case 'rent_storage': {
             const meses = Number(input.months) || 0;
             return {
@@ -1298,6 +1355,23 @@ export async function executeTool(
             if (blocked) return blocked;
         }
         switch (name) {
+            case 'publish_marketplace_item': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificarte.');
+                return publishMarketplaceItemForUser(supabaseAdmin, communityId, userCtx.user_id, input as Record<string, unknown>);
+            }
+
+            case 'request_service': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificarte.');
+                return requestServiceForUser(supabaseAdmin, communityId, userCtx.user_id, userCtx.role || 'resident', input as Record<string, unknown>);
+            }
+
+            case 'compare_shopping_list': {
+                if (!userCtx.user_id) return forbidden('No pude identificarte.');
+                return compareShoppingListForUser(supabaseAdmin, userCtx.user_id, { list_id: input.list_id, body: input.body });
+            }
+
             case 'save_shopping_list': {
                 if (!userCtx.user_id) return forbidden('No pude identificarte para guardar la lista.');
                 const body = typeof input.body === 'string' ? input.body.trim().slice(0, MAX_SHOPPING_LIST_CHARS) : '';
@@ -1318,7 +1392,13 @@ export async function executeTool(
                     .insert({ user_id: userCtx.user_id, title: savedListTitle(body), body, body_key: key, store })
                     .select('id').single();
                 if (error || !data) return { error: 'No pude guardar la lista. Intenta nuevamente.' };
-                return { success: true, list_id: data.id, item_count: items.length, message: `Guardé ${items.length} productos en tu lista personal. Puedes abrirla en Supermercado para comparar precios y preparar el carro.` };
+                return {
+                    success: true,
+                    list_id: data.id,
+                    item_count: items.length,
+                    link: supermarketListLink(String(data.id)),
+                    message: `Guardé ${items.length} productos en tu lista personal. Puedo compararla en todas las tiendas ahora mismo, o puedes abrirla en Supermercado.`,
+                };
             }
 
             // ── RESIDENTE / FINANZAS ─────────────────────────────────────────

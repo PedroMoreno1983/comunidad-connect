@@ -36,6 +36,11 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     get_my_parking: 'read',
     search_parking: 'read',
     get_my_storage: 'read',
+    compare_shopping_list: 'read',
+    // Publicar y pedir un servicio quedan a nombre de la persona y otros los ven
+    // (vecinos, el proveedor): se confirman siempre, también en el Agent Center.
+    publish_marketplace_item: 'write_high',
+    request_service: 'write_high',
     list_community_deals: 'read',
     suggest_community_deals: 'read',
     search_storage: 'read',
