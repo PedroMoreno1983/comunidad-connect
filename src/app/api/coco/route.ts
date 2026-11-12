@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
 import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
@@ -16,8 +17,10 @@ import { getSafeCoCoNavigation } from '@/lib/coco/navigation';
 import { resolveAiModel } from '@/lib/ai/modelRouter';
 import { runDeepSeekToolLoop } from '@/lib/ai/deepseek';
 import { fallbackToolsForRole, isFallbackReadOnlyTool, type AnthropicStyleTool } from '@/lib/ai/toolBridge';
-import { TOOL_DEFINITIONS, executeTool, isToolAllowedForRole } from '@/lib/coco/tools';
+import { TOOL_DEFINITIONS, describePendingAction, executeTool, isToolAllowedForRole } from '@/lib/coco/tools';
 import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/coco/platformMap';
+import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -96,14 +99,20 @@ interface CoCoFallbackContext {
     currentPage: string;
     userId?: string;
     communityId?: string;
+    recentConversation?: CoCoChatMessage[];
 }
 
 function buildFallbackPrompt(message: string, context: CoCoFallbackContext): string {
+    const history = (context.recentConversation || []).slice(-8)
+        .map(turn => `${turn.role === 'assistant' ? 'CoCo' : 'Usuario'}: ${turn.text}`)
+        .join('\n');
     return `${COCO_SYSTEM_PROMPT}
 
 ${buildPlatformContext(context.currentPage, context.role)}
 
 Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}
+
+Conversación reciente (continúa sin volver a saludar):\n${history}
 
 Usuario dice: ${message}`;
 }
@@ -173,7 +182,7 @@ async function askDeepSeekFallback(message: string, context: CoCoFallbackContext
     const result = await runDeepSeekToolLoop({
         model: routed.model,
         system: `${COCO_SYSTEM_PROMPT}\n\n${buildPlatformContext(context.currentPage, context.role)}`,
-        user: `Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}\n\nUsuario dice: ${message}`,
+        user: `Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}\n\nConversación reciente (continúa sin volver a saludar):\n${(context.recentConversation || []).slice(-8).map(turn => `${turn.role === 'assistant' ? 'CoCo' : 'Usuario'}: ${turn.text}`).join('\n')}\n\nUsuario dice: ${message}`,
         tools,
         executeToolCall: (name, args) => {
             // Segunda barrera, además del filtro de arriba: si algún día alguien
@@ -348,16 +357,27 @@ async function askGeminiFallback(
     throw new Error(`All Gemini configs failed: ${failures.join(' | ')}`);
 }
 
-function buildLocalCoCoFallback(
+export function buildLocalCoCoFallback(
     message: string,
     context: {
         name: string;
         role: string;
         currentPage: string;
+        recentConversation?: CoCoChatMessage[];
     }
 ) {
     const text = message.toLowerCase();
     const page = context.currentPage || '';
+    const lastAssistant = [...(context.recentConversation || [])].reverse().find(turn => turn.role === 'assistant')?.text || '';
+    const groceryContext = /supermercado|lista de compras|arroz|carrito/i.test(lastAssistant) || /supermercado|lista de compras/i.test(page);
+    const groceryItems = groceryContext && /[,;\n]/.test(message) ? parseGroupShoppingList(message, true) : [];
+    if (groceryItems.length >= 2) {
+        const names = groceryItems.map(item => item.term).join(', ');
+        return {
+            reply: `Anoté tu lista: ${names}. ¿Quieres que la guarde en tu supermercado? Si quieres comparar precios, dime también las cantidades y la tienda que prefieres.`,
+            action: 'SHOPPING_LIST_DRAFT',
+        };
+    }
 
     // Admin: armar/emitir el gasto común del mes (egresos + prorrateo). Va PRIMERO
     // para que no lo intercepte el bloque legal ni, peor, la regla de Abasto
@@ -618,34 +638,68 @@ export async function POST(req: NextRequest) {
         const communityId = profile.community_id || '';
         const selectedThreadKey = threadKey(userId, body.threadId);
         if (!selectedThreadKey) return NextResponse.json({ reply: 'Conversación inválida.' }, { status: 400 });
-
-        if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-            return NextResponse.json(
-                { reply: 'No pude confirmar la acción porque el motor principal no está disponible en este momento. Intenta de nuevo en unos segundos.' },
-                { status: 503 }
-            );
-        }
-
-        if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-            if (imageAttachment || legalDocument) {
-                return NextResponse.json(
-                    { reply: 'El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.' },
-                    { status: 200 }
-                );
-            }
-            const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
-            const fallback = await runCoCoFallback(message, fallbackContext);
-
-            return NextResponse.json({ ...fallback }, { status: 200 });
-        }
-
-        // ── 3. Cargar sesión ─────────────────────────────────────────────────
         const storedSession = await getSession(selectedThreadKey);
         if (body.threadId && body.threadId !== 'legacy' && !storedSession) {
             return NextResponse.json({ reply: 'La conversación ya no está disponible. Abre una nueva.' }, { status: 404 });
         }
         const session = storedSession?.user_context.community_id === communityId ? storedSession : null;
         const recentConversation = session?.conversation.slice(-20) || [];
+
+        // Una lista concreta no necesita el modelo para convertirse en una accion
+        // real. Se conserva la misma confirmacion y ejecucion auditada de CoCo.
+        if (!resolutions && !imageAttachment && !legalDocument && !restorePendingActions(session).length
+            && isToolAllowedForRole('save_shopping_list', safeRole)) {
+            const shoppingList = shoppingListFromConversation(message, recentConversation);
+            if (shoppingList) {
+                const toolUseId = `shopping_${randomUUID()}`;
+                const input = { body: shoppingList };
+                const { title, summary } = describePendingAction('save_shopping_list', input);
+                const reply = 'Preparé tu lista de compras. Revísala y confirma si quieres guardarla en Supermercado.';
+                await saveDeliveredTurn(selectedThreadKey, {
+                    conversation: [
+                        ...(session?.conversation || []),
+                        { role: 'user', content: message },
+                        { role: 'assistant', content: [
+                            { type: 'text', text: reply },
+                            { type: 'tool_use', id: toolUseId, name: 'save_shopping_list', input },
+                        ] },
+                    ],
+                    user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
+                }, true);
+                return NextResponse.json({ reply, pendingActions: [{ toolUseId, name: 'save_shopping_list', input, title, summary }] } satisfies CoCoApiResponse);
+            }
+        }
+
+        if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !restorePendingActions(session).length) {
+            return NextResponse.json(
+                { reply: 'No pude confirmar la acción porque el motor principal no está disponible en este momento. Intenta de nuevo en unos segundos.' },
+                { status: 503 }
+            );
+        }
+
+        if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !resolutions && !restorePendingActions(session).length) {
+            if (imageAttachment || legalDocument) {
+                return NextResponse.json(
+                    { reply: 'El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.' },
+                    { status: 200 }
+                );
+            }
+            const fallbackContext = {
+                name: userName, role: safeRole, currentPage, userId, communityId,
+                recentConversation: recentConversation.flatMap(turn => typeof turn.content === 'string'
+                    ? [{ id: '', role: turn.role, text: turn.content }] : []),
+            };
+            const fallback = await runCoCoFallback(message, fallbackContext);
+
+            await saveDeliveredTurn(selectedThreadKey, {
+                conversation: [...(session?.conversation || []), { role: 'user', content: message }, { role: 'assistant', content: fallback.reply }],
+                user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
+            }, false);
+
+            return NextResponse.json({ ...fallback }, { status: 200 });
+        }
+
+        // ── 3. Cargar sesión ─────────────────────────────────────────────────
         const archivedConversation = session?.conversation.slice(0, -20) || [];
         const agentSession = session ? { ...session, conversation: recentConversation } : null;
 
@@ -683,14 +737,26 @@ export async function POST(req: NextRequest) {
             }
 
             console.error('[CoCo Anthropic Error]', agentError);
+            if (resolutions) {
+                return NextResponse.json({ reply: 'No pude confirmar la acción porque el motor de CoCo no está disponible. La acción sigue pendiente; inténtalo más tarde.' }, { status: 503 });
+            }
             if (imageAttachment) {
                 return NextResponse.json(
                     { reply: 'No pude analizar la imagen con el motor principal en este momento. Descríbeme lo que aparece y te ayudo por texto.' },
                     { status: 200 }
                 );
             }
-            const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
+            const fallbackContext = {
+                name: userName, role: safeRole, currentPage, userId, communityId,
+                recentConversation: recentConversation.flatMap(turn => typeof turn.content === 'string'
+                    ? [{ id: '', role: turn.role, text: turn.content }] : []),
+            };
             const fallback = await runCoCoFallback(message, fallbackContext);
+
+            await saveDeliveredTurn(selectedThreadKey, {
+                conversation: [...(session?.conversation || []), { role: 'user', content: message }, { role: 'assistant', content: fallback.reply }],
+                user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
+            }, false);
 
             return NextResponse.json({ ...fallback }, { status: 200 });
         }
@@ -703,6 +769,7 @@ export async function POST(req: NextRequest) {
         await saveDeliveredTurn(selectedThreadKey, {
             conversation: [...archivedConversation, ...updatedHistory],
             user_context: {
+                user_id:      userId,
                 role:         safeRole,
                 unit_id:      unitId,
                 community_id: communityId,

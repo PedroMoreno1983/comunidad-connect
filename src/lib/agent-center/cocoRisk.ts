@@ -70,6 +70,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     register_package: 'write_low',
     create_supermarket_group_order: 'write_low',
     join_supermarket_group_order: 'write_low',
+    save_shopping_list: 'write_low', // lista personal, sin compra ni cargo
     // No esta en MUTATING_TOOLS de CoCo, pero escribe memoria del usuario.
     remember_preference: 'write_low',
     // Retomar puede continuar un flujo que escribe. La confirmación del chat sigue.
