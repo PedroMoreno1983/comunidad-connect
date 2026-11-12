@@ -161,13 +161,22 @@ export default function CoCoChatPage() {
     async function deleteThread(id: string) {
         const thread = threads.find(item => item.id === id);
         if (!window.confirm(`¿Borrar "${thread?.title || 'esta conversación'}"? No se puede deshacer.`)) return;
+        const wasActive = id === activeThreadId;
+        // Sin conversación activa no se puede enviar: así nadie escribe en la que
+        // se está borrando (un envío en paralelo la volvería a crear).
+        if (wasActive) {
+            cancelPendingNavigation();
+            setActiveThreadId(null);
+        }
         const response = await fetch(`/api/coco/threads/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
-        if (!response?.ok) return;
+        if (!response?.ok) {
+            if (wasActive) setActiveThreadId(id);
+            return;
+        }
         const remaining = threads.filter(item => item.id !== id);
         setThreads(remaining);
-        if (id !== activeThreadId) return;
+        if (!wasActive) return;
         const next = remaining.find(item => !item.empty) || remaining[0];
-        setActiveThreadId(null);
         if (next) await selectThread(next.id);
         else await createThread();
     }

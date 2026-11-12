@@ -127,14 +127,15 @@ export async function listWebThreads(userId: string, communityId: string) {
     // Solo el primer turno: alcanza para el título y para saber si está vacía,
     // sin traer el historial completo de cada conversación.
     const { data, error } = await supabase.from('coco_sessions')
-        .select('user_key,user_context,last_activity,first_turn:conversation->0')
+        .select('user_key,user_context,last_activity,expires_at,first_turn:conversation->0')
         .like('user_key', `web:${userId}:%`)
         .gt('expires_at', new Date().toISOString())
         .order('last_activity', { ascending: false })
         .limit(MAX_WEB_THREADS);
     if (error) throw error;
-    return (data || [])
-        .filter(row => row.user_context?.community_id === communityId)
+    const rows = (data || []).filter(row => row.user_context?.community_id === communityId);
+    await extendLegacyRetention(rows);
+    return rows
         .map(row => {
             const firstTurn = (row as { first_turn?: unknown }).first_turn ?? null;
             return {
@@ -145,6 +146,27 @@ export async function listWebThreads(userId: string, communityId: string) {
                 empty: firstTurn === null,
             };
         });
+}
+
+/**
+ * Las conversaciones guardadas antes del cambio a un año seguían con su
+ * vencimiento de 30 días hasta que se escribiera en ellas. Al listarlas se
+ * corrige una sola vez: después ya tienen el plazo nuevo y no se vuelven a tocar.
+ */
+async function extendLegacyRetention(rows: Array<{ user_key: unknown; user_context: SessionData['user_context'] | null; last_activity: unknown; expires_at: unknown }>) {
+    const stale = rows.flatMap(row => {
+        const key = String(row.user_key);
+        const base = Date.parse(String(row.last_activity || ''));
+        const current = Date.parse(String(row.expires_at || ''));
+        if (!Number.isFinite(base) || !Number.isFinite(current)) return [];
+        const target = base + webRetentionDays(key, row.user_context?.pinned) * 86_400_000;
+        // Holgura de un día: no reescribir por diferencias de segundos.
+        return current < target - 86_400_000 ? [{ key, expires_at: new Date(target).toISOString() }] : [];
+    });
+    if (!stale.length) return;
+    await Promise.all(stale.map(item => supabase.from('coco_sessions')
+        .update({ expires_at: item.expires_at }).eq('user_key', item.key)
+        .then(({ error }) => { if (error) console.error('[coco] no se pudo extender la conversación', error.message); })));
 }
 
 /**
