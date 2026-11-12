@@ -5,6 +5,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { MAX_SHOPPING_LIST_CHARS, parseGroupShoppingList as parsePersonalShoppingList } from '@/lib/supermarketGroupDomain';
+import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
 import { describeAlicuotaInput } from './alicuotaInput';
@@ -124,6 +126,18 @@ export const TOOL_DEFINITIONS = [
                 query: { type: 'string', description: 'Término de búsqueda (ej: bicicleta, silla, iphone)' },
             },
             required: ['query'],
+        },
+    },
+    {
+        name: 'save_shopping_list',
+        description: 'Guarda la lista personal de supermercado del usuario autenticado en Convive. No compra productos ni cobra dinero. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                body: { type: 'string', description: 'Productos y cantidades si se conocen, separados por comas o líneas.' },
+                store: { type: 'string', description: 'Supermercado elegido, opcional.' },
+            },
+            required: ['body'],
         },
     },
 
@@ -936,6 +950,7 @@ export const TOOL_DEFINITIONS = [
 // ejecutarse (ver askCoCo en agent.ts). Las que no están en este set son de
 // solo lectura y se ejecutan de inmediato.
 export const MUTATING_TOOLS = new Set<string>([
+    'save_shopping_list',
     'create_claim',
     'create_reservation',
     // Compromete dinero y un cupo del edificio: el residente confirma antes.
@@ -984,6 +999,7 @@ export const MUTATING_TOOLS = new Set<string>([
 ]);
 
 const RESIDENT_TOOLS = new Set([
+    'save_shopping_list',
     'get_resident_info', 'get_payment_status', 'get_water_consumption', 'list_services',
     'search_marketplace', 'create_claim', 'get_claim_status', 'list_my_claims',
     'check_availability', 'create_reservation', 'create_social_post', 'list_active_polls',
@@ -1129,6 +1145,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Proponer proveedor de emergencia', summary: str('details') || 'Identificar un proveedor y notificar al equipo para que confirme el despacho.' };
         case 'create_supermarket_group_order':
             return { title: 'Crear compra grupal', summary: `${str('title')}. Lista: ${str('shopping_list')}.` };
+        case 'save_shopping_list':
+            return { title: 'Guardar lista de compras', summary: str('body') || 'Guardar una lista personal en Convive.' };
         case 'join_supermarket_group_order':
             return { title: 'Sumarme a la compra grupal', summary: str('shopping_list') || 'Agregar mis productos y cantidades.' };
         case 'lock_supermarket_group_order':
@@ -1279,6 +1297,28 @@ export async function executeTool(
             if (blocked) return blocked;
         }
         switch (name) {
+            case 'save_shopping_list': {
+                if (!userCtx.user_id) return forbidden('No pude identificarte para guardar la lista.');
+                const body = typeof input.body === 'string' ? input.body.trim().slice(0, MAX_SHOPPING_LIST_CHARS) : '';
+                const items = parsePersonalShoppingList(body, true);
+                if (!items.length) return { error: 'La lista no contiene productos reconocibles.' };
+                const key = savedListKey(body);
+                const existing = await supabaseAdmin.from('supermarket_saved_lists')
+                    .select('id').eq('user_id', userCtx.user_id).eq('body_key', key).maybeSingle();
+                if (existing.error) return { error: 'No pude comprobar tus listas guardadas.' };
+                if (existing.data) return { success: true, list_id: existing.data.id, item_count: items.length, message: 'Esta lista ya estaba guardada en tu supermercado.' };
+                const { count, error: countError } = await supabaseAdmin.from('supermarket_saved_lists')
+                    .select('id', { count: 'exact', head: true }).eq('user_id', userCtx.user_id);
+                if (countError) return { error: 'No pude comprobar el límite de listas.' };
+                if ((count ?? 0) >= 30) return { error: 'Ya tienes 30 listas guardadas. Elimina una desde Supermercado para guardar otra.' };
+                const store = typeof input.store === 'string' && ['Jumbo', 'Santa Isabel', 'Líder', 'Unimarc', 'aCuenta'].includes(input.store)
+                    ? input.store : null;
+                const { data, error } = await supabaseAdmin.from('supermarket_saved_lists')
+                    .insert({ user_id: userCtx.user_id, title: savedListTitle(body), body, body_key: key, store })
+                    .select('id').single();
+                if (error || !data) return { error: 'No pude guardar la lista. Intenta nuevamente.' };
+                return { success: true, list_id: data.id, item_count: items.length, message: `Guardé ${items.length} productos en tu lista personal. Puedes abrirla en Supermercado para comparar precios y preparar el carro.` };
+            }
 
             // ── RESIDENTE / FINANZAS ─────────────────────────────────────────
             case 'get_resident_info': {

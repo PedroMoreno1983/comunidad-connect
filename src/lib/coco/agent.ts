@@ -243,6 +243,8 @@ function requiredMutationTool(message: string, role?: string) {
     if (role === 'system') return undefined;
     if (/\b(c[oó]mo|como)\b/.test(text)) return undefined;
 
+    if (/\b(guarda|guardar|gu[aá]rdame|salva|salvar)\b.*\b(lista|compras|supermercado)\b/.test(text)) return 'save_shopping_list';
+
     if (/\b(recu[eé]rdame|recuerdame|av[ií]same|avisame)\b/.test(text)) return 'create_reminder';
     if (role === 'admin' && /\b(avisa|avisar|notifica|notificar)\b/.test(text) && /\b(cobros pendientes|morosos|d[ií]a\s+\d{1,2})\b/.test(text)) return 'create_reminder';
     if (role === 'admin' && /\b(guarda|anota|recuerda que)\b/.test(text) && /\b(reglamento|proveedor|acuerdo)\b/.test(text)) return 'remember_community_fact';
@@ -456,11 +458,11 @@ export async function askCoCo(
         stop_reason: Anthropic.Message['stop_reason'];
         usage: { input_tokens: number; output_tokens: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null };
     };
-    const useOpenAi = Boolean(process.env.OPENAI_API_KEY);
-    const provider = useOpenAi ? 'openai' : 'anthropic';
-    const model = useOpenAi ? OPENAI_MODEL : MODEL;
+    let useOpenAi = Boolean(process.env.OPENAI_API_KEY);
 
     do {
+        let provider = useOpenAi ? 'openai' : 'anthropic';
+        let model = useOpenAi ? OPENAI_MODEL : MODEL;
         const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
         const estimatedCompletionTokens = 2048;
 
@@ -477,6 +479,7 @@ export async function askCoCo(
         });
 
         const startedAt = Date.now();
+        try {
         response = useOpenAi ? await askOpenAi({
             apiKey: process.env.OPENAI_API_KEY!,
             model,
@@ -493,6 +496,27 @@ export async function askCoCo(
                 .filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
             ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
         });
+        } catch (error) {
+            const status = error && typeof error === 'object' && 'status' in error ? error.status : null;
+            if (useOpenAi && status === 401 && process.env.ANTHROPIC_API_KEY) {
+                console.warn('[CoCo] OpenAI rechazó su clave; se continúa con Anthropic en esta conversación.');
+                useOpenAi = false;
+                provider = 'anthropic';
+                model = MODEL;
+                await enforceAiBudget({
+                    communityId: userCtx.community_id, userId: userCtx.user_id, role: userCtx.role,
+                    module: 'coco.chat', provider, model, actionType: 'chat',
+                    estimatedPromptTokens, estimatedCompletionTokens,
+                });
+                response = await anthropic.messages.create({
+                    model: MODEL, max_tokens: 2048, system: systemBlocks, messages: history,
+                    tools: TOOL_DEFINITIONS.filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
+                    ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
+                });
+            } else {
+                throw error;
+            }
+        }
 
         const usage = response.usage;
         // input_tokens es SOLO el remanente no cacheado. El input real es la suma de
