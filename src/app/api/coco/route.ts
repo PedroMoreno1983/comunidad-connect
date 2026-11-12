@@ -257,8 +257,10 @@ async function resolveNavigation(input: {
 }): Promise<{ navigate?: string; autoNavigate: boolean }> {
     let target = getSafeCoCoNavigation(input.navigate) ?? inferNavigation(input.message, input.contextTexts, input.role);
     if (target === '/resident/supermercado' || target === '/resident/supermercado/comparador') {
-        const listId = (input.userId ? await recentSavedListId(supabaseAdmin, input.userId).catch(() => undefined) : undefined)
-            ?? latestShoppingListId(input.conversation);
+        // Primero la lista de esta conversación (la que se guardó o comparó aquí);
+        // la más reciente de la base solo si la conversación no nombra ninguna.
+        const listId = latestShoppingListId(input.conversation)
+            ?? (input.userId ? await recentSavedListId(supabaseAdmin, input.userId).catch(() => undefined) : undefined);
         if (listId) target = supermarketListLink(listId);
     }
     return { navigate: target, autoNavigate: Boolean(target) && isGoIntent(input.message) };
@@ -842,8 +844,12 @@ export async function POST(req: NextRequest) {
 
         // "Llévame ahí": si el modelo no escribió NAVEGAR, se deduce el destino
         // del mensaje o de lo último que dijo CoCo, y el chat navega solo.
+        // Al aprobar una acción el pedido llega sin texto: la intención de ir
+        // ("guárdala y llévame ahí") está en el último mensaje de la persona.
+        const intentMessage = message || [...(session?.conversation || [])].reverse()
+            .find(turn => turn.role === 'user' && typeof turn.content === 'string')?.content as string || '';
         const navigation = await resolveNavigation({
-            message, navigate, role: safeRole, userId,
+            message: intentMessage, navigate, role: safeRole, userId,
             contextTexts: [reply, ...recentAssistantTexts(session?.conversation || [])],
             conversation: [...(session?.conversation || []), ...updatedHistory],
         });

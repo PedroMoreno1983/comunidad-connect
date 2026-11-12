@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { validServiceSchedule } from '@/lib/services/requestLifecycle';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
 
 /**
  * Acciones de residente que hasta ahora solo se podían hacer en pantalla:
@@ -68,8 +69,9 @@ export async function requestServiceForUser(
     if (!UUID.test(providerId)) return { error: 'Necesito el provider_id que devuelve list_services.' };
     if (!description) return { error: 'Describe qué necesitas que haga el proveedor.' };
     if (!validServiceSchedule(preferredDate, preferredTime)) {
-        return { error: 'La fecha debe ser AAAA-MM-DD desde hoy y la hora HH:MM.' };
+        return { error: 'La fecha debe ser AAAA-MM-DD y la hora HH:MM.' };
     }
+    if (preferredDate < chileTodayISO()) return { error: 'Esa fecha ya pasó: elige hoy o un día futuro.' };
 
     const { data: provider } = await admin.from('service_providers').select('id,name,community_id').eq('id', providerId).maybeSingle();
     if (!provider) return { error: 'No encontré ese proveedor.' };

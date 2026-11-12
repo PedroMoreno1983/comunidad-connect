@@ -13,7 +13,7 @@ export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCre
     const [query, setQuery] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draft, setDraft] = useState("");
-    const groups = groupThreads(threads.filter(thread => !thread.empty || thread.id === activeId), query);
+    const groups = groupThreads(threads.filter(thread => !thread.empty || thread.pinned || thread.id === activeId), query);
 
     const startRename = (thread: CoCoThread) => {
         setEditingId(thread.id);

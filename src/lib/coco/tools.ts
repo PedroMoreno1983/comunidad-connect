@@ -1389,7 +1389,13 @@ export async function executeTool(
                 const existing = await supabaseAdmin.from('supermarket_saved_lists')
                     .select('id').eq('user_id', userCtx.user_id).eq('body_key', key).maybeSingle();
                 if (existing.error) return { error: 'No pude comprobar tus listas guardadas.' };
-                if (existing.data) return { success: true, list_id: existing.data.id, item_count: items.length, message: 'Esta lista ya estaba guardada en tu supermercado.' };
+                if (existing.data) return {
+                    success: true,
+                    list_id: existing.data.id,
+                    item_count: items.length,
+                    link: supermarketListLink(String(existing.data.id)),
+                    message: `Esta lista ya estaba guardada en tu supermercado: [Abrir lista](${supermarketListLink(String(existing.data.id))}).`,
+                };
                 const { count, error: countError } = await supabaseAdmin.from('supermarket_saved_lists')
                     .select('id', { count: 'exact', head: true }).eq('user_id', userCtx.user_id);
                 if (countError) return { error: 'No pude comprobar el límite de listas.' };
@@ -1405,7 +1411,9 @@ export async function executeTool(
                     list_id: data.id,
                     item_count: items.length,
                     link: supermarketListLink(String(data.id)),
-                    message: `Guardé ${items.length} productos en tu lista personal. Puedo compararla en todas las tiendas ahora mismo, o puedes abrirla en Supermercado.`,
+                    // El enlace va en el texto: al confirmar, el historial guarda este
+                    // mensaje y no el resultado, y "llévame ahí" necesita saber qué lista era.
+                    message: `Guardé ${items.length} productos en tu lista personal: [Abrir lista](${supermarketListLink(String(data.id))}). Puedo compararla en todas las tiendas ahora mismo.`,
                 };
             }
 

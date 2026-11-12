@@ -107,3 +107,28 @@ describe('acciones nuevas de CoCo por rol', () => {
         expect(isToolAllowedForRole('vote_in_poll', 'admin')).toBe(false);
     });
 });
+
+describe('revisión: casos borde de navegación y acciones', () => {
+    const recent = ['Puedes abrirla en Supermercado para comparar precios y preparar el carro.'];
+
+    it('"la" y "lo" son artículos: no reusan la pantalla de antes', () => {
+        expect(inferNavigation('vamos a la reunión', recent, 'resident')).toBeUndefined();
+        expect(inferNavigation('quiero ir a la casa', recent, 'resident')).toBeUndefined();
+        expect(inferNavigation('ábrelo', recent, 'resident')).toMatch(/^\/resident\/supermercado/);
+        expect(inferNavigation('llévame allá', recent, 'resident')).toMatch(/^\/resident\/supermercado/);
+    });
+
+    it('recupera la lista desde el resumen de la confirmación, que trae el enlace', () => {
+        const summary = `Guardar lista de compras: completada. Guardé 7 productos en tu lista personal: [Abrir lista](/resident/supermercado?list=${LIST_ID}).`;
+        expect(latestShoppingListId([{ role: 'assistant', content: summary }])).toBe(LIST_ID);
+    });
+
+    it('no acepta pedir un servicio para una fecha que ya pasó', async () => {
+        const { requestServiceForUser } = await import('@/lib/coco/residentActions');
+        const untouched = new Proxy({}, { get: () => { throw new Error('no debería consultar la base'); } });
+        const result = await requestServiceForUser(untouched as never, 'c', 'u', 'resident', {
+            provider_id: LIST_ID, preferred_date: '2020-01-10', preferred_time: '10:00', description: 'Fuga en el baño',
+        });
+        expect(result).toEqual({ error: expect.stringContaining('ya pasó') });
+    });
+});

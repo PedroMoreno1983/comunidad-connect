@@ -11,7 +11,9 @@ import { getSafeCoCoNavigation } from './navigation';
 // Solo pedidos explícitos de ir a una pantalla. "Abre el portón" es una acción
 // del citófono, no navegación: por eso "abre" a secas no cuenta.
 const GO_INTENT = /(^|[^\p{L}])(ll[eé]v[aá]me|ll[eé]vanos|ir\s+a(l)?\s|vamos\s+a(l)?\s|quiero\s+ir|[aá]br[eí](lo|la)|m[uú][eé]stra(me)?\s+la\s+(pantalla|secci[oó]n|p[aá]gina))/iu;
-const DEICTIC = /\b(ah[ií]|all[aá]|eso|esa|ese|esta|este|la|lo)\b/i;
+// "Ahí", "allá", "eso" o un pronombre pegado ("ábrelo"). "La" y "lo" sueltos son
+// artículos: "vamos a la reunión" no apunta a lo último que dijo CoCo.
+const DEICTIC = /(^|[^\p{L}])(ah[ií]|all[aá]|eso)([^\p{L}]|$)|[aá]br[eí](lo|la)([^\p{L}]|$)/iu;
 
 export function isGoIntent(message: string): boolean {
     return GO_INTENT.test(message);
@@ -23,7 +25,7 @@ export function inferNavigation(message: string, recentAssistantTexts: string[],
     const direct = searchPlatformMap(message, role, 1)[0];
     const fromMessage = direct ? getSafeCoCoNavigation(direct.route) : undefined;
     if (fromMessage) return fromMessage;
-    if (!DEICTIC.test(message) && message.trim().split(/\s+/).length > 4) return undefined;
+    if (!DEICTIC.test(message)) return undefined;
     for (const text of recentAssistantTexts) {
         const screen = searchPlatformMap(text, role, 1)[0];
         const route = screen ? getSafeCoCoNavigation(screen.route) : undefined;
