@@ -1098,7 +1098,10 @@ const SYSTEM_TOOLS = new Set([
 // Herramientas de residente que el personal no usa aunque herede el conjunto:
 // votar es de los copropietarios, y la administración modera el Marketplace,
 // no vende en él (política de roles del prompt).
-const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item']);
+// El supermercado personal (/resident/supermercado) solo lo abre un residente:
+// ofrecerle al personal comparar o guardar listas lo llevaría a una pantalla
+// que lo rechaza.
+const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item', 'compare_shopping_list', 'save_shopping_list']);
 
 export function isToolAllowedForRole(name: string, role?: string) {
     if (role === 'system') return SYSTEM_TOOLS.has(name);

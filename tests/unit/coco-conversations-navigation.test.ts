@@ -101,6 +101,9 @@ describe('acciones nuevas de CoCo por rol', () => {
         expect(isToolAllowedForRole('publish_marketplace_item', 'concierge')).toBe(false);
         expect(isToolAllowedForRole('request_service', 'admin')).toBe(true);
         expect(isToolAllowedForRole('compare_shopping_list', 'resident')).toBe(true);
+        // El supermercado personal es una ruta de residente: al personal no se le ofrece.
+        expect(isToolAllowedForRole('compare_shopping_list', 'admin')).toBe(false);
+        expect(isToolAllowedForRole('save_shopping_list', 'concierge')).toBe(false);
         expect(isToolAllowedForRole('vote_in_poll', 'admin')).toBe(false);
     });
 });

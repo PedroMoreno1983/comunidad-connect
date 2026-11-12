@@ -133,21 +133,28 @@ export default function CoCoChatPage() {
         } finally { setHistoryLoading(false); }
     }
 
+    // Renombrar y fijar se mandan en serie: cada PATCH lee y reescribe la
+    // metadata completa, y dos en paralelo podían pisarse.
+    const metaQueue = useRef<Promise<unknown>>(Promise.resolve());
+    const queueThreadPatch = (id: string, body: { title?: string; pinned?: boolean }) => {
+        const run = metaQueue.current.then(() => fetch(`/api/coco/threads/${encodeURIComponent(id)}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        }).catch(() => null));
+        metaQueue.current = run;
+        return run;
+    };
+
     async function renameThread(id: string, title: string) {
         const previous = threads;
         setThreads(current => current.map(thread => thread.id === id ? { ...thread, title } : thread));
-        const response = await fetch(`/api/coco/threads/${encodeURIComponent(id)}`, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }),
-        }).catch(() => null);
+        const response = await queueThreadPatch(id, { title });
         if (!response?.ok) setThreads(previous);
     }
 
     async function togglePinThread(id: string, pinned: boolean) {
         const previous = threads;
         setThreads(current => current.map(thread => thread.id === id ? { ...thread, pinned } : thread));
-        const response = await fetch(`/api/coco/threads/${encodeURIComponent(id)}`, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pinned }),
-        }).catch(() => null);
+        const response = await queueThreadPatch(id, { pinned });
         if (!response?.ok) setThreads(previous);
     }
 

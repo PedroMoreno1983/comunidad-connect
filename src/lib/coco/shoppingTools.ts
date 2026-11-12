@@ -87,6 +87,19 @@ export async function compareShoppingListForUser(admin: SupabaseClient, userId: 
     };
 }
 
+/**
+ * Lista guardada en los últimos minutos. Es la fuente principal para "llévame
+ * ahí": al confirmar save_shopping_list, el historial guarda un resumen en vez
+ * del resultado de la herramienta, así que el list_id no queda en la conversación.
+ */
+export async function recentSavedListId(admin: SupabaseClient, userId: string, minutes = 30): Promise<string | undefined> {
+    const since = new Date(Date.now() - minutes * 60_000).toISOString();
+    const { data } = await admin.from('supermarket_saved_lists').select('id')
+        .eq('user_id', userId).gte('updated_at', since)
+        .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    return data?.id ? String(data.id) : undefined;
+}
+
 /** Lista recién guardada o comparada en la conversación, para "llévame ahí". */
 export function latestShoppingListId(conversation: Array<{ role: string; content: unknown }>, turns = 8): string | undefined {
     for (let index = conversation.length - 1, seen = 0; index >= 0 && seen < turns; index -= 1, seen += 1) {
