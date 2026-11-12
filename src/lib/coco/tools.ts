@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import { MAX_SHOPPING_LIST_CHARS, parseGroupShoppingList as parsePersonalShoppingList } from '@/lib/supermarketGroupDomain';
 import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
+import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
 import { describeAlicuotaInput } from './alicuotaInput';
@@ -1311,7 +1312,7 @@ export async function executeTool(
                     .select('id', { count: 'exact', head: true }).eq('user_id', userCtx.user_id);
                 if (countError) return { error: 'No pude comprobar el límite de listas.' };
                 if ((count ?? 0) >= 30) return { error: 'Ya tienes 30 listas guardadas. Elimina una desde Supermercado para guardar otra.' };
-                const store = typeof input.store === 'string' && ['Jumbo', 'Santa Isabel', 'Líder', 'Unimarc', 'aCuenta'].includes(input.store)
+                const store = typeof input.store === 'string' && SUPERMARKET_STORES.includes(input.store as typeof SUPERMARKET_STORES[number])
                     ? input.store : null;
                 const { data, error } = await supabaseAdmin.from('supermarket_saved_lists')
                     .insert({ user_id: userCtx.user_id, title: savedListTitle(body), body, body_key: key, store })
