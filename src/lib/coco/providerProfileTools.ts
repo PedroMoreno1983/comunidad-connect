@@ -9,6 +9,7 @@ import {
 import { discardChatImage, releaseChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
 import { isValidRut, namesMatch } from '@/lib/services/providerDocumentRules';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { isInternalProvider } from '@/lib/services/providerPortal';
 import type { ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity } from '@/lib/types';
 
 /**
@@ -66,6 +67,9 @@ async function findProvider(communityId: string, input: Row): Promise<{ provider
             if (!data || data.length < 1000) break;
         }
     }
+    // Las colas internas (Mesa de ayuda interna) no son maestros: ni reseñas,
+    // ni fotos, ni documentos.
+    rows = rows.filter(row => !isInternalProvider(row));
     // La confirmación muestra el nombre: se exige siempre y, si viene un ID,
     // tiene que ser de ese maestro. Lo que se aprueba es lo que se ejecuta.
     if (name.length < 2) return { result: { error: 'Indica el nombre del maestro.' } };
@@ -231,14 +235,20 @@ export async function saveProviderAttachment(user: { id: string; role: string; c
     const attachment = await takeChatImage(user.id, text(input.attachment_id, 64));
     if (!attachment) return { error: 'No encontré la imagen adjunta. Pide que la vuelva a enviar en el chat.' };
     const actor = { id: user.id, role: isCommunityAdmin ? 'admin' : 'provider' };
+    // Borrar la imagen ya usada no es parte de la subida: si falla, la subida
+    // igual se hizo (no se devuelve el reclamo ni se invita a repetirla) y la
+    // limpieza del scheduler la borra después.
+    const consumed = () => discardChatImage(attachment.path).catch(error => {
+        console.error('[coco provider profile] no se pudo borrar el adjunto usado', error instanceof Error ? error.message : error);
+    });
     try {
         if (kind === 'profile_photo' || kind === 'work_photo') {
             await uploadProviderPhoto(found.provider.id, kind === 'profile_photo' ? 'profile' : 'work', attachment.file, text(input.caption, 160) || null, actor);
-            await discardChatImage(attachment.path);
+            await consumed();
             return { success: true, message: `${kind === 'profile_photo' ? 'Foto de perfil' : 'Foto de trabajo'} de ${found.provider.name} guardada.` };
         }
         const { verdict } = await uploadProviderDocument(found.provider.id, kind, attachment.file, actor, 'coco_chat');
-        await discardChatImage(attachment.path);
+        await consumed();
         const verdictText = verdict === 'looks_ok' ? 'el chequeo automático no encontró problemas'
             : verdict === 'problem' ? 'el chequeo automático encontró problemas' : 'hay que revisarlo a mano';
         return {

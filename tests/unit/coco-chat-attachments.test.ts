@@ -101,3 +101,11 @@ describe('limpieza que falla', () => {
         expect(await purgeStaleChatAttachments(now)).toEqual({ removed: 0, failed: 1 });
     });
 });
+
+describe('listado fallido', () => {
+    it('la limpieza falla si Storage no puede listar', async () => {
+        storage.list.mockResolvedValueOnce({ data: null, error: new Error('sin permiso') } as never);
+        const { purgeStaleChatAttachments } = await import('@/lib/coco/chatAttachments');
+        await expect(purgeStaleChatAttachments(now)).rejects.toThrow(/listar/);
+    });
+});

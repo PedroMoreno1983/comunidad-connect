@@ -181,3 +181,20 @@ describe('ronda 6', () => {
         expect(isToolOfferedFor('rate_provider', 'resident', 'whatsapp')).toBe(true);
     });
 });
+
+describe('ronda 8', () => {
+    it('la Mesa de ayuda interna no aparece para valorar ni guardar fotos', async () => {
+        state.db.tables.service_providers.push({ id: 'b392cf17-0006-4000-8000-000000000010', name: 'Mesa de ayuda interna', community_id: A, user_id: null, category: 'general' });
+        const { rateProviderForUser } = await import('@/lib/coco/providerProfileTools');
+        expect(await rateProviderForUser('u1', A, { provider_name: 'Mesa de ayuda interna', rating: '5', comment: 'x' })).toHaveProperty('error');
+        expect(await rateProviderForUser('u1', A, { provider_id: 'b392cf17-0006-4000-8000-000000000010', provider_name: 'Mesa de ayuda interna', rating: '5', comment: 'x' })).toHaveProperty('error');
+        expect(reviews.submitProviderReview).not.toHaveBeenCalled();
+    });
+
+    it('si borrar la imagen usada falla, la subida igual cuenta y no se devuelve el reclamo', async () => {
+        attachments.discardChatImage.mockRejectedValueOnce(new Error('storage'));
+        const { saveProviderAttachment } = await import('@/lib/coco/providerProfileTools');
+        expect(await saveProviderAttachment({ id: OWNER, role: 'resident', communityId: A }, { attachment_id: 'x', provider_name: 'Juan Pérez', kind: 'work_photo' })).toMatchObject({ success: true });
+        expect(attachments.releaseChatImage).not.toHaveBeenCalled();
+    });
+});

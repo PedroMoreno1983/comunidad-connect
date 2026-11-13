@@ -115,7 +115,9 @@ async function listAll(path: string) {
     const storage = getSupabaseAdmin().storage.from(BUCKET);
     const entries: { name: string; created_at?: string | null }[] = [];
     for (let offset = 0; ; offset += PAGE) {
-        const { data } = await storage.list(path, { limit: PAGE, offset });
+        const { data, error } = await storage.list(path, { limit: PAGE, offset });
+        // Un listado fallido no es "carpeta vacía": la limpieza tiene que fallar.
+        if (error) throw new Error(`No se pudo listar ${path}: ${error.message}`);
         entries.push(...(data || []));
         if (!data || data.length < PAGE) return entries;
     }
