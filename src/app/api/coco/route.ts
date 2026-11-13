@@ -21,6 +21,9 @@ import { TOOL_DEFINITIONS, describePendingAction, executeTool, isToolAllowedForR
 import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/coco/platformMap';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
+import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
+import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
+import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -237,6 +240,34 @@ async function askDeepSeekFallback(message: string, context: CoCoFallbackContext
  * quedó sin cuota, seguir intentando con otro proveedor sería justamente lo
  * que el tope existe para impedir.
  */
+/**
+ * Destino final de una respuesta. Si el modelo no escribió NAVEGAR y la persona
+ * pidió ir ("llévame ahí"), se deduce del mensaje o de lo último que dijo CoCo.
+ * Al supermercado se va con la lista recién guardada o comparada. Se usa igual
+ * en la respuesta normal y en las de respaldo, para que "llévame" funcione
+ * también cuando CoCo responde en modo local.
+ */
+async function resolveNavigation(input: {
+    message: string;
+    navigate?: string;
+    contextTexts: string[];
+    conversation: Array<{ role: string; content: unknown }>;
+    role: string;
+    userId?: string;
+}): Promise<{ navigate?: string; autoNavigate: boolean }> {
+    let target = getSafeCoCoNavigation(input.navigate) ?? inferNavigation(input.message, input.contextTexts, input.role);
+    if (target === '/resident/supermercado' || target === '/resident/supermercado/comparador') {
+        // Primero la lista de esta conversación (la que se guardó o comparó aquí);
+        // la más reciente de la base solo si la conversación no nombra ninguna.
+        const fromConversation = latestShoppingListLink(input.conversation);
+        const recentId = fromConversation || !input.userId
+            ? undefined
+            : await recentSavedListId(supabaseAdmin, input.userId).catch(() => undefined);
+        target = fromConversation ?? (recentId ? supermarketListLink(recentId) : target);
+    }
+    return { navigate: target, autoNavigate: Boolean(target) && isGoIntent(input.message) };
+}
+
 async function runCoCoFallback(message: string, context: CoCoFallbackContext) {
     try {
         const viaDeepSeek = await askDeepSeekFallback(message, context);
@@ -648,7 +679,9 @@ export async function POST(req: NextRequest) {
         // Una lista concreta no necesita el modelo para convertirse en una accion
         // real. Se conserva la misma confirmacion y ejecucion auditada de CoCo.
         if (!resolutions && !imageAttachment && !legalDocument && !restorePendingActions(session).length
-            && isToolAllowedForRole('save_shopping_list', safeRole)) {
+            && isToolAllowedForRole('save_shopping_list', safeRole)
+            // "Compara mi lista: arroz, pan" pide precios: lo resuelve el modelo con compare_shopping_list.
+            && !SHOPPING_COMPARE_INTENT.test(message)) {
             const shoppingList = shoppingListFromConversation(message, recentConversation);
             if (shoppingList) {
                 const toolUseId = `shopping_${randomUUID()}`;
@@ -696,7 +729,12 @@ export async function POST(req: NextRequest) {
                 user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
             }, false);
 
-            return NextResponse.json({ ...fallback }, { status: 200 });
+            const fallbackNavigation = await resolveNavigation({
+                message, navigate: fallback.navigate, role: safeRole, userId,
+                contextTexts: [fallback.reply || '', ...recentAssistantTexts(session?.conversation || [])],
+                conversation: session?.conversation || [],
+            });
+            return NextResponse.json({ ...fallback, ...fallbackNavigation }, { status: 200 });
         }
 
         // ── 3. Cargar sesión ─────────────────────────────────────────────────
@@ -758,7 +796,12 @@ export async function POST(req: NextRequest) {
                 user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
             }, false);
 
-            return NextResponse.json({ ...fallback }, { status: 200 });
+            const fallbackNavigation = await resolveNavigation({
+                message, navigate: fallback.navigate, role: safeRole, userId,
+                contextTexts: [fallback.reply || '', ...recentAssistantTexts(session?.conversation || [])],
+                conversation: session?.conversation || [],
+            });
+            return NextResponse.json({ ...fallback, ...fallbackNavigation }, { status: 200 });
         }
 
         const { reply, navigate, action, updatedHistory, pendingActions } = agentResponse;
@@ -778,6 +821,9 @@ export async function POST(req: NextRequest) {
                 title:        session?.user_context.title && session.user_context.title !== 'Nueva conversación'
                     ? session.user_context.title
                     : message.slice(0, 56) || 'Nueva conversación',
+                // Lo que la persona decidió sobre la conversación sobrevive a cada mensaje.
+                pinned:       session?.user_context.pinned,
+                title_locked: session?.user_context.title_locked,
             },
         }, Boolean(pendingActions?.length));
 
@@ -800,9 +846,20 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // "Llévame ahí": si el modelo no escribió NAVEGAR, se deduce el destino
+        // del mensaje o de lo último que dijo CoCo, y el chat navega solo.
+        // Al aprobar una acción el pedido llega sin texto: la intención de ir
+        // ("guárdala y llévame ahí") está en el último mensaje de la persona.
+        const intentMessage = message || [...(session?.conversation || [])].reverse()
+            .find(turn => turn.role === 'user' && typeof turn.content === 'string')?.content as string || '';
+        const navigation = await resolveNavigation({
+            message: intentMessage, navigate, role: safeRole, userId,
+            contextTexts: [reply, ...recentAssistantTexts(session?.conversation || [])],
+            conversation: [...(session?.conversation || []), ...updatedHistory],
+        });
         const answer: CoCoApiResponse = {
             reply,
-            navigate: getSafeCoCoNavigation(navigate),
+            ...navigation,
             action,
         };
         return NextResponse.json(answer, { status: 200 });

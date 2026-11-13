@@ -256,6 +256,10 @@ function requiredMutationTool(message: string, role?: string) {
     // (quincho/piscina): "reservame un estacionamiento" no es una amenidad.
     // Tampoco forzar book_parking: necesita un spot_id de search_parking primero.
     if (/\b(estacionamiento|parking|aparcamiento)\b/.test(text)) return undefined;
+    // "Agenda un gasfiter" es un servicio de un proveedor, no un espacio común: no
+    // se fuerza nada, porque request_service necesita antes el provider_id de
+    // list_services.
+    if (/(gasf[ií]ter|plomer|electricist|cerrajer|pintor|carpinter|t[eé]cnico|maestro|jardiner|proveedor|fumigad|lavado de alfombras)/.test(text)) return undefined;
     if (/\b(reserva|reservar|res[eé]rvame|agenda|agendar)\b/.test(text)) return 'create_reservation';
     if (/\b(registra|registrar|anota|anotar)\b.*\b(visita|visitante)\b|\bva a llegar\b/.test(text)) return 'register_visitor';
     if ((role === 'admin' || role === 'concierge') && /\b(registra|registrar|recib[ií]|lleg[oó])\b.*\b(paquete|encomienda)\b/.test(text)) return 'register_package';

@@ -32,6 +32,10 @@ export interface SessionData {
         channel?: string;
         name?: string;
         title?: string;
+        /** Conversación fijada por la persona: va arriba y no vence. */
+        pinned?: boolean;
+        /** La persona le puso nombre: ya no se reemplaza con el primer mensaje. */
+        title_locked?: boolean;
     };
     auth_state?: 'pending' | 'verified';
     auth_attempts?: number;
@@ -39,6 +43,30 @@ export interface SessionData {
 }
 
 // ── Sesión Web / App ─────────────────────────────────────────────────────────
+
+/**
+ * Las conversaciones de la app se guardan como en cualquier chat: un año, y
+ * las fijadas no vencen en la práctica. Antes eran 30 días y desaparecían sin
+ * aviso. WhatsApp sigue en 1 día: es una ventana de contexto, no un historial.
+ */
+export function webRetentionDays(userKey: string, pinned?: boolean): number {
+    if (!userKey.startsWith('web:')) return 1;
+    return pinned ? 3650 : 365;
+}
+
+export const DEFAULT_THREAD_TITLE = 'Nueva conversación';
+
+/** Título visible: el que puso la persona, o el inicio de su primer mensaje. */
+export function threadTitle(storedTitle: unknown, firstTurn: unknown): string {
+    const title = typeof storedTitle === 'string' ? storedTitle.trim() : '';
+    if (title && title !== DEFAULT_THREAD_TITLE) return title;
+    const turn = firstTurn as { role?: string; content?: unknown } | null;
+    if (turn?.role === 'user' && typeof turn.content === 'string') {
+        const text = turn.content.replace(/\s+/g, ' ').trim();
+        if (text) return text.length > 56 ? `${text.slice(0, 55).trimEnd()}…` : text;
+    }
+    return DEFAULT_THREAD_TITLE;
+}
 
 export async function getSession(userKey: string): Promise<SessionData | null> {
     const { data, error } = await supabase
@@ -55,7 +83,7 @@ export async function getSession(userKey: string): Promise<SessionData | null> {
 export async function saveSession(userKey: string, session: SessionData): Promise<void> {
     // Limitar historial para no explotar tokens de contexto
     const conversation = (session.conversation || []).slice(-MAX_HISTORY);
-    const retentionDays = userKey.startsWith('web:') ? 30 : 1;
+    const retentionDays = webRetentionDays(userKey, session.user_context?.pinned);
     const expires_at = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
 
     const { error } = await supabase
@@ -93,21 +121,83 @@ export async function deleteSession(userKey: string): Promise<void> {
     await supabase.from('coco_sessions').delete().eq('user_key', userKey);
 }
 
+export const MAX_WEB_THREADS = 100;
+
 export async function listWebThreads(userId: string, communityId: string) {
+    // Solo el primer turno: alcanza para el título y para saber si está vacía,
+    // sin traer el historial completo de cada conversación.
     const { data, error } = await supabase.from('coco_sessions')
-        .select('user_key,user_context,last_activity')
+        .select('user_key,user_context,last_activity,expires_at,first_turn:conversation->0')
         .like('user_key', `web:${userId}:%`)
         .gt('expires_at', new Date().toISOString())
         .order('last_activity', { ascending: false })
-        .limit(30);
+        .limit(MAX_WEB_THREADS);
     if (error) throw error;
-    return (data || [])
-        .filter(row => row.user_context?.community_id === communityId)
-        .map(row => ({
-            id: String(row.user_key).slice(`web:${userId}:`.length),
-            title: typeof row.user_context?.title === 'string' ? row.user_context.title : 'Nueva conversación',
-            updatedAt: String(row.last_activity || ''),
-        }));
+    const rows = (data || []).filter(row => row.user_context?.community_id === communityId);
+    await extendLegacyRetention(rows);
+    return rows
+        .map(row => {
+            const firstTurn = (row as { first_turn?: unknown }).first_turn ?? null;
+            return {
+                id: String(row.user_key).slice(`web:${userId}:`.length),
+                title: threadTitle(row.user_context?.title, firstTurn),
+                updatedAt: String(row.last_activity || ''),
+                pinned: row.user_context?.pinned === true,
+                empty: firstTurn === null,
+            };
+        });
+}
+
+/**
+ * Las conversaciones guardadas antes del cambio a un año seguían con su
+ * vencimiento de 30 días hasta que se escribiera en ellas. Al listarlas se
+ * corrige una sola vez: después ya tienen el plazo nuevo y no se vuelven a tocar.
+ */
+async function extendLegacyRetention(rows: Array<{ user_key: unknown; user_context: SessionData['user_context'] | null; last_activity: unknown; expires_at: unknown }>) {
+    const stale = rows.flatMap(row => {
+        const key = String(row.user_key);
+        const base = Date.parse(String(row.last_activity || ''));
+        const current = Date.parse(String(row.expires_at || ''));
+        if (!Number.isFinite(base) || !Number.isFinite(current)) return [];
+        const target = base + webRetentionDays(key, row.user_context?.pinned) * 86_400_000;
+        // Holgura de un día: no reescribir por diferencias de segundos.
+        return current < target - 86_400_000 ? [{ key, expires_at: new Date(target).toISOString() }] : [];
+    });
+    if (!stale.length) return;
+    await Promise.all(stale.map(item => supabase.from('coco_sessions')
+        .update({ expires_at: item.expires_at }).eq('user_key', item.key)
+        .then(({ error }) => { if (error) console.error('[coco] no se pudo extender la conversación', error.message); })));
+}
+
+/**
+ * Renombra o fija una conversación sin tocar last_activity: ordenar o nombrar
+ * no la convierte en la más reciente.
+ */
+export async function updateWebThreadMeta(
+    userId: string,
+    threadId: string,
+    patch: { title?: string; pinned?: boolean },
+): Promise<boolean> {
+    const userKey = `web:${userId}:${threadId}`;
+    const { data, error } = await supabase.from('coco_sessions')
+        .select('user_context').eq('user_key', userKey).maybeSingle();
+    if (error || !data) return false;
+    const context = { ...(data.user_context || {}) } as SessionData['user_context'];
+    if (patch.title !== undefined) {
+        context.title = patch.title.replace(/\s+/g, ' ').trim().slice(0, 80) || DEFAULT_THREAD_TITLE;
+        context.title_locked = context.title !== DEFAULT_THREAD_TITLE;
+    }
+    if (patch.pinned !== undefined) context.pinned = patch.pinned;
+    const expires_at = new Date(Date.now() + webRetentionDays(userKey, context.pinned) * 86_400_000).toISOString();
+    const { error: updateError } = await supabase.from('coco_sessions')
+        .update({ user_context: context, expires_at }).eq('user_key', userKey);
+    return !updateError;
+}
+
+export async function deleteWebThread(userId: string, threadId: string): Promise<boolean> {
+    const { error, count } = await supabase.from('coco_sessions')
+        .delete({ count: 'exact' }).eq('user_key', `web:${userId}:${threadId}`);
+    return !error && (count ?? 0) > 0;
 }
 
 // ── Rate limiting simple en memoria ─────────────────────────────────────────

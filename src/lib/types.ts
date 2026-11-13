@@ -3070,6 +3070,8 @@ export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
 export interface CoCoApiResponse {
     reply?: string;
     navigate?: string;
+    /** La persona pidió ir ("llévame ahí"): el chat navega sin esperar el clic. */
+    autoNavigate?: boolean;
     action?: string;
     pendingActions?: CoCoPendingAction[];
 }
@@ -3089,6 +3091,27 @@ export interface CoCoThread {
     id: string;
     title: string;
     updatedAt: string;
+    /** Fijada por la persona: va arriba y no vence. */
+    pinned?: boolean;
+    /** Sin mensajes todavía. */
+    empty?: boolean;
+}
+
+/** Conversaciones agrupadas para la lista lateral (Fijadas, Hoy, Ayer…). */
+export interface CoCoThreadGroup {
+    label: string;
+    threads: CoCoThread[];
+}
+
+export interface CoCoThreadSidebarProps {
+    threads: CoCoThread[];
+    activeId: string | null;
+    disabled: boolean;
+    onSelect: (id: string) => void;
+    onCreate: () => void;
+    onRename: (id: string, title: string) => void;
+    onTogglePin: (id: string, pinned: boolean) => void;
+    onDelete: (id: string) => void;
 }
 
 // ─── Marketplace: resumen de la publicación recién creada ───────────────────

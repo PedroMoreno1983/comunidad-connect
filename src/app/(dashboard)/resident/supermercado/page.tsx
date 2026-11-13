@@ -202,9 +202,19 @@ export default function SupermarketPage() {
   useEffect(() => {
     let cancelled = false;
     void SupermarketCatalogService.savedLists()
-      .then(lists => { if (!cancelled) setSavedLists(lists); })
+      .then(lists => {
+        if (cancelled) return;
+        setSavedLists(lists);
+        // Enlace desde CoCo (/resident/supermercado?list=<id>&store=<tienda>):
+        // se abre esa lista ya comparada, con el botón del carro a la vista.
+        const params = new URLSearchParams(window.location.search);
+        const linked = lists.find(list => list.id === params.get('list'));
+        if (linked) void openSavedList(linked, params.get('store') ?? undefined);
+      })
       .catch(() => { if (!cancelled) setSaveNote('No se pudieron leer tus listas guardadas.'); });
     return () => { cancelled = true; };
+    // Solo al entrar: abrir la lista del enlace una vez, no en cada cambio.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -290,12 +300,14 @@ export default function SupermarketPage() {
     }
   };
 
-  const openSavedList = async (list: SavedShoppingList) => {
+  const openSavedList = async (list: SavedShoppingList, storeOverride?: string) => {
     setActiveListId(list.id);
     setListInput(list.body);
-    const store = list.store && SUPERMARKET_STORES.includes(list.store as typeof SUPERMARKET_STORES[number])
-      ? list.store
-      : primaryStore;
+    const isStore = (value?: string | null): value is string =>
+      Boolean(value && SUPERMARKET_STORES.includes(value as typeof SUPERMARKET_STORES[number]));
+    const store = isStore(storeOverride) ? storeOverride
+      : isStore(list.store) ? list.store
+      : primaryStore ?? SUPERMARKET_STORES[0];
     if (store && store !== primaryStore) changeStore(store);
     if (store) await loadList(list.body, store);
   };
