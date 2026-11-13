@@ -728,6 +728,8 @@ export interface ServiceProvider {
   responseTime: string; // e.g., "< 2 horas"
   completedJobs: number;
   verified: boolean;
+  /** De la Red Convive: lo ven todas las comunidades y lo gestiona Convive. */
+  network?: boolean;
 }
 
 export interface ServiceProviderDatabaseRow {
@@ -748,6 +750,7 @@ export interface ServiceProviderDatabaseRow {
   response_time: string;
   completed_jobs: number;
   verified: boolean;
+  community_id?: string | null;
 }
 
 export interface Review {
@@ -3893,10 +3896,14 @@ export interface ProviderPortalRequest {
   createdAt: string;
   requesterName: string;
   requesterUnit: string;
+  /** Comunidad de la solicitud: el maestro de la Red Convive atiende varias. */
+  communityName: string;
 }
 
 export interface ProviderPortalData {
   communityName: string;
+  /** Maestro de la Red Convive: atiende a todas las comunidades. */
+  network: boolean;
   expiresAt: string;
   provider: ProviderPortalProfile;
   requests: ProviderPortalRequest[];
@@ -3922,6 +3929,42 @@ export interface ProviderInviteLink {
   expiresAt: string;
   providerName: string;
 }
+
+/** Maestro visto por Convive: de la Red (communityId null) o de una comunidad. */
+export interface NetworkProviderRow {
+  id: string;
+  name: string;
+  category: string;
+  contactPhone: string;
+  email: string | null;
+  verified: boolean;
+  rating: number;
+  reviewCount: number;
+  completedJobs: number;
+  communityId: string | null;
+  communityName: string | null;
+  hasAccount: boolean;
+}
+
+export interface SuperAdminProvidersResponse {
+  network: NetworkProviderRow[];
+  community: NetworkProviderRow[];
+  communities: { id: string; name: string }[];
+}
+
+export interface NetworkProviderInput {
+  name: string;
+  category: string;
+  contactPhone: string;
+  email?: string;
+  bio?: string;
+  specialties?: string[];
+}
+
+export type NetworkProviderAction =
+  | { action: 'to_network' }
+  | { action: 'to_community'; communityId: string }
+  | { action: 'verify'; verified: boolean };
 
 export interface ProviderProfileFormProps {
   initial: ProviderProfileInput;

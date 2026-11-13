@@ -36,7 +36,13 @@ function fakeDb(rows: Row[]) {
                 eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
                 ilike: (key: string, pattern: string) => {
                     const digits = pattern.replace(/%/g, '');
-                    filters.push([key, (cell: unknown) => String(cell ?? '').replace(/D/g, '').endsWith(digits)]);
+                    filters.push([key, (cell: unknown) => String(cell ?? '').replace(/\D/g, '').endsWith(digits)]);
+                    return query;
+                },
+                // Solo el filtro de providerNetwork: "community_id.eq.X,community_id.is.null".
+                or: (filter: string) => {
+                    const community = /community_id\.eq\.([^,]+)/.exec(filter)?.[1];
+                    filters.push(['community_id', (cell: unknown) => cell === community || cell === null]);
                     return query;
                 },
                 then: (resolve: (value: unknown) => unknown) => resolve({ data: run(), error: null }),
@@ -53,7 +59,24 @@ function fakeDb(rows: Row[]) {
     return { db: db as unknown as SupabaseClient, inserted };
 }
 
-const COMMUNITY = 'c-1';
+const COMMUNITY = '11111111-1111-4111-8111-111111111111';
+
+describe('Red Convive', () => {
+    it('no duplica a un maestro que ya está en la red', async () => {
+        const { db, inserted } = fakeDb([{ id: 'r-1', name: 'Juan Red', contact_phone: '+56 9 1234 5678', user_id: null, community_id: null }]);
+        const result = await registerExternalProviderForAdmin(db, COMMUNITY, 'admin-1', { name: 'Juan', category: 'plumbing', contact_phone: '912345678' });
+        expect(result).toMatchObject({ status: 'ALREADY_REGISTERED', provider: { id: 'r-1', network: true } });
+        expect(inserted).toHaveLength(0);
+    });
+
+    it('un maestro de la red lo encuentra, pero su enlace lo da Convive', async () => {
+        const { db } = fakeDb([{ id: 'r-1', name: 'Juan Red', contact_phone: '912345678', user_id: null, community_id: null }]);
+        createProviderInvite.mockRejectedValueOnce(Object.assign(new Error('Ese maestro es de la Red Convive: su enlace lo envía Convive.'), { status: 409 }));
+        const result = await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'admin-1', { provider_name: 'Juan Red' });
+        expect(createProviderInvite).toHaveBeenCalledWith(COMMUNITY, 'admin-1', 'r-1');
+        expect(result).toHaveProperty('error');
+    });
+});
 
 describe('registrar maestro externo', () => {
     it('lo crea sin cuenta, sin verificar y en la comunidad del admin', async () => {

@@ -226,6 +226,11 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                                         perfil verificado
                                     </span>
                                 ) : null}
+                                {provider.network ? (
+                                    <span className="pb-1 text-sm italic" style={{ color: "var(--cc-copper)", fontFamily: "var(--cc-font-display)" }}>
+                                        Red Convive
+                                    </span>
+                                ) : null}
                             </div>
                             <p className="mt-3 max-w-xl text-lg italic cc-text-secondary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 {headline}
@@ -292,7 +297,8 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                         )}
                     </section>
 
-                    {user?.role === "admin" ? (
+                    {/* Un maestro de la Red Convive lo gestiona Convive, no la comunidad. */}
+                    {user?.role === "admin" && !provider.network ? (
                         <ProviderAdminPanel provider={provider} onChanged={() => router.refresh()} />
                     ) : null}
 

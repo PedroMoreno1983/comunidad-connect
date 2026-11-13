@@ -38,6 +38,7 @@ import { AGREEMENT_SIGNING_COPY, proposeAgreementPlan, type AgreementProposal } 
 import type { AgentKey, AgentProfile, ToolName } from '@/lib/agent-center/domain';
 import type { AgentExecutionResult } from '@/lib/agent-center/orchestrator';
 import type { ParkingBookingStatus, ParkingSpotStatus, ServiceRequestStatus, UserRole } from '@/lib/types';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 export type AgentToolRisk = 'read' | 'write';
 
@@ -324,7 +325,7 @@ const getMaintenanceBacklog: AgentToolDefinition = {
         const providers = new Map<string, string>();
         if (providerIds.length) {
             const { data, error } = await getSupabaseAdmin().from('service_providers').select('id, name')
-                .eq('community_id', communityId).in('id', providerIds);
+                .or(communityProvidersFilter(communityId)).in('id', providerIds);
             if (error) throw error;
             for (const row of data || []) providers.set(String(row.id), String(row.name));
         }
@@ -530,7 +531,7 @@ const updateMaintenanceTicket: AgentToolDefinition = {
             if (!['pending', 'accepted'].includes(String(ticket.status))) throw new Error('Solo se asigna proveedor a un ticket pendiente o aceptado.');
             const { data: provider, error: providerError } = await admin.from('service_providers')
                 .select('id, name, verified, community_id')
-                .eq('id', String(args.providerId)).eq('community_id', communityId).maybeSingle();
+                .eq('id', String(args.providerId)).or(communityProvidersFilter(communityId)).maybeSingle();
             if (providerError) throw providerError;
             if (!provider) throw new Error('El proveedor no existe en tu comunidad.');
             if (!provider.verified) throw new Error('Solo se pueden asignar proveedores verificados.');

@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { CANONICAL_SITE_URL } from '@/lib/config';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { ProviderPortalError, createProviderInvite } from '@/lib/services/providerPortal';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 /**
  * Maestros externos para CoCo (solo administración): registrar a un maestro
@@ -70,7 +71,7 @@ export async function registerExternalProviderForAdmin(db: SupabaseClient, commu
     // haya; la comparación exacta se hace aquí.
     const phoneDigits = contactPhone.replace(/\D/g, '').slice(-8);
     const { data: existing, error: lookupError } = await db.from('service_providers')
-        .select('id, name, contact_phone, user_id').eq('community_id', communityId)
+        .select('id, name, contact_phone, user_id, community_id').or(communityProvidersFilter(communityId))
         .ilike('contact_phone', `%${phoneDigits.split('').join('%')}`);
     if (lookupError) return { error: 'No se pudo revisar el directorio de proveedores.' };
     const duplicate = (existing || []).find(row => String(row.contact_phone || '').replace(/\D/g, '').slice(-8) === phoneDigits);
@@ -78,8 +79,10 @@ export async function registerExternalProviderForAdmin(db: SupabaseClient, commu
         return {
             success: false,
             status: 'ALREADY_REGISTERED',
-            provider: { id: String(duplicate.id), name: String(duplicate.name), external: !duplicate.user_id },
-            message: `${duplicate.name} ya está registrado en la comunidad con ese teléfono. No lo dupliqué.`,
+            provider: { id: String(duplicate.id), name: String(duplicate.name), external: !duplicate.user_id, network: duplicate.community_id === null },
+            message: duplicate.community_id === null
+                ? `${duplicate.name} ya está en la Red Convive con ese teléfono: la comunidad ya lo ve en Servicios. No lo dupliqué.`
+                : `${duplicate.name} ya está registrado en la comunidad con ese teléfono. No lo dupliqué.`,
         };
     }
 
@@ -132,7 +135,7 @@ async function findExternalProvider(db: SupabaseClient, communityId: string, inp
     const id = text(input.provider_id, 64);
     if (id) {
         const { data } = await db.from('service_providers')
-            .select('id, name, contact_phone, user_id').eq('id', id).eq('community_id', communityId).maybeSingle();
+            .select('id, name, contact_phone, user_id').eq('id', id).or(communityProvidersFilter(communityId)).maybeSingle();
         if (!data) return { matches: [] };
         if (!normalize(String(data.name || '')).includes(name)) {
             return { error: `El ID corresponde a ${data.name}, no a quien se confirmó. No generé ningún enlace.` };
@@ -140,7 +143,7 @@ async function findExternalProvider(db: SupabaseClient, communityId: string, inp
         return { matches: [data] };
     }
     const { data } = await db.from('service_providers')
-        .select('id, name, contact_phone, user_id').eq('community_id', communityId);
+        .select('id, name, contact_phone, user_id').or(communityProvidersFilter(communityId));
     const rows = (data || []).filter(row => normalize(String(row.name || '')).includes(name));
     const exact = rows.filter(row => normalize(String(row.name || '')) === name);
     return { matches: exact.length === 1 ? exact : rows };

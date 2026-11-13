@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (provider?.id) {
-            await notifyExternalProviderOfRequest(provider.id, { preferredDate, preferredTime, description });
+            await notifyExternalProviderOfRequest(provider.id, { preferredDate, preferredTime, description, communityId: profile.community_id });
         }
 
         return NextResponse.json({ request }, { status: 201 });

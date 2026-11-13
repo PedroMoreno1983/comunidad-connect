@@ -10,6 +10,7 @@ type ProviderRow = {
     service_address?: string | null;
     service_latitude?: number | null;
     service_longitude?: number | null;
+    community_id?: string | null;
 };
 
 type Coordinates = { address_latitude?: number | null; address_longitude?: number | null } | null;
@@ -47,6 +48,8 @@ export function rankNearbyProviders(rows: ProviderRow[], query: string, communit
             id: row.id, name: row.name, category: row.category, rating: row.rating,
             contact_phone: row.contact_phone, verified: Boolean(row.verified),
             service_address: row.service_address || null,
+            // De la Red Convive: sirve a todas las comunidades, lo cura Convive.
+            network: row.community_id === null,
             distance_km_approx: located ? distanceKm(communityLat, communityLon, latitude, longitude) : null,
         };
     }).sort((a, b) => {

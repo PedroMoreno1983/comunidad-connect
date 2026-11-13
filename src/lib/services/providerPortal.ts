@@ -10,11 +10,18 @@ import { sendProviderRequestEmail } from '@/lib/email';
 import type { ProviderPortalData, ServiceRequestStatus } from '@/lib/types';
 
 /**
- * Portal del maestro externo: sin cuenta, con un enlace secreto que envía la
- * administración. Mismo diseño que el portal del fiscalizador: se guarda solo el
- * hash del token, vence y se puede revocar. Con el enlace, el maestro edita su
- * perfil y responde sus solicitudes con las mismas reglas que un proveedor con
- * cuenta (serviceRequestTransitionError).
+ * Portal del maestro externo: sin cuenta, con un enlace secreto. Mismo diseño
+ * que el portal del fiscalizador: se guarda solo el hash del token, vence y se
+ * puede revocar. Con el enlace, el maestro edita su perfil y responde sus
+ * solicitudes con las mismas reglas que un proveedor con cuenta
+ * (serviceRequestTransitionError).
+ *
+ * Dos alcances. Un maestro de una comunidad recibe el enlace de su
+ * administración y ve solo las solicitudes de esa comunidad. Un maestro de la
+ * Red Convive (community_id NULL) recibe el enlace de Convive (superadmin) y ve
+ * las solicitudes de todas las comunidades. El enlace vale solo mientras el
+ * maestro siga en el alcance con que se creó: si Convive lo suma a la red o lo
+ * devuelve a una comunidad, los enlaces anteriores dejan de servir.
  */
 
 export class ProviderPortalError extends Error {
@@ -25,18 +32,21 @@ export class ProviderPortalError extends Error {
 
 const DEFAULT_DAYS = 90;
 const PROFILE_COLUMNS = 'id, name, category, contact_phone, email, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, service_address, verified, rating, review_count, completed_jobs, community_id, user_id';
+const NETWORK_NAME = 'Red Convive';
 
-/** Crea el enlace (y revoca los anteriores del mismo maestro). Solo proveedores externos de la comunidad. */
 /**
  * Avisa por correo a un maestro sin cuenta que tiene una solicitud nueva. No
  * frena la creación de la solicitud: si falla, queda en el log.
  */
-export async function notifyExternalProviderOfRequest(providerId: string, request: { preferredDate: string; preferredTime: string; description: string }) {
+export async function notifyExternalProviderOfRequest(
+    providerId: string,
+    request: { preferredDate: string; preferredTime: string; description: string; communityId: string },
+) {
     try {
         const { data: provider } = await supabaseAdmin.from('service_providers')
-            .select('name, email, user_id, community_id').eq('id', providerId).maybeSingle();
+            .select('name, email, user_id').eq('id', providerId).maybeSingle();
         if (!provider || provider.user_id || !provider.email) return;
-        const { data: community } = await supabaseAdmin.from('communities').select('name').eq('id', provider.community_id).maybeSingle();
+        const { data: community } = await supabaseAdmin.from('communities').select('name').eq('id', request.communityId).maybeSingle();
         await sendProviderRequestEmail({
             to: String(provider.email),
             providerName: String(provider.name),
@@ -50,10 +60,23 @@ export async function notifyExternalProviderOfRequest(providerId: string, reques
     }
 }
 
-export async function createProviderInvite(communityId: string, createdBy: string, providerId: string, days = DEFAULT_DAYS) {
+/**
+ * Crea el enlace (y revoca los anteriores del mismo maestro). Con communityId,
+ * la administración de esa comunidad para un maestro externo suyo; con null,
+ * Convive para un maestro de la red.
+ */
+export async function createProviderInvite(communityId: string | null, createdBy: string | null, providerId: string, days = DEFAULT_DAYS) {
     const { data: provider } = await supabaseAdmin.from('service_providers')
         .select('id, name, community_id, user_id').eq('id', providerId).maybeSingle();
-    if (!provider || provider.community_id !== communityId) throw new ProviderPortalError('Proveedor no encontrado en tu comunidad.', 404);
+    if (!provider) throw new ProviderPortalError('Proveedor no encontrado.', 404);
+    const providerCommunity = provider.community_id ? String(provider.community_id) : null;
+    if (communityId === null && providerCommunity !== null) {
+        throw new ProviderPortalError('Ese maestro es de una comunidad: su enlace lo envía su administración.', 409);
+    }
+    if (communityId !== null && providerCommunity !== communityId) {
+        if (providerCommunity === null) throw new ProviderPortalError('Ese maestro es de la Red Convive: su enlace lo envía Convive.', 409);
+        throw new ProviderPortalError('Proveedor no encontrado en tu comunidad.', 404);
+    }
     if (provider.user_id) throw new ProviderPortalError('Este proveedor tiene cuenta: gestiona su perfil desde su panel.', 409);
 
     const now = new Date().toISOString();
@@ -63,14 +86,16 @@ export async function createProviderInvite(communityId: string, createdBy: strin
     const token = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + Math.min(Math.max(days, 1), 365) * 86_400_000).toISOString();
     const { error } = await supabaseAdmin.from('service_provider_links').insert({
-        community_id: communityId, provider_id: providerId, token_hash: hashSecret(token), expires_at: expiresAt, created_by: createdBy,
+        community_id: providerCommunity, provider_id: providerId, token_hash: hashSecret(token), expires_at: expiresAt, created_by: createdBy,
     });
     if (error) throw new ProviderPortalError('No se pudo crear el enlace.', 500);
-    await recordOperationEvent({
-        communityId, actorId: createdBy, actorRole: 'admin', action: 'service_provider.portal_link_created',
-        entityType: 'service_provider', entityId: providerId, severity: 'success', status: 'success',
-        summary: `Enlace de gestión enviado a ${provider.name}`, metadata: { expiresAt },
-    });
+    if (providerCommunity) {
+        await recordOperationEvent({
+            communityId: providerCommunity, actorId: createdBy, actorRole: 'admin', action: 'service_provider.portal_link_created',
+            entityType: 'service_provider', entityId: providerId, severity: 'success', status: 'success',
+            summary: `Enlace de gestión enviado a ${provider.name}`, metadata: { expiresAt },
+        });
+    }
     return { token, expiresAt, providerName: String(provider.name) };
 }
 
@@ -81,29 +106,38 @@ async function resolveLink(token: string) {
         .eq('token_hash', hashSecret(token)).maybeSingle();
     if (!link || link.revoked_at) throw new ProviderPortalError('Este enlace no es válido. Pide uno nuevo a la administración.', 404);
     if (new Date(link.expires_at).getTime() <= Date.now()) throw new ProviderPortalError('Este enlace venció. Pide uno nuevo a la administración.', 410);
+    const communityId = link.community_id ? String(link.community_id) : null;
+    // El maestro tiene que seguir en el alcance con que se creó el enlace.
+    const { data: provider } = await supabaseAdmin.from('service_providers')
+        .select('community_id').eq('id', link.provider_id).maybeSingle();
+    if (!provider || (provider.community_id ? String(provider.community_id) : null) !== communityId) {
+        throw new ProviderPortalError('Este enlace no es válido. Pide uno nuevo a la administración.', 404);
+    }
     void supabaseAdmin.from('service_provider_links')
         .update({ last_used_at: new Date().toISOString(), use_count: Number(link.use_count || 0) + 1 })
         .eq('id', link.id).then(() => undefined);
-    return { communityId: String(link.community_id), providerId: String(link.provider_id), expiresAt: String(link.expires_at) };
+    return { communityId, providerId: String(link.provider_id), expiresAt: String(link.expires_at) };
 }
 
 export async function getProviderPortal(token: string): Promise<ProviderPortalData> {
     const link = await resolveLink(token);
-    const [{ data: provider }, { data: community }, { data: requests }] = await Promise.all([
+    let requestsQuery = supabaseAdmin.from('service_requests')
+        .select('id, user_id, community_id, preferred_date, preferred_time, description, status, created_at')
+        .eq('provider_id', link.providerId);
+    if (link.communityId) requestsQuery = requestsQuery.eq('community_id', link.communityId);
+    const [{ data: provider }, { data: requests }] = await Promise.all([
         supabaseAdmin.from('service_providers').select(PROFILE_COLUMNS).eq('id', link.providerId).maybeSingle(),
-        supabaseAdmin.from('communities').select('name').eq('id', link.communityId).maybeSingle(),
-        supabaseAdmin.from('service_requests')
-            .select('id, user_id, preferred_date, preferred_time, description, status, created_at')
-            .eq('provider_id', link.providerId).eq('community_id', link.communityId)
-            .order('created_at', { ascending: false }).limit(50),
+        requestsQuery.order('created_at', { ascending: false }).limit(50),
     ]);
     if (!provider) throw new ProviderPortalError('El perfil de proveedor ya no existe.', 404);
 
-    // Del residente solo lo necesario para coordinar: nombre y departamento.
+    // Del residente solo lo necesario para coordinar: nombre, departamento y comunidad.
     const userIds = [...new Set((requests || []).map(row => String(row.user_id)))];
-    const { data: people } = userIds.length
-        ? await supabaseAdmin.from('profiles').select('id, name, unit_id').in('id', userIds)
-        : { data: [] };
+    const communityIds = [...new Set([link.communityId, ...(requests || []).map(row => String(row.community_id))].filter((id): id is string => Boolean(id)))];
+    const [{ data: people }, { data: communities }] = await Promise.all([
+        userIds.length ? supabaseAdmin.from('profiles').select('id, name, unit_id').in('id', userIds) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+        communityIds.length ? supabaseAdmin.from('communities').select('id, name').in('id', communityIds) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    ]);
     const unitIds = [...new Set((people || []).map(row => String(row.unit_id || '')).filter(Boolean))];
     const { data: units } = unitIds.length
         ? await supabaseAdmin.from('units').select('id, number, tower').in('id', unitIds)
@@ -113,9 +147,11 @@ export async function getProviderPortal(token: string): Promise<ProviderPortalDa
         name: String(row.name || 'Residente').split(' ')[0],
         unit: unitLabel.get(String(row.unit_id || '')) || '',
     }]));
+    const communityName = new Map((communities || []).map(row => [String(row.id), String(row.name || 'Comunidad')]));
 
     return {
-        communityName: String(community?.name || 'tu comunidad'),
+        communityName: link.communityId ? communityName.get(link.communityId) || 'tu comunidad' : NETWORK_NAME,
+        network: link.communityId === null,
         expiresAt: link.expiresAt,
         provider: {
             id: String(provider.id),
@@ -145,6 +181,7 @@ export async function getProviderPortal(token: string): Promise<ProviderPortalDa
             createdAt: String(row.created_at),
             requesterName: person.get(String(row.user_id))?.name || 'Residente',
             requesterUnit: person.get(String(row.user_id))?.unit || '',
+            communityName: communityName.get(String(row.community_id)) || 'Comunidad',
         })),
     };
 }
@@ -153,14 +190,16 @@ export async function updateProviderProfileViaPortal(token: string, body: Record
     const link = await resolveLink(token);
     const result = providerProfileUpdate(body);
     if ('error' in result) throw new ProviderPortalError(result.error, 400);
-    const { error } = await supabaseAdmin.from('service_providers').update(result.update)
-        .eq('id', link.providerId).eq('community_id', link.communityId);
+    const update = supabaseAdmin.from('service_providers').update(result.update).eq('id', link.providerId);
+    const { error } = link.communityId ? await update.eq('community_id', link.communityId) : await update.is('community_id', null);
     if (error) throw new ProviderPortalError('No se pudo guardar el perfil.', 500);
-    await recordOperationEvent({
-        communityId: link.communityId, actorRole: 'external_provider', action: 'service_provider.profile_updated',
-        entityType: 'service_provider', entityId: link.providerId, severity: 'success', status: 'success',
-        summary: 'El maestro actualizó su perfil desde su enlace', metadata: { fields: Object.keys(result.update) },
-    });
+    if (link.communityId) {
+        await recordOperationEvent({
+            communityId: link.communityId, actorRole: 'external_provider', action: 'service_provider.profile_updated',
+            entityType: 'service_provider', entityId: link.providerId, severity: 'success', status: 'success',
+            summary: 'El maestro actualizó su perfil desde su enlace', metadata: { fields: Object.keys(result.update) },
+        });
+    }
 }
 
 export async function updateRequestViaPortal(
@@ -171,7 +210,7 @@ export async function updateRequestViaPortal(
     const link = await resolveLink(token);
     const { data: request } = await supabaseAdmin.from('service_requests')
         .select('id, provider_id, community_id, status').eq('id', requestId).maybeSingle();
-    if (!request || request.provider_id !== link.providerId || request.community_id !== link.communityId) {
+    if (!request || request.provider_id !== link.providerId || (link.communityId && request.community_id !== link.communityId)) {
         throw new ProviderPortalError('Solicitud no encontrada.', 404);
     }
     const reschedule = Boolean(input.preferredDate || input.preferredTime);
@@ -191,7 +230,7 @@ export async function updateRequestViaPortal(
         .eq('id', requestId).eq('status', request.status).select('id, status').maybeSingle();
     if (error || !updated) throw new ProviderPortalError('La solicitud cambió. Actualiza la página antes de reintentar.', 409);
     await recordOperationEvent({
-        communityId: link.communityId, actorRole: 'external_provider', action: 'service_request.status_changed',
+        communityId: String(request.community_id), actorRole: 'external_provider', action: 'service_request.status_changed',
         entityType: 'service_request', entityId: requestId,
         severity: input.status === 'cancelled' ? 'warning' : 'success',
         status: input.status === 'cancelled' ? 'blocked' : 'pending',

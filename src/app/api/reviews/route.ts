@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });
         }
 
-        if (!profile.community_id || provider.community_id !== profile.community_id) {
+        // Un maestro de la red (sin comunidad) lo puede evaluar cualquier vecino.
+        if (!profile.community_id || (provider.community_id && provider.community_id !== profile.community_id)) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
 

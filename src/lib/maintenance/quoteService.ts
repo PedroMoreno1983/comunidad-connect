@@ -4,6 +4,7 @@
  */
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { jobCategory, type QuoteProvider, type QuoteRow } from './quotes';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 export type QuoteTargetKind = 'task' | 'ticket';
 
@@ -77,7 +78,7 @@ export async function listQuotes(communityId: string, target: QuoteTarget): Prom
 export async function listCommunityProviders(communityId: string): Promise<(QuoteProvider & { contact_phone: string | null; email: string | null; user_id: string | null })[]> {
     const { data, error } = await getSupabaseAdmin().from('service_providers')
         .select('id, name, category, specialties, verified, rating, completed_jobs, contact_phone, email, user_id')
-        .eq('community_id', communityId).limit(500);
+        .or(communityProvidersFilter(communityId)).limit(500);
     if (error) throw error;
     return (data || []).map(row => ({
         id: String(row.id), name: String(row.name), category: row.category ? String(row.category) : null,

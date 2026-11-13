@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS public.service_providers (
   completed_jobs INTEGER DEFAULT 0,
   verified BOOLEAN DEFAULT FALSE,
   review_count INTEGER DEFAULT 0,
-  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -6733,7 +6733,7 @@ CREATE TABLE IF NOT EXISTS public.community_deal_quotes (
 
 CREATE TABLE IF NOT EXISTS public.service_provider_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE,
   provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
   expires_at TIMESTAMPTZ NOT NULL,

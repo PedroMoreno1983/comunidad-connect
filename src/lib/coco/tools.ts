@@ -70,6 +70,7 @@ import { listCommunityAgenda } from './communityAgenda';
 import { sendConfirmedEmailDraft } from './emailDraft';
 import { prepareLegalDraft } from './legalDrafts';
 import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalDraftMarker';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -1522,8 +1523,9 @@ export async function executeTool(
                 const search = (input.query || (!['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category) ? category : '')).trim();
                 const query = supabaseAdmin
                     .from('service_providers')
-                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude')
-                    .eq('community_id', communityId)
+                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude, community_id')
+                    // Los de la comunidad y los de la Red Convive (community_id NULL).
+                    .or(communityProvidersFilter(communityId))
                     .order('rating', { ascending: false });
                 
                 if (['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category)) {
@@ -2660,7 +2662,7 @@ export async function executeTool(
                 const providerQuery = supabaseAdmin
                     .from('service_providers')
                     .select('id, name, contact_phone, category, response_time')
-                    .eq('community_id', communityId)
+                    .or(communityProvidersFilter(communityId))
                     .eq('availability', 'available')
                     .order('verified', { ascending: false })
                     .order('rating', { ascending: false })

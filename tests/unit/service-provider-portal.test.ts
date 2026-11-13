@@ -62,11 +62,60 @@ describe('service_providers_guard (Postgres real)', () => {
             verified BOOLEAN DEFAULT FALSE, user_id UUID, community_id UUID NOT NULL REFERENCES public.communities(id)
           );
           ALTER TABLE public.service_providers ENABLE ROW LEVEL SECURITY;
-          CREATE POLICY "own_update" ON public.service_providers FOR UPDATE USING (auth.uid() = user_id);
-          CREATE POLICY "read_all" ON public.service_providers FOR SELECT USING (true);
-          CREATE POLICY "admin_update" ON public.service_providers FOR UPDATE USING (public.get_my_role() = 'admin');
+          -- Como en producción: lectura y escritura de la administración acotadas a su comunidad.
+          CREATE POLICY "own_update" ON public.service_providers FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+          CREATE POLICY "community_read" ON public.service_providers FOR SELECT USING (community_id = public.get_my_community_id());
+          CREATE POLICY "admin_community_only" ON public.service_providers FOR ALL
+            USING (community_id = public.get_my_community_id() AND public.get_my_role() = 'admin');
+          GRANT SELECT, UPDATE ON public.service_providers TO authenticated;
         `);
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261113120000_service_provider_portal.sql'), 'utf8'));
+        await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261113160000_service_provider_network.sql'), 'utf8'));
+    });
+
+    const networkProvider = async () => {
+        const { rows } = await asServiceRole(db, () => db.query<{ id: string }>(
+            "INSERT INTO public.service_providers (name, community_id) VALUES ('Red', NULL) RETURNING id",
+        ));
+        return rows[0].id;
+    };
+
+    it('un maestro de la red lo ven todas las comunidades', async () => {
+        const [a, b] = [await seedCommunity(db), await seedCommunity(db)];
+        const id = await networkProvider();
+        for (const community of [a, b]) {
+            const { rows } = await asUser(db, community.residentId, () => db.query('SELECT id FROM public.service_providers WHERE id = $1', [id]));
+            expect(rows).toHaveLength(1);
+        }
+    });
+
+    it('ninguna administración puede editar ni apropiarse de un maestro de la red', async () => {
+        const community = await seedCommunity(db);
+        const id = await networkProvider();
+        await asUser(db, community.adminId, async () => {
+            const result = await db.query('UPDATE public.service_providers SET verified = true, community_id = $1 WHERE id = $2', [community.communityId, id]);
+            expect(result.affectedRows).toBe(0);
+        });
+        const { rows } = await db.query<{ verified: boolean; community_id: string | null }>('SELECT verified, community_id FROM public.service_providers WHERE id = $1', [id]);
+        expect(rows[0]).toEqual({ verified: false, community_id: null });
+    });
+
+    it('sumar a la red (cambiar la comunidad) es solo del servidor', async () => {
+        const community = await seedCommunity(db);
+        const { rows } = await db.query<{ id: string }>(
+            'INSERT INTO public.service_providers (name, user_id, community_id) VALUES ($1, $2, $3) RETURNING id',
+            ['Pedro', community.ownerId, community.communityId],
+        );
+        const id = rows[0].id;
+        await asUser(db, community.adminId, async () => {
+            await expect(db.query('UPDATE public.service_providers SET community_id = NULL WHERE id = $1', [id])).rejects.toThrow();
+        });
+        await asUser(db, community.ownerId, async () => {
+            await expect(db.query('UPDATE public.service_providers SET community_id = NULL WHERE id = $1', [id])).rejects.toThrow();
+        });
+        await asServiceRole(db, () => db.query('UPDATE public.service_providers SET community_id = NULL WHERE id = $1', [id]));
+        const { rows: after } = await db.query<{ community_id: string | null }>('SELECT community_id FROM public.service_providers WHERE id = $1', [id]);
+        expect(after[0].community_id).toBeNull();
     });
 
     it('el maestro con cuenta edita su perfil pero no se verifica ni se sube la nota', async () => {

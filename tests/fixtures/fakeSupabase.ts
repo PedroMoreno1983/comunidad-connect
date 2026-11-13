@@ -97,6 +97,18 @@ export function fakeClient(db: FakeDb) {
                 filters.push(row => String(row[column] ?? '').toLowerCase().includes(needle));
                 return builder;
             },
+            // PostgREST .or() con términos simples: "col.eq.valor" y "col.is.null".
+            or: (filter: string) => {
+                const terms = filter.split(',').map(term => {
+                    const [column, operator, ...rest] = term.split('.');
+                    const value = rest.join('.');
+                    if (operator === 'eq') return (row: Record<string, unknown>) => String(row[column]) === value;
+                    if (operator === 'is' && value === 'null') return (row: Record<string, unknown>) => row[column] === null || row[column] === undefined;
+                    throw new Error(`fakeSupabase.or no soporta: ${term}`);
+                });
+                filters.push(row => terms.some(term => term(row)));
+                return builder;
+            },
             order: (column: string, options?: { ascending?: boolean }) => { order ||= { column, ascending: options?.ascending !== false }; return builder; },
             limit: (value: number) => { limit = value; return builder; },
             range: (from: number, to: number) => { limit = to - from + 1; return builder; },

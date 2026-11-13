@@ -1,8 +1,11 @@
 import type {
+    NetworkProviderAction,
+    NetworkProviderInput,
     ProviderInviteLink,
     ProviderPortalData,
     ProviderProfileInput,
     ServiceRequestStatus,
+    SuperAdminProvidersResponse,
 } from '../types';
 
 /**
@@ -54,5 +57,28 @@ export const ProviderPortalService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status, preferredDate: schedule?.date, preferredTime: schedule?.time }),
         }));
+    },
+};
+
+/** Red Convive de maestros: solo superadmin (las rutas lo comprueban). */
+export const ProviderNetworkService = {
+    async load(): Promise<SuperAdminProvidersResponse> {
+        return readJson<SuperAdminProvidersResponse>(await fetch('/api/superadmin/providers', { cache: 'no-store' }));
+    },
+
+    async create(input: NetworkProviderInput): Promise<{ id: string }> {
+        return readJson<{ id: string }>(await fetch('/api/superadmin/providers', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+        }));
+    },
+
+    async act(providerId: string, action: NetworkProviderAction): Promise<void> {
+        await readJson(await fetch(`/api/superadmin/providers/${encodeURIComponent(providerId)}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action),
+        }));
+    },
+
+    async createInvite(providerId: string): Promise<ProviderInviteLink> {
+        return readJson<ProviderInviteLink>(await fetch(`/api/superadmin/providers/${encodeURIComponent(providerId)}/invite`, { method: 'POST' }));
     },
 };
