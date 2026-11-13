@@ -5,7 +5,7 @@ import { CANONICAL_SITE_URL, INTERNAL_SERVICE_PROVIDER_IDS } from '@/lib/config'
 import { recordPlatformOperationEvent } from '@/lib/operations/audit';
 import { createProviderInvite, isInternalProvider } from '@/lib/services/providerPortal';
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
-import type { NetworkProviderInput, NetworkProviderRow, ProviderInviteLink, SuperAdminProvidersResponse } from '@/lib/types';
+import type { NetworkProviderInput, ProviderNetworkActor, NetworkProviderRow, ProviderInviteLink, SuperAdminProvidersResponse } from '@/lib/types';
 
 /**
  * Lo que hace Convive (superadmin) con la Red de maestros: ver la red y los
@@ -76,12 +76,9 @@ export async function listProviderNetwork(search?: string | null): Promise<Super
     };
 }
 
-/** Quién hizo el cambio en la red: va a la bitácora global. */
-export type NetworkActor = { id: string; email?: string | null };
-
 const OPEN_REQUEST_STATUSES = ['pending', 'accepted', 'awaiting_confirmation'];
 
-async function auditNetwork(actor: NetworkActor, action: string, providerId: string, summary: string, metadata: Record<string, unknown> = {}) {
+async function auditNetwork(actor: ProviderNetworkActor, action: string, providerId: string, summary: string, metadata: Record<string, unknown> = {}) {
     const audit = await recordPlatformOperationEvent({
         actorId: actor.id, actorEmail: actor.email, action, entityType: 'service_provider', entityId: providerId, summary, metadata,
     });
@@ -89,7 +86,7 @@ async function auditNetwork(actor: NetworkActor, action: string, providerId: str
     if (!audit.ok) throw new ProviderNetworkError('El cambio se hizo, pero la auditoría global no pudo certificarse.', 500);
 }
 
-export async function createNetworkProvider(input: NetworkProviderInput, actor: NetworkActor) {
+export async function createNetworkProvider(input: NetworkProviderInput, actor: ProviderNetworkActor) {
     const category = CATEGORIES.includes(input.category as typeof CATEGORIES[number]) ? input.category : null;
     if (!category) throw new ProviderNetworkError('Elige el oficio del maestro.', 400);
     const result = providerProfileUpdate({
@@ -127,7 +124,7 @@ export async function createNetworkProvider(input: NetworkProviderInput, actor: 
  * dejarlo en una comunidad no puede quedar con solicitudes abiertas de otras:
  * su portal y la ruta de estado ya no las aceptarían y quedarían varadas.
  */
-export async function moveProvider(providerId: string, communityId: string | null, actor: NetworkActor) {
+export async function moveProvider(providerId: string, communityId: string | null, actor: ProviderNetworkActor) {
     if (!UUID.test(providerId)) throw new ProviderNetworkError('Proveedor no válido.', 400);
     const admin = getSupabaseAdmin();
     if (communityId !== null) {
@@ -161,7 +158,7 @@ export async function moveProvider(providerId: string, communityId: string | nul
         { previousCommunityId: previousCommunity, communityId, linksRevoked: true });
 }
 
-export async function setNetworkProviderVerified(providerId: string, verified: boolean, actor: NetworkActor) {
+export async function setNetworkProviderVerified(providerId: string, verified: boolean, actor: ProviderNetworkActor) {
     if (!UUID.test(providerId)) throw new ProviderNetworkError('Proveedor no válido.', 400);
     const { data, error } = await getSupabaseAdmin().from('service_providers')
         .update({ verified }).eq('id', providerId).is('community_id', null).select('id, name').maybeSingle();
@@ -171,7 +168,7 @@ export async function setNetworkProviderVerified(providerId: string, verified: b
         `${verified ? 'Verificado' : 'Verificación quitada'}: ${data.name}`);
 }
 
-export async function createNetworkInvite(providerId: string, actor: NetworkActor): Promise<ProviderInviteLink> {
+export async function createNetworkInvite(providerId: string, actor: ProviderNetworkActor): Promise<ProviderInviteLink> {
     if (!UUID.test(providerId)) throw new ProviderNetworkError('Proveedor no válido.', 400);
     // created_by apunta a profiles: solo si el superadmin tiene perfil.
     const { data: profile } = await getSupabaseAdmin().from('profiles').select('id').eq('id', actor.id).maybeSingle();

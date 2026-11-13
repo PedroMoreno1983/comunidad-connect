@@ -21,6 +21,7 @@ import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
 import type { CoCoPendingAction, CoCoResolutions } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { discardChatAttachment } from './chatAttachments';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -430,6 +431,11 @@ export async function askCoCo(
                 const resolution = effectiveResolutions?.[tu.id];
                 if (MUTATING_TOOLS.has(tu.name) && resolution !== 'approved') {
                     await auditRejectedTool(tu, userCtx);
+                    // La imagen del chat que iba al perfil de un maestro no se queda guardada.
+                    const attachmentId = (tu.input as Record<string, unknown>)?.attachment_id;
+                    if (tu.name === 'save_provider_attachment' && userCtx.user_id && typeof attachmentId === 'string') {
+                        await discardChatAttachment(userCtx.user_id, attachmentId).catch(() => undefined);
+                    }
                     return {
                         toolUse: tu,
                         resolution: 'rejected' as const,

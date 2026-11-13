@@ -4,6 +4,7 @@ import { claimSchedulerTick, releaseSchedulerTick, runProactiveProposals } from 
 import { authorizeScheduler, parseSchedulerMode, schedulerBucket, schedulerSecrets } from '@/lib/agent-center/schedulerAuth';
 import { drainDelegatedTasks } from '@/lib/coco/delegatedTasks';
 import { runDueRoutines } from '@/lib/coco/routineRunner';
+import { purgeStaleChatAttachments } from '@/lib/coco/chatAttachments';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,12 @@ async function handle(req: NextRequest) {
             console.error('[agent-center scheduler] background tasks failed', error);
             return { finished: [], error: true };
         });
-        return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, routines, delegated });
+        // Imágenes del chat que nadie usó (adjuntos para el perfil de un maestro).
+        const chatAttachments = await purgeStaleChatAttachments().catch(error => {
+            console.error('[agent-center scheduler] chat attachment cleanup failed', error);
+            return { removed: 0, error: true };
+        });
+        return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, routines, delegated, chatAttachments });
     } catch (error) {
         await releaseSchedulerTick(mode, bucket);
         console.error('[agent-center scheduler] evaluation failed', error);

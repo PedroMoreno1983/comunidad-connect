@@ -4006,6 +4006,23 @@ export interface ProviderDocumentsReviewProps {
   scope: 'admin' | 'superadmin';
 }
 
+/** Quién cambia fotos o documentos de un maestro: un usuario (id) o el maestro con su enlace (id null). */
+export type ProviderMediaActor = { id: string | null; role: string; email?: string | null };
+
+/** Quién hace un cambio en la Red Convive (superadmin): va a la bitácora global. */
+export type ProviderNetworkActor = { id: string; email?: string | null };
+
+/** Quién gestiona un proveedor con sesión, y si puede revisar sus documentos. */
+export type ProviderManagerAccess = { providerId: string; actor: ProviderMediaActor; isReviewer: boolean };
+
+/** Lo mínimo de un proveedor para decidir alcance y permisos. */
+export type ProviderIdentity = { id: string; name: string; community_id: string | null; user_id?: string | null };
+
+export type ProviderReviewInput = { providerId: string; rating: number; comment: string; serviceType?: string };
+
+/** Resultado de guardar una imagen del chat para usarla en el perfil de un maestro. */
+export type ChatAttachmentStash = { status: 'stored'; id: string } | { status: 'unsupported' } | { status: 'failed' };
+
 /** Maestro visto por Convive: de la Red (communityId null) o de una comunidad. */
 export interface NetworkProviderRow {
   id: string;

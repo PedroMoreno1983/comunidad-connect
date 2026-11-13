@@ -746,8 +746,7 @@ export async function POST(req: NextRequest) {
         // propio maestro) queda disponible para save_provider_attachment.
         let agentMessage = message;
         if (imageAttachment && !resolutions && isToolAllowedForRole('save_provider_attachment', safeRole) && await canAttachToProviders(userId, safeRole)) {
-            const attachmentId = await stashChatImage(userId, imageAttachment);
-            if (attachmentId) agentMessage = `${message}${attachmentNote(attachmentId)}`;
+            agentMessage = `${message}${attachmentNote(await stashChatImage(userId, imageAttachment))}`;
         }
 
         // ── 4. Llamar al agente ──────────────────────────────────────────────

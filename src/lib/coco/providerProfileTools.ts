@@ -7,6 +7,8 @@ import {
     ProviderMediaError, listProviderDocuments, reviewProviderDocument, uploadProviderDocument, uploadProviderPhoto,
 } from '@/lib/services/providerMedia';
 import { discardChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
+import { isValidRut, namesMatch } from '@/lib/services/providerDocumentRules';
+import type { ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity } from '@/lib/types';
 
 /**
  * Perfil del maestro desde CoCo: valorar (vecinos), revisar documentos
@@ -16,7 +18,6 @@ import { discardChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
  */
 
 type Row = Record<string, unknown>;
-type Provider = { id: string; name: string; community_id: string | null; user_id: string | null };
 
 function normalize(value: string) {
     return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -27,14 +28,20 @@ function text(value: unknown, max: number) {
 }
 
 /** Un proveedor visible para la comunidad (propio o de la Red) por ID o por nombre. */
-async function findProvider(communityId: string, input: Row): Promise<{ provider: Provider } | { result: Row }> {
+async function findProvider(communityId: string, input: Row): Promise<{ provider: ProviderIdentity } | { result: Row }> {
     const id = text(input.provider_id, 64);
     const name = normalize(text(input.provider_name, 120));
     const query = supabaseAdmin.from('service_providers').select('id, name, community_id, user_id').or(communityProvidersFilter(communityId));
     const { data } = id ? await query.eq('id', id) : await query;
-    let rows = (data || []) as Provider[];
-    if (!id) {
-        if (name.length < 2) return { result: { error: 'Indica el nombre del maestro.' } };
+    let rows = (data || []) as ProviderIdentity[];
+    // La confirmación muestra el nombre: se exige siempre y, si viene un ID,
+    // tiene que ser de ese maestro. Lo que se aprueba es lo que se ejecuta.
+    if (name.length < 2) return { result: { error: 'Indica el nombre del maestro.' } };
+    if (id) {
+        if (rows[0] && !normalize(String(rows[0].name)).includes(name)) {
+            return { result: { error: `El ID corresponde a ${rows[0].name}, no a quien se confirmó. No hice cambios.` } };
+        }
+    } else {
         rows = rows.filter(row => normalize(String(row.name)).includes(name));
         const exact = rows.filter(row => normalize(String(row.name)) === name);
         if (exact.length === 1) rows = exact;
@@ -73,7 +80,7 @@ export async function rateProviderForUser(userId: string, communityId: string, i
 }
 
 /** La administración solo revisa maestros de su comunidad; los de la Red los revisa Convive. */
-async function communityProviderForAdmin(communityId: string, input: Row): Promise<{ provider: Provider } | { result: Row }> {
+async function communityProviderForAdmin(communityId: string, input: Row): Promise<{ provider: ProviderIdentity } | { result: Row }> {
     const found = await findProvider(communityId, input);
     if ('result' in found) return found;
     if (found.provider.community_id !== communityId) {
@@ -82,11 +89,32 @@ async function communityProviderForAdmin(communityId: string, input: Row): Promi
     return found;
 }
 
+/** El chequeo automático sin identificadores: solo veredicto y banderas. */
+export function redactedCheck(kind: ProviderDocumentKind, check: ProviderDocumentAutoCheck, providerName: string) {
+    const extracted = check.extracted;
+    if (!extracted) return { verdict: check.verdict, readable: false };
+    const age = extracted.issueDate
+        ? Math.floor((Date.now() - Date.parse(`${extracted.issueDate}T00:00:00Z`)) / 86_400_000)
+        : null;
+    return {
+        verdict: check.verdict,
+        readable: true,
+        expected_document_type: extracted.documentType === kind,
+        rut_valid: extracted.rut ? isValidRut(extracted.rut) : null,
+        name_matches_profile: extracted.fullName ? namesMatch(extracted.fullName, providerName) : null,
+        ...(kind === 'background_certificate'
+            ? { days_since_issue: age, no_records: extracted.hasRecords === null ? null : !extracted.hasRecords }
+            : { expired: extracted.expiryDate ? extracted.expiryDate < new Date().toISOString().slice(0, 10) : null }),
+    };
+}
+
 export async function listProviderDocumentsForAdmin(communityId: string, input: Row) {
     const found = await communityProviderForAdmin(communityId, input);
     if ('result' in found) return found.result;
     const documents = await listProviderDocuments(found.provider.id, true);
-    // Sin el enlace al archivo: el chat se guarda, y el archivo se ve en el perfil.
+    // El chat se guarda: sin el archivo ni datos del documento (RUT, nombre,
+    // folio). Solo el veredicto y los chequeos como sí/no; el detalle se ve en
+    // el perfil del maestro.
     return {
         provider: found.provider.name,
         documents: documents.map(document => ({
@@ -94,7 +122,7 @@ export async function listProviderDocumentsForAdmin(communityId: string, input: 
             kind: document.kind === 'background_certificate' ? 'certificado de antecedentes' : 'cédula de identidad',
             uploaded: document.createdAt.slice(0, 10),
             status: document.status,
-            auto_check: document.autoCheck ? { verdict: document.autoCheck.verdict, findings: document.autoCheck.findings } : null,
+            auto_check: document.autoCheck ? redactedCheck(document.kind, document.autoCheck, found.provider.name) : null,
             review_note: document.reviewNote,
         })),
         profile_link: `/services/provider/${found.provider.id}`,

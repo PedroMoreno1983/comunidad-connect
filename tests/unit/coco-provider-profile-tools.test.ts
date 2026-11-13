@@ -92,6 +92,29 @@ describe('guardar la imagen del chat', () => {
     });
 });
 
+describe('lo confirmado es lo que se ejecuta', () => {
+    it('un ID de otro maestro que el nombre confirmado no hace nada', async () => {
+        const { rateProviderForUser, saveProviderAttachment } = await import('@/lib/coco/providerProfileTools');
+        expect(await rateProviderForUser('u1', A, { provider_id: 'p-red', provider_name: 'Juan', rating: '5', comment: 'x' })).toHaveProperty('error');
+        expect(await saveProviderAttachment({ id: ADMIN, role: 'admin', communityId: A }, { attachment_id: 'x', provider_id: 'p-local', kind: 'profile_photo' })).toHaveProperty('error');
+        expect(reviews.submitProviderReview).not.toHaveBeenCalled();
+        expect(media.uploadProviderPhoto).not.toHaveBeenCalled();
+    });
+});
+
+describe('documentos en el chat', () => {
+    it('el chequeo llega sin RUT, nombre ni folio', async () => {
+        const { redactedCheck } = await import('@/lib/coco/providerProfileTools');
+        const check = redactedCheck('background_certificate', {
+            verdict: 'looks_ok', findings: ['RUT 12.345.678-5 válido.'],
+            extracted: { documentType: 'background_certificate', fullName: 'JUAN PÉREZ SOTO', rut: '12.345.678-5', issueDate: '2026-11-01', expiryDate: null, hasRecords: false, verificationCode: 'FOLIO-99' },
+        }, 'Juan Pérez');
+        expect(check).toMatchObject({ verdict: 'looks_ok', rut_valid: true, name_matches_profile: true, no_records: true });
+        const serialized = JSON.stringify(check);
+        for (const secret of ['12.345.678', 'SOTO', 'FOLIO-99']) expect(serialized).not.toContain(secret);
+    });
+});
+
 describe('roles y confirmación', () => {
     it('revisar documentos es solo de administración; todo lo que escribe pide confirmación', async () => {
         const { isToolAllowedForRole, MUTATING_TOOLS } = await import('@/lib/coco/tools');

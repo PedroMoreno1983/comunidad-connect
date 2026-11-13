@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent, recordPlatformOperationEvent } from '@/lib/operations/audit';
 import { checkProviderDocument } from '@/lib/services/providerDocumentCheck';
-import type { ProviderDocument, ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderWorkPhoto } from '@/lib/types';
+import type { ProviderDocument, ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity, ProviderMediaActor, ProviderWorkPhoto } from '@/lib/types';
 
 /**
  * Foto de perfil, fotos de trabajos y documentos de un maestro. Quien llama ya
@@ -38,16 +38,15 @@ export function sniffFileType(buffer: Buffer): 'image/jpeg' | 'image/png' | 'ima
 
 const EXTENSION: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
-type ProviderRef = { id: string; name: string; community_id: string | null };
 
-async function loadProvider(providerId: string): Promise<ProviderRef> {
+async function loadProvider(providerId: string): Promise<ProviderIdentity> {
     if (!UUID.test(providerId)) throw new ProviderMediaError('Proveedor no válido.', 400);
     const { data } = await getSupabaseAdmin().from('service_providers').select('id, name, community_id').eq('id', providerId).maybeSingle();
     if (!data) throw new ProviderMediaError('Proveedor no encontrado.', 404);
     return { id: String(data.id), name: String(data.name), community_id: data.community_id ? String(data.community_id) : null };
 }
 
-async function audit(provider: ProviderRef, actor: MediaActor, action: string, summary: string, metadata: Record<string, unknown> = {}) {
+async function audit(provider: ProviderIdentity, actor: ProviderMediaActor, action: string, summary: string, metadata: Record<string, unknown> = {}) {
     if (provider.community_id) {
         await recordOperationEvent({
             communityId: provider.community_id, actorId: actor.id, actorRole: actor.role, action,
@@ -61,8 +60,6 @@ async function audit(provider: ProviderRef, actor: MediaActor, action: string, s
     }
 }
 
-/** Quién hace el cambio: un usuario (id) o el maestro con su enlace (id null). */
-export type MediaActor = { id: string | null; role: string; email?: string | null };
 
 function readFile(file: File | null, maxBytes: number, allowed: string[]) {
     if (!file) throw new ProviderMediaError('Archivo no recibido.', 400);
@@ -79,7 +76,7 @@ function readFile(file: File | null, maxBytes: number, allowed: string[]) {
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-export async function uploadProviderPhoto(providerId: string, kind: 'profile' | 'work', file: File | null, caption: string | null, actor: MediaActor) {
+export async function uploadProviderPhoto(providerId: string, kind: 'profile' | 'work', file: File | null, caption: string | null, actor: ProviderMediaActor) {
     const provider = await loadProvider(providerId);
     const { buffer, type } = await readFile(file, MAX_PHOTO_BYTES, PHOTO_TYPES);
     const admin = getSupabaseAdmin();
@@ -114,7 +111,7 @@ export async function uploadProviderPhoto(providerId: string, kind: 'profile' | 
     return { url: publicUrl, photo: { id: String(data.id), url: String(data.url), caption: data.caption ? String(data.caption) : null, createdAt: String(data.created_at) } };
 }
 
-export async function deleteWorkPhoto(providerId: string, photoId: string, actor: MediaActor) {
+export async function deleteWorkPhoto(providerId: string, photoId: string, actor: ProviderMediaActor) {
     const provider = await loadProvider(providerId);
     if (!UUID.test(photoId)) throw new ProviderMediaError('Foto no válida.', 400);
     const admin = getSupabaseAdmin();
@@ -131,7 +128,7 @@ export async function listWorkPhotos(providerId: string): Promise<ProviderWorkPh
     return (data || []).map(row => ({ id: String(row.id), url: String(row.url), caption: row.caption ? String(row.caption) : null, createdAt: String(row.created_at) }));
 }
 
-export async function uploadProviderDocument(providerId: string, kind: string, file: File | null, actor: MediaActor, via: string) {
+export async function uploadProviderDocument(providerId: string, kind: string, file: File | null, actor: ProviderMediaActor, via: string) {
     if (!DOCUMENT_KINDS.includes(kind as ProviderDocumentKind)) throw new ProviderMediaError('Tipo de documento no válido.', 400);
     const provider = await loadProvider(providerId);
     const { buffer, type } = await readFile(file, MAX_DOCUMENT_BYTES, [...PHOTO_TYPES, 'application/pdf']);
@@ -192,7 +189,7 @@ export async function listProviderDocuments(providerId: string, forReviewer: boo
  * Aprobar o rechazar. Aprobar marca al proveedor (background_checked_at o
  * identity_checked_at), que es lo que ven los vecinos.
  */
-export async function reviewProviderDocument(providerId: string, documentId: string, approve: boolean, note: string | null, actor: MediaActor) {
+export async function reviewProviderDocument(providerId: string, documentId: string, approve: boolean, note: string | null, actor: ProviderMediaActor) {
     const provider = await loadProvider(providerId);
     if (!UUID.test(documentId)) throw new ProviderMediaError('Documento no válido.', 400);
     if (!approve && !note?.trim()) throw new ProviderMediaError('Indica el motivo del rechazo: el maestro lo verá.', 400);

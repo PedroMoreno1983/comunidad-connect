@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { ProviderReviewInput } from '@/lib/types';
 
 /**
  * Reseña de un vecino a un maestro. La usan la ruta /api/reviews y CoCo
@@ -15,8 +16,6 @@ export class ProviderReviewError extends Error {
         super(message);
     }
 }
-
-export type ProviderReviewInput = { providerId: string; rating: number; comment: string; serviceType?: string };
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
