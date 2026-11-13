@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { ProviderReviewError, submitProviderReview } from '@/lib/services/providerReviews';
 
 async function getSupabaseUserClient() {
     const cookieStore = await cookies();
@@ -17,115 +17,29 @@ async function getSupabaseUserClient() {
     );
 }
 
-function cleanText(value: unknown, max: number) {
-    return typeof value === 'string' ? value.trim().slice(0, max) : '';
-}
-
+/** Reseña de un vecino a un maestro (mismas reglas que CoCo: providerReviews.ts). */
 export async function POST(req: NextRequest) {
     try {
         const supabaseUser = await getSupabaseUserClient();
         const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
         if (authError || !user) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
-        const body = await req.json();
-        const providerId = cleanText(body.provider_id, 80);
-        const serviceType = cleanText(body.service_type, 80) || 'general';
-        const comment = cleanText(body.comment, 1200);
-        const rating = Number(body.rating);
-
-        if (!providerId || !comment || !Number.isInteger(rating) || rating < 1 || rating > 5) {
-            return NextResponse.json({ error: 'Datos de resena no validos' }, { status: 400 });
-        }
-
-        const [{ data: profile, error: profileError }, { data: provider, error: providerError }] = await Promise.all([
-            supabaseAdmin
-                .from('profiles')
-                .select('id, name, email, community_id')
-                .eq('id', user.id)
-                .single(),
-            supabaseAdmin
-                .from('service_providers')
-                .select('id, name, community_id')
-                .eq('id', providerId)
-                .single(),
-        ]);
-
-        if (profileError || !profile) {
-            return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
-        }
-
-
-        if (providerError || !provider) {
-            return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });
-        }
-
-        // Un maestro de la red (sin comunidad) lo puede evaluar cualquier vecino.
-        if (!profile.community_id || (provider.community_id && provider.community_id !== profile.community_id)) {
-            return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
-        }
-
-        // Reseña de un servicio real: el vecino tuvo una solicitud completada con
-        // este maestro. Se muestra como verificada; las demás, como opinión.
-        const { data: completed } = await supabaseAdmin
-            .from('service_requests')
-            .select('id')
-            .eq('provider_id', provider.id)
-            .eq('user_id', profile.id)
-            .eq('status', 'completed')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        const { data: review, error: reviewError } = await supabaseAdmin
-            .from('reviews')
-            .upsert(
-                {
-                    provider_id: provider.id,
-                    user_id: profile.id,
-                    rating,
-                    comment,
-                    service_type: serviceType,
-                    verified_service: Boolean(completed),
-                    service_request_id: completed?.id ?? null,
-                },
-                { onConflict: 'provider_id,user_id' }
-            )
-            .select('id, provider_id, user_id, rating, comment, service_type, created_at, verified_service')
-            .single();
-
-        if (reviewError || !review) {
-            console.error('[reviews] insert failed', reviewError);
-            return NextResponse.json({ error: 'No se pudo guardar la reseña.' }, { status: 500 });
-        }
-
-        const { data: reviews } = await supabaseAdmin
-            .from('reviews')
-            .select('rating')
-            .eq('provider_id', provider.id);
-
-        const reviewRows = reviews || [];
-        const reviewCount = reviewRows.length;
-        const average = reviewCount
-            ? reviewRows.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviewCount
-            : rating;
-
-        await supabaseAdmin
-            .from('service_providers')
-            .update({
-                rating: Math.round(average * 10) / 10,
-                review_count: reviewCount,
-            })
-            .eq('id', provider.id);
-
+        const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+        const { review } = await submitProviderReview(user.id, {
+            providerId: typeof body.provider_id === 'string' ? body.provider_id : '',
+            rating: Number(body.rating),
+            // Un comentario que no es texto se rechaza (no se publica "[object Object]").
+            comment: typeof body.comment === 'string' ? body.comment : '',
+            serviceType: typeof body.service_type === 'string' ? body.service_type : undefined,
+        });
         return NextResponse.json({ review }, { status: 201 });
     } catch (error) {
+        if (error instanceof ProviderReviewError) {
+            return NextResponse.json({ error: error.message }, { status: error.status });
+        }
         console.error('[reviews] create failed', error);
-        return NextResponse.json(
-            { error: 'No se pudo guardar la reseña.' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'No se pudo guardar la reseña.' }, { status: 500 });
     }
 }

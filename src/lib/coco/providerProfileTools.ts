@@ -1,0 +1,264 @@
+import 'server-only';
+
+import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
+import { ProviderReviewError, submitProviderReview } from '@/lib/services/providerReviews';
+import {
+    ProviderMediaError, listProviderDocuments, reviewProviderDocument, uploadProviderDocument, uploadProviderPhoto,
+} from '@/lib/services/providerMedia';
+import { discardChatImage, releaseChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
+import { isValidRut, namesMatch } from '@/lib/services/providerDocumentRules';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { isInternalProvider } from '@/lib/services/providerPortal';
+import type { ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity } from '@/lib/types';
+
+/**
+ * Perfil del maestro desde CoCo: valorar (vecinos), revisar documentos
+ * (administración) y guardar en el perfil una imagen adjunta al chat
+ * (administración o el propio maestro). Mismas reglas que la pantalla: usan
+ * los mismos servicios.
+ */
+
+type Row = Record<string, unknown>;
+
+const TRADE_LABEL: Record<string, string> = {
+    plumbing: 'Gasfitería', electrical: 'Electricidad', locksmith: 'Cerrajería', cleaning: 'Aseo', general: 'Mantención general',
+};
+
+function normalize(value: string) {
+    return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+/** Fecha y hora de Chile, al minuto: distingue documentos subidos el mismo día. */
+function chileMinute(iso: string) {
+    return new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).format(new Date(iso));
+}
+
+/** Cada palabra del nombre confirmado es una palabra completa del nombre real ("Juan" ≠ "Juana"). */
+function sameProvider(confirmed: string, actual: string) {
+    const actualWords = new Set(normalize(actual).split(/[^a-z0-9ñ]+/).filter(Boolean));
+    const confirmedWords = normalize(confirmed).split(/[^a-z0-9ñ]+/).filter(Boolean);
+    return confirmedWords.length > 0 && confirmedWords.every(word => actualWords.has(word));
+}
+
+function text(value: unknown, max: number) {
+    return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+/** Un proveedor visible para la comunidad (propio o de la Red) por ID o por nombre. */
+async function findProvider(communityId: string, input: Row): Promise<{ provider: ProviderIdentity } | { result: Row }> {
+    const id = text(input.provider_id, 64);
+    const name = normalize(text(input.provider_name, 120));
+    let rows: ProviderIdentity[];
+    if (id) {
+        const { data } = await supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category')
+            .or(communityProvidersFilter(communityId)).eq('id', id);
+        rows = (data || []) as ProviderIdentity[];
+    } else {
+        // Por nombre se compara sin tildes, así que se trae todo lo visible,
+        // página por página (Supabase corta en 1.000 filas).
+        rows = [];
+        for (let from = 0; ; from += 1000) {
+            const { data } = await supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category')
+                .or(communityProvidersFilter(communityId)).order('id').range(from, from + 999);
+            rows.push(...((data || []) as ProviderIdentity[]));
+            if (!data || data.length < 1000) break;
+        }
+    }
+    // Las colas internas (Mesa de ayuda interna) no son maestros: ni reseñas,
+    // ni fotos, ni documentos.
+    rows = rows.filter(row => !isInternalProvider(row));
+    // La confirmación muestra el nombre: se exige siempre y, si viene un ID,
+    // tiene que ser de ese maestro. Lo que se aprueba es lo que se ejecuta.
+    if (name.length < 2) return { result: { error: 'Indica el nombre del maestro.' } };
+    if (id) {
+        if (rows[0] && !sameProvider(name, String(rows[0].name))) {
+            return { result: { error: `El ID corresponde a ${rows[0].name}, no a quien se confirmó. No hice cambios.` } };
+        }
+    } else {
+        // Palabras completas: "Juan" encuentra a "Juan Pérez", no a "Juana".
+        rows = rows.filter(row => sameProvider(name, String(row.name)));
+        // Para elegir entre homónimos: el oficio y el alcance que la persona eligió.
+        const trade = text(input.provider_trade, 40);
+        const scope = text(input.provider_scope, 20);
+        if (trade) rows = rows.filter(row => row.category === trade);
+        if (scope === 'network') rows = rows.filter(row => row.community_id === null);
+        if (scope === 'community') rows = rows.filter(row => row.community_id !== null);
+        const exact = rows.filter(row => normalize(String(row.name)) === name);
+        if (exact.length === 1) rows = exact;
+    }
+    if (!rows.length) return { result: { error: 'No encontré a ese maestro en tu comunidad ni en la Red Convive.' } };
+    if (rows.length > 1) {
+        return { result: {
+            success: false, status: 'AMBIGUOUS',
+            // Con datos que el usuario reconoce: el texto final tapa los UUID.
+            candidates: rows.slice(0, 5).map(row => ({
+                id: row.id,
+                name: row.name,
+                trade: TRADE_LABEL[String(row.category || 'general')] || 'Otro oficio',
+                scope: row.community_id === null ? 'Red Convive' : 'de tu comunidad',
+                // Para el siguiente intento: provider_trade y provider_scope.
+                provider_trade: row.category || 'general',
+                provider_scope: row.community_id === null ? 'network' : 'community',
+            })),
+            message: 'Hay más de un maestro con ese nombre. Pregunta a cuál te refieres (por oficio y si es de la comunidad o de la Red) y vuelve a llamar con provider_trade y provider_scope del elegido.',
+        } };
+    }
+    return { provider: rows[0] };
+}
+
+function failure(error: unknown) {
+    if (error instanceof ProviderMediaError || error instanceof ProviderReviewError) return { error: error.message };
+    console.error('[coco provider profile]', error instanceof Error ? error.message : error);
+    return { error: 'No se pudo completar la acción.' };
+}
+
+export async function rateProviderForUser(userId: string, communityId: string, input: Row) {
+    const found = await findProvider(communityId, input);
+    if ('result' in found) return found.result;
+    try {
+        const { verifiedService } = await submitProviderReview(userId, {
+            providerId: found.provider.id, rating: Number(input.rating), comment: text(input.comment, 1200),
+            // El oficio del maestro, igual que la reseña desde su perfil.
+            serviceType: found.provider.category || undefined,
+        });
+        return {
+            success: true,
+            message: `Reseña publicada para ${found.provider.name}${verifiedService ? ' (aparece como servicio verificado)' : ''}. Si ya lo habías valorado, se actualizó tu reseña.`,
+        };
+    } catch (error) {
+        return failure(error);
+    }
+}
+
+/** La administración solo revisa maestros de su comunidad; los de la Red los revisa Convive. */
+async function communityProviderForAdmin(communityId: string, input: Row): Promise<{ provider: ProviderIdentity } | { result: Row }> {
+    const found = await findProvider(communityId, input);
+    if ('result' in found) return found;
+    if (found.provider.community_id !== communityId) {
+        return { result: { error: `${found.provider.name} es de la Red Convive: sus documentos los revisa Convive.` } };
+    }
+    return found;
+}
+
+/** El chequeo automático sin identificadores: solo veredicto y banderas. */
+export function redactedCheck(kind: ProviderDocumentKind, check: ProviderDocumentAutoCheck, providerName: string) {
+    const extracted = check.extracted;
+    if (!extracted) return { verdict: check.verdict, readable: false };
+    // Fecha civil de Chile, la misma que usa el chequeo al subir.
+    const today = chileTodayISO();
+    const age = extracted.issueDate
+        ? Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${extracted.issueDate}T00:00:00Z`)) / 86_400_000)
+        : null;
+    return {
+        verdict: check.verdict,
+        readable: true,
+        expected_document_type: extracted.documentType === kind,
+        rut_valid: extracted.rut ? isValidRut(extracted.rut) : null,
+        name_matches_profile: extracted.fullName ? namesMatch(extracted.fullName, providerName) : null,
+        ...(kind === 'background_certificate'
+            ? { days_since_issue: age, no_records: extracted.hasRecords === null ? null : !extracted.hasRecords }
+            : { expired: extracted.expiryDate ? extracted.expiryDate < today : null }),
+    };
+}
+
+export async function listProviderDocumentsForAdmin(communityId: string, input: Row) {
+    const found = await communityProviderForAdmin(communityId, input);
+    if ('result' in found) return found.result;
+    const documents = await listProviderDocuments(found.provider.id, true);
+    // El chat se guarda: sin el archivo ni datos del documento (RUT, nombre,
+    // folio). Solo el veredicto y los chequeos como sí/no; el detalle se ve en
+    // el perfil del maestro.
+    return {
+        provider: found.provider.name,
+        documents: documents.map(document => ({
+            document_id: document.id,
+            kind_code: document.kind,
+            kind: document.kind === 'background_certificate' ? 'certificado de antecedentes' : 'cédula de identidad',
+            uploaded: chileMinute(document.createdAt),
+            status: document.status,
+            auto_check: document.autoCheck ? redactedCheck(document.kind, document.autoCheck, found.provider.name) : null,
+            review_note: document.reviewNote,
+        })),
+        // El texto de CoCo tapa los UUID: el perfil se abre con NAVEGAR, que sí
+        // acepta /services/provider/<uuid> (getSafeCoCoNavigation).
+        navigate_to_profile: `NAVEGAR:/services/provider/${found.provider.id}`,
+        message: documents.length
+            ? 'Para ver el archivo, ofrece abrir el perfil del maestro escribiendo navigate_to_profile tal cual al final de tu respuesta.'
+            : 'El maestro todavía no sube documentos.',
+    };
+}
+
+export async function reviewProviderDocumentForAdmin(communityId: string, adminId: string, input: Row) {
+    const found = await communityProviderForAdmin(communityId, input);
+    if ('result' in found) return found.result;
+    const approve = input.decision === 'approve';
+    if (!approve && input.decision !== 'reject') return { error: 'Indica si apruebas o rechazas el documento.' };
+    // Lo que se aprueba es el documento que mostró la confirmación: tipo y fecha
+    // tienen que calzar con el document_id.
+    const documentId = text(input.document_id, 64);
+    const document = (await listProviderDocuments(found.provider.id, false)).find(item => item.id === documentId);
+    if (!document) return { error: 'No encontré ese documento del maestro.' };
+    if (document.kind !== input.document_kind || chileMinute(document.createdAt) !== text(input.uploaded_at, 16)) {
+        return { error: 'El documento no calza con el que se confirmó (tipo o fecha y hora). No hice cambios: vuelve a listar los documentos.' };
+    }
+    try {
+        await reviewProviderDocument(found.provider.id, documentId, approve, text(input.note, 300) || null, { id: adminId, role: 'admin' });
+        return {
+            success: true,
+            message: approve
+                ? `Documento aprobado: el perfil de ${found.provider.name} ya lo muestra como revisado.`
+                : `Documento rechazado. ${found.provider.name} verá el motivo en su perfil.`,
+        };
+    } catch (error) {
+        return failure(error);
+    }
+}
+
+const ATTACHMENT_KINDS = ['profile_photo', 'work_photo', 'background_certificate', 'identity'] as const;
+
+/** Pone en el perfil de un maestro una imagen adjunta al chat. */
+export async function saveProviderAttachment(user: { id: string; role: string; communityId: string }, input: Row) {
+    const kind = text(input.kind, 40) as typeof ATTACHMENT_KINDS[number];
+    if (!ATTACHMENT_KINDS.includes(kind)) return { error: 'Indica si es foto de perfil, foto de trabajo, certificado de antecedentes o cédula.' };
+    const found = await findProvider(user.communityId, input);
+    if ('result' in found) return found.result;
+    const isOwner = found.provider.user_id === user.id;
+    const isCommunityAdmin = user.role === 'admin' && found.provider.community_id === user.communityId;
+    if (!isOwner && !isCommunityAdmin) {
+        return { error: found.provider.community_id === null
+            ? `${found.provider.name} es de la Red Convive: su perfil lo gestiona Convive o él mismo con su enlace.`
+            : 'Solo el maestro o la administración de su comunidad pueden cambiar su perfil.' };
+    }
+    const attachment = await takeChatImage(user.id, text(input.attachment_id, 64));
+    if (!attachment) return { error: 'No encontré la imagen adjunta. Pide que la vuelva a enviar en el chat.' };
+    const actor = { id: user.id, role: isCommunityAdmin ? 'admin' : 'provider' };
+    // Borrar la imagen ya usada no es parte de la subida: si falla, la subida
+    // igual se hizo (no se devuelve el reclamo ni se invita a repetirla) y la
+    // limpieza del scheduler la borra después.
+    const consumed = () => discardChatImage(attachment.path).catch(error => {
+        console.error('[coco provider profile] no se pudo borrar el adjunto usado', error instanceof Error ? error.message : error);
+    });
+    try {
+        if (kind === 'profile_photo' || kind === 'work_photo') {
+            await uploadProviderPhoto(found.provider.id, kind === 'profile_photo' ? 'profile' : 'work', attachment.file, text(input.caption, 160) || null, actor);
+            await consumed();
+            return { success: true, message: `${kind === 'profile_photo' ? 'Foto de perfil' : 'Foto de trabajo'} de ${found.provider.name} guardada.` };
+        }
+        const { verdict } = await uploadProviderDocument(found.provider.id, kind, attachment.file, actor, 'coco_chat');
+        await consumed();
+        const verdictText = verdict === 'looks_ok' ? 'el chequeo automático no encontró problemas'
+            : verdict === 'problem' ? 'el chequeo automático encontró problemas' : 'hay que revisarlo a mano';
+        return {
+            success: true,
+            message: `Documento de ${found.provider.name} recibido; ${verdictText}. Queda pendiente de aprobación de la administración${found.provider.community_id ? '' : ' (Convive, por ser de la Red)'}.`,
+        };
+    } catch (error) {
+        // Falló la subida: la imagen vuelve a estar disponible para reintentar.
+        await releaseChatImage(attachment.path, attachment.originalPath).catch(() => undefined);
+        return failure(error);
+    }
+}
+

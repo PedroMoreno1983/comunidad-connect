@@ -115,6 +115,11 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     dispatch_provider: 'write_high',            // compromete a un proveedor
     register_external_provider: 'write_high',   // suma a un tercero a la red de la comunidad
     send_provider_portal_link: 'write_high',    // entrega acceso a solicitudes y revoca el anterior
+    review_provider_document: 'write_high',     // marca antecedentes revisados ante todos los vecinos
+    save_provider_attachment: 'write_high',     // cambia el perfil público o sube documentos sensibles
+    list_provider_documents: 'read',
+    // Reseña: contenido público propio, reversible (se puede reescribir).
+    rate_provider: 'write_low',
     lock_supermarket_group_order: 'write_high', // cierra la compra de varios vecinos
     record_supermarket_group_purchase: 'write_high', // fija cuánto debe cada vecino
     create_unit: 'write_high',                  // estructura del condominio

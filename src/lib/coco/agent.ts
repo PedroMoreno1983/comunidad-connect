@@ -6,7 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { askOpenAi } from './openai-agent';
-import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
+import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolOfferedFor } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { loadCoCoMemoryContext } from './memory';
 import { interpretCoCoConfirmation } from './confirmation';
@@ -21,6 +21,7 @@ import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
 import type { CoCoPendingAction, CoCoResolutions } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { discardChatAttachment } from './chatAttachments';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -314,6 +315,11 @@ export async function askCoCo(
         legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number };
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
+        /**
+         * Contexto de sistema solo para este turno (por ejemplo, el adjunto_id de
+         * una imagen). No queda en el historial ni se muestra como mensaje.
+         */
+        turnContext?: string;
         /** Tope de rondas de herramientas. Por defecto MAX_TOOL_ROUNDS. */
         maxToolRounds?: number;
     } = {}
@@ -390,6 +396,7 @@ export async function askCoCo(
         communityContext,
         platformContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
+        options.turnContext || '',
     ].filter(Boolean);
 
     // Solo para estimar el presupuesto antes de la llamada.
@@ -430,6 +437,11 @@ export async function askCoCo(
                 const resolution = effectiveResolutions?.[tu.id];
                 if (MUTATING_TOOLS.has(tu.name) && resolution !== 'approved') {
                     await auditRejectedTool(tu, userCtx);
+                    // La imagen del chat que iba al perfil de un maestro no se queda guardada.
+                    const attachmentId = (tu.input as Record<string, unknown>)?.attachment_id;
+                    if (tu.name === 'save_provider_attachment' && userCtx.user_id && typeof attachmentId === 'string') {
+                        await discardChatAttachment(userCtx.user_id, attachmentId).catch(() => undefined);
+                    }
                     return {
                         toolUse: tu,
                         resolution: 'rejected' as const,
@@ -530,7 +542,7 @@ export async function askCoCo(
             model,
             systemPrompt,
             history,
-            tools: TOOL_DEFINITIONS.filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
+            tools: TOOL_DEFINITIONS.filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
             requiredTool: rounds === 0 ? requiredTool : undefined,
         }) : await anthropic.messages.create({
             model: MODEL,
@@ -538,7 +550,7 @@ export async function askCoCo(
             system: systemBlocks,
             messages: history,
             tools: TOOL_DEFINITIONS
-                .filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
+                .filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as unknown as Anthropic.Tool[],
             ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
         });
         } catch (error) {
@@ -555,7 +567,7 @@ export async function askCoCo(
                 });
                 response = await anthropic.messages.create({
                     model: MODEL, max_tokens: 2048, system: systemBlocks, messages: history,
-                    tools: TOOL_DEFINITIONS.filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
+                    tools: TOOL_DEFINITIONS.filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as unknown as Anthropic.Tool[],
                     ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
                 });
             } else {

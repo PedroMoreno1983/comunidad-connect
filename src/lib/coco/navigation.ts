@@ -70,8 +70,12 @@ const COCO_HIDDEN_NAV_ROUTES = new Set(["/showcase", "/marketing/reels"]);
 // venir de texto del modelo.
 const SUPERMARKET_LIST_QUERY = /^list=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(&store=[A-Za-z][A-Za-z+%0-9]{1,30})?$/i;
 
+/** Perfil de un proveedor por su ID: única ruta dinámica permitida, y solo con un UUID exacto. */
+const PROVIDER_PROFILE_PATH = /^\/services\/provider\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function getSafeCoCoNavigation(target?: string): string | undefined {
     if (!target) return undefined;
+    if (PROVIDER_PROFILE_PATH.test(target)) return target;
     const [path, query] = target.split('?', 2);
     if (query !== undefined) {
         return path === '/resident/supermercado' && SUPERMARKET_LIST_QUERY.test(query) ? target : undefined;

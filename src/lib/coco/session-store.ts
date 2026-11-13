@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin as supabase } from '@/lib/supabase/supabaseAdmin';
+import type { ChatAttachmentState } from '@/lib/types';
 
 // Nota de seguridad: coco_sessions guarda el historial completo de conversaciones
 // (incluye nombre, unidad, comunidad y todo lo que el residente le contó a CoCo).
@@ -36,6 +37,12 @@ export interface SessionData {
         pinned?: boolean;
         /** La persona le puso nombre: ya no se reemplaza con el primer mensaje. */
         title_locked?: boolean;
+        /**
+         * Última imagen adjunta guardada para usarla en el perfil de un maestro.
+         * Va aquí, y no en el mensaje, para que el historial muestre solo lo que
+         * la persona escribió; CoCo la recibe como contexto de sistema.
+         */
+        chat_attachment?: ChatAttachmentState;
     };
     auth_state?: 'pending' | 'verified';
     auth_attempts?: number;

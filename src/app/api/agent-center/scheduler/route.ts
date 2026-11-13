@@ -4,6 +4,7 @@ import { claimSchedulerTick, releaseSchedulerTick, runProactiveProposals } from 
 import { authorizeScheduler, parseSchedulerMode, schedulerBucket, schedulerSecrets } from '@/lib/agent-center/schedulerAuth';
 import { drainDelegatedTasks } from '@/lib/coco/delegatedTasks';
 import { runDueRoutines } from '@/lib/coco/routineRunner';
+import { purgeStaleChatAttachments } from '@/lib/coco/chatAttachments';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,13 @@ async function handle(req: NextRequest) {
     }
     if (!claimed) return NextResponse.json({ ok: true, idempotent: true, mode, bucket });
 
+    // Imágenes del chat que nadie usó (adjuntos para el perfil de un maestro).
+    // Va primero y aparte: un fallo de las reglas proactivas no la frena.
+    const chatAttachments = await purgeStaleChatAttachments().catch(error => {
+        console.error('[agent-center scheduler] chat attachment cleanup failed', error);
+        return { removed: 0, error: true };
+    });
+
     try {
         const triggers = mode === 'proposals' ? null : await evaluateDueAgentTriggers();
         const proposals = mode === 'triggers' ? null : await runProactiveProposals();
@@ -39,7 +47,7 @@ async function handle(req: NextRequest) {
             console.error('[agent-center scheduler] background tasks failed', error);
             return { finished: [], error: true };
         });
-        return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, routines, delegated });
+        return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, routines, delegated, chatAttachments });
     } catch (error) {
         await releaseSchedulerTick(mode, bucket);
         console.error('[agent-center scheduler] evaluation failed', error);

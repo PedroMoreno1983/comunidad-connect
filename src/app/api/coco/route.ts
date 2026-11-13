@@ -24,6 +24,7 @@ import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
 import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { attachmentNote, canAttachToProviders, chatAttachmentAvailable, currentChatAttachment, stashChatImage, withAttachmentPreviews } from '@/lib/coco/chatAttachments';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
             ? [{ id: `history-${index}`, role: turn.role, text: turn.content }]
             : [],
     );
-    const pendingActions = restorePendingActions(session);
+    const pendingActions = await withAttachmentPreviews(profile.id, restorePendingActions(session));
     if (pendingActions.length) messages.push({
         id: 'history-pending', role: 'assistant', text: 'Antes de continuar, revisa esta acción pendiente:',
         pendingActions,
@@ -741,6 +742,23 @@ export async function POST(req: NextRequest) {
         const archivedConversation = session?.conversation.slice(0, -20) || [];
         const agentSession = session ? { ...session, conversation: recentConversation } : null;
 
+        // Una imagen adjunta por quien gestiona maestros (administración o el
+        // propio maestro) queda disponible para save_provider_attachment. El
+        // adjunto_id va en la sesión y como contexto de sistema, no en el
+        // mensaje: el historial muestra solo lo que la persona escribió.
+        let chatAttachment = currentChatAttachment(session?.user_context.chat_attachment);
+        const attachmentActions = resolutions
+            ? restorePendingActions(session).filter(action => action.name === 'save_provider_attachment')
+            : [];
+        const resolvesAttachment = attachmentActions.length > 0;
+        // Rechazada: la sesión deja de ofrecerla aunque Storage no la haya borrado
+        // (la limpieza del scheduler la quita después).
+        const rejectedAttachment = attachmentActions.some(action => resolutions?.[action.toolUseId] === 'rejected');
+        if (imageAttachment && !resolutions && isToolAllowedForRole('save_provider_attachment', safeRole) && await canAttachToProviders(userId, safeRole)) {
+            chatAttachment = { ...await stashChatImage(userId, imageAttachment), at: new Date().toISOString() };
+        }
+        const turnContext = chatAttachment ? attachmentNote(chatAttachment).trim() : undefined;
+
         // ── 4. Llamar al agente ──────────────────────────────────────────────
         let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
 
@@ -761,6 +779,7 @@ export async function POST(req: NextRequest) {
                     ...(imageAttachment ? { image: imageAttachment } : {}),
                     ...(legalDocument ? { legalDocument } : {}),
                     ...(resolutions ? { resolutions } : {}),
+                    ...(turnContext ? { turnContext } : {}),
                 }
             );
         } catch (agentError) {
@@ -806,6 +825,14 @@ export async function POST(req: NextRequest) {
 
         const { reply, navigate, action, updatedHistory, pendingActions } = agentResponse;
 
+        // Tras aprobar o rechazar save_provider_attachment, la sesión deja de
+        // ofrecer la imagen solo si ya no está disponible (se usó, se rechazó y
+        // borró). Si la acción falló antes de tomarla, sigue ahí para reintentar.
+        if (resolvesAttachment && chatAttachment?.status === 'stored'
+            && (rejectedAttachment || !await chatAttachmentAvailable(userId, chatAttachment.id))) {
+            chatAttachment = undefined;
+        }
+
         // ── 5. Guardar sesión actualizada ────────────────────────────────────
         // Un fallo de Supabase no esconde la respuesta ya generada. Sí impide
         // entregar una confirmación: esa acción solo existe si quedó en la sesión.
@@ -824,6 +851,7 @@ export async function POST(req: NextRequest) {
                 // Lo que la persona decidió sobre la conversación sobrevive a cada mensaje.
                 pinned:       session?.user_context.pinned,
                 title_locked: session?.user_context.title_locked,
+                chat_attachment: chatAttachment,
             },
         }, Boolean(pendingActions?.length));
 
@@ -833,7 +861,7 @@ export async function POST(req: NextRequest) {
         if (pendingActions && pendingActions.length > 0) {
             const waiting: CoCoApiResponse = {
                 reply: reply || 'Antes de continuar, necesito tu confirmación:',
-                pendingActions,
+                pendingActions: await withAttachmentPreviews(userId, pendingActions),
             };
             return NextResponse.json(waiting, { status: 200 });
         }

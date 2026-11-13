@@ -3,24 +3,18 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { ProviderMediaError, type MediaActor } from '@/lib/services/providerMedia';
+import { ProviderMediaError } from '@/lib/services/providerMedia';
 import { ProviderPortalError } from '@/lib/services/providerPortal';
+import type { ProviderManagerAccess } from '@/lib/types';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export type ProviderManager = {
-    providerId: string;
-    actor: MediaActor;
-    /** Administración de la comunidad del proveedor: puede revisar documentos. */
-    isReviewer: boolean;
-};
 
 /**
  * Quién gestiona un proveedor con sesión: el propio maestro (si tiene cuenta) o
  * la administración de su comunidad. Un maestro de la Red Convive lo gestiona
  * Convive (rutas de superadmin) o él mismo con su enlace.
  */
-export async function requireProviderManager(providerId: string): Promise<ProviderManager | NextResponse> {
+export async function requireProviderManager(providerId: string): Promise<ProviderManagerAccess | NextResponse> {
     const profile = await getAuthenticatedAgentProfile();
     if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     if (!UUID.test(providerId)) return NextResponse.json({ error: 'Proveedor no válido.' }, { status: 400 });
