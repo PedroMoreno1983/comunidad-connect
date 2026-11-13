@@ -67,6 +67,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
 
+        // Reseña de un servicio real: el vecino tuvo una solicitud completada con
+        // este maestro. Se muestra como verificada; las demás, como opinión.
+        const { data: completed } = await supabaseAdmin
+            .from('service_requests')
+            .select('id')
+            .eq('provider_id', provider.id)
+            .eq('user_id', profile.id)
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
         const { data: review, error: reviewError } = await supabaseAdmin
             .from('reviews')
             .upsert(
@@ -76,10 +88,12 @@ export async function POST(req: NextRequest) {
                     rating,
                     comment,
                     service_type: serviceType,
+                    verified_service: Boolean(completed),
+                    service_request_id: completed?.id ?? null,
                 },
                 { onConflict: 'provider_id,user_id' }
             )
-            .select('id, provider_id, user_id, rating, comment, service_type, created_at')
+            .select('id, provider_id, user_id, rating, comment, service_type, created_at, verified_service')
             .single();
 
         if (reviewError || !review) {

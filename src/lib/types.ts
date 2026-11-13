@@ -730,6 +730,11 @@ export interface ServiceProvider {
   verified: boolean;
   /** De la Red Convive: lo ven todas las comunidades y lo gestiona Convive. */
   network?: boolean;
+  /** Certificado de antecedentes aprobado por la administración o Convive. */
+  backgroundCheckedAt?: string | null;
+  /** Cédula de identidad aprobada. */
+  identityCheckedAt?: string | null;
+  workPhotos?: ProviderWorkPhoto[];
 }
 
 export interface ServiceProviderDatabaseRow {
@@ -751,6 +756,8 @@ export interface ServiceProviderDatabaseRow {
   completed_jobs: number;
   verified: boolean;
   community_id?: string | null;
+  background_checked_at?: string | null;
+  identity_checked_at?: string | null;
 }
 
 export interface Review {
@@ -763,6 +770,8 @@ export interface Review {
   comment: string;
   createdAt: string;
   serviceType: string;
+  /** La escribió alguien que tuvo un servicio completado con este maestro. */
+  verifiedService?: boolean;
 }
 
 
@@ -3885,6 +3894,9 @@ export interface ProviderPortalProfile {
   rating: number;
   reviewCount: number;
   completedJobs: number;
+  photo: string | null;
+  backgroundCheckedAt: string | null;
+  identityCheckedAt: string | null;
 }
 
 export interface ProviderPortalRequest {
@@ -3907,6 +3919,9 @@ export interface ProviderPortalData {
   expiresAt: string;
   provider: ProviderPortalProfile;
   requests: ProviderPortalRequest[];
+  workPhotos: ProviderWorkPhoto[];
+  /** Estado de sus documentos (sin el chequeo ni el archivo). */
+  documents: ProviderDocument[];
 }
 
 /** Cambios de perfil que puede hacer el propio maestro o la administración. */
@@ -3928,6 +3943,67 @@ export interface ProviderInviteLink {
   url: string;
   expiresAt: string;
   providerName: string;
+}
+
+/** Documentos que un maestro sube para que se revisen sus antecedentes. */
+export type ProviderDocumentKind = 'background_certificate' | 'identity';
+export type ProviderDocumentStatus = 'pending' | 'approved' | 'rejected';
+
+/** Lo que el sistema leyó del documento (IA). Fechas en AAAA-MM-DD. */
+export interface ProviderDocumentExtraction {
+  documentType: 'background_certificate' | 'identity' | 'other';
+  fullName: string | null;
+  rut: string | null;
+  issueDate: string | null;
+  expiryDate: string | null;
+  /** Certificado de antecedentes: true si registra anotaciones. */
+  hasRecords: boolean | null;
+  verificationCode: string | null;
+}
+
+export interface ProviderDocumentAutoCheck {
+  verdict: 'looks_ok' | 'needs_review' | 'problem';
+  findings: string[];
+  extracted: ProviderDocumentExtraction | null;
+}
+
+export interface ProviderDocument {
+  id: string;
+  kind: ProviderDocumentKind;
+  fileName: string;
+  status: ProviderDocumentStatus;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  /** Solo para quien revisa (administración o Convive). */
+  autoCheck?: ProviderDocumentAutoCheck;
+  /** Enlace temporal para verlo; solo para quien revisa. */
+  viewUrl?: string | null;
+}
+
+export interface ProviderWorkPhoto {
+  id: string;
+  url: string;
+  caption: string | null;
+  createdAt: string;
+}
+
+/** Dónde se gestiona el perfil: con sesión (dueño o administración) o con el enlace del maestro. */
+export type ProviderMediaTarget = { kind: 'provider'; id: string } | { kind: 'portal'; token: string };
+
+export interface ProviderMediaManagerProps {
+  target: ProviderMediaTarget;
+  photo?: string | null;
+  workPhotos: ProviderWorkPhoto[];
+  /** Estado de los documentos para el maestro; la administración los ve en ProviderDocumentsReview. */
+  documents?: ProviderDocument[];
+  onChanged: () => void;
+}
+
+export interface ProviderDocumentsReviewProps {
+  providerId: string;
+  /** 'superadmin' para maestros de la Red Convive. */
+  scope: 'admin' | 'superadmin';
 }
 
 /** Maestro visto por Convive: de la Red (communityId null) o de una comunidad. */

@@ -6,7 +6,10 @@ import {
     Briefcase,
     Calendar,
     Clock,
+    CheckCircle2,
+    IdCard,
     MessageCircle,
+    ShieldCheck,
     Star,
 } from "lucide-react";
 import { ServiceProvider, Review } from "@/lib/types";
@@ -37,6 +40,8 @@ interface ProviderProfileClientProps {
     provider: ServiceProvider;
     reviews: Review[];
     openContact?: boolean;
+    /** Abre el diálogo de reseña al cargar (enlace "Valorar" desde Mis solicitudes). */
+    openReview?: boolean;
 }
 
 function ratingBreakdown(reviews: Review[]) {
@@ -52,9 +57,9 @@ function ratingBreakdown(reviews: Review[]) {
     }));
 }
 
-export function ProviderProfileClient({ provider, reviews, openContact = false }: ProviderProfileClientProps) {
+export function ProviderProfileClient({ provider, reviews, openContact = false, openReview = false }: ProviderProfileClientProps) {
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(openContact);
-    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(openReview);
     const [isRequestSaving, setIsRequestSaving] = useState(false);
     const [isReviewSaving, setIsReviewSaving] = useState(false);
     const submission = useRef<[string, string] | null>(null);
@@ -232,6 +237,16 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                                     </span>
                                 ) : null}
                             </div>
+                            {(provider.backgroundCheckedAt || provider.identityCheckedAt) ? (
+                                <p className="mt-2 inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" style={{ color: "var(--cc-sage)" }}>
+                                    {provider.backgroundCheckedAt ? (
+                                        <span className="inline-flex items-center gap-1"><ShieldCheck className="h-4 w-4" /> Antecedentes revisados ({new Date(provider.backgroundCheckedAt).toLocaleDateString("es-CL", { month: "long", year: "numeric" })})</span>
+                                    ) : null}
+                                    {provider.identityCheckedAt ? (
+                                        <span className="inline-flex items-center gap-1"><IdCard className="h-4 w-4" /> Identidad revisada</span>
+                                    ) : null}
+                                </p>
+                            ) : null}
                             <p className="mt-3 max-w-xl text-lg italic cc-text-secondary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 {headline}
                             </p>
@@ -296,6 +311,23 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                             </p>
                         )}
                     </section>
+
+                    {provider.workPhotos && provider.workPhotos.length > 0 ? (
+                        <section>
+                            <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Trabajos realizados</h2>
+                            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                {provider.workPhotos.map(photo => (
+                                    <li key={photo.id} className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--cc-line)" }}>
+                                        <a href={photo.url} target="_blank" rel="noreferrer">
+                                            {/* eslint-disable-next-line @next/next/no-img-element -- foto subida al bucket público */}
+                                            <img src={photo.url} alt={photo.caption || "Trabajo realizado"} loading="lazy" className="aspect-square w-full object-cover" />
+                                        </a>
+                                        {photo.caption ? <p className="px-2 py-1.5 text-xs cc-text-secondary">{photo.caption}</p> : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    ) : null}
 
                     {/* Un maestro de la Red Convive lo gestiona Convive, no la comunidad. */}
                     {user?.role === "admin" && !provider.network ? (
@@ -420,7 +452,14 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                                         <article key={review.id} className="flex items-start gap-3">
                                             <ReviewerMark name={review.userName} photo={review.userAvatar} />
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="text-sm cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{review.userName}</h3>
+                                                <h3 className="flex flex-wrap items-center gap-2 text-sm cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                                    {review.userName}
+                                                    {review.verifiedService ? (
+                                                        <span className="inline-flex items-center gap-1 text-xs not-italic" style={{ color: "var(--cc-sage)", fontFamily: "var(--cc-font-sans)" }}>
+                                                            <CheckCircle2 className="h-3.5 w-3.5" /> Servicio verificado
+                                                        </span>
+                                                    ) : null}
+                                                </h3>
                                                 <p className="mt-0.5 text-xs cc-text-tertiary">
                                                     {review.serviceType ? `${getCategoryVisual(review.serviceType).label} · ` : ""}
                                                     {new Date(review.createdAt).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })}

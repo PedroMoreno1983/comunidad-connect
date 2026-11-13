@@ -17,14 +17,15 @@ import {
     XCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
-import { ServiceProvider } from "@/lib/types";
+import type { ProviderDocument, ProviderWorkPhoto, ServiceProvider } from "@/lib/types";
 import { providersService, serviceRequestsService } from "@/lib/services/providersService";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { getInitials } from "@/lib/utils/avatar";
-import { ProviderProfileService } from "@/lib/api";
+import { ProviderMediaService, ProviderProfileService } from "@/lib/api";
+import { ProviderMediaManager } from "@/components/services/ProviderMediaManager";
 import { ProviderProfileForm } from "@/components/services/ProviderProfileForm";
 
 import type { ServiceRequestStatus as RequestStatus, ServiceRequestFilter as StatusFilter, ProviderServiceRequestRow as ProviderRequestRow } from "@/lib/types";
@@ -87,6 +88,18 @@ export function ProviderDashboardClient() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
     const [query, setQuery] = useState("");
     const [editingProfile, setEditingProfile] = useState(false);
+    const [media, setMedia] = useState<{ photos: ProviderWorkPhoto[]; documents: ProviderDocument[] }>({ photos: [], documents: [] });
+    const loadMedia = useCallback(async (providerId: string) => {
+        try {
+            const [photos, documents] = await Promise.all([
+                ProviderMediaService.listWorkPhotos(providerId),
+                ProviderMediaService.listDocuments(providerId),
+            ]);
+            setMedia({ photos, documents });
+        } catch {
+            setMedia({ photos: [], documents: [] });
+        }
+    }, []);
 
     const selectedProvider = providers.find(provider => provider.id === selectedProviderId) || providers[0];
 
@@ -139,6 +152,10 @@ export function ProviderDashboardClient() {
             loadRequests(selectedProvider.id);
         }
     }, [loadRequests, selectedProvider?.id]);
+
+    useEffect(() => {
+        if (selectedProvider?.id && editingProfile) void loadMedia(selectedProvider.id);
+    }, [loadMedia, selectedProvider?.id, editingProfile]);
 
     const stats = useMemo(() => ({
         active: requests.filter(item => ["pending", "accepted", "awaiting_confirmation"].includes(item.status)).length,
@@ -283,6 +300,18 @@ export function ProviderDashboardClient() {
                                 setEditingProfile(false);
                                 await loadProviders();
                             }}
+                        />
+                    </div>
+                )}
+
+                {selectedProvider && editingProfile && (
+                    <div className="mt-4">
+                        <ProviderMediaManager
+                            target={{ kind: "provider", id: selectedProvider.id }}
+                            photo={selectedProvider.photo}
+                            workPhotos={media.photos}
+                            documents={media.documents}
+                            onChanged={() => { void loadMedia(selectedProvider.id); void loadProviders(); }}
                         />
                     </div>
                 )}

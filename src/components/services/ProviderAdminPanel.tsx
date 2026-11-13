@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Copy, Link2, Loader2, Pencil, ShieldOff } from "lucide-react";
+import { BadgeCheck, Copy, ImagePlus, Link2, Loader2, Pencil, ShieldOff } from "lucide-react";
 import { ProviderProfileService } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { ProviderProfileForm } from "@/components/services/ProviderProfileForm";
+import { ProviderMediaManager } from "@/components/services/ProviderMediaManager";
+import { ProviderDocumentsReview } from "@/components/services/ProviderDocumentsReview";
 import type { ProviderAdminPanelProps, ProviderInviteLink } from "@/lib/types";
 
 /**
@@ -17,6 +19,7 @@ export function ProviderAdminPanel({ provider, onChanged }: ProviderAdminPanelPr
     const [busy, setBusy] = useState<string | null>(null);
     const [editing, setEditing] = useState(false);
     const [invite, setInvite] = useState<ProviderInviteLink | null>(null);
+    const [showMedia, setShowMedia] = useState(false);
 
     const run = async (key: string, action: () => Promise<void>) => {
         setBusy(key);
@@ -88,6 +91,25 @@ export function ProviderAdminPanel({ provider, onChanged }: ProviderAdminPanelPr
                             setEditing(false);
                             onChanged();
                         }}
+                    />
+                </div>
+            )}
+
+            <div className="mt-5 space-y-3">
+                <p className="text-sm font-semibold cc-text-primary">Documentos para revisar</p>
+                <ProviderDocumentsReview providerId={provider.id} scope="admin" />
+            </div>
+
+            <button type="button" onClick={() => setShowMedia(value => !value)} className="mt-4 inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm cc-text-primary" style={{ borderColor: "var(--cc-line-strong)" }}>
+                <ImagePlus className="h-4 w-4" /> {showMedia ? "Cerrar fotos y documentos" : "Subir fotos o documentos por el maestro"}
+            </button>
+            {showMedia && (
+                <div className="mt-3">
+                    <ProviderMediaManager
+                        target={{ kind: "provider", id: provider.id }}
+                        photo={provider.photo}
+                        workPhotos={provider.workPhotos || []}
+                        onChanged={onChanged}
                     />
                 </div>
             )}

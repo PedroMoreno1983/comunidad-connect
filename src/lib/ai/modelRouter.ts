@@ -82,6 +82,10 @@ export const AI_TASKS = {
         complexity: 'deep',
         description: 'Redacción creativa de guiones de marketing',
     },
+    'services.provider-document-check': {
+        complexity: 'standard',
+        description: 'Lectura de certificado de antecedentes y cédula de un maestro; el chequeo lo cierra una persona',
+    },
     'training.classroom': {
         complexity: 'standard',
         description: 'Tutora y compañeros de práctica del aula del equipo',

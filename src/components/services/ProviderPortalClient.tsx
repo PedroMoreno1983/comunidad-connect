@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BadgeCheck, CalendarClock, Check, Loader2, Pencil, X } from "lucide-react";
 import { ProviderPortalService } from "@/lib/api";
 import { ProviderProfileForm } from "@/components/services/ProviderProfileForm";
+import { ProviderMediaManager } from "@/components/services/ProviderMediaManager";
 import type { ProviderPortalClientProps, ProviderPortalData, ProviderPortalRequest, ServiceRequestStatus } from "@/lib/types";
 
 const STATUS_LABEL: Record<ServiceRequestStatus, string> = {
@@ -112,6 +113,14 @@ export function ProviderPortalClient({ token }: ProviderPortalClientProps) {
                 </header>
 
                 {notice && <p className="rounded-xl border px-4 py-3 text-sm cc-text-primary" style={card} role="status">{notice}</p>}
+
+                <ProviderMediaManager
+                    target={{ kind: "portal", token }}
+                    photo={data.provider.photo}
+                    workPhotos={data.workPhotos}
+                    documents={data.documents}
+                    onChanged={() => void load()}
+                />
 
                 <section className="space-y-3">
                     <h2 className="text-lg font-semibold cc-text-primary">Solicitudes abiertas ({open.length})</h2>

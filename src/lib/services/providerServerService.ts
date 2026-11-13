@@ -24,6 +24,8 @@ function mapProvider(provider: ServiceProviderDatabaseRow): ServiceProvider {
         completedJobs: provider.completed_jobs,
         verified: provider.verified,
         network: provider.community_id === null,
+        backgroundCheckedAt: provider.background_checked_at ?? null,
+        identityCheckedAt: provider.identity_checked_at ?? null,
     };
 }
 
@@ -74,14 +76,26 @@ export const providerServerService = {
             return null;
         }
 
-        return data ? mapProvider(data as ServiceProviderDatabaseRow) : null;
+        if (!data) return null;
+        const { data: photos } = await supabase
+            .from("service_provider_photos")
+            .select("id, url, caption, created_at")
+            .eq("provider_id", id)
+            .order("created_at", { ascending: false })
+            .limit(24);
+        return {
+            ...mapProvider(data as ServiceProviderDatabaseRow),
+            workPhotos: (photos ?? []).map(photo => ({
+                id: String(photo.id), url: String(photo.url), caption: photo.caption ? String(photo.caption) : null, createdAt: String(photo.created_at),
+            })),
+        };
     },
 
     async getReviews(providerId: string): Promise<Review[]> {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from("reviews")
-            .select("id, provider_id, user_id, rating, comment, service_type, created_at, profiles:user_id(name, avatar_url)")
+            .select("id, provider_id, user_id, rating, comment, service_type, created_at, verified_service, profiles:user_id(name, avatar_url)")
             .eq("provider_id", providerId)
             .order("created_at", { ascending: false });
 
@@ -103,6 +117,7 @@ export const providerServerService = {
                 comment: review.comment,
                 serviceType: review.service_type,
                 createdAt: review.created_at,
+                verifiedService: review.verified_service === true,
             };
         });
     },

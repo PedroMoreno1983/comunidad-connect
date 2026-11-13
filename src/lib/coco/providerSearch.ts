@@ -11,6 +11,7 @@ type ProviderRow = {
     service_latitude?: number | null;
     service_longitude?: number | null;
     community_id?: string | null;
+    background_checked_at?: string | null;
 };
 
 type Coordinates = { address_latitude?: number | null; address_longitude?: number | null } | null;
@@ -50,6 +51,8 @@ export function rankNearbyProviders(rows: ProviderRow[], query: string, communit
             service_address: row.service_address || null,
             // De la Red Convive: sirve a todas las comunidades, lo cura Convive.
             network: row.community_id === null,
+            // Certificado de antecedentes aprobado por la administración o Convive.
+            background_checked: Boolean(row.background_checked_at),
             distance_km_approx: located ? distanceKm(communityLat, communityLon, latitude, longitude) : null,
         };
     }).sort((a, b) => {
