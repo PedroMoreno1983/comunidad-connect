@@ -59,7 +59,11 @@ export async function takeChatImage(userId: string, attachmentId: string): Promi
     const { error: claimError } = await storage.move(found.path, claimed);
     if (claimError) return null;
     const { data: blob, error } = await storage.download(claimed);
-    if (error || !blob) return null;
+    if (error || !blob) {
+        // No se pudo leer: se deshace el reclamo para poder reintentar.
+        await storage.move(claimed, found.path);
+        return null;
+    }
     const type = Object.entries(EXTENSION).find(([, ext]) => found.name.endsWith(`.${ext}`))?.[0] || 'image/jpeg';
     return { file: new File([await blob.arrayBuffer()], found.name, { type }), path: claimed, originalPath: found.path };
 }
@@ -92,7 +96,9 @@ export async function withAttachmentPreviews<T extends { name: string; input: Re
 }
 
 export async function discardChatImage(path: string) {
-    await getSupabaseAdmin().storage.from(BUCKET).remove([path]);
+    // Storage informa el fallo en `error`, no rechazando: se revisa.
+    const { error } = await getSupabaseAdmin().storage.from(BUCKET).remove([path]);
+    if (error) throw new Error(`No se pudo borrar el adjunto: ${error.message}`);
 }
 
 /** Borra un adjunto por su id (por ejemplo, al rechazar la acción que lo usaba). */

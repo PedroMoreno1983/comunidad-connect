@@ -74,7 +74,8 @@ async function findProvider(communityId: string, input: Row): Promise<{ provider
             return { result: { error: `El ID corresponde a ${rows[0].name}, no a quien se confirmó. No hice cambios.` } };
         }
     } else {
-        rows = rows.filter(row => normalize(String(row.name)).includes(name));
+        // Palabras completas: "Juan" encuentra a "Juan Pérez", no a "Juana".
+        rows = rows.filter(row => sameProvider(name, String(row.name)));
         // Para elegir entre homónimos: el oficio y el alcance que la persona eligió.
         const trade = text(input.provider_trade, 40);
         const scope = text(input.provider_scope, 20);

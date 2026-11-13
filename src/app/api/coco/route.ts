@@ -747,8 +747,13 @@ export async function POST(req: NextRequest) {
         // adjunto_id va en la sesión y como contexto de sistema, no en el
         // mensaje: el historial muestra solo lo que la persona escribió.
         let chatAttachment = currentChatAttachment(session?.user_context.chat_attachment);
-        const resolvesAttachment = Boolean(resolutions)
-            && restorePendingActions(session).some(action => action.name === 'save_provider_attachment');
+        const attachmentActions = resolutions
+            ? restorePendingActions(session).filter(action => action.name === 'save_provider_attachment')
+            : [];
+        const resolvesAttachment = attachmentActions.length > 0;
+        // Rechazada: la sesión deja de ofrecerla aunque Storage no la haya borrado
+        // (la limpieza del scheduler la quita después).
+        const rejectedAttachment = attachmentActions.some(action => resolutions?.[action.toolUseId] === 'rejected');
         if (imageAttachment && !resolutions && isToolAllowedForRole('save_provider_attachment', safeRole) && await canAttachToProviders(userId, safeRole)) {
             chatAttachment = { ...await stashChatImage(userId, imageAttachment), at: new Date().toISOString() };
         }
@@ -823,7 +828,8 @@ export async function POST(req: NextRequest) {
         // Tras aprobar o rechazar save_provider_attachment, la sesión deja de
         // ofrecer la imagen solo si ya no está disponible (se usó, se rechazó y
         // borró). Si la acción falló antes de tomarla, sigue ahí para reintentar.
-        if (resolvesAttachment && chatAttachment?.status === 'stored' && !await chatAttachmentAvailable(userId, chatAttachment.id)) {
+        if (resolvesAttachment && chatAttachment?.status === 'stored'
+            && (rejectedAttachment || !await chatAttachmentAvailable(userId, chatAttachment.id))) {
             chatAttachment = undefined;
         }
 
