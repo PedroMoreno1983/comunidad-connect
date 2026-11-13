@@ -144,6 +144,9 @@ describe('que deja de pedir confirmacion con la politica de fabrica', () => {
             'join_community_deal',
             'join_supermarket_group_order',
             'propose_community_deal',
+            // Reseña a un maestro (2026-11-14): contenido propio y público como un
+            // post social, y se puede reescribir. No toca dinero ni a terceros.
+            'rate_provider',
             'register_package',
             'register_visitor',
             'remember_community_fact',

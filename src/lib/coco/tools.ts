@@ -10,6 +10,7 @@ import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
 import { compareShoppingListForUser, supermarketListLink } from './shoppingTools';
 import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
+import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
@@ -955,6 +956,62 @@ export const TOOL_DEFINITIONS = [
             required: ['provider_name'],
         },
     },
+    {
+        name: 'rate_provider',
+        description: 'Publica la reseña de la persona sobre un maestro de su comunidad o de la Red Convive: nota de 1 a 5 y comentario. Si ya lo había valorado, la actualiza. Se marca "servicio verificado" si tuvo un servicio completado con él. Pide la nota y el comentario si faltan; no los inventes.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                provider_name: { type: 'string', description: 'Nombre del maestro.' },
+                provider_id: { type: 'string', description: 'ID del maestro si lo conoces.' },
+                rating: { type: 'string', enum: ['1', '2', '3', '4', '5'], description: 'Nota de 1 a 5.' },
+                comment: { type: 'string', description: 'Comentario de la persona, con sus palabras.' },
+            },
+            required: ['provider_name', 'rating', 'comment'],
+        },
+    },
+    {
+        name: 'list_provider_documents',
+        description: 'Solo administración: documentos (certificado de antecedentes, cédula) que subió un maestro de la comunidad, con su estado y el chequeo automático. No entrega el archivo: se ve en el perfil del maestro.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                provider_name: { type: 'string', description: 'Nombre del maestro.' },
+                provider_id: { type: 'string', description: 'ID del maestro si lo conoces.' },
+            },
+            required: ['provider_name'],
+        },
+    },
+    {
+        name: 'review_provider_document',
+        description: 'Solo administración: aprueba o rechaza un documento pendiente de un maestro de la comunidad (usa el document_id de list_provider_documents). Al aprobar, el perfil muestra antecedentes o identidad revisados. Para rechazar, pide el motivo: el maestro lo verá.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                provider_name: { type: 'string', description: 'Nombre del maestro (se muestra al confirmar).' },
+                provider_id: { type: 'string' },
+                document_id: { type: 'string', description: 'document_id de list_provider_documents.' },
+                decision: { type: 'string', enum: ['approve', 'reject'] },
+                note: { type: 'string', description: 'Motivo, obligatorio si rechazas.' },
+            },
+            required: ['provider_name', 'document_id', 'decision'],
+        },
+    },
+    {
+        name: 'save_provider_attachment',
+        description: 'Guarda en el perfil de un maestro la imagen que la persona adjuntó al chat (viene un adjunto_id en su mensaje): foto de perfil, foto de un trabajo, certificado de antecedentes o cédula. Lo puede hacer la administración (maestros de su comunidad) o el propio maestro. Los documentos quedan pendientes de revisión. Solo imágenes: un PDF se sube desde el perfil.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                attachment_id: { type: 'string', description: 'El adjunto_id que viene en el mensaje.' },
+                provider_name: { type: 'string', description: 'Nombre del maestro (se muestra al confirmar).' },
+                provider_id: { type: 'string' },
+                kind: { type: 'string', enum: ['profile_photo', 'work_photo', 'background_certificate', 'identity'] },
+                caption: { type: 'string', description: 'Descripción de la foto de trabajo, opcional.' },
+            },
+            required: ['attachment_id', 'provider_name', 'kind'],
+        },
+    },
 
     {
         name: 'list_supermarket_group_orders',
@@ -1051,6 +1108,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'dispatch_provider',
     'register_external_provider',
     'send_provider_portal_link',
+    'rate_provider',
+    'review_provider_document',
+    'save_provider_attachment',
     'create_supermarket_group_order',
     'join_supermarket_group_order',
     'lock_supermarket_group_order',
@@ -1098,6 +1158,9 @@ const RESIDENT_TOOLS = new Set([
     'get_my_storage', 'search_storage', 'rent_storage',
     'compare_shopping_list', 'publish_marketplace_item', 'request_service',
     'list_community_deals', 'suggest_community_deals', 'propose_community_deal', 'join_community_deal',
+    // Perfil del maestro: valorar, y que el propio maestro (con cuenta) suba
+    // fotos o documentos por el chat; el ejecutor comprueba que sea su perfil.
+    'rate_provider', 'save_provider_attachment',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -1124,6 +1187,7 @@ const ADMIN_TOOLS = new Set([
     'remember_community_fact',
     'draft_outbound_email',
     'register_external_provider', 'send_provider_portal_link',
+    'list_provider_documents', 'review_provider_document',
 ]);
 
 const SYSTEM_TOOLS = new Set([
@@ -1252,6 +1316,19 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Registrar maestro externo', summary: `${str('name')} · ${str('category') || 'general'} · ${str('contact_phone')}. Queda sin verificar en la red de la comunidad.` };
         case 'send_provider_portal_link':
             return { title: 'Generar enlace para el maestro', summary: `Enlace personal de ${str('provider_name') || 'el maestro'} para editar su perfil y responder solicitudes. Vence en 90 días y el enlace anterior deja de funcionar.` };
+        case 'rate_provider':
+            return { title: 'Publicar reseña', summary: `${str('provider_name')}: ${str('rating')}/5. "${str('comment')}"` };
+        case 'review_provider_document':
+            return {
+                title: str('decision') === 'approve' ? 'Aprobar documento del maestro' : 'Rechazar documento del maestro',
+                summary: str('decision') === 'approve'
+                    ? `Documento de ${str('provider_name')}: su perfil lo mostrará como revisado.`
+                    : `Documento de ${str('provider_name')}. Motivo: ${str('note') || 'sin motivo'}`,
+            };
+        case 'save_provider_attachment': {
+            const label: Record<string, string> = { profile_photo: 'foto de perfil', work_photo: 'foto de trabajo', background_certificate: 'certificado de antecedentes', identity: 'cédula de identidad' };
+            return { title: 'Guardar imagen en el perfil del maestro', summary: `La imagen adjunta como ${label[str('kind')] || 'imagen'} de ${str('provider_name')}.` };
+        }
         case 'create_supermarket_group_order':
             return { title: 'Crear compra grupal', summary: `${str('title')}. Lista: ${str('shopping_list')}.` };
         case 'save_shopping_list':
@@ -2643,6 +2720,28 @@ export async function executeTool(
                         ? `Se notificó a ${notifications.length} residente(s) de la unidad ${input.unit_id} para autorizar acceso urgente.`
                         : `No encontré residentes asociados a la unidad ${input.unit_id}; escalar a conserjería.`
                 };
+            }
+
+            case 'rate_provider': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificarte.');
+                return rateProviderForUser(userCtx.user_id, communityId, input as Record<string, unknown>);
+            }
+
+            case 'list_provider_documents':
+            case 'review_provider_document': {
+                if (userCtx.role !== 'admin') return forbidden('Solo la administración revisa documentos de maestros.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificarte.');
+                return name === 'list_provider_documents'
+                    ? listProviderDocumentsForAdmin(communityId, input as Record<string, unknown>)
+                    : reviewProviderDocumentForAdmin(communityId, userCtx.user_id, input as Record<string, unknown>);
+            }
+
+            case 'save_provider_attachment': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id || !userCtx.role) return forbidden('No pude identificarte.');
+                return saveProviderAttachment({ id: userCtx.user_id, role: userCtx.role, communityId }, input as Record<string, unknown>);
             }
 
             case 'register_external_provider':

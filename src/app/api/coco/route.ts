@@ -24,6 +24,7 @@ import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
 import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { attachmentNote, canAttachToProviders, stashChatImage } from '@/lib/coco/chatAttachments';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -741,12 +742,20 @@ export async function POST(req: NextRequest) {
         const archivedConversation = session?.conversation.slice(0, -20) || [];
         const agentSession = session ? { ...session, conversation: recentConversation } : null;
 
+        // Una imagen adjunta por quien gestiona maestros (administración o el
+        // propio maestro) queda disponible para save_provider_attachment.
+        let agentMessage = message;
+        if (imageAttachment && !resolutions && isToolAllowedForRole('save_provider_attachment', safeRole) && await canAttachToProviders(userId, safeRole)) {
+            const attachmentId = await stashChatImage(userId, imageAttachment);
+            if (attachmentId) agentMessage = `${message}${attachmentNote(attachmentId)}`;
+        }
+
         // ── 4. Llamar al agente ──────────────────────────────────────────────
         let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
 
         try {
             agentResponse = await askCoCo(
-                message,
+                agentMessage,
                 agentSession,
                 {
                     user_id:     userId,
