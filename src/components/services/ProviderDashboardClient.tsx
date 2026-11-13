@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { getInitials } from "@/lib/utils/avatar";
+import { ProviderProfileService } from "@/lib/api";
+import { ProviderProfileForm } from "@/components/services/ProviderProfileForm";
 
 import type { ServiceRequestStatus as RequestStatus, ServiceRequestFilter as StatusFilter, ProviderServiceRequestRow as ProviderRequestRow } from "@/lib/types";
 
@@ -84,6 +86,7 @@ export function ProviderDashboardClient() {
     const [savingId, setSavingId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
     const [query, setQuery] = useState("");
+    const [editingProfile, setEditingProfile] = useState(false);
 
     const selectedProvider = providers.find(provider => provider.id === selectedProviderId) || providers[0];
 
@@ -260,11 +263,29 @@ export function ProviderDashboardClient() {
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                             Actualizar
                         </Button>
+                        <Button variant="outline" onClick={() => setEditingProfile(value => !value)} disabled={!selectedProvider}>
+                            Editar perfil
+                        </Button>
                         <Link href={`/services/provider/${selectedProvider?.id}`}>
                             <Button variant="secondary">Ver perfil público</Button>
                         </Link>
                     </div>
                 </div>
+
+                {selectedProvider && editingProfile && (
+                    <div className="mt-6 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                        <ProviderProfileForm
+                            initial={selectedProvider}
+                            onCancel={() => setEditingProfile(false)}
+                            onSubmit={async input => {
+                                await ProviderProfileService.update(selectedProvider.id, input);
+                                toast({ title: "Perfil actualizado", variant: "success" });
+                                setEditingProfile(false);
+                                await loadProviders();
+                            }}
+                        />
+                    </div>
+                )}
 
                 {selectedProvider && (
                     <div className="mt-6 grid gap-3 md:grid-cols-4">

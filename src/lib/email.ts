@@ -302,6 +302,50 @@ export async function sendBookingConfirmation({
 }
 
 /**
+ * Aviso a un maestro externo (sin cuenta) de que tiene una solicitud nueva. No
+ * lleva el enlace del portal: de ese enlace solo se guarda el hash.
+ */
+export async function sendProviderRequestEmail({
+    to,
+    providerName,
+    communityName,
+    date,
+    time,
+    description,
+}: {
+    to: string;
+    providerName: string;
+    communityName: string;
+    date: string;
+    time: string;
+    description: string;
+}) {
+    providerName = escapeEmailHtml(providerName.split(' ')[0]);
+    communityName = escapeEmailHtml(communityName);
+    time = escapeEmailHtml(time);
+    description = escapeEmailHtml(description.slice(0, 400));
+    const formattedDate = formatEmailDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
+    const content = `
+    <h1 style="margin:0 0 10px;font-family:${BRAND.serif};font-size:28px;font-weight:400;line-height:1.2;color:${BRAND.ink};">
+      Tienes una solicitud <em style="font-style:italic;color:${BRAND.sage};">nueva</em>
+    </h1>
+    <p style="margin:0 0 20px;color:${BRAND.inkMuted};font-size:15px;line-height:1.65;">
+      Hola <strong style="color:${BRAND.ink};">${providerName}</strong>, un vecino de <strong style="color:${BRAND.ink};">${communityName}</strong> te pidió un servicio para el ${formattedDate} a las ${time}.
+    </p>
+    <p style="margin:0 0 20px;padding:16px;background:${BRAND.paperWarm};border:1px solid ${BRAND.line};border-radius:12px;color:${BRAND.ink};font-size:15px;line-height:1.6;">${description}</p>
+    <p style="margin:0;color:${BRAND.inkMuted};font-size:14px;line-height:1.6;">
+      Para aceptarla, proponer otro horario o rechazarla, abre el enlace personal que te envió la administración del condominio.
+      Si no lo tienes, pídele uno nuevo.
+    </p>`;
+    return resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: cleanEmailSubject(`Nueva solicitud de servicio — ${communityName}`),
+        html: emailWrapper(content, 'Nueva solicitud de servicio'),
+    });
+}
+
+/**
  * Bienvenida a nuevo residente al incorporarse a la plataforma.
  */
 export async function sendWelcomeEmail({
