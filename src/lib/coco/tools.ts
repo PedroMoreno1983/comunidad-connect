@@ -9,6 +9,7 @@ import { MAX_SHOPPING_LIST_CHARS, parseGroupShoppingList as parsePersonalShoppin
 import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
 import { compareShoppingListForUser, supermarketListLink } from './shoppingTools';
 import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
+import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
@@ -69,6 +70,7 @@ import { listCommunityAgenda } from './communityAgenda';
 import { sendConfirmedEmailDraft } from './emailDraft';
 import { prepareLegalDraft } from './legalDrafts';
 import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalDraftMarker';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -924,6 +926,36 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    // ── MÓDULO: MAESTROS EXTERNOS (solo administración) ──────────────────────
+    {
+        name: 'register_external_provider',
+        description: 'Registra en la comunidad a un maestro externo SIN cuenta en Convive (gasfíter, electricista, cerrajero, aseo). Solo administración. Queda sin verificar. Si el teléfono ya existe en la comunidad no lo duplica. Para que el maestro gestione su perfil y responda solicitudes, después usa send_provider_portal_link.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                name: { type: 'string', description: 'Nombre del maestro o empresa.' },
+                category: { type: 'string', enum: ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'], description: 'plumbing = gasfitería; electrical = electricidad; locksmith = cerrajería; cleaning = aseo; general = otros.' },
+                contact_phone: { type: 'string', description: 'Celular del maestro, por ejemplo +56 9 1234 5678.' },
+                email: { type: 'string', description: 'Correo, opcional. Con correo le avisamos de solicitudes nuevas.' },
+                specialties: { type: 'string', description: 'Especialidades separadas por coma, opcional (ej: calefont, cañerías).' },
+                bio: { type: 'string', description: 'Descripción breve, opcional.' },
+            },
+            required: ['name', 'category', 'contact_phone'],
+        },
+    },
+    {
+        name: 'send_provider_portal_link',
+        description: 'Genera el enlace personal con que un maestro externo (sin cuenta) edita su perfil y acepta, reagenda o cierra sus solicitudes. Solo administración. Vence en 90 días y revoca el enlace anterior del mismo maestro. Devuelve el enlace y un acceso a WhatsApp para enviárselo; CoCo no se lo manda directo.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                provider_id: { type: 'string', description: 'ID del proveedor si ya lo conoces (de list_services o register_external_provider).' },
+                provider_name: { type: 'string', description: 'Nombre del maestro. Siempre: es lo que ve la administración al confirmar.' },
+            },
+            required: ['provider_name'],
+        },
+    },
+
     {
         name: 'list_supermarket_group_orders',
         description: 'Lista las compras grupales reales y sus aportes dentro de la comunidad autenticada.',
@@ -1017,6 +1049,8 @@ export const MUTATING_TOOLS = new Set<string>([
     'update_unit_data',
     'request_urgent_access_approval',
     'dispatch_provider',
+    'register_external_provider',
+    'send_provider_portal_link',
     'create_supermarket_group_order',
     'join_supermarket_group_order',
     'lock_supermarket_group_order',
@@ -1089,6 +1123,7 @@ const ADMIN_TOOLS = new Set([
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
     'draft_outbound_email',
+    'register_external_provider', 'send_provider_portal_link',
 ]);
 
 const SYSTEM_TOOLS = new Set([
@@ -1213,6 +1248,10 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':
             return { title: 'Proponer proveedor de emergencia', summary: str('details') || 'Identificar un proveedor y notificar al equipo para que confirme el despacho.' };
+        case 'register_external_provider':
+            return { title: 'Registrar maestro externo', summary: `${str('name')} · ${str('category') || 'general'} · ${str('contact_phone')}. Queda sin verificar en la red de la comunidad.` };
+        case 'send_provider_portal_link':
+            return { title: 'Generar enlace para el maestro', summary: `Enlace personal de ${str('provider_name') || 'el maestro'} para editar su perfil y responder solicitudes. Vence en 90 días y el enlace anterior deja de funcionar.` };
         case 'create_supermarket_group_order':
             return { title: 'Crear compra grupal', summary: `${str('title')}. Lista: ${str('shopping_list')}.` };
         case 'save_shopping_list':
@@ -1484,8 +1523,9 @@ export async function executeTool(
                 const search = (input.query || (!['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category) ? category : '')).trim();
                 const query = supabaseAdmin
                     .from('service_providers')
-                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude')
-                    .eq('community_id', communityId)
+                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude, community_id')
+                    // Los de la comunidad y los de la Red Convive (community_id NULL).
+                    .or(communityProvidersFilter(communityId))
                     .order('rating', { ascending: false });
                 
                 if (['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category)) {
@@ -2605,6 +2645,16 @@ export async function executeTool(
                 };
             }
 
+            case 'register_external_provider':
+            case 'send_provider_portal_link': {
+                if (userCtx.role !== 'admin') return forbidden('Solo la administración registra maestros externos y les envía su enlace.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificarte.');
+                return name === 'register_external_provider'
+                    ? registerExternalProviderForAdmin(supabaseAdmin, communityId, userCtx.user_id, input as Record<string, unknown>)
+                    : sendProviderPortalLinkForAdmin(supabaseAdmin, communityId, userCtx.user_id, input as Record<string, unknown>);
+            }
+
             case 'dispatch_provider': {
                 if (!isStaff(userCtx)) return forbidden('Solo conserjeria o administracion pueden gestionar proveedores de emergencia.');
                 const communityId = scopedCommunity(userCtx);
@@ -2612,7 +2662,7 @@ export async function executeTool(
                 const providerQuery = supabaseAdmin
                     .from('service_providers')
                     .select('id, name, contact_phone, category, response_time')
-                    .eq('community_id', communityId)
+                    .or(communityProvidersFilter(communityId))
                     .eq('availability', 'available')
                     .order('verified', { ascending: false })
                     .order('rating', { ascending: false })

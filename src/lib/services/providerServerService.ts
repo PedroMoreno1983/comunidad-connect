@@ -23,6 +23,7 @@ function mapProvider(provider: ServiceProviderDatabaseRow): ServiceProvider {
         responseTime: provider.response_time,
         completedJobs: provider.completed_jobs,
         verified: provider.verified,
+        network: provider.community_id === null,
     };
 }
 

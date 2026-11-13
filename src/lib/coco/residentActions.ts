@@ -106,7 +106,7 @@ export async function requestServiceForUser(
         metadata: { providerId: provider.id, preferredDate, preferredTime, descriptionLength: description.length, channel: 'coco' },
     });
 
-    await notifyExternalProviderOfRequest(String(provider.id), { preferredDate, preferredTime, description });
+    await notifyExternalProviderOfRequest(String(provider.id), { preferredDate, preferredTime, description, communityId });
 
     return {
         success: true,

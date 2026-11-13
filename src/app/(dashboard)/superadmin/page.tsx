@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Activity, Building2, Check, Copy, Search, Shield, UserRoundCheck } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import CommercialOutreach from "@/components/admin/CommercialOutreach";
+import ProviderNetworkPanel from "@/components/admin/ProviderNetworkPanel";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import type {
     CommercialLeadStatus,
@@ -204,6 +205,8 @@ export default function SuperAdminDashboard() {
 
             {/* Outreach Campaign Section */}
             <CommercialOutreach />
+
+            <ProviderNetworkPanel />
 
             <section className="grid gap-4 rounded-2xl border p-6 md:grid-cols-[1fr_auto] md:items-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="flex items-start gap-4">

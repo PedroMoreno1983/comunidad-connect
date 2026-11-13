@@ -121,7 +121,7 @@ export function ProviderPortalClient({ token }: ProviderPortalClientProps) {
                             <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div>
                                     <p className="text-sm font-semibold cc-text-primary">
-                                        {request.requesterName}{request.requesterUnit ? ` · ${request.requesterUnit}` : ""}
+                                        {data.network ? `${request.communityName} · ` : ""}{request.requesterName}{request.requesterUnit ? ` · ${request.requesterUnit}` : ""}
                                     </p>
                                     <p className="text-xs cc-text-secondary">{formatDate(request.preferredDate, request.preferredTime)}</p>
                                 </div>

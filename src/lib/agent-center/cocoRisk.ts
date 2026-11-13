@@ -113,6 +113,8 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     send_whatsapp_notification: 'write_high',   // sale del edificio
     request_urgent_access_approval: 'write_high', // interrumpe a terceros
     dispatch_provider: 'write_high',            // compromete a un proveedor
+    register_external_provider: 'write_high',   // suma a un tercero a la red de la comunidad
+    send_provider_portal_link: 'write_high',    // entrega acceso a solicitudes y revoca el anterior
     lock_supermarket_group_order: 'write_high', // cierra la compra de varios vecinos
     record_supermarket_group_purchase: 'write_high', // fija cuánto debe cada vecino
     create_unit: 'write_high',                  // estructura del condominio

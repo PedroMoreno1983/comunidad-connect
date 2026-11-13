@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS public.service_providers (
   completed_jobs INTEGER DEFAULT 0,
   verified BOOLEAN DEFAULT FALSE,
   review_count INTEGER DEFAULT 0,
-  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -895,6 +895,8 @@ CREATE POLICY "tenant_community_projects_update" ON public.community_projects FO
 CREATE POLICY "tenant_service_providers_select" ON public.service_providers FOR SELECT USING (
   community_id = public.get_my_community_id()
 );
+-- Red Convive: los maestros sin comunidad los ven todas las comunidades.
+CREATE POLICY "service_providers_network_read" ON public.service_providers FOR SELECT TO authenticated USING (community_id IS NULL);
 CREATE POLICY "tenant_service_providers_insert" ON public.service_providers FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "tenant_service_providers_update" ON public.service_providers FOR UPDATE USING (auth.uid() = user_id);
 
@@ -929,6 +931,10 @@ CREATE POLICY "pricing_tiers_service_role_write" ON public.pricing_tiers FOR ALL
 -- (necesario para el directorio de proveedores), solo el propio autor escribe.
 CREATE POLICY "reviews_select_same_tenant" ON public.reviews FOR SELECT USING (
   provider_id IN (SELECT id FROM public.service_providers WHERE community_id = public.get_my_community_id())
+);
+-- Y las reseñas de los maestros de la Red Convive, para cualquier autenticado.
+CREATE POLICY "reviews_network_read" ON public.reviews FOR SELECT TO authenticated USING (
+  provider_id IN (SELECT id FROM public.service_providers WHERE community_id IS NULL)
 );
 CREATE POLICY "reviews_insert_own" ON public.reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "reviews_update_own" ON public.reviews FOR UPDATE USING (auth.uid() = user_id);
@@ -6733,7 +6739,7 @@ CREATE TABLE IF NOT EXISTS public.community_deal_quotes (
 
 CREATE TABLE IF NOT EXISTS public.service_provider_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE,
   provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
   expires_at TIMESTAMPTZ NOT NULL,
