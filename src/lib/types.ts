@@ -3861,3 +3861,80 @@ export interface CommunityDealOpportunity {
   households: number;
   source: 'cases' | 'purchases';
 }
+
+/* ── Portal del maestro externo ────────────────────────────── */
+
+export interface ProviderPortalProfile {
+  id: string;
+  name: string;
+  category: ServiceProvider['category'];
+  contactPhone: string;
+  email: string;
+  bio: string;
+  yearsExperience: number;
+  specialties: string[];
+  certifications: string[];
+  hourlyRate: number | null;
+  availability: ServiceProvider['availability'];
+  responseTime: string;
+  serviceAddress: string;
+  verified: boolean;
+  rating: number;
+  reviewCount: number;
+  completedJobs: number;
+}
+
+export interface ProviderPortalRequest {
+  id: string;
+  preferredDate: string;
+  preferredTime: string;
+  description: string;
+  status: ServiceRequestStatus;
+  createdAt: string;
+  requesterName: string;
+  requesterUnit: string;
+}
+
+export interface ProviderPortalData {
+  communityName: string;
+  expiresAt: string;
+  provider: ProviderPortalProfile;
+  requests: ProviderPortalRequest[];
+}
+
+/** Cambios de perfil que puede hacer el propio maestro o la administración. */
+export interface ProviderProfileInput {
+  name?: string;
+  contactPhone?: string;
+  email?: string;
+  bio?: string;
+  yearsExperience?: number;
+  specialties?: string[];
+  certifications?: string[];
+  hourlyRate?: number | null;
+  availability?: ServiceProvider['availability'];
+  responseTime?: string;
+  serviceAddress?: string;
+}
+
+export interface ProviderInviteLink {
+  url: string;
+  expiresAt: string;
+  providerName: string;
+}
+
+export interface ProviderProfileFormProps {
+  initial: ProviderProfileInput;
+  onSubmit: (input: ProviderProfileInput) => Promise<void>;
+  onCancel?: () => void;
+  submitLabel?: string;
+}
+
+export interface ProviderAdminPanelProps {
+  provider: ServiceProvider;
+  onChanged: () => void;
+}
+
+export interface ProviderPortalClientProps {
+  token: string;
+}

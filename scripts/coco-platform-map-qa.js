@@ -29,6 +29,7 @@ const EXCLUDED = {
   "/terms": "Texto legal público",
   "/admin-onboarding": "Alta de un edificio nuevo (antes de tener cuenta)",
   "/fiscalizador/[token]": "Portal de solo lectura por enlace firmado; no navegable",
+  "/proveedor/[token]": "Portal del maestro externo por enlace personal; no navegable ni para residentes",
   "/showcase": "Lienzo de diseño interno, oculto del menú",
   "/marketing/reels": "Herramienta interna del creador de la plataforma",
   "/superadmin": "Consola SaaS interna",

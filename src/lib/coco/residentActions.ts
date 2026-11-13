@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { validServiceSchedule } from '@/lib/services/requestLifecycle';
+import { notifyExternalProviderOfRequest } from '@/lib/services/providerPortal';
 import { chileNowTime, chileTodayISO } from '@/lib/agent-center/chileDate';
 
 /**
@@ -104,6 +105,8 @@ export async function requestServiceForUser(
         summary: `Solicitud enviada a ${provider.name} desde CoCo`,
         metadata: { providerId: provider.id, preferredDate, preferredTime, descriptionLength: description.length, channel: 'coco' },
     });
+
+    await notifyExternalProviderOfRequest(String(provider.id), { preferredDate, preferredTime, description });
 
     return {
         success: true,

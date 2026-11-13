@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
+import { ProviderAdminPanel } from "@/components/services/ProviderAdminPanel";
 import { getCategoryVisual } from "@/components/services/categoryVisuals";
 import { ProfileBanner, ProfileLegend, ProviderPortrait, ReviewerMark } from "@/components/services/ProviderGlyph";
 import { categoryInk, providerMarks } from "@/components/services/providerMarks";
@@ -290,6 +291,10 @@ export function ProviderProfileClient({ provider, reviews, openContact = false }
                             </p>
                         )}
                     </section>
+
+                    {user?.role === "admin" ? (
+                        <ProviderAdminPanel provider={provider} onChanged={() => router.refresh()} />
+                    ) : null}
 
                     {specialties.length > 0 ? (
                         <section>

@@ -20,6 +20,7 @@ async function getSupabaseUserClient() {
 
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { validServiceSchedule } from '@/lib/services/requestLifecycle';
+import { notifyExternalProviderOfRequest } from '@/lib/services/providerPortal';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -132,6 +133,10 @@ export async function POST(req: NextRequest) {
             },
             requestId: getRequestId(req),
         });
+
+        if (provider?.id) {
+            await notifyExternalProviderOfRequest(provider.id, { preferredDate, preferredTime, description });
+        }
 
         return NextResponse.json({ request }, { status: 201 });
     } catch (error) {

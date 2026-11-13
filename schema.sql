@@ -6728,3 +6728,19 @@ CREATE TABLE IF NOT EXISTS public.community_deal_quotes (
   CONSTRAINT community_deal_quotes_price_check CHECK (price IS NULL OR price >= 0),
   CONSTRAINT community_deal_quotes_price_unit_check CHECK (price_unit IN ('unit_month', 'unit_once', 'community_month', 'discount_percent'))
 );
+
+-- Portal del maestro externo (migración 20261113120000_service_provider_portal).
+
+CREATE TABLE IF NOT EXISTS public.service_provider_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ,
+  use_count INTEGER NOT NULL DEFAULT 0,
+  CONSTRAINT service_provider_links_expiry_check CHECK (expires_at > created_at)
+);
