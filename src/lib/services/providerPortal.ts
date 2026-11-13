@@ -7,6 +7,7 @@ import { recordOperationEvent } from '@/lib/operations/audit';
 import { serviceRequestTransitionError, validServiceSchedule } from '@/lib/services/requestLifecycle';
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
 import { sendProviderRequestEmail } from '@/lib/email';
+import { INTERNAL_SERVICE_PROVIDER_IDS } from '@/lib/config';
 import type { ProviderPortalData, ServiceRequestStatus } from '@/lib/types';
 
 /**
@@ -33,6 +34,16 @@ export class ProviderPortalError extends Error {
 const DEFAULT_DAYS = 90;
 const PROFILE_COLUMNS = 'id, name, category, contact_phone, email, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, service_address, verified, rating, review_count, completed_jobs, community_id, user_id';
 const NETWORK_NAME = 'Red Convive';
+
+/**
+ * Colas internas (la "Mesa de ayuda interna" del Agent Center) se guardan como
+ * proveedor sin cuenta, pero no son un maestro: su enlace abriría los tickets
+ * internos de la comunidad.
+ */
+export function isInternalProvider(provider: { id: unknown; name?: unknown }) {
+    return INTERNAL_SERVICE_PROVIDER_IDS.includes(String(provider.id))
+        || String(provider.name || '').trim().toLowerCase() === 'mesa de ayuda interna';
+}
 
 /**
  * Avisa por correo a un maestro sin cuenta que tiene una solicitud nueva. No
@@ -69,6 +80,9 @@ export async function createProviderInvite(communityId: string | null, createdBy
     const { data: provider } = await supabaseAdmin.from('service_providers')
         .select('id, name, community_id, user_id').eq('id', providerId).maybeSingle();
     if (!provider) throw new ProviderPortalError('Proveedor no encontrado.', 404);
+    if (isInternalProvider(provider)) {
+        throw new ProviderPortalError('Esa es una cola interna de la administración, no un maestro: no lleva enlace.', 409);
+    }
     const providerCommunity = provider.community_id ? String(provider.community_id) : null;
     if (communityId === null && providerCommunity !== null) {
         throw new ProviderPortalError('Ese maestro es de una comunidad: su enlace lo envía su administración.', 409);

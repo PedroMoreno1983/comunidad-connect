@@ -2,7 +2,7 @@ import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { CANONICAL_SITE_URL } from '@/lib/config';
-import { createProviderInvite } from '@/lib/services/providerPortal';
+import { createProviderInvite, isInternalProvider } from '@/lib/services/providerPortal';
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
 import type { NetworkProviderInput, NetworkProviderRow, ProviderInviteLink, SuperAdminProvidersResponse } from '@/lib/types';
 
@@ -56,7 +56,7 @@ export async function listProviderNetwork(): Promise<SuperAdminProvidersResponse
     const names = new Map((communities.data || []).map(row => [String(row.id), String(row.name || 'Comunidad')]));
     return {
         network: (network.data || []).map(row => toRow(row, names)),
-        community: (community.data || []).map(row => toRow(row, names)),
+        community: (community.data || []).filter(row => !isInternalProvider(row)).map(row => toRow(row, names)),
         communities: (communities.data || []).map(row => ({ id: String(row.id), name: String(row.name || 'Comunidad') })),
     };
 }
@@ -102,8 +102,9 @@ export async function moveProvider(providerId: string, communityId: string | nul
         const { data: community } = await admin.from('communities').select('id').eq('id', communityId).maybeSingle();
         if (!community) throw new ProviderNetworkError('Esa comunidad no existe.', 404);
     }
-    const { data: provider } = await admin.from('service_providers').select('id, user_id, community_id').eq('id', providerId).maybeSingle();
+    const { data: provider } = await admin.from('service_providers').select('id, name, user_id, community_id').eq('id', providerId).maybeSingle();
     if (!provider) throw new ProviderNetworkError('Proveedor no encontrado.', 404);
+    if (isInternalProvider(provider)) throw new ProviderNetworkError('Esa es una cola interna de una comunidad, no un maestro.', 409);
     // Un maestro con cuenta pertenece a la comunidad de su perfil: su panel y
     // sus permisos dependen de ella.
     if (provider.user_id) throw new ProviderNetworkError('Este maestro tiene cuenta en una comunidad; por ahora solo se suman a la red maestros externos.', 409);

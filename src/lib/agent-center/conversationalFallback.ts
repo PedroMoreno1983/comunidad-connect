@@ -176,7 +176,8 @@ export async function resumeCoCoAction(action: AgentAction, profile: AgentProfil
         entityType: 'coco_action',
         entityId: null,
         title: 'Accion ejecutada por CoCo',
-        message: (response.reply || 'Listo, ejecute la accion aprobada.').trim(),
+        // El resultado del Agent Center queda guardado: va sin credenciales.
+        message: (response.storedReply || response.reply || 'Listo, ejecute la accion aprobada.').trim(),
         data: { steps: action.args.pending },
     };
 }

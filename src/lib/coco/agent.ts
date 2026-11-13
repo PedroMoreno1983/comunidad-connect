@@ -46,6 +46,11 @@ export interface CoCoImageAttachment {
 
 export interface CoCoResponse {
     reply: string;
+    /**
+     * La misma respuesta sin credenciales (enlace del portal de un maestro). Quien
+     * guarda la respuesta en vez de solo mostrarla (Agent Center) usa esta.
+     */
+    storedReply?: string;
     navigate?: string;
     action?: string;
     updatedHistory: ConversationMessage[];
@@ -127,6 +132,32 @@ function resultEntityId(result: unknown) {
     return idEntry?.[1] as string | undefined || null;
 }
 
+/**
+ * Un resultado con `credential` (el enlace del portal de un maestro) es una
+ * credencial: se entrega una sola vez y la bitácora la guarda tachada. Si se
+ * reintenta la misma aprobación, no se puede volver a mostrar ni a ejecutar;
+ * se dice eso, y que basta con pedir un enlace nuevo (el anterior se revoca).
+ */
+export function replayableResult(result: unknown) {
+    if (result && typeof result === 'object' && !Array.isArray(result) && 'credential' in result) {
+        return {
+            success: false,
+            error: 'El enlace ya se generó, pero por seguridad no se guarda y no se puede volver a mostrar. Pide a CoCo un enlace nuevo: el anterior deja de funcionar.',
+        };
+    }
+    return result;
+}
+
+/** Texto con la credencial de un resultado aprobado: va en la respuesta, nunca al historial. */
+export function credentialReply(result: unknown): string {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return '';
+    const credential = (result as Record<string, unknown>).credential;
+    if (!credential || typeof credential !== 'object' || Array.isArray(credential)) return '';
+    const { url, whatsapp_link: whatsapp } = credential as Record<string, unknown>;
+    if (typeof url !== 'string') return '';
+    return [`Enlace: ${url}`, typeof whatsapp === 'string' ? `[Enviar por WhatsApp](${whatsapp})` : ''].filter(Boolean).join('\n');
+}
+
 async function auditRejectedTool(toolUse: Anthropic.ToolUseBlock, userCtx: CoCoUserContext) {
     const result = { error: 'El usuario rechazo esta accion. No se ejecuto.' };
     await recordOperationEvent({
@@ -156,7 +187,7 @@ async function executeAuditedTool(toolUse: Anthropic.ToolUseBlock, userCtx: CoCo
     const existing = await readReceipt();
     if (existing.data) {
         const metadata = existing.data.metadata as Record<string, unknown> | null;
-        if (metadata?.result !== undefined) return metadata.result;
+        if (metadata?.result !== undefined) return replayableResult(metadata.result);
         return { error: 'Esta accion ya se esta procesando. Espera unos segundos antes de reintentar.' };
     }
 
@@ -175,7 +206,7 @@ async function executeAuditedTool(toolUse: Anthropic.ToolUseBlock, userCtx: CoCo
     if (!claim.ok) {
         const concurrentReceipt = await readReceipt();
         const metadata = concurrentReceipt.data?.metadata as Record<string, unknown> | null;
-        if (metadata?.result !== undefined) return metadata.result;
+        if (metadata?.result !== undefined) return replayableResult(metadata.result);
         return { error: concurrentReceipt.data
             ? 'Esta accion ya se esta procesando. Espera unos segundos antes de reintentar.'
             : 'No se pudo asegurar la ejecucion unica de la accion. No se realizaron cambios.' };
@@ -435,12 +466,22 @@ export async function askCoCo(
                     ? `${title}: no se pudo completar. ${resultDescription(resolved.result, 'La operacion fallo.')}`
                     : `${title}: completada. ${resultDescription(resolved.result, 'La operacion se ejecuto correctamente.')}`;
             });
-        const reply = summaries.join('\n');
+        // Las credenciales (enlace del portal de un maestro) se muestran en esta
+        // respuesta y no quedan en el historial guardado de la conversación.
+        const credentials = resolvedResults
+            .filter(resolved => resolved.resolution === 'approved' && !resultFailed(resolved.result))
+            .map(resolved => credentialReply(resolved.result))
+            .filter(Boolean);
+        const summary = summaries.join('\n');
+        const reply = credentials.length ? `${summary}\n\n${credentials.join('\n\n')}` : summary;
+        const storedReply = credentials.length
+            ? `${summary}\n\n(El enlace se muestra una sola vez en el chat y no queda guardado. Si se pierde, pide uno nuevo.)`
+            : summary;
         const updatedHistory: ConversationMessage[] = [
             ...baseConversation,
-            { role: 'assistant', content: reply },
+            { role: 'assistant', content: storedReply },
         ];
-        return { reply, updatedHistory };
+        return { reply, storedReply, updatedHistory };
     } else {
         // 3b. Agregar mensaje del usuario al historial
         const documentText = options.legalDocument
