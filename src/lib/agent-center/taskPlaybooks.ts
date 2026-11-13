@@ -15,6 +15,7 @@ import { scoreAssetRisks, type RiskAsset, type RiskLog } from '@/lib/maintenance
 import { approveCommitteeDigest, generateCommitteeDigest } from '@/lib/committeeDigest/service';
 import { periodLabel } from '@/lib/committeeDigest/week';
 import { runCocoReminderPlaybook } from '@/lib/agent-center/cocoReminders';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -144,7 +145,7 @@ async function runMaintenanceTriageTask(profile: AgentProfile, goal: string, exi
             const [{ data: requests, error }, { count: providerCount, error: providerError }] = await Promise.all([
                 readOpenMaintenanceRequests(communityId),
                 admin.from('service_providers').select('id', { count: 'exact', head: true })
-                    .eq('community_id', communityId).eq('verified', true),
+                    .or(communityProvidersFilter(communityId)).eq('verified', true),
             ]);
             if (error) throw error;
             if (providerError) throw providerError;
@@ -250,7 +251,7 @@ async function runIotReadinessTask(profile: AgentProfile, goal: string) {
         const inspection = await runVerifiedTaskStep(taskId, 0, async () => {
             const [{ count: staff, error }, { count: providers, error: providerError }] = await Promise.all([
                 admin.from('profiles').select('id', { count: 'exact', head: true }).eq('community_id', communityId).in('role', ['admin', 'concierge']),
-                admin.from('service_providers').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('verified', true),
+                admin.from('service_providers').select('id', { count: 'exact', head: true }).or(communityProvidersFilter(communityId)).eq('verified', true),
             ]);
             if (error) throw error;
             if (providerError) throw providerError;

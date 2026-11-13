@@ -3,7 +3,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { hashSecret } from '@/lib/security/apiKeys';
-import { recordOperationEvent } from '@/lib/operations/audit';
+import { recordOperationEvent, recordPlatformOperationEvent } from '@/lib/operations/audit';
 import { serviceRequestTransitionError, validServiceSchedule } from '@/lib/services/requestLifecycle';
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
 import { sendProviderRequestEmail } from '@/lib/email';
@@ -34,6 +34,7 @@ export class ProviderPortalError extends Error {
 const DEFAULT_DAYS = 90;
 const PROFILE_COLUMNS = 'id, name, category, contact_phone, email, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, service_address, verified, rating, review_count, completed_jobs, community_id, user_id';
 const NETWORK_NAME = 'Red Convive';
+const OPEN_REQUEST_STATUSES = ['pending', 'accepted', 'awaiting_confirmation'];
 
 /**
  * Colas internas (la "Mesa de ayuda interna" del Agent Center) se guardan como
@@ -135,15 +136,22 @@ async function resolveLink(token: string) {
 
 export async function getProviderPortal(token: string): Promise<ProviderPortalData> {
     const link = await resolveLink(token);
-    let requestsQuery = supabaseAdmin.from('service_requests')
-        .select('id, user_id, community_id, preferred_date, preferred_time, description, status, created_at')
-        .eq('provider_id', link.providerId);
-    if (link.communityId) requestsQuery = requestsQuery.eq('community_id', link.communityId);
-    const [{ data: provider }, { data: requests }] = await Promise.all([
+    // Todas las abiertas (son las que el maestro tiene que responder) y, aparte,
+    // el historial reciente de cerradas: una abierta antigua nunca queda tapada
+    // por cerradas más nuevas.
+    const scoped = () => {
+        const query = supabaseAdmin.from('service_requests')
+            .select('id, user_id, community_id, preferred_date, preferred_time, description, status, created_at')
+            .eq('provider_id', link.providerId);
+        return link.communityId ? query.eq('community_id', link.communityId) : query;
+    };
+    const [{ data: provider }, { data: open }, { data: closed }] = await Promise.all([
         supabaseAdmin.from('service_providers').select(PROFILE_COLUMNS).eq('id', link.providerId).maybeSingle(),
-        requestsQuery.order('created_at', { ascending: false }).limit(50),
+        scoped().in('status', OPEN_REQUEST_STATUSES).order('created_at', { ascending: true }).limit(500),
+        scoped().not('status', 'in', `(${OPEN_REQUEST_STATUSES.join(',')})`).order('created_at', { ascending: false }).limit(30),
     ]);
     if (!provider) throw new ProviderPortalError('El perfil de proveedor ya no existe.', 404);
+    const requests = [...(open || []), ...(closed || [])];
 
     // Del residente solo lo necesario para coordinar: nombre, departamento y comunidad.
     const userIds = [...new Set((requests || []).map(row => String(row.user_id)))];
@@ -212,6 +220,12 @@ export async function updateProviderProfileViaPortal(token: string, body: Record
             communityId: link.communityId, actorRole: 'external_provider', action: 'service_provider.profile_updated',
             entityType: 'service_provider', entityId: link.providerId, severity: 'success', status: 'success',
             summary: 'El maestro actualizó su perfil desde su enlace', metadata: { fields: Object.keys(result.update) },
+        });
+    } else {
+        // Maestro de la Red Convive: no hay comunidad, va a la bitácora global.
+        await recordPlatformOperationEvent({
+            action: 'provider_network.profile_updated', entityType: 'service_provider', entityId: link.providerId,
+            summary: 'El maestro de la Red Convive actualizó su perfil desde su enlace', metadata: { fields: Object.keys(result.update), actor: 'external_provider' },
         });
     }
 }

@@ -14,10 +14,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (auth.error) return auth.error;
     const { id } = await params;
     const body = await request.json().catch(() => null) as NetworkProviderAction | null;
+    const actor = { id: auth.user.id, email: auth.user.email };
     try {
-        if (body?.action === 'to_network') await moveProvider(id, null);
-        else if (body?.action === 'to_community' && typeof body.communityId === 'string') await moveProvider(id, body.communityId);
-        else if (body?.action === 'verify' && typeof body.verified === 'boolean') await setNetworkProviderVerified(id, body.verified);
+        if (body?.action === 'to_network') await moveProvider(id, null, actor);
+        else if (body?.action === 'to_community' && typeof body.communityId === 'string') await moveProvider(id, body.communityId, actor);
+        else if (body?.action === 'verify' && typeof body.verified === 'boolean') await setNetworkProviderVerified(id, body.verified, actor);
         else return NextResponse.json({ error: 'Acción no válida.' }, { status: 400 });
         return NextResponse.json({ ok: true });
     } catch (error) {

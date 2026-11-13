@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { CANONICAL_SITE_URL } from '@/lib/config';
+import { CANONICAL_SITE_URL, INTERNAL_SERVICE_PROVIDER_IDS } from '@/lib/config';
+import { recordPlatformOperationEvent } from '@/lib/operations/audit';
 import { createProviderInvite, isInternalProvider } from '@/lib/services/providerPortal';
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
 import type { NetworkProviderInput, NetworkProviderRow, ProviderInviteLink, SuperAdminProvidersResponse } from '@/lib/types';
@@ -43,25 +44,52 @@ function toRow(row: Row, communityNames: Map<string, string>): NetworkProviderRo
     };
 }
 
-export async function listProviderNetwork(): Promise<SuperAdminProvidersResponse> {
+/** Texto de búsqueda seguro para un ilike de PostgREST (sin comodines ni separadores). */
+function searchTerm(value: string | null | undefined) {
+    return String(value || '').replace(/[%_,()\\*]/g, ' ').trim().slice(0, 60);
+}
+
+export async function listProviderNetwork(search?: string | null): Promise<SuperAdminProvidersResponse> {
     const admin = getSupabaseAdmin();
-    const [network, community, communities] = await Promise.all([
-        admin.from('service_providers').select(COLUMNS).is('community_id', null).order('name').limit(500),
-        // Candidatos para la red: los mejor evaluados de cada comunidad.
-        admin.from('service_providers').select(COLUMNS).not('community_id', 'is', null)
-            .order('rating', { ascending: false }).order('completed_jobs', { ascending: false }).limit(300),
+    const term = searchTerm(search);
+    let network = admin.from('service_providers').select(COLUMNS).is('community_id', null);
+    // Candidatos para la red: solo los que se pueden sumar (externos, sin las
+    // colas internas), filtrados antes de cortar; la búsqueda va en la base.
+    let candidates = admin.from('service_providers').select(COLUMNS).not('community_id', 'is', null)
+        .is('user_id', null).not('id', 'in', `(${INTERNAL_SERVICE_PROVIDER_IDS.join(',')})`);
+    if (term) {
+        network = network.ilike('name', `%${term}%`);
+        candidates = candidates.ilike('name', `%${term}%`);
+    }
+    const [networkRows, community, communities] = await Promise.all([
+        network.order('name').limit(500),
+        candidates.order('rating', { ascending: false }).order('completed_jobs', { ascending: false }).limit(100),
         admin.from('communities').select('id, name').order('name'),
     ]);
-    if (network.error || community.error || communities.error) throw new ProviderNetworkError('No se pudo cargar la red de maestros.', 500);
+    const networkResult = networkRows;
+    if (networkResult.error || community.error || communities.error) throw new ProviderNetworkError('No se pudo cargar la red de maestros.', 500);
     const names = new Map((communities.data || []).map(row => [String(row.id), String(row.name || 'Comunidad')]));
     return {
-        network: (network.data || []).map(row => toRow(row, names)),
+        network: (networkResult.data || []).map(row => toRow(row, names)),
         community: (community.data || []).filter(row => !isInternalProvider(row)).map(row => toRow(row, names)),
         communities: (communities.data || []).map(row => ({ id: String(row.id), name: String(row.name || 'Comunidad') })),
     };
 }
 
-export async function createNetworkProvider(input: NetworkProviderInput) {
+/** Quién hizo el cambio en la red: va a la bitácora global. */
+export type NetworkActor = { id: string; email?: string | null };
+
+const OPEN_REQUEST_STATUSES = ['pending', 'accepted', 'awaiting_confirmation'];
+
+async function auditNetwork(actor: NetworkActor, action: string, providerId: string, summary: string, metadata: Record<string, unknown> = {}) {
+    const audit = await recordPlatformOperationEvent({
+        actorId: actor.id, actorEmail: actor.email, action, entityType: 'service_provider', entityId: providerId, summary, metadata,
+    });
+    // Mismo criterio que el resto de superadmin: sin bitácora, se dice.
+    if (!audit.ok) throw new ProviderNetworkError('El cambio se hizo, pero la auditoría global no pudo certificarse.', 500);
+}
+
+export async function createNetworkProvider(input: NetworkProviderInput, actor: NetworkActor) {
     const category = CATEGORIES.includes(input.category as typeof CATEGORIES[number]) ? input.category : null;
     if (!category) throw new ProviderNetworkError('Elige el oficio del maestro.', 400);
     const result = providerProfileUpdate({
@@ -90,11 +118,16 @@ export async function createNetworkProvider(input: NetworkProviderInput) {
         completed_jobs: 0,
     }).select('id').single();
     if (error || !data) throw new ProviderNetworkError('No se pudo registrar al maestro.', 500);
+    await auditNetwork(actor, 'provider_network.created', String(data.id), `Maestro registrado en la Red Convive: ${result.update.name}`, { category });
     return { id: String(data.id) };
 }
 
-/** Suma un maestro a la red (communityId null) o lo deja en una comunidad. */
-export async function moveProvider(providerId: string, communityId: string | null) {
+/**
+ * Suma un maestro a la red (communityId null) o lo deja en una comunidad. Al
+ * dejarlo en una comunidad no puede quedar con solicitudes abiertas de otras:
+ * su portal y la ruta de estado ya no las aceptarían y quedarían varadas.
+ */
+export async function moveProvider(providerId: string, communityId: string | null, actor: NetworkActor) {
     if (!UUID.test(providerId)) throw new ProviderNetworkError('Proveedor no válido.', 400);
     const admin = getSupabaseAdmin();
     if (communityId !== null) {
@@ -108,26 +141,42 @@ export async function moveProvider(providerId: string, communityId: string | nul
     // Un maestro con cuenta pertenece a la comunidad de su perfil: su panel y
     // sus permisos dependen de ella.
     if (provider.user_id) throw new ProviderNetworkError('Este maestro tiene cuenta en una comunidad; por ahora solo se suman a la red maestros externos.', 409);
+    if (communityId !== null) {
+        const { count, error: openError } = await admin.from('service_requests').select('id', { count: 'exact', head: true })
+            .eq('provider_id', providerId).neq('community_id', communityId).in('status', OPEN_REQUEST_STATUSES);
+        if (openError) throw new ProviderNetworkError('No se pudieron revisar sus solicitudes abiertas.', 500);
+        if (count) {
+            throw new ProviderNetworkError(`Tiene ${count} solicitud(es) abierta(s) de otras comunidades. Ciérralas o reasígnalas antes de moverlo.`, 409);
+        }
+    }
+    const previousCommunity = provider.community_id ? String(provider.community_id) : null;
     const { error } = await admin.from('service_providers').update({ community_id: communityId }).eq('id', providerId);
     if (error) throw new ProviderNetworkError('No se pudo mover al maestro.', 500);
     // Los enlaces del alcance anterior ya no sirven (resolveLink también lo
     // comprueba); se revocan para que no queden vivos.
     await admin.from('service_provider_links').update({ revoked_at: new Date().toISOString() })
         .eq('provider_id', providerId).is('revoked_at', null);
+    await auditNetwork(actor, communityId ? 'provider_network.moved_to_community' : 'provider_network.added', providerId,
+        communityId ? `Maestro devuelto de la Red Convive a una comunidad: ${provider.name}` : `Maestro sumado a la Red Convive: ${provider.name}`,
+        { previousCommunityId: previousCommunity, communityId, linksRevoked: true });
 }
 
-export async function setNetworkProviderVerified(providerId: string, verified: boolean) {
+export async function setNetworkProviderVerified(providerId: string, verified: boolean, actor: NetworkActor) {
     if (!UUID.test(providerId)) throw new ProviderNetworkError('Proveedor no válido.', 400);
     const { data, error } = await getSupabaseAdmin().from('service_providers')
-        .update({ verified }).eq('id', providerId).is('community_id', null).select('id').maybeSingle();
+        .update({ verified }).eq('id', providerId).is('community_id', null).select('id, name').maybeSingle();
     if (error) throw new ProviderNetworkError('No se pudo guardar.', 500);
     if (!data) throw new ProviderNetworkError('Ese maestro no está en la red.', 404);
+    await auditNetwork(actor, verified ? 'provider_network.verified' : 'provider_network.unverified', providerId,
+        `${verified ? 'Verificado' : 'Verificación quitada'}: ${data.name}`);
 }
 
-export async function createNetworkInvite(providerId: string, superAdminId: string): Promise<ProviderInviteLink> {
+export async function createNetworkInvite(providerId: string, actor: NetworkActor): Promise<ProviderInviteLink> {
     if (!UUID.test(providerId)) throw new ProviderNetworkError('Proveedor no válido.', 400);
     // created_by apunta a profiles: solo si el superadmin tiene perfil.
-    const { data: profile } = await getSupabaseAdmin().from('profiles').select('id').eq('id', superAdminId).maybeSingle();
-    const invite = await createProviderInvite(null, profile ? superAdminId : null, providerId);
+    const { data: profile } = await getSupabaseAdmin().from('profiles').select('id').eq('id', actor.id).maybeSingle();
+    const invite = await createProviderInvite(null, profile ? actor.id : null, providerId);
+    await auditNetwork(actor, 'provider_network.portal_link_created', providerId,
+        `Enlace de la Red Convive enviado a ${invite.providerName}`, { expiresAt: invite.expiresAt, previousLinksRevoked: true });
     return { url: `${CANONICAL_SITE_URL}/proveedor/${invite.token}`, expiresAt: invite.expiresAt, providerName: invite.providerName };
 }

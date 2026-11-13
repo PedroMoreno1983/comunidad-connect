@@ -105,3 +105,43 @@ export async function recordOperationEvent(input: OperationEventInput) {
         return { ok: false, reason: message };
     }
 }
+
+export type PlatformOperationEventInput = {
+    actorId?: string | null;
+    actorEmail?: string | null;
+    action: string;
+    entityType: string;
+    entityId?: string | null;
+    summary: string;
+    metadata?: Record<string, unknown>;
+};
+
+/**
+ * Bitácora global (platform_operation_events): lo que no pertenece a una sola
+ * comunidad, como la Red Convive de maestros. Misma sanitización que
+ * recordOperationEvent.
+ */
+export async function recordPlatformOperationEvent(input: PlatformOperationEventInput) {
+    const payload = {
+        actor_id: input.actorId || null,
+        actor_email: input.actorEmail || null,
+        action: input.action,
+        entity_type: input.entityType,
+        entity_id: input.entityId || null,
+        summary: input.summary,
+        metadata: sanitizeMetadata(input.metadata),
+    };
+    logger.info('platform.operation.event', payload);
+    try {
+        const { error } = await getSupabaseAdmin().from('platform_operation_events').insert(payload);
+        if (error) {
+            logger.warn('platform.operation.event_insert_failed', { action: payload.action, reason: error.message });
+            return { ok: false as const, reason: error.message };
+        }
+        return { ok: true as const };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown platform audit error';
+        logger.error('platform.operation.event_insert_crashed', error, { action: payload.action });
+        return { ok: false as const, reason: message };
+    }
+}

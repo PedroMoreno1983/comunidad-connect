@@ -68,6 +68,17 @@ describe('service_providers_guard (Postgres real)', () => {
           CREATE POLICY "admin_community_only" ON public.service_providers FOR ALL
             USING (community_id = public.get_my_community_id() AND public.get_my_role() = 'admin');
           GRANT SELECT, UPDATE ON public.service_providers TO authenticated;
+          -- Reseñas como en schema.sql: visibles solo dentro del tenant del proveedor.
+          CREATE TABLE public.reviews (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL, rating INTEGER NOT NULL, comment TEXT
+          );
+          ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+          CREATE POLICY "reviews_select_same_tenant" ON public.reviews FOR SELECT USING (
+            provider_id IN (SELECT id FROM public.service_providers WHERE community_id = public.get_my_community_id())
+          );
+          GRANT SELECT ON public.reviews TO authenticated;
         `);
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261113120000_service_provider_portal.sql'), 'utf8'));
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261113160000_service_provider_network.sql'), 'utf8'));
@@ -86,6 +97,16 @@ describe('service_providers_guard (Postgres real)', () => {
         for (const community of [a, b]) {
             const { rows } = await asUser(db, community.residentId, () => db.query('SELECT id FROM public.service_providers WHERE id = $1', [id]));
             expect(rows).toHaveLength(1);
+        }
+    });
+
+    it('las reseñas de un maestro de la red las leen todas las comunidades', async () => {
+        const [a, b] = [await seedCommunity(db), await seedCommunity(db)];
+        const id = await networkProvider();
+        await asServiceRole(db, () => db.query('INSERT INTO public.reviews (provider_id, user_id, rating, comment) VALUES ($1, $2, 5, $3)', [id, a.residentId, 'Excelente']));
+        for (const community of [a, b]) {
+            const { rows } = await asUser(db, community.residentId, () => db.query('SELECT comment FROM public.reviews WHERE provider_id = $1', [id]));
+            expect(rows).toEqual([{ comment: 'Excelente' }]);
         }
     });
 

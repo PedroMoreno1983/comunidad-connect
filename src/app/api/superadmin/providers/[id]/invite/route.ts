@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (auth.error) return auth.error;
     const { id } = await params;
     try {
-        return NextResponse.json(await createNetworkInvite(id, auth.user.id), { headers: { 'Cache-Control': 'no-store' } });
+        return NextResponse.json(await createNetworkInvite(id, { id: auth.user.id, email: auth.user.email }), { headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
         if (error instanceof ProviderNetworkError || error instanceof ProviderPortalError) {
             return NextResponse.json({ error: error.message }, { status: error.status });

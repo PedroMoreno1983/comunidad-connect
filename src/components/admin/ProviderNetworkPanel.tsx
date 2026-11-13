@@ -33,13 +33,21 @@ export default function ProviderNetworkPanel() {
     const [invite, setInvite] = useState<(ProviderInviteLink & { phone: string }) | null>(null);
     const [returnTo, setReturnTo] = useState<Record<string, string>>({});
 
+    // La búsqueda va al servidor: los candidatos se filtran antes de cortar, así
+    // ningún maestro queda fuera por haber muchos otros mejor evaluados.
+    const [query, setQuery] = useState("");
+    useEffect(() => {
+        const timer = setTimeout(() => setQuery(search.trim()), 300);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     const load = useCallback(async () => {
         try {
-            setData(await ProviderNetworkService.load());
+            setData(await ProviderNetworkService.load(query));
         } catch (error) {
             toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo cargar la red.", variant: "destructive" });
         }
-    }, [toast]);
+    }, [query, toast]);
 
     useEffect(() => { void load(); }, [load]);
 
@@ -56,11 +64,8 @@ export default function ProviderNetworkPanel() {
         }
     };
 
-    const term = search.trim().toLowerCase();
-    const matches = useCallback((row: NetworkProviderRow) => !term
-        || [row.name, row.contactPhone, row.communityName || "", getCategoryVisual(row.category).label].join(" ").toLowerCase().includes(term), [term]);
-    const network = useMemo(() => (data?.network || []).filter(matches), [data, matches]);
-    const candidates = useMemo(() => (data?.community || []).filter(row => !row.hasAccount).filter(matches).slice(0, 40), [data, matches]);
+    const network = useMemo(() => data?.network || [], [data]);
+    const candidates = useMemo(() => (data?.community || []).slice(0, 40), [data]);
 
     const createProvider = () => run("create", async () => {
         await ProviderNetworkService.create({
@@ -102,7 +107,7 @@ export default function ProviderNetworkPanel() {
                 <div className="flex gap-2">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 cc-text-secondary" />
-                        <Input className="pl-9" placeholder="Buscar maestro" value={search} onChange={event => setSearch(event.target.value)} />
+                        <Input className="pl-9" placeholder="Buscar por nombre" value={search} onChange={event => setSearch(event.target.value)} />
                     </div>
                     <Button type="button" onClick={() => setShowForm(value => !value)}>
                         <Plus className="h-4 w-4" /> Registrar

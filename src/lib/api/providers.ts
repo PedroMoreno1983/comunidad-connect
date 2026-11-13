@@ -62,8 +62,10 @@ export const ProviderPortalService = {
 
 /** Red Convive de maestros: solo superadmin (las rutas lo comprueban). */
 export const ProviderNetworkService = {
-    async load(): Promise<SuperAdminProvidersResponse> {
-        return readJson<SuperAdminProvidersResponse>(await fetch('/api/superadmin/providers', { cache: 'no-store' }));
+    /** `search` filtra por nombre en el servidor (la red y los candidatos de las comunidades). */
+    async load(search = ''): Promise<SuperAdminProvidersResponse> {
+        const query = search.trim() ? `?q=${encodeURIComponent(search.trim())}` : '';
+        return readJson<SuperAdminProvidersResponse>(await fetch(`/api/superadmin/providers${query}`, { cache: 'no-store' }));
     },
 
     async create(input: NetworkProviderInput): Promise<{ id: string }> {

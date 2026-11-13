@@ -25,6 +25,15 @@ CREATE POLICY "service_providers_network_read"
   TO authenticated
   USING (community_id IS NULL);
 
+-- Sus reseñas también: sin esto el perfil muestra la nota pero no las reseñas
+-- (en producción ya existe una lectura pública de reviews; schema.sql no).
+DROP POLICY IF EXISTS "reviews_network_read" ON public.reviews;
+CREATE POLICY "reviews_network_read"
+  ON public.reviews
+  FOR SELECT
+  TO authenticated
+  USING (provider_id IN (SELECT id FROM public.service_providers WHERE community_id IS NULL));
+
 -- Un enlace de portal de un maestro de la red no pertenece a una comunidad.
 ALTER TABLE public.service_provider_links ALTER COLUMN community_id DROP NOT NULL;
 

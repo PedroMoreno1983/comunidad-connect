@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin();
     if (auth.error) return auth.error;
     try {
-        return NextResponse.json(await listProviderNetwork(), { headers: { 'Cache-Control': 'no-store' } });
+        return NextResponse.json(await listProviderNetwork(request.nextUrl.searchParams.get('q')), { headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
         return failure(error);
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null) as NetworkProviderInput | null;
     if (!body) return NextResponse.json({ error: 'Datos no válidos.' }, { status: 400 });
     try {
-        return NextResponse.json(await createNetworkProvider(body), { status: 201 });
+        return NextResponse.json(await createNetworkProvider(body, { id: auth.user.id, email: auth.user.email }), { status: 201 });
     } catch (error) {
         return failure(error);
     }

@@ -13,6 +13,7 @@ import {
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { runDueCocoReminder } from '@/lib/agent-center/cocoReminders';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 
 function objectValue(value: unknown) {
     return value && typeof value === 'object' ? value as Record<string, unknown> : {};
@@ -107,7 +108,7 @@ async function evaluateEmergencyReadiness(rule: AgentTriggerRuleRecord): Promise
     const admin = getSupabaseAdmin();
     const [{ count: staff, error }, { count: providers, error: providerError }] = await Promise.all([
         admin.from('profiles').select('id', { count: 'exact', head: true }).eq('community_id', rule.communityId).in('role', ['admin', 'concierge']),
-        admin.from('service_providers').select('id', { count: 'exact', head: true }).eq('community_id', rule.communityId).eq('verified', true),
+        admin.from('service_providers').select('id', { count: 'exact', head: true }).or(communityProvidersFilter(rule.communityId)).eq('verified', true),
     ]);
     if (error) throw error;
     if (providerError) throw providerError;

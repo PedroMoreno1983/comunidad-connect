@@ -97,6 +97,10 @@ export function fakeClient(db: FakeDb) {
                 filters.push(row => String(row[column] ?? '').toLowerCase().includes(needle));
                 return builder;
             },
+            is: (column: string, value: null | boolean) => {
+                filters.push(row => (value === null ? row[column] === null || row[column] === undefined : row[column] === value));
+                return builder;
+            },
             // PostgREST .or() con términos simples: "col.eq.valor" y "col.is.null".
             or: (filter: string) => {
                 const terms = filter.split(',').map(term => {
