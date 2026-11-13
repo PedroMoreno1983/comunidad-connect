@@ -64,10 +64,14 @@ export async function registerExternalProviderForAdmin(db: SupabaseClient, commu
     if (contactPhone.replace(/\D/g, '').length < 8) return { error: 'Falta un teléfono de contacto válido del maestro.' };
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'El correo del maestro no es válido.' };
 
-    // El mismo teléfono en la comunidad es el mismo maestro: no se duplica.
+    // El mismo teléfono en la comunidad es el mismo maestro: no se duplica. El
+    // filtro va en la base (los 8 dígitos en orden, con lo que sea entre medio:
+    // "+56 9 1234 5678" o "912345678"), así no depende de cuántos proveedores
+    // haya; la comparación exacta se hace aquí.
     const phoneDigits = contactPhone.replace(/\D/g, '').slice(-8);
     const { data: existing, error: lookupError } = await db.from('service_providers')
-        .select('id, name, contact_phone, user_id').eq('community_id', communityId).limit(500);
+        .select('id, name, contact_phone, user_id').eq('community_id', communityId)
+        .ilike('contact_phone', `%${phoneDigits.split('').join('%')}`);
     if (lookupError) return { error: 'No se pudo revisar el directorio de proveedores.' };
     const duplicate = (existing || []).find(row => String(row.contact_phone || '').replace(/\D/g, '').slice(-8) === phoneDigits);
     if (duplicate) {
@@ -117,24 +121,35 @@ export async function registerExternalProviderForAdmin(db: SupabaseClient, commu
     };
 }
 
-async function findExternalProvider(db: SupabaseClient, communityId: string, input: Row) {
+/**
+ * La confirmación muestra provider_name, así que se exige siempre y, si viene
+ * también un ID, el proveedor de ese ID tiene que llamarse así: lo que el
+ * administrador aprobó es lo que se ejecuta.
+ */
+async function findExternalProvider(db: SupabaseClient, communityId: string, input: Row): Promise<{ matches: Row[] } | { error: string }> {
+    const name = normalize(text(input.provider_name, 120));
+    if (name.length < 2) return { error: 'Indica el nombre del maestro para mostrarlo en la confirmación.' };
     const id = text(input.provider_id, 64);
     if (id) {
         const { data } = await db.from('service_providers')
             .select('id, name, contact_phone, user_id').eq('id', id).eq('community_id', communityId).maybeSingle();
-        return data ? { matches: [data] } : { matches: [] };
+        if (!data) return { matches: [] };
+        if (!normalize(String(data.name || '')).includes(name)) {
+            return { error: `El ID corresponde a ${data.name}, no a quien se confirmó. No generé ningún enlace.` };
+        }
+        return { matches: [data] };
     }
-    const name = normalize(text(input.provider_name, 120));
-    if (name.length < 2) return { matches: [] };
     const { data } = await db.from('service_providers')
-        .select('id, name, contact_phone, user_id').eq('community_id', communityId).limit(500);
+        .select('id, name, contact_phone, user_id').eq('community_id', communityId);
     const rows = (data || []).filter(row => normalize(String(row.name || '')).includes(name));
     const exact = rows.filter(row => normalize(String(row.name || '')) === name);
     return { matches: exact.length === 1 ? exact : rows };
 }
 
 export async function sendProviderPortalLinkForAdmin(db: SupabaseClient, communityId: string, adminId: string, input: Row) {
-    const { matches } = await findExternalProvider(db, communityId, input);
+    const found = await findExternalProvider(db, communityId, input);
+    if ('error' in found) return { error: found.error };
+    const { matches } = found;
     if (!matches.length) return { error: 'No encontré a ese maestro en la comunidad. Revisa el nombre o regístralo primero.' };
     if (matches.length > 1) {
         return {
@@ -154,13 +169,17 @@ export async function sendProviderPortalLinkForAdmin(db: SupabaseClient, communi
         const url = `${CANONICAL_SITE_URL}/proveedor/${invite.token}`;
         const phone = whatsappDigits(String(provider.contact_phone || ''));
         const shareText = providerInviteMessage(invite.providerName, url);
+        // El enlace es una credencial: va bajo `credential` para que la bitácora
+        // (sanitizeMetadata) lo tache y no quede en claro en operation_events.
         return {
             success: true,
             status: 'LINK_CREATED',
             provider_name: invite.providerName,
-            url,
             expires_at: invite.expiresAt,
-            whatsapp_link: phone ? `https://wa.me/${phone}?text=${encodeURIComponent(shareText)}` : null,
+            credential: {
+                url,
+                whatsapp_link: phone ? `https://wa.me/${phone}?text=${encodeURIComponent(shareText)}` : null,
+            },
             message: `Enlace personal de ${invite.providerName} (vence el ${invite.expiresAt.slice(0, 10)}; el anterior, si había, dejó de funcionar). `
                 + (phone ? 'Entrega el enlace de WhatsApp para que la administración se lo envíe con un toque.' : 'No tiene un celular válido: entrega el enlace para copiarlo.')
                 + ' CoCo no se lo envía directo al maestro.',

@@ -949,9 +949,9 @@ export const TOOL_DEFINITIONS = [
             type: 'object' as const,
             properties: {
                 provider_id: { type: 'string', description: 'ID del proveedor si ya lo conoces (de list_services o register_external_provider).' },
-                provider_name: { type: 'string', description: 'Nombre del maestro, si no tienes el ID.' },
+                provider_name: { type: 'string', description: 'Nombre del maestro. Siempre: es lo que ve la administración al confirmar.' },
             },
-            required: [],
+            required: ['provider_name'],
         },
     },
 

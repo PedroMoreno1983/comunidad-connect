@@ -29,12 +29,17 @@ function fakeDb(rows: Row[]) {
     const inserted: Row[] = [];
     const db = {
         from: () => {
-            const filters: [string, unknown][] = [];
-            const run = () => rows.filter(row => filters.every(([key, value]) => row[key] === value));
+            const filters: [string, unknown | ((cell: unknown) => boolean)][] = [];
+            const run = () => rows.filter(row => filters.every(([key, value]) => (typeof value === 'function' ? value(row[key]) : row[key] === value)));
             const query = {
                 select: () => query,
                 eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
-                limit: () => Promise.resolve({ data: run(), error: null }),
+                ilike: (key: string, pattern: string) => {
+                    const digits = pattern.replace(/%/g, '');
+                    filters.push([key, (cell: unknown) => String(cell ?? '').replace(/D/g, '').endsWith(digits)]);
+                    return query;
+                },
+                then: (resolve: (value: unknown) => unknown) => resolve({ data: run(), error: null }),
                 maybeSingle: () => Promise.resolve({ data: run()[0] ?? null, error: null }),
                 insert: (row: Row) => {
                     const saved = { id: 'nuevo-id', ...row };
@@ -94,8 +99,8 @@ describe('enlace del portal', () => {
         const { db } = fakeDb([{ id: 'p-1', name: 'Juan Pérez', contact_phone: '9 1234 5678', user_id: null, community_id: COMMUNITY }]);
         const result = await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'admin-1', { provider_name: 'juan' }) as Row;
         expect(createProviderInvite).toHaveBeenCalledWith(COMMUNITY, 'admin-1', 'p-1');
-        expect(result.url).toMatch(/\/proveedor\/tok_abcdefghijklmnopqrstuvwxyz$/);
-        expect(result.whatsapp_link).toMatch(/^https:\/\/wa\.me\/56912345678\?text=/);
+        expect((result.credential as Row).url).toMatch(/\/proveedor\/tok_abcdefghijklmnopqrstuvwxyz$/);
+        expect((result.credential as Row).whatsapp_link).toMatch(/^https:\/\/wa\.me\/56912345678\?text=/);
     });
 
     it('si el nombre es ambiguo pregunta y no genera nada', async () => {
@@ -114,8 +119,26 @@ describe('enlace del portal', () => {
             { id: 'p-9', name: 'Pedro', contact_phone: '1', user_id: null, community_id: 'otra' },
         ]);
         expect(await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_name: 'Ana' })).toMatchObject({ status: 'HAS_ACCOUNT' });
-        expect(await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_id: 'p-9' })).toHaveProperty('error');
+        expect(await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_id: 'p-9', provider_name: 'Pedro' })).toHaveProperty('error');
         expect(createProviderInvite).not.toHaveBeenCalled();
+    });
+
+    it('exige el nombre que se confirmó y que calce con el ID', async () => {
+        const { db } = fakeDb([{ id: 'p-1', name: 'Juan Pérez', contact_phone: '912345678', user_id: null, community_id: COMMUNITY }]);
+        expect(await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_id: 'p-1' })).toHaveProperty('error');
+        expect(await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_id: 'p-1', provider_name: 'Ana' })).toHaveProperty('error');
+        expect(createProviderInvite).not.toHaveBeenCalled();
+        await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_id: 'p-1', provider_name: 'Juan Perez' });
+        expect(createProviderInvite).toHaveBeenCalledWith(COMMUNITY, 'a', 'p-1');
+    });
+
+    it('la bitácora no guarda el enlace en claro', async () => {
+        const { db } = fakeDb([{ id: 'p-1', name: 'Juan Pérez', contact_phone: '912345678', user_id: null, community_id: COMMUNITY }]);
+        const result = await sendProviderPortalLinkForAdmin(db, COMMUNITY, 'a', { provider_name: 'Juan' });
+        const { sanitizeMetadata } = await vi.importActual<typeof import('@/lib/operations/audit')>('@/lib/operations/audit');
+        const stored = JSON.stringify(sanitizeMetadata({ result, note: 'https://x.cl/proveedor/tok_abcdefghijklmnopqrstuvwxyz' }));
+        expect(stored).not.toContain('tok_abcdefghijklmnopqrstuvwxyz');
+        expect(stored).toContain('Juan Pérez');
     });
 
     it('arma el número de WhatsApp chileno', () => {

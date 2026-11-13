@@ -27,11 +27,17 @@ export type OperationEventInput = {
 };
 
 const SENSITIVE_KEY = /(password|token|secret|api[_-]?key|authorization|cookie|session|credential)/i;
+// Enlaces que son credenciales (portal del maestro, portal del fiscalizador):
+// se tachan aunque vengan bajo una llave inocente o dentro de un texto.
+const SECRET_LINK = /\/(proveedor|fiscalizador)(\/|%2F)[A-Za-z0-9_-]{20,}/gi;
 
 function sanitizeValue(value: unknown, depth = 0): JsonLike | undefined {
     if (depth > 4) return '[truncated]';
     if (value === null || value === undefined) return value === null ? null : undefined;
-    if (typeof value === 'string') return value.length > 700 ? `${value.slice(0, 700)}...` : value;
+    if (typeof value === 'string') {
+        const redacted = value.replace(SECRET_LINK, '/$1$2[redacted]');
+        return redacted.length > 700 ? `${redacted.slice(0, 700)}...` : redacted;
+    }
     if (typeof value === 'number' || typeof value === 'boolean') return value;
     if (value instanceof Date) return value.toISOString();
     if (Array.isArray(value)) {
