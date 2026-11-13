@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE } from "@/lib/roleAccess";
 import { BiometricLockGate } from "@/components/native/BiometricLockGate";
 import { NeighborModeGateScreen } from "@/components/neighbor/NeighborModeGate";
+import { NeighborModeBanner } from "@/components/neighbor/NeighborModeBanner";
 import { neighborModeGateFor } from "@/lib/neighborMode";
 
 export default function DashboardLayout({
@@ -144,6 +145,9 @@ function DashboardShell({
                     rightSubtitle={timeString}
                 >
                     <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
+                        {user.communityManaged === false && !neighborGate && pathname ? (
+                            <NeighborModeBanner pathname={pathname} buildingName={user.communityName} />
+                        ) : null}
                         {neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} /> : children}
                     </ErrorBoundary>
                 </AdminShell>

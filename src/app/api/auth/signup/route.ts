@@ -8,6 +8,7 @@ import { PUBLIC_SITE_URL } from '@/lib/config';
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '@/lib/privacy';
 import { findOrCreateCommunityUnit } from '@/lib/units/resolveCommunityUnit';
 import { createUnmanagedCommunity, findBuildingForAddress, parseBuildingAddress } from '@/lib/onboarding/residentBuilding';
+import { noteResidentThreshold } from '@/lib/onboarding/neighborBuildings';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -158,6 +159,10 @@ export async function POST(req: NextRequest) {
         }
         if (createdCommunity) {
             await admin.from('communities').update({ created_by_resident: userId }).eq('id', community.id);
+        }
+        // Con 5 y 10 vecinos sin administración, el equipo comercial se entera.
+        if (!communityManaged) {
+            await noteResidentThreshold(community.id, String(community.name)).catch(error => logger.warn('auth.signup_threshold_note_failed', { error }));
         }
 
         const consentEvents = [

@@ -1,6 +1,6 @@
 # Entrada por residente: registrarse sin que el edificio esté en Convive
 
-Diseño, 2026-11-13. Estado: propuesta, sin implementar.
+Diseño, 2026-11-13. Estado: fases 1 y 2 en producción (PR #241); fases 3 y 4 en el PR siguiente.
 
 ## Para qué
 
