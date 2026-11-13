@@ -35,6 +35,9 @@ function fakeUuid(n: number) {
 }
 
 function compare(a: unknown, b: unknown) {
+    // Números como números (coordenadas negativas, montos); el resto como texto.
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b);
     return String(a ?? '').localeCompare(String(b ?? ''));
 }
 

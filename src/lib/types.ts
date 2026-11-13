@@ -21,6 +21,10 @@ export interface User {
   communityName?: string; // Display name of the active community
   communityCoverPhotoUrl?: string; // Optional real building photo, set per-community
   features?: Record<string, boolean>; // Plan features
+  /** false: comunidad sin administrar (modo vecino). */
+  communityManaged?: boolean;
+  /** false: entró sin código; la administración lo valida al tomar el edificio. */
+  residenceVerified?: boolean;
 }
 
 export interface Unit {
@@ -1539,9 +1543,26 @@ export interface DataSubjectRequest {
   completedAt: string | null;
 }
 
+/** Pantalla de la administración vista en modo vecino. */
+export type NeighborModeGate = { title: string; description: string };
+
+export interface NeighborModeGateProps {
+  gate: NeighborModeGate;
+  buildingName?: string;
+}
+
+export interface BuildingAddressPickerProps {
+  value: GeocodeSuggestion | null;
+  onChange: (value: GeocodeSuggestion | null) => void;
+}
+
 export interface SignupResponse {
   ok?: boolean;
   role?: UserRole;
+  /** BUILDING_MANAGED: el edificio ya contrató; BUILDING_NAME_REQUIRED: es el primero y falta el nombre. */
+  code?: 'BUILDING_MANAGED' | 'BUILDING_NAME_REQUIRED';
+  communityManaged?: boolean;
+  communityCreated?: boolean;
   requiresEmailConfirmation?: boolean;
   /** La cuenta existe igual si esto es false: solo falló el envío del correo. */
   confirmationEmailSent?: boolean;
@@ -2852,6 +2873,12 @@ export interface OnboardingSyncResult {
 }
 
 // ─── Geocodificación de la dirección del condominio ─────────────────────────
+
+/** Dirección elegida por un residente que se registra sin código (una GeocodeSuggestion validada). */
+export type BuildingAddressInput = { label: string; placeId: string; latitude: number; longitude: number; source: 'mapbox' | 'nominatim' };
+
+/** El edificio encontrado para esa dirección. `managed` false: comunidad sin administrar. */
+export type ResidentBuildingMatch = { id: string; name: string; managed: boolean; residentCode: string };
 
 export interface GeocodeSuggestion {
     label: string;
