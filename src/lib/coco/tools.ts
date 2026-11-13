@@ -1332,7 +1332,9 @@ export function describePendingAction(name: string, input: Record<string, unknow
         }
         case 'save_provider_attachment': {
             const label: Record<string, string> = { profile_photo: 'foto de perfil', work_photo: 'foto de trabajo', background_certificate: 'certificado de antecedentes', identity: 'cédula de identidad' };
-            return { title: 'Guardar imagen en el perfil del maestro', summary: `La imagen adjunta como ${label[str('kind')] || 'imagen'} de ${str('provider_name')}.` };
+            // La descripción de una foto de trabajo se publica: se muestra antes de aprobar.
+            const caption = str('kind') === 'work_photo' && str('caption') ? ` Descripción pública: "${str('caption')}".` : '';
+            return { title: 'Guardar imagen en el perfil del maestro', summary: `La imagen adjunta como ${label[str('kind')] || 'imagen'} de ${str('provider_name')}.${caption}` };
         }
         case 'create_supermarket_group_order':
             return { title: 'Crear compra grupal', summary: `${str('title')}. Lista: ${str('shopping_list')}.` };

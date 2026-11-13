@@ -55,3 +55,38 @@ describe('navegación al perfil de un maestro', () => {
         expect(getSafeCoCoNavigation('/services/provider/abc')).toBeUndefined();
     });
 });
+
+describe('consumo del adjunto', () => {
+    it('solo una aprobación puede reclamar la imagen', async () => {
+        const files = new Map<string, Blob>([['chat/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.jpg', new Blob([new Uint8Array([1])])]]);
+        storage.list.mockImplementation(async (path: string) => ({
+            data: [...files.keys()].filter(key => key.startsWith(`${path}/`)).map(key => ({ name: key.slice(path.length + 1) })),
+        }) as never);
+        Object.assign(storage, {
+            move: vi.fn(async (from: string, to: string) => {
+                const blob = files.get(from);
+                if (!blob) return { error: new Error('no existe') };
+                files.delete(from);
+                files.set(to, blob);
+                return { error: null };
+            }),
+            download: vi.fn(async (path: string) => ({ data: files.get(path) ?? null, error: files.has(path) ? null : new Error('no') })),
+        });
+        const { takeChatImage } = await import('@/lib/coco/chatAttachments');
+        const user = '11111111-1111-4111-8111-111111111111';
+        const id = '22222222-2222-4222-8222-222222222222';
+        const [first, second] = await Promise.all([takeChatImage(user, id), takeChatImage(user, id)]);
+        expect([first, second].filter(Boolean)).toHaveLength(1);
+        expect(await takeChatImage(user, id)).toBeNull();
+    });
+
+    it('la limpieza recorre más de una página', async () => {
+        const many = Array.from({ length: 1000 }, (_, index) => ({ name: `f${index}.jpg`, created_at: '2026-11-01T00:00:00Z' }));
+        storage.list.mockImplementation(async (path: string, options?: { offset?: number }) => {
+            if (path === 'chat') return { data: options?.offset ? [] : [{ name: '11111111-1111-4111-8111-111111111111' }] };
+            return { data: options?.offset ? [{ name: 'ultimo.jpg', created_at: '2026-11-01T00:00:00Z' }] : many };
+        });
+        const { purgeStaleChatAttachments } = await import('@/lib/coco/chatAttachments');
+        expect(await purgeStaleChatAttachments(now)).toEqual({ removed: 1001 });
+    });
+});

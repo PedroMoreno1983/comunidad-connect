@@ -41,18 +41,27 @@ export async function stashChatImage(userId: string, image: { mediaType: string;
 async function findAttachment(userId: string, attachmentId: string) {
     if (!UUID.test(userId) || !UUID.test(attachmentId)) return null;
     const { data: items } = await getSupabaseAdmin().storage.from(BUCKET).list(folder(userId), { search: attachmentId, limit: 5 });
-    const item = (items || []).find(entry => entry.name.startsWith(`${attachmentId}.`));
+    const item = (items || []).find(entry => entry.name.startsWith(`${attachmentId}.`) || entry.name.startsWith(`claimed-${attachmentId}.`));
     return item ? { name: item.name, path: `${folder(userId)}/${item.name}` } : null;
 }
 
 /** Recupera un adjunto del mismo usuario. */
 export async function takeChatImage(userId: string, attachmentId: string): Promise<{ file: File; path: string } | null> {
     const found = await findAttachment(userId, attachmentId);
-    if (!found) return null;
-    const { data: blob, error } = await getSupabaseAdmin().storage.from(BUCKET).download(found.path);
+    // Ya reclamado por otra aprobación: no se vuelve a usar.
+    if (!found || found.name.startsWith('claimed-')) return null;
+    // Reclamo atómico: se mueve el archivo antes de usarlo. Si dos aprobaciones
+    // llegan juntas, solo una logra moverlo; la otra no encuentra la imagen y no
+    // sube un duplicado. Lo reclamado sigue en la carpeta del usuario, así que la
+    // limpieza del scheduler lo borra si algo falla después.
+    const storage = getSupabaseAdmin().storage.from(BUCKET);
+    const claimed = `${folder(userId)}/claimed-${found.name}`;
+    const { error: claimError } = await storage.move(found.path, claimed);
+    if (claimError) return null;
+    const { data: blob, error } = await storage.download(claimed);
     if (error || !blob) return null;
     const type = Object.entries(EXTENSION).find(([, ext]) => found.name.endsWith(`.${ext}`))?.[0] || 'image/jpeg';
-    return { file: new File([await blob.arrayBuffer()], found.name, { type }), path: found.path };
+    return { file: new File([await blob.arrayBuffer()], found.name, { type }), path: claimed };
 }
 
 export async function discardChatImage(path: string) {
@@ -66,19 +75,31 @@ export async function discardChatAttachment(userId: string, attachmentId: string
 }
 
 /** Limpieza independiente: borra los adjuntos de más de un día de todos los usuarios. */
+const PAGE = 1000;
+
+/** Todas las entradas de una carpeta, página por página (el listado de Storage corta en PAGE). */
+async function listAll(path: string) {
+    const storage = getSupabaseAdmin().storage.from(BUCKET);
+    const entries: { name: string; created_at?: string | null }[] = [];
+    for (let offset = 0; ; offset += PAGE) {
+        const { data } = await storage.list(path, { limit: PAGE, offset });
+        entries.push(...(data || []));
+        if (!data || data.length < PAGE) return entries;
+    }
+}
+
 export async function purgeStaleChatAttachments(now = Date.now()) {
     const storage = getSupabaseAdmin().storage.from(BUCKET);
-    const { data: folders } = await storage.list(ROOT, { limit: 1000 });
     let removed = 0;
-    for (const entry of folders || []) {
+    for (const entry of await listAll(ROOT)) {
         if (!UUID.test(entry.name)) continue;
-        const { data: files } = await storage.list(folder(entry.name), { limit: 1000 });
-        const stale = (files || []).filter(file => file.created_at && now - Date.parse(file.created_at) > MAX_AGE_MS)
+        const stale = (await listAll(folder(entry.name)))
+            .filter(file => file.created_at && now - Date.parse(file.created_at) > MAX_AGE_MS)
             .map(file => `${folder(entry.name)}/${file.name}`);
-        if (stale.length) {
-            await storage.remove(stale);
-            removed += stale.length;
+        for (let index = 0; index < stale.length; index += PAGE) {
+            await storage.remove(stale.slice(index, index + PAGE));
         }
+        removed += stale.length;
     }
     return { removed };
 }

@@ -19,6 +19,10 @@ import type { ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity 
 
 type Row = Record<string, unknown>;
 
+const TRADE_LABEL: Record<string, string> = {
+    plumbing: 'Gasfitería', electrical: 'Electricidad', locksmith: 'Cerrajería', cleaning: 'Aseo', general: 'Mantención general',
+};
+
 function normalize(value: string) {
     return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
@@ -50,7 +54,13 @@ async function findProvider(communityId: string, input: Row): Promise<{ provider
     if (rows.length > 1) {
         return { result: {
             success: false, status: 'AMBIGUOUS',
-            candidates: rows.slice(0, 5).map(row => ({ id: row.id, name: row.name })),
+            // Con datos que el usuario reconoce: el texto final tapa los UUID.
+            candidates: rows.slice(0, 5).map(row => ({
+                id: row.id,
+                name: row.name,
+                trade: TRADE_LABEL[String(row.category || 'general')] || 'Otro oficio',
+                scope: row.community_id === null ? 'Red Convive' : 'de tu comunidad',
+            })),
             message: 'Hay más de un maestro con ese nombre. Pregunta a cuál te refieres.',
         } };
     }
