@@ -29,6 +29,13 @@ async function handle(req: NextRequest) {
     }
     if (!claimed) return NextResponse.json({ ok: true, idempotent: true, mode, bucket });
 
+    // Imágenes del chat que nadie usó (adjuntos para el perfil de un maestro).
+    // Va primero y aparte: un fallo de las reglas proactivas no la frena.
+    const chatAttachments = await purgeStaleChatAttachments().catch(error => {
+        console.error('[agent-center scheduler] chat attachment cleanup failed', error);
+        return { removed: 0, error: true };
+    });
+
     try {
         const triggers = mode === 'proposals' ? null : await evaluateDueAgentTriggers();
         const proposals = mode === 'triggers' ? null : await runProactiveProposals();
@@ -39,11 +46,6 @@ async function handle(req: NextRequest) {
         const delegated = await drainDelegatedTasks().catch(error => {
             console.error('[agent-center scheduler] background tasks failed', error);
             return { finished: [], error: true };
-        });
-        // Imágenes del chat que nadie usó (adjuntos para el perfil de un maestro).
-        const chatAttachments = await purgeStaleChatAttachments().catch(error => {
-            console.error('[agent-center scheduler] chat attachment cleanup failed', error);
-            return { removed: 0, error: true };
         });
         return NextResponse.json({ ok: true, mode, bucket, triggers, proposals, routines, delegated, chatAttachments });
     } catch (error) {

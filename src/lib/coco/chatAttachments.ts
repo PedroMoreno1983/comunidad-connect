@@ -64,6 +64,12 @@ export async function takeChatImage(userId: string, attachmentId: string): Promi
     return { file: new File([await blob.arrayBuffer()], found.name, { type }), path: claimed };
 }
 
+/** La imagen sigue disponible para usarse (existe y nadie la reclamó). */
+export async function chatAttachmentAvailable(userId: string, attachmentId: string) {
+    const found = await findAttachment(userId, attachmentId);
+    return Boolean(found && !found.name.startsWith('claimed-'));
+}
+
 export async function discardChatImage(path: string) {
     await getSupabaseAdmin().storage.from(BUCKET).remove([path]);
 }

@@ -133,3 +133,17 @@ describe('roles y confirmación', () => {
         expect(MUTATING_TOOLS.has('list_provider_documents')).toBe(false);
     });
 });
+
+describe('fecha civil de Chile', () => {
+    it('una cédula que vence hoy en Chile no aparece vencida aunque en UTC ya sea mañana', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-11-15T02:00:00Z')); // 23:00 del 14 en Chile
+        const { redactedCheck } = await import('@/lib/coco/providerProfileTools');
+        const check = redactedCheck('identity', {
+            verdict: 'looks_ok', findings: [],
+            extracted: { documentType: 'identity', fullName: 'Juan Pérez', rut: '11111111-1', issueDate: null, expiryDate: '2026-11-14', hasRecords: null, verificationCode: null },
+        }, 'Juan Pérez');
+        expect(check).toMatchObject({ expired: false });
+        vi.useRealTimers();
+    });
+});

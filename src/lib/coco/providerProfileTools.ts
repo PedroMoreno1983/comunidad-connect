@@ -8,6 +8,7 @@ import {
 } from '@/lib/services/providerMedia';
 import { discardChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
 import { isValidRut, namesMatch } from '@/lib/services/providerDocumentRules';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import type { ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity } from '@/lib/types';
 
 /**
@@ -35,9 +36,22 @@ function text(value: unknown, max: number) {
 async function findProvider(communityId: string, input: Row): Promise<{ provider: ProviderIdentity } | { result: Row }> {
     const id = text(input.provider_id, 64);
     const name = normalize(text(input.provider_name, 120));
-    const query = supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category').or(communityProvidersFilter(communityId));
-    const { data } = id ? await query.eq('id', id) : await query;
-    let rows = (data || []) as ProviderIdentity[];
+    let rows: ProviderIdentity[];
+    if (id) {
+        const { data } = await supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category')
+            .or(communityProvidersFilter(communityId)).eq('id', id);
+        rows = (data || []) as ProviderIdentity[];
+    } else {
+        // Por nombre se compara sin tildes, así que se trae todo lo visible,
+        // página por página (Supabase corta en 1.000 filas).
+        rows = [];
+        for (let from = 0; from < 20_000; from += 1000) {
+            const { data } = await supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category')
+                .or(communityProvidersFilter(communityId)).order('id').range(from, from + 999);
+            rows.push(...((data || []) as ProviderIdentity[]));
+            if (!data || data.length < 1000) break;
+        }
+    }
     // La confirmación muestra el nombre: se exige siempre y, si viene un ID,
     // tiene que ser de ese maestro. Lo que se aprueba es lo que se ejecuta.
     if (name.length < 2) return { result: { error: 'Indica el nombre del maestro.' } };
@@ -105,8 +119,10 @@ async function communityProviderForAdmin(communityId: string, input: Row): Promi
 export function redactedCheck(kind: ProviderDocumentKind, check: ProviderDocumentAutoCheck, providerName: string) {
     const extracted = check.extracted;
     if (!extracted) return { verdict: check.verdict, readable: false };
+    // Fecha civil de Chile, la misma que usa el chequeo al subir.
+    const today = chileTodayISO();
     const age = extracted.issueDate
-        ? Math.floor((Date.now() - Date.parse(`${extracted.issueDate}T00:00:00Z`)) / 86_400_000)
+        ? Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${extracted.issueDate}T00:00:00Z`)) / 86_400_000)
         : null;
     return {
         verdict: check.verdict,
@@ -116,7 +132,7 @@ export function redactedCheck(kind: ProviderDocumentKind, check: ProviderDocumen
         name_matches_profile: extracted.fullName ? namesMatch(extracted.fullName, providerName) : null,
         ...(kind === 'background_certificate'
             ? { days_since_issue: age, no_records: extracted.hasRecords === null ? null : !extracted.hasRecords }
-            : { expired: extracted.expiryDate ? extracted.expiryDate < new Date().toISOString().slice(0, 10) : null }),
+            : { expired: extracted.expiryDate ? extracted.expiryDate < today : null }),
     };
 }
 
