@@ -747,6 +747,11 @@ export async function POST(req: NextRequest) {
         // adjunto_id va en la sesión y como contexto de sistema, no en el
         // mensaje: el historial muestra solo lo que la persona escribió.
         let chatAttachment = currentChatAttachment(session?.user_context.chat_attachment);
+        // Al aprobar o rechazar save_provider_attachment la imagen se usa o se
+        // borra: la sesión deja de ofrecerla.
+        if (resolutions && restorePendingActions(session).some(action => action.name === 'save_provider_attachment')) {
+            chatAttachment = undefined;
+        }
         if (imageAttachment && !resolutions && isToolAllowedForRole('save_provider_attachment', safeRole) && await canAttachToProviders(userId, safeRole)) {
             chatAttachment = { ...await stashChatImage(userId, imageAttachment), at: new Date().toISOString() };
         }

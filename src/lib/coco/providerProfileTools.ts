@@ -31,7 +31,7 @@ function text(value: unknown, max: number) {
 async function findProvider(communityId: string, input: Row): Promise<{ provider: ProviderIdentity } | { result: Row }> {
     const id = text(input.provider_id, 64);
     const name = normalize(text(input.provider_name, 120));
-    const query = supabaseAdmin.from('service_providers').select('id, name, community_id, user_id').or(communityProvidersFilter(communityId));
+    const query = supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category').or(communityProvidersFilter(communityId));
     const { data } = id ? await query.eq('id', id) : await query;
     let rows = (data || []) as ProviderIdentity[];
     // La confirmación muestra el nombre: se exige siempre y, si viene un ID,
@@ -69,6 +69,8 @@ export async function rateProviderForUser(userId: string, communityId: string, i
     try {
         const { verifiedService } = await submitProviderReview(userId, {
             providerId: found.provider.id, rating: Number(input.rating), comment: text(input.comment, 1200),
+            // El oficio del maestro, igual que la reseña desde su perfil.
+            serviceType: found.provider.category || undefined,
         });
         return {
             success: true,

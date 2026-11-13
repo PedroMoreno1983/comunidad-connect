@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const { review } = await submitProviderReview(user.id, {
-            providerId: String(body.provider_id ?? ''),
+            providerId: typeof body.provider_id === 'string' ? body.provider_id : '',
             rating: Number(body.rating),
-            comment: String(body.comment ?? ''),
+            // Un comentario que no es texto se rechaza (no se publica "[object Object]").
+            comment: typeof body.comment === 'string' ? body.comment : '',
             serviceType: typeof body.service_type === 'string' ? body.service_type : undefined,
         });
         return NextResponse.json({ review }, { status: 201 });

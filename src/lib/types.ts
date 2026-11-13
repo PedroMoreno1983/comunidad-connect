@@ -4016,7 +4016,7 @@ export type ProviderNetworkActor = { id: string; email?: string | null };
 export type ProviderManagerAccess = { providerId: string; actor: ProviderMediaActor; isReviewer: boolean };
 
 /** Lo mínimo de un proveedor para decidir alcance y permisos. */
-export type ProviderIdentity = { id: string; name: string; community_id: string | null; user_id?: string | null };
+export type ProviderIdentity = { id: string; name: string; community_id: string | null; user_id?: string | null; category?: string | null };
 
 export type ProviderReviewInput = { providerId: string; rating: number; comment: string; serviceType?: string };
 

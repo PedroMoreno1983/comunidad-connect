@@ -36,7 +36,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     state.db = createFakeDb({
         service_providers: [
-            { id: 'p-local', name: 'Juan Pérez', community_id: A, user_id: OWNER },
+            { id: 'p-local', name: 'Juan Pérez', community_id: A, user_id: OWNER, category: 'plumbing' },
             { id: 'p-red', name: 'Ana Red', community_id: null, user_id: null },
             { id: 'p-otra', name: 'Pedro Otro', community_id: B, user_id: null },
         ],
@@ -47,7 +47,7 @@ describe('valorar', () => {
     it('valora a un maestro de la comunidad o de la red, no de otra comunidad', async () => {
         const { rateProviderForUser } = await import('@/lib/coco/providerProfileTools');
         expect(await rateProviderForUser('u1', A, { provider_name: 'juan', rating: '5', comment: 'Excelente' })).toMatchObject({ success: true });
-        expect(reviews.submitProviderReview).toHaveBeenCalledWith('u1', { providerId: 'p-local', rating: 5, comment: 'Excelente' });
+        expect(reviews.submitProviderReview).toHaveBeenCalledWith('u1', { providerId: 'p-local', rating: 5, comment: 'Excelente', serviceType: 'plumbing' });
         expect(await rateProviderForUser('u1', A, { provider_name: 'Ana Red', rating: '4', comment: 'Bien' })).toMatchObject({ success: true });
         expect(await rateProviderForUser('u1', A, { provider_name: 'Pedro Otro', rating: '4', comment: 'Bien' })).toHaveProperty('error');
     });
