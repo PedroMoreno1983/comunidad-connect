@@ -3073,6 +3073,8 @@ export interface CoCoPendingAction {
     input: Record<string, unknown>;
     title: string;
     summary: string;
+    /** Enlace temporal a la imagen que se va a guardar (save_provider_attachment). */
+    previewUrl?: string;
 }
 
 /** Resoluciones del usuario a una tanda de acciones pendientes, por tool_use_id. */

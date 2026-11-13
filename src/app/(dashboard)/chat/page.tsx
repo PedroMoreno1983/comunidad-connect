@@ -491,6 +491,10 @@ export default function CoCoChatPage() {
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-xs font-black text-amber-100">{pending.title}</p>
                                                             <p className="mt-1 text-xs leading-relaxed text-amber-100/80">{pending.summary}</p>
+                                                            {pending.previewUrl && (
+                                                                // eslint-disable-next-line @next/next/no-img-element -- enlace firmado temporal de Storage
+                                                                <img src={pending.previewUrl} alt="Imagen que se va a guardar" className="mt-2 max-h-48 rounded-lg object-contain" />
+                                                            )}
                                                             {Object.entries(pending.input).filter(([, value]) => value !== undefined && value !== null && value !== "").length > 0 && (
                                                                 <dl className="mt-2 space-y-0.5 rounded-lg bg-black/20 p-2">
                                                                     {Object.entries(pending.input)

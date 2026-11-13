@@ -6,7 +6,7 @@ import { ProviderReviewError, submitProviderReview } from '@/lib/services/provid
 import {
     ProviderMediaError, listProviderDocuments, reviewProviderDocument, uploadProviderDocument, uploadProviderPhoto,
 } from '@/lib/services/providerMedia';
-import { discardChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
+import { discardChatImage, releaseChatImage, takeChatImage } from '@/lib/coco/chatAttachments';
 import { isValidRut, namesMatch } from '@/lib/services/providerDocumentRules';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import type { ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity } from '@/lib/types';
@@ -28,6 +28,20 @@ function normalize(value: string) {
     return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
+/** Fecha y hora de Chile, al minuto: distingue documentos subidos el mismo día. */
+function chileMinute(iso: string) {
+    return new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).format(new Date(iso));
+}
+
+/** Cada palabra del nombre confirmado es una palabra completa del nombre real ("Juan" ≠ "Juana"). */
+function sameProvider(confirmed: string, actual: string) {
+    const actualWords = new Set(normalize(actual).split(/[^a-z0-9ñ]+/).filter(Boolean));
+    const confirmedWords = normalize(confirmed).split(/[^a-z0-9ñ]+/).filter(Boolean);
+    return confirmedWords.length > 0 && confirmedWords.every(word => actualWords.has(word));
+}
+
 function text(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
@@ -45,7 +59,7 @@ async function findProvider(communityId: string, input: Row): Promise<{ provider
         // Por nombre se compara sin tildes, así que se trae todo lo visible,
         // página por página (Supabase corta en 1.000 filas).
         rows = [];
-        for (let from = 0; from < 20_000; from += 1000) {
+        for (let from = 0; ; from += 1000) {
             const { data } = await supabaseAdmin.from('service_providers').select('id, name, community_id, user_id, category')
                 .or(communityProvidersFilter(communityId)).order('id').range(from, from + 999);
             rows.push(...((data || []) as ProviderIdentity[]));
@@ -56,11 +70,17 @@ async function findProvider(communityId: string, input: Row): Promise<{ provider
     // tiene que ser de ese maestro. Lo que se aprueba es lo que se ejecuta.
     if (name.length < 2) return { result: { error: 'Indica el nombre del maestro.' } };
     if (id) {
-        if (rows[0] && !normalize(String(rows[0].name)).includes(name)) {
+        if (rows[0] && !sameProvider(name, String(rows[0].name))) {
             return { result: { error: `El ID corresponde a ${rows[0].name}, no a quien se confirmó. No hice cambios.` } };
         }
     } else {
         rows = rows.filter(row => normalize(String(row.name)).includes(name));
+        // Para elegir entre homónimos: el oficio y el alcance que la persona eligió.
+        const trade = text(input.provider_trade, 40);
+        const scope = text(input.provider_scope, 20);
+        if (trade) rows = rows.filter(row => row.category === trade);
+        if (scope === 'network') rows = rows.filter(row => row.community_id === null);
+        if (scope === 'community') rows = rows.filter(row => row.community_id !== null);
         const exact = rows.filter(row => normalize(String(row.name)) === name);
         if (exact.length === 1) rows = exact;
     }
@@ -74,8 +94,11 @@ async function findProvider(communityId: string, input: Row): Promise<{ provider
                 name: row.name,
                 trade: TRADE_LABEL[String(row.category || 'general')] || 'Otro oficio',
                 scope: row.community_id === null ? 'Red Convive' : 'de tu comunidad',
+                // Para el siguiente intento: provider_trade y provider_scope.
+                provider_trade: row.category || 'general',
+                provider_scope: row.community_id === null ? 'network' : 'community',
             })),
-            message: 'Hay más de un maestro con ese nombre. Pregunta a cuál te refieres.',
+            message: 'Hay más de un maestro con ese nombre. Pregunta a cuál te refieres (por oficio y si es de la comunidad o de la Red) y vuelve a llamar con provider_trade y provider_scope del elegido.',
         } };
     }
     return { provider: rows[0] };
@@ -149,7 +172,7 @@ export async function listProviderDocumentsForAdmin(communityId: string, input: 
             document_id: document.id,
             kind_code: document.kind,
             kind: document.kind === 'background_certificate' ? 'certificado de antecedentes' : 'cédula de identidad',
-            uploaded: document.createdAt.slice(0, 10),
+            uploaded: chileMinute(document.createdAt),
             status: document.status,
             auto_check: document.autoCheck ? redactedCheck(document.kind, document.autoCheck, found.provider.name) : null,
             review_note: document.reviewNote,
@@ -173,8 +196,8 @@ export async function reviewProviderDocumentForAdmin(communityId: string, adminI
     const documentId = text(input.document_id, 64);
     const document = (await listProviderDocuments(found.provider.id, false)).find(item => item.id === documentId);
     if (!document) return { error: 'No encontré ese documento del maestro.' };
-    if (document.kind !== input.document_kind || document.createdAt.slice(0, 10) !== text(input.uploaded_on, 10)) {
-        return { error: 'El documento no calza con el que se confirmó (tipo o fecha). No hice cambios: vuelve a listar los documentos.' };
+    if (document.kind !== input.document_kind || chileMinute(document.createdAt) !== text(input.uploaded_at, 16)) {
+        return { error: 'El documento no calza con el que se confirmó (tipo o fecha y hora). No hice cambios: vuelve a listar los documentos.' };
     }
     try {
         await reviewProviderDocument(found.provider.id, documentId, approve, text(input.note, 300) || null, { id: adminId, role: 'admin' });
@@ -222,6 +245,9 @@ export async function saveProviderAttachment(user: { id: string; role: string; c
             message: `Documento de ${found.provider.name} recibido; ${verdictText}. Queda pendiente de aprobación de la administración${found.provider.community_id ? '' : ' (Convive, por ser de la Red)'}.`,
         };
     } catch (error) {
+        // Falló la subida: la imagen vuelve a estar disponible para reintentar.
+        await releaseChatImage(attachment.path, attachment.originalPath).catch(() => undefined);
         return failure(error);
     }
 }
+

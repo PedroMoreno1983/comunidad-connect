@@ -46,7 +46,7 @@ async function findAttachment(userId: string, attachmentId: string) {
 }
 
 /** Recupera un adjunto del mismo usuario. */
-export async function takeChatImage(userId: string, attachmentId: string): Promise<{ file: File; path: string } | null> {
+export async function takeChatImage(userId: string, attachmentId: string): Promise<{ file: File; path: string; originalPath: string } | null> {
     const found = await findAttachment(userId, attachmentId);
     // Ya reclamado por otra aprobación: no se vuelve a usar.
     if (!found || found.name.startsWith('claimed-')) return null;
@@ -61,13 +61,34 @@ export async function takeChatImage(userId: string, attachmentId: string): Promi
     const { data: blob, error } = await storage.download(claimed);
     if (error || !blob) return null;
     const type = Object.entries(EXTENSION).find(([, ext]) => found.name.endsWith(`.${ext}`))?.[0] || 'image/jpeg';
-    return { file: new File([await blob.arrayBuffer()], found.name, { type }), path: claimed };
+    return { file: new File([await blob.arrayBuffer()], found.name, { type }), path: claimed, originalPath: found.path };
 }
 
 /** La imagen sigue disponible para usarse (existe y nadie la reclamó). */
 export async function chatAttachmentAvailable(userId: string, attachmentId: string) {
     const found = await findAttachment(userId, attachmentId);
     return Boolean(found && !found.name.startsWith('claimed-'));
+}
+
+/** Deshace el reclamo cuando la subida falló: la imagen se puede volver a usar. */
+export async function releaseChatImage(claimedPath: string, originalPath: string) {
+    await getSupabaseAdmin().storage.from(BUCKET).move(claimedPath, originalPath);
+}
+
+/**
+ * Enlace temporal (10 minutos) para ver la imagen de una acción pendiente de
+ * save_provider_attachment: quien aprueba ve qué imagen se va a guardar aunque
+ * recargue la conversación.
+ */
+export async function withAttachmentPreviews<T extends { name: string; input: Record<string, unknown>; previewUrl?: string }>(userId: string, actions: T[]): Promise<T[]> {
+    return Promise.all(actions.map(async action => {
+        const attachmentId = action.input?.attachment_id;
+        if (action.name !== 'save_provider_attachment' || typeof attachmentId !== 'string') return action;
+        const found = await findAttachment(userId, attachmentId).catch(() => null);
+        if (!found) return action;
+        const { data } = await getSupabaseAdmin().storage.from(BUCKET).createSignedUrl(found.path, 600);
+        return data?.signedUrl ? { ...action, previewUrl: data.signedUrl } : action;
+    }));
 }
 
 export async function discardChatImage(path: string) {
@@ -97,17 +118,22 @@ async function listAll(path: string) {
 export async function purgeStaleChatAttachments(now = Date.now()) {
     const storage = getSupabaseAdmin().storage.from(BUCKET);
     let removed = 0;
+    let failed = 0;
     for (const entry of await listAll(ROOT)) {
         if (!UUID.test(entry.name)) continue;
         const stale = (await listAll(folder(entry.name)))
             .filter(file => file.created_at && now - Date.parse(file.created_at) > MAX_AGE_MS)
             .map(file => `${folder(entry.name)}/${file.name}`);
         for (let index = 0; index < stale.length; index += PAGE) {
-            await storage.remove(stale.slice(index, index + PAGE));
+            const batch = stale.slice(index, index + PAGE);
+            const { error } = await storage.remove(batch);
+            // Si Storage no borró, se cuenta como fallo (y no como borrado).
+            if (error) failed += batch.length;
+            else removed += batch.length;
         }
-        removed += stale.length;
     }
-    return { removed };
+    if (failed) console.error('[chat attachments] no se pudieron borrar adjuntos vencidos', { failed });
+    return failed ? { removed, failed } : { removed };
 }
 
 /** Solo se guarda la imagen de quien puede ponerla en un perfil: la administración o un maestro con cuenta. */

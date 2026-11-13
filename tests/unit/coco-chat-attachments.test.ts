@@ -90,3 +90,14 @@ describe('consumo del adjunto', () => {
         expect(await purgeStaleChatAttachments(now)).toEqual({ removed: 1001 });
     });
 });
+
+describe('limpieza que falla', () => {
+    it('si Storage no borra, lo informa como fallo y no como borrado', async () => {
+        storage.list.mockImplementation(async (path: string) => (path === 'chat'
+            ? { data: [{ name: '11111111-1111-4111-8111-111111111111' }] }
+            : { data: [{ name: 'viejo.jpg', created_at: '2026-11-01T00:00:00Z' }] }) as never);
+        storage.remove.mockResolvedValueOnce({ data: null, error: new Error('sin permiso') } as never);
+        const { purgeStaleChatAttachments } = await import('@/lib/coco/chatAttachments');
+        expect(await purgeStaleChatAttachments(now)).toEqual({ removed: 0, failed: 1 });
+    });
+});

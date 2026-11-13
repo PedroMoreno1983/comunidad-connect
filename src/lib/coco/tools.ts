@@ -964,6 +964,8 @@ export const TOOL_DEFINITIONS = [
             properties: {
                 provider_name: { type: 'string', description: 'Nombre del maestro.' },
                 provider_id: { type: 'string', description: 'ID del maestro si lo conoces.' },
+                provider_trade: { type: 'string', enum: ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'], description: 'Solo para elegir entre maestros con el mismo nombre: provider_trade del candidato elegido.' },
+                provider_scope: { type: 'string', enum: ['community', 'network'], description: 'Solo para elegir entre maestros con el mismo nombre: provider_scope del candidato elegido.' },
                 rating: { type: 'string', enum: ['1', '2', '3', '4', '5'], description: 'Nota de 1 a 5.' },
                 comment: { type: 'string', description: 'Comentario de la persona, con sus palabras.' },
             },
@@ -992,11 +994,11 @@ export const TOOL_DEFINITIONS = [
                 provider_id: { type: 'string' },
                 document_id: { type: 'string', description: 'document_id de list_provider_documents.' },
                 document_kind: { type: 'string', enum: ['background_certificate', 'identity'], description: 'kind_code del documento en list_provider_documents (se muestra al confirmar).' },
-                uploaded_on: { type: 'string', description: 'Fecha de subida (AAAA-MM-DD) del documento en list_provider_documents (se muestra al confirmar).' },
+                uploaded_at: { type: 'string', description: 'uploaded del documento en list_provider_documents, tal cual (AAAA-MM-DD HH:MM, hora de Chile; se muestra al confirmar).' },
                 decision: { type: 'string', enum: ['approve', 'reject'] },
                 note: { type: 'string', description: 'Motivo, obligatorio si rechazas.' },
             },
-            required: ['provider_name', 'document_id', 'document_kind', 'uploaded_on', 'decision'],
+            required: ['provider_name', 'document_id', 'document_kind', 'uploaded_at', 'decision'],
         },
     },
     {
@@ -1008,6 +1010,8 @@ export const TOOL_DEFINITIONS = [
                 attachment_id: { type: 'string', description: 'El adjunto_id que viene en el mensaje.' },
                 provider_name: { type: 'string', description: 'Nombre del maestro (se muestra al confirmar).' },
                 provider_id: { type: 'string' },
+                provider_trade: { type: 'string', enum: ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'], description: 'Solo para elegir entre maestros con el mismo nombre: provider_trade del candidato elegido.' },
+                provider_scope: { type: 'string', enum: ['community', 'network'], description: 'Solo para elegir entre maestros con el mismo nombre: provider_scope del candidato elegido.' },
                 kind: { type: 'string', enum: ['profile_photo', 'work_photo', 'background_certificate', 'identity'] },
                 caption: { type: 'string', description: 'Descripción de la foto de trabajo, opcional.' },
             },
@@ -1208,6 +1212,13 @@ const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item',
 // sin forma de revisar ni gestionar la solicitud que creó.
 const NOT_FOR_CONCIERGE_TOOLS = new Set(['request_service']);
 
+/** Herramientas que se le ofrecen al modelo según rol y canal. */
+export function isToolOfferedFor(name: string, role?: string, channel?: string) {
+    // save_provider_attachment necesita la imagen guardada aparte, y eso solo pasa en el chat web.
+    if (name === 'save_provider_attachment' && channel === 'whatsapp') return false;
+    return isToolAllowedForRole(name, role);
+}
+
 export function isToolAllowedForRole(name: string, role?: string) {
     if (role === 'system') return SYSTEM_TOOLS.has(name);
     if (role === 'admin') return ADMIN_TOOLS.has(name) && !RESIDENT_ONLY_TOOLS.has(name);
@@ -1322,7 +1333,7 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Publicar reseña', summary: `${str('provider_name')}: ${str('rating')}/5. "${str('comment')}"` };
         case 'review_provider_document': {
             const kind = str('document_kind') === 'identity' ? 'Cédula de identidad' : str('document_kind') === 'background_certificate' ? 'Certificado de antecedentes' : 'Documento';
-            const document = `${kind} de ${str('provider_name')}, subido el ${str('uploaded_on') || 'fecha no indicada'}`;
+            const document = `${kind} de ${str('provider_name')}, subido el ${str('uploaded_at') || 'fecha no indicada'}`;
             return {
                 title: str('decision') === 'approve' ? 'Aprobar documento del maestro' : 'Rechazar documento del maestro',
                 summary: str('decision') === 'approve'
@@ -2746,6 +2757,8 @@ export async function executeTool(
             }
 
             case 'save_provider_attachment': {
+                // Por WhatsApp la imagen no se guarda aparte: no hay adjunto_id que usar.
+                if (userCtx.channel === 'whatsapp') return { error: 'Por WhatsApp no puedo guardar imágenes en el perfil: súbela desde la app o el chat web.' };
                 const communityId = scopedCommunity(userCtx);
                 if (!communityId || !userCtx.user_id || !userCtx.role) return forbidden('No pude identificarte.');
                 return saveProviderAttachment({ id: userCtx.user_id, role: userCtx.role, communityId }, input as Record<string, unknown>);

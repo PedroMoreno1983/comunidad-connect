@@ -19,8 +19,9 @@ const media = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/services/providerMedia', () => ({ ...media, ProviderMediaError: class extends Error {} }));
 const attachments = vi.hoisted(() => ({
-    takeChatImage: vi.fn(async () => ({ file: new File([new Uint8Array([1])], 'a.jpg', { type: 'image/jpeg' }), path: 'chat/u/a.jpg' })),
+    takeChatImage: vi.fn(async () => ({ file: new File([new Uint8Array([1])], 'a.jpg', { type: 'image/jpeg' }), path: 'chat/u/claimed-a.jpg', originalPath: 'chat/u/a.jpg' })),
     discardChatImage: vi.fn(async () => undefined),
+    releaseChatImage: vi.fn(async () => undefined),
 }));
 vi.mock('@/lib/coco/chatAttachments', () => attachments);
 const reviews = vi.hoisted(() => ({ submitProviderReview: vi.fn(async () => ({ review: {}, providerName: 'Juan', verifiedService: true })) }));
@@ -56,9 +57,9 @@ describe('valorar', () => {
 describe('documentos (administración)', () => {
     it('revisa los de su comunidad; los de la red los revisa Convive', async () => {
         const { reviewProviderDocumentForAdmin } = await import('@/lib/coco/providerProfileTools');
-        const doc = { document_id: 'd1', document_kind: 'identity', uploaded_on: '2026-11-14' };
+        const doc = { document_id: 'd1', document_kind: 'identity', uploaded_at: '2026-11-14 07:00' };
         expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, document_kind: 'background_certificate', decision: 'approve' })).toHaveProperty('error');
-        expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, uploaded_on: '2026-11-01', decision: 'approve' })).toHaveProperty('error');
+        expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, uploaded_at: '2026-11-14 08:00', decision: 'approve' })).toHaveProperty('error');
         expect(media.reviewProviderDocument).not.toHaveBeenCalled();
         expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, decision: 'approve' })).toMatchObject({ success: true });
         expect(media.reviewProviderDocument).toHaveBeenCalledWith('p-local', 'd1', true, null, { id: ADMIN, role: 'admin' });
@@ -145,5 +146,38 @@ describe('fecha civil de Chile', () => {
         }, 'Juan Pérez');
         expect(check).toMatchObject({ expired: false });
         vi.useRealTimers();
+    });
+});
+
+describe('ronda 6', () => {
+    it('"Juan" no confirma a "Juana": el nombre se compara por palabras completas', async () => {
+        state.db.tables.service_providers.push({ id: 'p-juana', name: 'Juana Soto', community_id: A, user_id: null, category: 'cleaning' });
+        const { rateProviderForUser } = await import('@/lib/coco/providerProfileTools');
+        expect(await rateProviderForUser('u1', A, { provider_id: 'p-juana', provider_name: 'Juan', rating: '5', comment: 'x' })).toHaveProperty('error');
+        expect(await rateProviderForUser('u1', A, { provider_id: 'p-juana', provider_name: 'juana', rating: '5', comment: 'x' })).toMatchObject({ success: true });
+    });
+
+    it('entre homónimos se elige por oficio y alcance', async () => {
+        state.db.tables.service_providers.push({ id: 'p-juan-red', name: 'Juan Pérez', community_id: null, user_id: null, category: 'electrical' });
+        const { rateProviderForUser } = await import('@/lib/coco/providerProfileTools');
+        const ambiguous = await rateProviderForUser('u1', A, { provider_name: 'Juan Pérez', rating: '5', comment: 'x' }) as { candidates?: { provider_trade: string; provider_scope: string }[] };
+        expect(ambiguous.candidates?.map(item => `${item.provider_trade}/${item.provider_scope}`).sort()).toEqual(['electrical/network', 'plumbing/community']);
+        expect(await rateProviderForUser('u1', A, { provider_name: 'Juan Pérez', provider_trade: 'electrical', provider_scope: 'network', rating: '5', comment: 'x' })).toMatchObject({ success: true });
+        expect(reviews.submitProviderReview).toHaveBeenLastCalledWith('u1', expect.objectContaining({ providerId: 'p-juan-red' }));
+    });
+
+    it('si la subida falla, la imagen vuelve a quedar disponible', async () => {
+        media.uploadProviderPhoto.mockRejectedValueOnce(new Error('storage caído'));
+        const { saveProviderAttachment } = await import('@/lib/coco/providerProfileTools');
+        expect(await saveProviderAttachment({ id: OWNER, role: 'resident', communityId: A }, { attachment_id: 'x', provider_name: 'Juan Pérez', kind: 'profile_photo' })).toHaveProperty('error');
+        expect(attachments.releaseChatImage).toHaveBeenCalledWith('chat/u/claimed-a.jpg', 'chat/u/a.jpg');
+        expect(attachments.discardChatImage).not.toHaveBeenCalled();
+    });
+
+    it('por WhatsApp no se ofrece guardar imágenes', async () => {
+        const { isToolOfferedFor } = await import('@/lib/coco/tools');
+        expect(isToolOfferedFor('save_provider_attachment', 'admin', 'whatsapp')).toBe(false);
+        expect(isToolOfferedFor('save_provider_attachment', 'admin', 'web')).toBe(true);
+        expect(isToolOfferedFor('rate_provider', 'resident', 'whatsapp')).toBe(true);
     });
 });

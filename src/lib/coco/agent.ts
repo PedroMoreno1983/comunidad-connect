@@ -6,7 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { askOpenAi } from './openai-agent';
-import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
+import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolOfferedFor } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import { loadCoCoMemoryContext } from './memory';
 import { interpretCoCoConfirmation } from './confirmation';
@@ -542,7 +542,7 @@ export async function askCoCo(
             model,
             systemPrompt,
             history,
-            tools: TOOL_DEFINITIONS.filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
+            tools: TOOL_DEFINITIONS.filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
             requiredTool: rounds === 0 ? requiredTool : undefined,
         }) : await anthropic.messages.create({
             model: MODEL,
@@ -550,7 +550,7 @@ export async function askCoCo(
             system: systemBlocks,
             messages: history,
             tools: TOOL_DEFINITIONS
-                .filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
+                .filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as unknown as Anthropic.Tool[],
             ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
         });
         } catch (error) {
@@ -567,7 +567,7 @@ export async function askCoCo(
                 });
                 response = await anthropic.messages.create({
                     model: MODEL, max_tokens: 2048, system: systemBlocks, messages: history,
-                    tools: TOOL_DEFINITIONS.filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
+                    tools: TOOL_DEFINITIONS.filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as unknown as Anthropic.Tool[],
                     ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
                 });
             } else {

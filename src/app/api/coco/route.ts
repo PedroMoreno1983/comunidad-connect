@@ -24,7 +24,7 @@ import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
 import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { attachmentNote, canAttachToProviders, chatAttachmentAvailable, currentChatAttachment, stashChatImage } from '@/lib/coco/chatAttachments';
+import { attachmentNote, canAttachToProviders, chatAttachmentAvailable, currentChatAttachment, stashChatImage, withAttachmentPreviews } from '@/lib/coco/chatAttachments';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
             ? [{ id: `history-${index}`, role: turn.role, text: turn.content }]
             : [],
     );
-    const pendingActions = restorePendingActions(session);
+    const pendingActions = await withAttachmentPreviews(profile.id, restorePendingActions(session));
     if (pendingActions.length) messages.push({
         id: 'history-pending', role: 'assistant', text: 'Antes de continuar, revisa esta acción pendiente:',
         pendingActions,
@@ -855,7 +855,7 @@ export async function POST(req: NextRequest) {
         if (pendingActions && pendingActions.length > 0) {
             const waiting: CoCoApiResponse = {
                 reply: reply || 'Antes de continuar, necesito tu confirmación:',
-                pendingActions,
+                pendingActions: await withAttachmentPreviews(userId, pendingActions),
             };
             return NextResponse.json(waiting, { status: 200 });
         }

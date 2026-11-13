@@ -14,15 +14,7 @@ import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { findScreen } from "@/lib/coco/platformMap";
 import { CoCoMarkdownLink } from "./CoCoMarkdownLink";
 import { LEGAL_DRAFT_MARKER, canDraftLegalDocuments } from "@/lib/coco/legalDraftMarker";
-import type { BankTransactionInput, DepositSuggestion, ReconciliationData } from "@/lib/types";
-
-interface PendingAction {
-    toolUseId: string;
-    name: string;
-    input: Record<string, unknown>;
-    title: string;
-    summary: string;
-}
+import type { BankTransactionInput, CoCoPendingAction, DepositSuggestion, ReconciliationData } from "@/lib/types";
 
 interface Message {
     id: string;
@@ -31,7 +23,7 @@ interface Message {
     nav?: string;
     action?: string;
     imageBase64?: string;
-    pendingActions?: PendingAction[];
+    pendingActions?: CoCoPendingAction[];
     resolvedActions?: Record<string, "approved" | "rejected">;
     case?: {
         created: boolean;
@@ -226,7 +218,7 @@ export default function CoCo() {
         reply?: string;
         navigate?: string;
         action?: string;
-        pendingActions?: PendingAction[];
+        pendingActions?: CoCoPendingAction[];
         case?: Message["case"];
     }) => {
         const safeNavigate = getSafeCoCoNavigation(d.navigate);
@@ -403,7 +395,7 @@ export default function CoCo() {
 
     const resolveAction = async (
         messageId: string,
-        pendingActions: PendingAction[],
+        pendingActions: CoCoPendingAction[],
         toolUseId: string,
         decision: "approved" | "rejected",
     ) => {
@@ -514,6 +506,9 @@ export default function CoCo() {
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-xs font-black text-amber-800 dark:text-amber-200">{pending.title}</p>
                                                             <p className="mt-0.5 text-xs leading-snug text-amber-700/90 dark:text-amber-200/80">{pending.summary}</p>
+                                                            {pending.previewUrl && (
+                                                                <img src={pending.previewUrl} alt="Imagen que se va a guardar" className="mt-1.5 max-h-40 rounded-lg object-contain" />
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {!decision ? (
