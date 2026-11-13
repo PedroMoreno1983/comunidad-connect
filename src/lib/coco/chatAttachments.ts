@@ -2,7 +2,7 @@ import 'server-only';
 
 import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import type { ChatAttachmentStash } from '@/lib/types';
+import type { ChatAttachmentStash, ChatAttachmentState } from '@/lib/types';
 
 /**
  * Imagen que alguien adjunta al chat de CoCo, guardada aparte para que una
@@ -90,10 +90,16 @@ export async function canAttachToProviders(userId: string, role: string) {
     return Boolean(count);
 }
 
-/** Nota que se agrega al mensaje para que CoCo sepa si puede usar la imagen. */
+/** El adjunto guardado en la sesión, mientras siga vigente (un día, igual que el archivo). */
+export function currentChatAttachment(state: ChatAttachmentState | undefined, now = Date.now()): ChatAttachmentState | undefined {
+    if (!state?.at) return undefined;
+    return now - Date.parse(state.at) <= MAX_AGE_MS ? state : undefined;
+}
+
+/** Contexto de sistema para que CoCo sepa si puede usar la imagen (no va en el mensaje). */
 export function attachmentNote(stash: ChatAttachmentStash) {
     if (stash.status === 'stored') {
-        return `\n\n[Imagen adjunta disponible: adjunto_id=${stash.id}. Si la persona pide ponerla en el perfil de un maestro (foto, trabajo o documento), usa save_provider_attachment con este adjunto_id.]`;
+        return `\n\n[La última imagen que la persona adjuntó en esta conversación está disponible: adjunto_id=${stash.id}. Si la persona pide ponerla en el perfil de un maestro (foto, trabajo o documento), usa save_provider_attachment con este adjunto_id.]`;
     }
     if (stash.status === 'unsupported') {
         return '\n\n[La imagen adjunta es GIF: no se puede guardar en el perfil de un maestro. Si la persona lo pide, dile que la envíe como JPG, PNG o WEBP.]';

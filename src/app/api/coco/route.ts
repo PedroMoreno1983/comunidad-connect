@@ -24,7 +24,7 @@ import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
 import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { attachmentNote, canAttachToProviders, stashChatImage } from '@/lib/coco/chatAttachments';
+import { attachmentNote, canAttachToProviders, currentChatAttachment, stashChatImage } from '@/lib/coco/chatAttachments';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -743,18 +743,21 @@ export async function POST(req: NextRequest) {
         const agentSession = session ? { ...session, conversation: recentConversation } : null;
 
         // Una imagen adjunta por quien gestiona maestros (administración o el
-        // propio maestro) queda disponible para save_provider_attachment.
-        let agentMessage = message;
+        // propio maestro) queda disponible para save_provider_attachment. El
+        // adjunto_id va en la sesión y como contexto de sistema, no en el
+        // mensaje: el historial muestra solo lo que la persona escribió.
+        let chatAttachment = currentChatAttachment(session?.user_context.chat_attachment);
         if (imageAttachment && !resolutions && isToolAllowedForRole('save_provider_attachment', safeRole) && await canAttachToProviders(userId, safeRole)) {
-            agentMessage = `${message}${attachmentNote(await stashChatImage(userId, imageAttachment))}`;
+            chatAttachment = { ...await stashChatImage(userId, imageAttachment), at: new Date().toISOString() };
         }
+        const turnContext = chatAttachment ? attachmentNote(chatAttachment).trim() : undefined;
 
         // ── 4. Llamar al agente ──────────────────────────────────────────────
         let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
 
         try {
             agentResponse = await askCoCo(
-                agentMessage,
+                message,
                 agentSession,
                 {
                     user_id:     userId,
@@ -769,6 +772,7 @@ export async function POST(req: NextRequest) {
                     ...(imageAttachment ? { image: imageAttachment } : {}),
                     ...(legalDocument ? { legalDocument } : {}),
                     ...(resolutions ? { resolutions } : {}),
+                    ...(turnContext ? { turnContext } : {}),
                 }
             );
         } catch (agentError) {
@@ -832,6 +836,7 @@ export async function POST(req: NextRequest) {
                 // Lo que la persona decidió sobre la conversación sobrevive a cada mensaje.
                 pinned:       session?.user_context.pinned,
                 title_locked: session?.user_context.title_locked,
+                chat_attachment: chatAttachment,
             },
         }, Boolean(pendingActions?.length));
 

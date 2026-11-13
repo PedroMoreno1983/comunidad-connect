@@ -119,14 +119,19 @@ export async function listProviderDocumentsForAdmin(communityId: string, input: 
         provider: found.provider.name,
         documents: documents.map(document => ({
             document_id: document.id,
+            kind_code: document.kind,
             kind: document.kind === 'background_certificate' ? 'certificado de antecedentes' : 'cédula de identidad',
             uploaded: document.createdAt.slice(0, 10),
             status: document.status,
             auto_check: document.autoCheck ? redactedCheck(document.kind, document.autoCheck, found.provider.name) : null,
             review_note: document.reviewNote,
         })),
-        profile_link: `/services/provider/${found.provider.id}`,
-        message: documents.length ? 'Para ver el archivo, abre el perfil del maestro.' : 'El maestro todavía no sube documentos.',
+        // El texto de CoCo tapa los UUID: el perfil se abre con NAVEGAR, que sí
+        // acepta /services/provider/<uuid> (getSafeCoCoNavigation).
+        navigate_to_profile: `NAVEGAR:/services/provider/${found.provider.id}`,
+        message: documents.length
+            ? 'Para ver el archivo, ofrece abrir el perfil del maestro escribiendo navigate_to_profile tal cual al final de tu respuesta.'
+            : 'El maestro todavía no sube documentos.',
     };
 }
 
@@ -135,8 +140,16 @@ export async function reviewProviderDocumentForAdmin(communityId: string, adminI
     if ('result' in found) return found.result;
     const approve = input.decision === 'approve';
     if (!approve && input.decision !== 'reject') return { error: 'Indica si apruebas o rechazas el documento.' };
+    // Lo que se aprueba es el documento que mostró la confirmación: tipo y fecha
+    // tienen que calzar con el document_id.
+    const documentId = text(input.document_id, 64);
+    const document = (await listProviderDocuments(found.provider.id, false)).find(item => item.id === documentId);
+    if (!document) return { error: 'No encontré ese documento del maestro.' };
+    if (document.kind !== input.document_kind || document.createdAt.slice(0, 10) !== text(input.uploaded_on, 10)) {
+        return { error: 'El documento no calza con el que se confirmó (tipo o fecha). No hice cambios: vuelve a listar los documentos.' };
+    }
     try {
-        await reviewProviderDocument(found.provider.id, text(input.document_id, 64), approve, text(input.note, 300) || null, { id: adminId, role: 'admin' });
+        await reviewProviderDocument(found.provider.id, documentId, approve, text(input.note, 300) || null, { id: adminId, role: 'admin' });
         return {
             success: true,
             message: approve

@@ -15,7 +15,7 @@ const media = vi.hoisted(() => ({
     uploadProviderPhoto: vi.fn(async () => ({ url: 'https://x/p.jpg' })),
     uploadProviderDocument: vi.fn(async () => ({ id: 'd1', verdict: 'needs_review' })),
     reviewProviderDocument: vi.fn(async () => undefined),
-    listProviderDocuments: vi.fn(async () => []),
+    listProviderDocuments: vi.fn(async () => [{ id: 'd1', kind: 'identity', fileName: 'c.jpg', status: 'pending', createdAt: '2026-11-14T10:00:00Z', reviewedAt: null, reviewNote: null }]),
 }));
 vi.mock('@/lib/services/providerMedia', () => ({ ...media, ProviderMediaError: class extends Error {} }));
 const attachments = vi.hoisted(() => ({
@@ -56,9 +56,13 @@ describe('valorar', () => {
 describe('documentos (administración)', () => {
     it('revisa los de su comunidad; los de la red los revisa Convive', async () => {
         const { reviewProviderDocumentForAdmin } = await import('@/lib/coco/providerProfileTools');
-        expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', document_id: 'd1', decision: 'approve' })).toMatchObject({ success: true });
+        const doc = { document_id: 'd1', document_kind: 'identity', uploaded_on: '2026-11-14' };
+        expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, document_kind: 'background_certificate', decision: 'approve' })).toHaveProperty('error');
+        expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, uploaded_on: '2026-11-01', decision: 'approve' })).toHaveProperty('error');
+        expect(media.reviewProviderDocument).not.toHaveBeenCalled();
+        expect(await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Juan Pérez', ...doc, decision: 'approve' })).toMatchObject({ success: true });
         expect(media.reviewProviderDocument).toHaveBeenCalledWith('p-local', 'd1', true, null, { id: ADMIN, role: 'admin' });
-        const network = await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Ana Red', document_id: 'd2', decision: 'approve' });
+        const network = await reviewProviderDocumentForAdmin(A, ADMIN, { provider_name: 'Ana Red', ...doc, decision: 'approve' });
         expect(String((network as { error?: string }).error)).toMatch(/Convive/);
         expect(media.reviewProviderDocument).toHaveBeenCalledTimes(1);
     });

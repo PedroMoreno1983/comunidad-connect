@@ -4023,6 +4023,9 @@ export type ProviderReviewInput = { providerId: string; rating: number; comment:
 /** Resultado de guardar una imagen del chat para usarla en el perfil de un maestro. */
 export type ChatAttachmentStash = { status: 'stored'; id: string } | { status: 'unsupported' } | { status: 'failed' };
 
+/** Lo guardado en la sesión del chat: el resultado y cuándo se adjuntó. */
+export type ChatAttachmentState = ChatAttachmentStash & { at: string };
+
 /** Maestro visto por Convive: de la Red (communityId null) o de una comunidad. */
 export interface NetworkProviderRow {
   id: string;

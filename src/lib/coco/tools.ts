@@ -991,10 +991,12 @@ export const TOOL_DEFINITIONS = [
                 provider_name: { type: 'string', description: 'Nombre del maestro (se muestra al confirmar).' },
                 provider_id: { type: 'string' },
                 document_id: { type: 'string', description: 'document_id de list_provider_documents.' },
+                document_kind: { type: 'string', enum: ['background_certificate', 'identity'], description: 'kind_code del documento en list_provider_documents (se muestra al confirmar).' },
+                uploaded_on: { type: 'string', description: 'Fecha de subida (AAAA-MM-DD) del documento en list_provider_documents (se muestra al confirmar).' },
                 decision: { type: 'string', enum: ['approve', 'reject'] },
                 note: { type: 'string', description: 'Motivo, obligatorio si rechazas.' },
             },
-            required: ['provider_name', 'document_id', 'decision'],
+            required: ['provider_name', 'document_id', 'document_kind', 'uploaded_on', 'decision'],
         },
     },
     {
@@ -1318,13 +1320,16 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Generar enlace para el maestro', summary: `Enlace personal de ${str('provider_name') || 'el maestro'} para editar su perfil y responder solicitudes. Vence en 90 días y el enlace anterior deja de funcionar.` };
         case 'rate_provider':
             return { title: 'Publicar reseña', summary: `${str('provider_name')}: ${str('rating')}/5. "${str('comment')}"` };
-        case 'review_provider_document':
+        case 'review_provider_document': {
+            const kind = str('document_kind') === 'identity' ? 'Cédula de identidad' : str('document_kind') === 'background_certificate' ? 'Certificado de antecedentes' : 'Documento';
+            const document = `${kind} de ${str('provider_name')}, subido el ${str('uploaded_on') || 'fecha no indicada'}`;
             return {
                 title: str('decision') === 'approve' ? 'Aprobar documento del maestro' : 'Rechazar documento del maestro',
                 summary: str('decision') === 'approve'
-                    ? `Documento de ${str('provider_name')}: su perfil lo mostrará como revisado.`
-                    : `Documento de ${str('provider_name')}. Motivo: ${str('note') || 'sin motivo'}`,
+                    ? `${document}: su perfil lo mostrará como revisado.`
+                    : `${document}. Motivo: ${str('note') || 'sin motivo'}`,
             };
+        }
         case 'save_provider_attachment': {
             const label: Record<string, string> = { profile_photo: 'foto de perfil', work_photo: 'foto de trabajo', background_certificate: 'certificado de antecedentes', identity: 'cédula de identidad' };
             return { title: 'Guardar imagen en el perfil del maestro', summary: `La imagen adjunta como ${label[str('kind')] || 'imagen'} de ${str('provider_name')}.` };

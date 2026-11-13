@@ -36,3 +36,22 @@ describe('adjuntos del chat', () => {
         expect(removed).toEqual([['chat/11111111-1111-4111-8111-111111111111/viejo.jpg']]);
     });
 });
+
+describe('adjunto en la sesión, no en el mensaje', () => {
+    it('vale por un día', async () => {
+        const { currentChatAttachment } = await import('@/lib/coco/chatAttachments');
+        const state = { status: 'stored' as const, id: 'abc', at: '2026-11-14T00:00:00Z' };
+        expect(currentChatAttachment(state, Date.parse('2026-11-14T20:00:00Z'))).toEqual(state);
+        expect(currentChatAttachment(state, Date.parse('2026-11-15T01:00:00Z'))).toBeUndefined();
+        expect(currentChatAttachment(undefined)).toBeUndefined();
+    });
+});
+
+describe('navegación al perfil de un maestro', () => {
+    it('acepta /services/provider/<uuid> y nada más dinámico', async () => {
+        const { getSafeCoCoNavigation } = await import('@/lib/coco/navigation');
+        expect(getSafeCoCoNavigation('/services/provider/11111111-1111-4111-8111-111111111111')).toBe('/services/provider/11111111-1111-4111-8111-111111111111');
+        expect(getSafeCoCoNavigation('/services/provider/../../admin')).toBeUndefined();
+        expect(getSafeCoCoNavigation('/services/provider/abc')).toBeUndefined();
+    });
+});

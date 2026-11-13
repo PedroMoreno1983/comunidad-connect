@@ -315,6 +315,11 @@ export async function askCoCo(
         legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number };
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
+        /**
+         * Contexto de sistema solo para este turno (por ejemplo, el adjunto_id de
+         * una imagen). No queda en el historial ni se muestra como mensaje.
+         */
+        turnContext?: string;
         /** Tope de rondas de herramientas. Por defecto MAX_TOOL_ROUNDS. */
         maxToolRounds?: number;
     } = {}
@@ -391,6 +396,7 @@ export async function askCoCo(
         communityContext,
         platformContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
+        options.turnContext || '',
     ].filter(Boolean);
 
     // Solo para estimar el presupuesto antes de la llamada.
