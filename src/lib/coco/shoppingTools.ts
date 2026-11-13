@@ -15,6 +15,12 @@ import type { SupermarketMeasurementUnit } from '@/lib/types';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Pedidos de comparar o comprar. El atajo que guarda listas antes del modelo no
+ * debe interceptarlos: la persona quiere precios, no confirmar un guardado.
+ */
+export const SHOPPING_COMPARE_INTENT = /(^|[^\p{L}])(compar\p{L}*|d[oó]nde\s+(me\s+)?sale|m[aá]s\s+barat\p{L}*|haz(me)?\s+la\s+compra|c[oó]mpra(me|lo|la)|precios?)([^\p{L}]|$)/iu;
+
 export function supermarketListLink(listId: string, store?: string): string {
     const params = new URLSearchParams({ list: listId });
     if (store) params.set('store', store);
@@ -38,7 +44,13 @@ async function resolveList(admin: SupabaseClient, userId: string, input: { list_
     return data ? { id: String(data.id), title: String(data.title || ''), body: String(data.body || '') } : null;
 }
 
-export async function compareShoppingListForUser(admin: SupabaseClient, userId: string, input: { list_id?: unknown; body?: unknown }) {
+export async function compareShoppingListForUser(
+    admin: SupabaseClient,
+    userId: string,
+    input: { list_id?: unknown; body?: unknown },
+    /** Base absoluta para canales sin enlaces internos (WhatsApp). */
+    linkBase = '',
+) {
     const list = await resolveList(admin, userId, input);
     if (!list) return { error: 'No encontré una lista. Dime los productos o guárdala primero con save_shopping_list.' };
     const items = parseGroupShoppingList(list.body, true);
@@ -79,7 +91,7 @@ export async function compareShoppingListForUser(admin: SupabaseClient, userId: 
             completa: basket.complete,
             faltan: basket.missingTerms.length,
         })),
-        enlace: list.id ? supermarketListLink(list.id, best.store) : null,
+        enlace: list.id ? `${linkBase}${supermarketListLink(list.id, best.store)}` : null,
         como_seguir: list.id
             ? 'Muestra el enlace como [Abrir carro en <tienda>](enlace): ahí la lista queda cargada y el botón "Abrir carro" la pasa a la tienda. El pago se hace en el sitio del supermercado.'
             : 'La lista no está guardada: ofrécele guardarla (save_shopping_list) para darle el enlace que abre el carro.',

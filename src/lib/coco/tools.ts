@@ -1381,11 +1381,16 @@ export async function executeTool(
 
             case 'compare_shopping_list': {
                 if (!userCtx.user_id) return forbidden('No pude identificarte.');
-                return compareShoppingListForUser(supabaseAdmin, userCtx.user_id, { list_id: input.list_id, body: input.body });
+                // Por WhatsApp un enlace relativo no se puede abrir: va con el dominio.
+                return compareShoppingListForUser(
+                    supabaseAdmin, userCtx.user_id, { list_id: input.list_id, body: input.body },
+                    userCtx.channel === 'whatsapp' ? PUBLIC_SITE_URL : '',
+                );
             }
 
             case 'save_shopping_list': {
                 if (!userCtx.user_id) return forbidden('No pude identificarte para guardar la lista.');
+                const listLink = (id: string) => `${userCtx.channel === 'whatsapp' ? PUBLIC_SITE_URL : ''}${supermarketListLink(id)}`;
                 const body = typeof input.body === 'string' ? input.body.trim().slice(0, MAX_SHOPPING_LIST_CHARS) : '';
                 const items = parsePersonalShoppingList(body, true);
                 if (!items.length) return { error: 'La lista no contiene productos reconocibles.' };
@@ -1397,8 +1402,8 @@ export async function executeTool(
                     success: true,
                     list_id: existing.data.id,
                     item_count: items.length,
-                    link: supermarketListLink(String(existing.data.id)),
-                    message: `Esta lista ya estaba guardada en tu supermercado: [Abrir lista](${supermarketListLink(String(existing.data.id))}).`,
+                    link: listLink(String(existing.data.id)),
+                    message: `Esta lista ya estaba guardada en tu supermercado: [Abrir lista](${listLink(String(existing.data.id))}).`,
                 };
                 const { count, error: countError } = await supabaseAdmin.from('supermarket_saved_lists')
                     .select('id', { count: 'exact', head: true }).eq('user_id', userCtx.user_id);
@@ -1414,10 +1419,10 @@ export async function executeTool(
                     success: true,
                     list_id: data.id,
                     item_count: items.length,
-                    link: supermarketListLink(String(data.id)),
+                    link: listLink(String(data.id)),
                     // El enlace va en el texto: al confirmar, el historial guarda este
                     // mensaje y no el resultado, y "llévame ahí" necesita saber qué lista era.
-                    message: `Guardé ${items.length} productos en tu lista personal: [Abrir lista](${supermarketListLink(String(data.id))}). Puedo compararla en todas las tiendas ahora mismo.`,
+                    message: `Guardé ${items.length} productos en tu lista personal: [Abrir lista](${listLink(String(data.id))}). Puedo compararla en todas las tiendas ahora mismo.`,
                 };
             }
 

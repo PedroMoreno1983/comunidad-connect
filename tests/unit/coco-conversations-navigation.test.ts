@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+// Varios tests importan tools.ts y agent.ts en caliente: la primera carga es pesada.
+vi.setConfig({ testTimeout: 30_000 });
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({ supabaseAdmin: {} }));
 
@@ -147,5 +149,39 @@ describe('revisión: tienda recomendada y destinos por rol', () => {
         expect(isToolAllowedForRole('request_service', 'concierge')).toBe(false);
         expect(isToolAllowedForRole('request_service', 'resident')).toBe(true);
         expect(isToolAllowedForRole('request_service', 'admin')).toBe(true);
+    });
+});
+
+describe('revisión: negaciones, horarios, comparar y proveedores', () => {
+    it('"no quiero ir" no navega', () => {
+        expect(isGoIntent('no quiero ir al supermercado')).toBe(false);
+        expect(isGoIntent('no me lleves a gastos')).toBe(false);
+        expect(isGoIntent('quiero ir al supermercado')).toBe(true);
+    });
+
+    it('rechaza una hora de hoy que ya pasó', async () => {
+        const { requestServiceForUser } = await import('@/lib/coco/residentActions');
+        const { chileTodayISO } = await import('@/lib/agent-center/chileDate');
+        const untouched = new Proxy({}, { get: () => { throw new Error('no debería consultar la base'); } });
+        const result = await requestServiceForUser(untouched as never, 'c', 'u', 'resident', {
+            provider_id: LIST_ID, preferred_date: chileTodayISO(), preferred_time: '00:00', description: 'Fuga',
+        });
+        expect(result).toEqual({ error: expect.stringContaining('ya pasó') });
+    });
+
+    it('un pedido de comparar no cae en el atajo que guarda la lista', async () => {
+        const { SHOPPING_COMPARE_INTENT } = await import('@/lib/coco/shoppingTools');
+        expect(SHOPPING_COMPARE_INTENT.test('compara mi lista de compras: arroz, pan')).toBe(true);
+        expect(SHOPPING_COMPARE_INTENT.test('¿dónde me sale más barato?')).toBe(true);
+        expect(SHOPPING_COMPARE_INTENT.test('hazme la compra')).toBe(true);
+        expect(SHOPPING_COMPARE_INTENT.test('guarda esta lista de compras: arroz, pan')).toBe(false);
+    });
+
+    it('"agenda un gasfiter" no se fuerza como reserva de espacio común', async () => {
+        vi.resetModules();
+        const { requiredMutationTool } = await import('@/lib/coco/agent');
+        expect(requiredMutationTool('resérvame un gasfiter para mañana', 'resident')).toBeUndefined();
+        expect(requiredMutationTool('agenda un electricista', 'resident')).toBeUndefined();
+        expect(requiredMutationTool('reserva el quincho el sábado', 'resident')).toBe('create_reservation');
     });
 });

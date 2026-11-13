@@ -22,7 +22,7 @@ import { buildPlatformContext, describeScreen, searchPlatformMap } from '@/lib/c
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
-import { latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
+import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -679,7 +679,9 @@ export async function POST(req: NextRequest) {
         // Una lista concreta no necesita el modelo para convertirse en una accion
         // real. Se conserva la misma confirmacion y ejecucion auditada de CoCo.
         if (!resolutions && !imageAttachment && !legalDocument && !restorePendingActions(session).length
-            && isToolAllowedForRole('save_shopping_list', safeRole)) {
+            && isToolAllowedForRole('save_shopping_list', safeRole)
+            // "Compara mi lista: arroz, pan" pide precios: lo resuelve el modelo con compare_shopping_list.
+            && !SHOPPING_COMPARE_INTENT.test(message)) {
             const shoppingList = shoppingListFromConversation(message, recentConversation);
             if (shoppingList) {
                 const toolUseId = `shopping_${randomUUID()}`;

@@ -15,8 +15,11 @@ const GO_INTENT = /(^|[^\p{L}])(ll[eé]v[aá]me|ll[eé]vanos|ir\s+a(l)?\s|vamos\
 // artículos: "vamos a la reunión" no apunta a lo último que dijo CoCo.
 const DEICTIC = /(^|[^\p{L}])(ah[ií]|all[aá]|eso)([^\p{L}]|$)|[aá]br[eí](lo|la)([^\p{L}]|$)/iu;
 
+// "No quiero ir", "no me lleves", "no lo abras": la persona pide lo contrario.
+const NEGATED_GO = /(^|[^\p{L}])no\s+(me\s+)?(quiero\s+ir|ll[eé]ves|lleves|vamos|ir|lo\s+abras|la\s+abras)/iu;
+
 export function isGoIntent(message: string): boolean {
-    return GO_INTENT.test(message);
+    return GO_INTENT.test(message) && !NEGATED_GO.test(message);
 }
 
 /** Ruta permitida a la que apunta el pedido, o undefined si no hay una clara. */

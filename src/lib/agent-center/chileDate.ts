@@ -1,6 +1,16 @@
 const CHILE_TIMEZONE = 'America/Santiago';
 
 /** Fecha civil actual en Chile (YYYY-MM-DD), evitando el desfase UTC de toISOString(). */
+/** Hora actual en Chile, HH:MM (24 h). */
+export function chileNowTime(now: Date = new Date()): string {
+    return new Intl.DateTimeFormat('en-GB', {
+        timeZone: CHILE_TIMEZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(now).replace(/^24:/, '00:');
+}
+
 export function chileTodayISO(now: Date = new Date()): string {
     return new Intl.DateTimeFormat('en-CA', {
         timeZone: CHILE_TIMEZONE,

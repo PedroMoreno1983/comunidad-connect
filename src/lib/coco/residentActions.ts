@@ -3,7 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { validServiceSchedule } from '@/lib/services/requestLifecycle';
-import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { chileNowTime, chileTodayISO } from '@/lib/agent-center/chileDate';
 
 /**
  * Acciones de residente que hasta ahora solo se podían hacer en pantalla:
@@ -71,7 +71,11 @@ export async function requestServiceForUser(
     if (!validServiceSchedule(preferredDate, preferredTime)) {
         return { error: 'La fecha debe ser AAAA-MM-DD y la hora HH:MM.' };
     }
-    if (preferredDate < chileTodayISO()) return { error: 'Esa fecha ya pasó: elige hoy o un día futuro.' };
+    const today = chileTodayISO();
+    if (preferredDate < today) return { error: 'Esa fecha ya pasó: elige hoy o un día futuro.' };
+    if (preferredDate === today && preferredTime <= chileNowTime()) {
+        return { error: 'Esa hora de hoy ya pasó: elige una hora más tarde u otro día.' };
+    }
 
     const { data: provider } = await admin.from('service_providers').select('id,name,community_id').eq('id', providerId).maybeSingle();
     if (!provider) return { error: 'No encontré ese proveedor.' };
