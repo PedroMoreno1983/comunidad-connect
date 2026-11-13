@@ -1543,12 +1543,28 @@ export interface DataSubjectRequest {
   completedAt: string | null;
 }
 
+/** Lo que ven los vecinos de una comunidad sin administrar. */
+export type NeighborModeSummary = { buildingName: string; residents: number; highlightInvite: boolean };
+
+export interface NeighborModeBannerProps {
+  pathname: string;
+  buildingName?: string;
+}
+
+/** Edificio sin administrar en la lista de superadmin. */
+export type NeighborBuildingRow = { id: string; name: string; address: string; createdAt: string; residents: number; readyForSales: boolean };
+
+/** Vecino que entró sin código y espera que la administración lo valide. */
+export type PendingResident = { id: string; name: string; email: string; departmentNumber: string; createdAt: string };
+
 /** Pantalla de la administración vista en modo vecino. */
 export type NeighborModeGate = { title: string; description: string };
 
 export interface NeighborModeGateProps {
   gate: NeighborModeGate;
   buildingName?: string;
+  /** El edificio ya está administrado pero la administración no ha validado a este vecino. */
+  pendingValidation?: boolean;
 }
 
 export interface BuildingAddressPickerProps {

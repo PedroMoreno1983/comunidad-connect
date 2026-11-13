@@ -8,6 +8,7 @@ import { Activity, Building2, Check, Copy, Search, Shield, UserRoundCheck } from
 import { Input } from "@/components/ui/Input";
 import CommercialOutreach from "@/components/admin/CommercialOutreach";
 import ProviderNetworkPanel from "@/components/admin/ProviderNetworkPanel";
+import NeighborBuildingsPanel from "@/components/admin/NeighborBuildingsPanel";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import type {
     CommercialLeadStatus,
@@ -205,6 +206,8 @@ export default function SuperAdminDashboard() {
 
             {/* Outreach Campaign Section */}
             <CommercialOutreach />
+
+            <NeighborBuildingsPanel />
 
             <ProviderNetworkPanel />
 

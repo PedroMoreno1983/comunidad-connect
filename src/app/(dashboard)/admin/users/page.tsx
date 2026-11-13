@@ -16,6 +16,7 @@ import {
     Users,
 } from "lucide-react";
 import { AdminUsersService } from "@/lib/api";
+import { PendingResidentsPanel } from "@/components/admin/PendingResidentsPanel";
 import { useAuth } from "@/lib/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -179,6 +180,8 @@ export default function UsersPage() {
                 <ModuleStat label="Conserjería" value={stats.concierge} icon={<HardHat className="h-4 w-4" />} active={roleFilter === "concierge"} onClick={() => setRoleFilter("concierge")} />
                 <ModuleStat label="Pendientes" value={stats.missingUnit} icon={<Key className="h-4 w-4" />} />
             </section>
+
+            <PendingResidentsPanel />
 
             {(residentCode || conciergeCode) && (
                 <section className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>

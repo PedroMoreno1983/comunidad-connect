@@ -1,6 +1,6 @@
 # Entrada por residente: registrarse sin que el edificio esté en Convive
 
-Diseño, 2026-11-13. Estado: propuesta, sin implementar.
+Diseño, 2026-11-13. Estado: fases 1 y 2 en producción (PR #241); fases 3 y 4 en el PR siguiente.
 
 ## Para qué
 
@@ -78,7 +78,7 @@ Se implementa en tres lugares:
 
 ### 3. El contador: de vecinos a reunión con la administración
 
-- Cada comunidad sin administrar cuenta sus residentes activos en los últimos 30 días.
+- Cada comunidad sin administrar cuenta sus vecinos registrados. (La idea era contar solo los activos en 30 días, pero no hay registro de actividad por persona; en esta etapa casi todos los registros son recientes. Cuando haga falta, se agrega un `last_active_at`.)
 - Los vecinos ven "Somos 12 vecinos en Convive" y un botón "Invitar a mi administración". Ese botón arma un correo o un WhatsApp con un enlace a `/admin-onboarding?claim=<token>`.
 - En superadmin, una lista nueva, "Edificios por conquistar", muestra las comunidades sin administrar ordenadas por vecinos activos, con su dirección. Es la lista de prospectos comerciales.
 - Umbrales de partida, para ajustar con datos: avisar al equipo comercial con 5 vecinos activos y mostrar la invitación destacada desde 10.

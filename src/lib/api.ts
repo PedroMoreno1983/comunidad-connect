@@ -21,3 +21,4 @@ export * from './api/passkeys';
 export * from './api/storage';
 export * from './api/deals';
 export * from './api/providers';
+export * from './api/neighbor';

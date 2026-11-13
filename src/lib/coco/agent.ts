@@ -24,11 +24,18 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { discardChatAttachment } from './chatAttachments';
 import { NEIGHBOR_MODE_BLOCKED_TOOLS, NEIGHBOR_MODE_PROMPT } from '@/lib/neighborMode';
 
-/** Comunidad sin administrar (la crearon residentes): CoCo funciona en modo vecino. */
-async function isUnmanagedCommunity(communityId?: string) {
+/**
+ * Modo vecino: la comunidad no está administrada (la crearon residentes) o la
+ * administración todavía no valida a esta persona.
+ */
+async function isNeighborMode(communityId?: string, userId?: string) {
     if (!communityId) return false;
-    const { data } = await getSupabaseAdmin().from('communities').select('managed').eq('id', communityId).maybeSingle();
-    return data?.managed === false;
+    const admin = getSupabaseAdmin();
+    const [{ data: community }, { data: profile }] = await Promise.all([
+        admin.from('communities').select('managed').eq('id', communityId).maybeSingle(),
+        userId ? admin.from('profiles').select('residence_verified').eq('id', userId).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+    return community?.managed === false || profile?.residence_verified === false;
 }
 
 const anthropic = new Anthropic({
@@ -398,7 +405,7 @@ export async function askCoCo(
     // WhatsApp no tiene pantalla actual, pero igual recibe la regla de uso.
     const platformContext = buildPlatformContext(userCtx.currentPage, userCtx.role);
     // Modo vecino: comunidad sin administrar; no hay gastos, reservas ni avisos.
-    const neighborMode = await isUnmanagedCommunity(userCtx.community_id);
+    const neighborMode = await isNeighborMode(userCtx.community_id, userCtx.user_id);
     const offeredTool = (name: string) => isToolOfferedFor(name, userCtx.role, userCtx.channel)
         && !(neighborMode && NEIGHBOR_MODE_BLOCKED_TOOLS.has(name));
     const volatileSystem = [

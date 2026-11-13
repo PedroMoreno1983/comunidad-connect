@@ -10,7 +10,7 @@ import type { NeighborModeGateProps } from "@/lib/types";
  * Pantalla de la administración vista en modo vecino: en vez de un módulo
  * vacío, para qué sirve y cómo invitar a la administración.
  */
-export function NeighborModeGateScreen({ gate, buildingName }: NeighborModeGateProps) {
+export function NeighborModeGateScreen({ gate, buildingName, pendingValidation = false }: NeighborModeGateProps) {
     const message = adminInviteMessage(buildingName || "mi edificio", PUBLIC_SITE_URL);
     const subject = `Convive Connect para ${buildingName || "nuestro edificio"}`;
 
@@ -26,6 +26,12 @@ export function NeighborModeGateScreen({ gate, buildingName }: NeighborModeGateP
                 </div>
             </div>
             <p className="text-sm leading-relaxed cc-text-secondary">{gate.description}</p>
+            {pendingValidation ? (
+                <p className="text-sm leading-relaxed cc-text-secondary">
+                    Tu administración ya está en Convive y tiene que confirmar que vives en el edificio. Cuando lo haga, esto se activa para ti.
+                </p>
+            ) : (
+            <>
             <p className="text-sm leading-relaxed cc-text-secondary">
                 Tu edificio está en Convive gracias a sus vecinos, pero la administración todavía no. Cuando se sume, esto se activa para todos.
             </p>
@@ -39,6 +45,8 @@ export function NeighborModeGateScreen({ gate, buildingName }: NeighborModeGateP
                     <Mail className="h-4 w-4" /> Por correo
                 </a>
             </div>
+            </>
+            )}
             <div className="border-t pt-4 text-sm cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>
                 Mientras tanto, ya puedes usar{" "}
                 <Link href="/chat" className="font-semibold underline">CoCo</Link>,{" "}
