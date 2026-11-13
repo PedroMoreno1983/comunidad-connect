@@ -10,6 +10,8 @@ import { AdminShell } from "@/components/cc/AdminShell";
 import { useToast } from "@/components/ui/Toast";
 import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE } from "@/lib/roleAccess";
 import { BiometricLockGate } from "@/components/native/BiometricLockGate";
+import { NeighborModeGateScreen } from "@/components/neighbor/NeighborModeGate";
+import { neighborModeGateFor } from "@/lib/neighborMode";
 
 export default function DashboardLayout({
     children,
@@ -120,6 +122,8 @@ function DashboardShell({
         resident: "Residente",
     };
     const buildingName = user.communityName || "Mi comunidad";
+    // Modo vecino: las pantallas de la administración muestran cómo invitarla.
+    const neighborGate = user.communityManaged === false ? neighborModeGateFor(pathname) : null;
 
 
     // Admin, Concierge, & Resident wrapped in responsive AdminShell layout
@@ -140,7 +144,7 @@ function DashboardShell({
                     rightSubtitle={timeString}
                 >
                     <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
-                        {children}
+                        {neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} /> : children}
                     </ErrorBoundary>
                 </AdminShell>
             </ErrorBoundary>

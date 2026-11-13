@@ -22,6 +22,14 @@ import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
 import type { CoCoPendingAction, CoCoResolutions } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { discardChatAttachment } from './chatAttachments';
+import { NEIGHBOR_MODE_BLOCKED_TOOLS, NEIGHBOR_MODE_PROMPT } from '@/lib/neighborMode';
+
+/** Comunidad sin administrar (la crearon residentes): CoCo funciona en modo vecino. */
+async function isUnmanagedCommunity(communityId?: string) {
+    if (!communityId) return false;
+    const { data } = await getSupabaseAdmin().from('communities').select('managed').eq('id', communityId).maybeSingle();
+    return data?.managed === false;
+}
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -389,6 +397,10 @@ export async function askCoCo(
     // Mapa de la plataforma: solo la pantalla actual (el resto, vía get_platform_guide).
     // WhatsApp no tiene pantalla actual, pero igual recibe la regla de uso.
     const platformContext = buildPlatformContext(userCtx.currentPage, userCtx.role);
+    // Modo vecino: comunidad sin administrar; no hay gastos, reservas ni avisos.
+    const neighborMode = await isUnmanagedCommunity(userCtx.community_id);
+    const offeredTool = (name: string) => isToolOfferedFor(name, userCtx.role, userCtx.channel)
+        && !(neighborMode && NEIGHBOR_MODE_BLOCKED_TOOLS.has(name));
     const volatileSystem = [
         legalKnowledge,
         memoryContext,
@@ -397,6 +409,7 @@ export async function askCoCo(
         platformContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
         options.turnContext || '',
+        neighborMode ? NEIGHBOR_MODE_PROMPT : '',
     ].filter(Boolean);
 
     // Solo para estimar el presupuesto antes de la llamada.
@@ -542,7 +555,7 @@ export async function askCoCo(
             model,
             systemPrompt,
             history,
-            tools: TOOL_DEFINITIONS.filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
+            tools: TOOL_DEFINITIONS.filter(tool => offeredTool(tool.name)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
             requiredTool: rounds === 0 ? requiredTool : undefined,
         }) : await anthropic.messages.create({
             model: MODEL,
@@ -550,7 +563,7 @@ export async function askCoCo(
             system: systemBlocks,
             messages: history,
             tools: TOOL_DEFINITIONS
-                .filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as unknown as Anthropic.Tool[],
+                .filter(tool => offeredTool(tool.name)) as unknown as Anthropic.Tool[],
             ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
         });
         } catch (error) {
@@ -567,7 +580,7 @@ export async function askCoCo(
                 });
                 response = await anthropic.messages.create({
                     model: MODEL, max_tokens: 2048, system: systemBlocks, messages: history,
-                    tools: TOOL_DEFINITIONS.filter(tool => isToolOfferedFor(tool.name, userCtx.role, userCtx.channel)) as unknown as Anthropic.Tool[],
+                    tools: TOOL_DEFINITIONS.filter(tool => offeredTool(tool.name)) as unknown as Anthropic.Tool[],
                     ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
                 });
             } else {

@@ -72,6 +72,7 @@ import { sendConfirmedEmailDraft } from './emailDraft';
 import { prepareLegalDraft } from './legalDrafts';
 import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalDraftMarker';
 import { communityProvidersFilter } from '@/lib/services/providerNetwork';
+import { NEIGHBOR_MODE_BLOCKED_TOOLS } from '@/lib/neighborMode';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -1496,6 +1497,10 @@ export async function executeTool(
 ): Promise<unknown> {
     try {
         if (!isToolAllowedForRole(name, userCtx.role)) return forbidden();
+        if (NEIGHBOR_MODE_BLOCKED_TOOLS.has(name) && userCtx.community_id) {
+            const { data: community } = await supabaseAdmin.from('communities').select('managed').eq('id', userCtx.community_id).maybeSingle();
+            if (community?.managed === false) return forbidden('Eso se activa cuando la administración del edificio se suma a Convive.');
+        }
         if (MUTATING_TOOLS.has(name)) {
             const blocked = await blockCoCoWrite(userCtx);
             if (blocked) return blocked;

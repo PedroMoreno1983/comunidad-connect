@@ -12,7 +12,7 @@ vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({
     supabaseAdmin: new Proxy({}, { get: () => { throw new Error('no debería consultar la base'); } }),
 }));
-vi.setConfig({ testTimeout: 60_000 });
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
 
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
 import { asServiceRole, asUser, createParkingDb, seedCommunity } from '../fixtures/parkingChargesDb';

@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS public.communities (
   address_longitude NUMERIC(10, 7),
   address_place_id TEXT,
   address_geocoding_source TEXT,
+  managed BOOLEAN NOT NULL DEFAULT TRUE, -- false: la crearon residentes (entrada por residente)
+  claimed_at TIMESTAMPTZ,
   tier_id UUID REFERENCES public.pricing_tiers(id) ON DELETE SET NULL,
   stripe_customer_id TEXT,
   subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'past_due', 'canceled', 'trialing')),
@@ -75,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role TEXT NOT NULL DEFAULT 'resident' CHECK (role IN ('superadmin', 'admin', 'resident', 'concierge')),
   avatar_url TEXT,
   department_number TEXT,
+  residence_verified BOOLEAN NOT NULL DEFAULT TRUE, -- false si entró sin código (comunidad sin administrar)
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   whatsapp_enabled BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -99,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.units (
 -- Vincular perfil a unidad si es residente
 ALTER TABLE public.profiles DROP COLUMN IF EXISTS unit_id;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS unit_id UUID REFERENCES public.units(id) ON DELETE SET NULL;
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS created_by_resident UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 -- =====================================================================
 -- 4. CONTROL HÍDRICO (LECTURAS DE AGUA E IoT)

@@ -9,7 +9,8 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Users } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-import type { SignupResponse } from "@/lib/types";
+import { BuildingAddressPicker } from "@/components/auth/BuildingAddressPicker";
+import type { GeocodeSuggestion, SignupResponse } from "@/lib/types";
 
 export default function SignUpPage() {
     const [fullName, setFullName] = useState("");
@@ -24,6 +25,28 @@ export default function SignUpPage() {
     const [acceptPrivacy, setAcceptPrivacy] = useState(false);
     const [whatsappOptIn, setWhatsappOptIn] = useState(false);
     const [accessCodeError, setAccessCodeError] = useState("");
+    // Entrada por residente: sin código, con la dirección del edificio.
+    const [signupMode, setSignupMode] = useState<"code" | "address">("code");
+    const [buildingAddress, setBuildingAddress] = useState<GeocodeSuggestion | null>(null);
+    const [buildingName, setBuildingName] = useState("");
+    const [needsBuildingName, setNeedsBuildingName] = useState(false);
+    const [managedBuilding, setManagedBuilding] = useState("");
+    const [accessRequest, setAccessRequest] = useState<"idle" | "sending" | "sent">("idle");
+
+    const requestBuildingAccess = async () => {
+        setAccessRequest("sending");
+        try {
+            await fetch('/api/auth/building-access-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullName, email, departmentNumber, address: buildingAddress }),
+            });
+            setAccessRequest("sent");
+        } catch {
+            setAccessRequest("idle");
+            toast({ title: "No se pudo avisar", description: "Intenta de nuevo en unos minutos.", variant: "destructive" });
+        }
+    };
     const router = useRouter();
     const { toast } = useToast();
 
@@ -40,12 +63,17 @@ export default function SignUpPage() {
             return;
         }
 
-        if (!accessCode.trim()) {
+        if (signupMode === "code" && !accessCode.trim()) {
             const message = "Debes ingresar un código de invitación";
             setAccessCodeError(message);
             toast({ title: "Error", description: message, variant: "destructive" });
             return;
         }
+        if (signupMode === "address" && (!buildingAddress || !departmentNumber.trim())) {
+            toast({ title: "Faltan datos", description: "Elige la dirección de tu edificio y escribe tu departamento.", variant: "destructive" });
+            return;
+        }
+        setManagedBuilding("");
 
         setAccessCodeError("");
         setLoading(true);
@@ -58,7 +86,10 @@ export default function SignUpPage() {
                     fullName,
                     email,
                     password,
-                    accessCode,
+                    accessCode: signupMode === "code" ? accessCode : undefined,
+                    signupMode,
+                    address: signupMode === "address" ? buildingAddress : undefined,
+                    buildingName: signupMode === "address" ? buildingName : undefined,
                     departmentNumber,
                     acceptTerms,
                     acceptPrivacy,
@@ -67,6 +98,17 @@ export default function SignUpPage() {
             });
             const result = await response.json() as SignupResponse;
             signupResult = result;
+            if (!response.ok && result.code === "BUILDING_MANAGED") {
+                setManagedBuilding(result.error || "Tu edificio ya usa Convive.");
+                setLoading(false);
+                return;
+            }
+            if (!response.ok && result.code === "BUILDING_NAME_REQUIRED") {
+                setNeedsBuildingName(true);
+                toast({ title: "Eres el primero de tu edificio", description: "Escribe el nombre del edificio para crearlo en Convive.", variant: "default" });
+                setLoading(false);
+                return;
+            }
             if (!response.ok) {
                 const message = result.error || 'No se pudo crear la cuenta.';
                 if (message.toLowerCase().includes("código") || message.toLowerCase().includes("invitación")) {
@@ -183,6 +225,59 @@ export default function SignUpPage() {
                                 />
                             </Field>
 
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border p-1 text-xs font-semibold" style={{ borderColor: "var(--cc-line-strong)" }} role="tablist">
+                                {([["code", "Tengo código"], ["address", "Mi edificio no usa Convive"]] as const).map(([mode, label]) => (
+                                    <button key={mode} type="button" role="tab" aria-selected={signupMode === mode}
+                                        onClick={() => { setSignupMode(mode); setManagedBuilding(""); }}
+                                        className="rounded-lg px-2 py-2 transition-colors"
+                                        style={signupMode === mode ? { background: "var(--cc-ink)", color: "var(--cc-paper)" } : { color: "var(--cc-ink)" }}>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {signupMode === "address" && (
+                                <>
+                                    <p className="text-xs leading-relaxed text-slate-600">
+                                        Úsalo con tus vecinos: CoCo, supermercado, compra comunitaria, marketplace y maestros de confianza.
+                                        Cuando tu administración se sume, se activan gastos comunes, reservas y avisos.
+                                    </p>
+                                    <Field label="DIRECCIÓN DEL EDIFICIO" htmlFor="building-address">
+                                        <BuildingAddressPicker value={buildingAddress} onChange={value => { setBuildingAddress(value); setManagedBuilding(""); setNeedsBuildingName(false); }} />
+                                    </Field>
+                                    <Field label={needsBuildingName ? "NOMBRE DEL EDIFICIO" : "NOMBRE DEL EDIFICIO (SI ERES EL PRIMERO)"} htmlFor="building-name">
+                                        <input
+                                            id="building-name"
+                                            type="text"
+                                            value={buildingName}
+                                            onChange={(e) => setBuildingName(e.target.value)}
+                                            placeholder="Ej: Edificio Los Aromos"
+                                            required={needsBuildingName}
+                                            className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
+                                            style={{ borderColor: needsBuildingName ? "var(--cc-copper)" : "var(--cc-line-strong)" }}
+                                        />
+                                    </Field>
+                                    {managedBuilding && (
+                                        <div role="alert" className="space-y-2 rounded-xl border p-3 text-xs" style={{ borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }}>
+                                            <p className="font-semibold text-slate-800">{managedBuilding}</p>
+                                            {accessRequest === "sent" ? (
+                                                <p className="text-slate-700">Listo: le avisamos a tu administración que pediste el código.</p>
+                                            ) : (
+                                                <button type="button" disabled={accessRequest === "sending" || !fullName || !email || !departmentNumber}
+                                                    onClick={() => void requestBuildingAccess()}
+                                                    className="rounded-lg px-3 py-1.5 font-semibold text-white disabled:opacity-50" style={{ background: "var(--cc-copper)" }}>
+                                                    {accessRequest === "sending" ? "Avisando…" : "Avisar a mi administración"}
+                                                </button>
+                                            )}
+                                            {(!fullName || !email || !departmentNumber) && accessRequest !== "sent" && (
+                                                <p className="text-slate-600">Completa tu nombre, correo y departamento para avisar.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {signupMode === "code" && (
                             <Field label="CÓDIGO DE INVITACIÓN" htmlFor="access-code">
                                 <input
                                     id="access-code"
@@ -193,7 +288,7 @@ export default function SignUpPage() {
                                         setAccessCodeError("");
                                     }}
                                     placeholder="INV-X93F"
-                                    required
+                                    required={signupMode === "code"}
                                     aria-invalid={Boolean(accessCodeError)}
                                     aria-describedby={accessCodeError ? "access-code-error" : undefined}
                                     className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all font-mono uppercase tracking-[0.16em]"
@@ -205,8 +300,9 @@ export default function SignUpPage() {
                                     </p>
                                 )}
                             </Field>
+                            )}
 
-                            <Field label="DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)" htmlFor="department-number">
+                            <Field label={signupMode === "address" ? "DEPARTAMENTO / UNIDAD" : "DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)"} htmlFor="department-number">
                                 <input
                                     id="department-number"
                                     type="text"

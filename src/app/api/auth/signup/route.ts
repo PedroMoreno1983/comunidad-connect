@@ -7,6 +7,7 @@ import { logApiError, logger, resolveRequestId } from '@/lib/observability/logge
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '@/lib/privacy';
 import { findOrCreateCommunityUnit } from '@/lib/units/resolveCommunityUnit';
+import { createUnmanagedCommunity, findBuildingForAddress, parseBuildingAddress } from '@/lib/onboarding/residentBuilding';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -44,8 +45,12 @@ export async function POST(req: NextRequest) {
         const fullName = cleanText(body.fullName, 140);
         const email = cleanText(body.email, 180).toLowerCase();
         const password = cleanText(body.password, 200);
-        const accessCode = cleanText(body.accessCode, 40).toUpperCase();
+        // Entrada por residente: sin código, con la dirección del edificio
+        // (docs/comercial/entrada-por-residente.md).
+        const byAddress = body.signupMode === 'address';
+        let accessCode = cleanText(body.accessCode, 40).toUpperCase();
         const departmentNumber = cleanText(body.departmentNumber, 40);
+        const buildingName = cleanText(body.buildingName, 120);
         const acceptTerms = body.acceptTerms === true;
         const acceptPrivacy = body.acceptPrivacy === true;
         const whatsappOptIn = body.whatsappOptIn === true;
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
         if (!fullName) return NextResponse.json({ error: 'Ingresa tu nombre.' }, { status: 400 });
         if (!isEmail(email)) return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
         if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
-        if (!/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
+        if (!byAddress && !/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
             return NextResponse.json({ error: 'Código de invitación inválido.' }, { status: 400 });
         }
 
@@ -62,9 +67,34 @@ export async function POST(req: NextRequest) {
         }
 
         const admin = getSupabaseAdmin();
+        let createdCommunity = false;
+        if (byAddress) {
+            const address = parseBuildingAddress(body.address);
+            if (!address) return NextResponse.json({ error: 'Elige la dirección de tu edificio de la lista.' }, { status: 400 });
+            if (!departmentNumber) return NextResponse.json({ error: 'Ingresa tu departamento o unidad.' }, { status: 400 });
+            let building = await findBuildingForAddress(admin, address);
+            if (building?.managed) {
+                // El edificio ya contrató: se entra con el código de la administración.
+                return NextResponse.json({
+                    error: `${building.name} ya usa Convive. Pide el código de residentes a tu administración.`,
+                    code: 'BUILDING_MANAGED',
+                }, { status: 409 });
+            }
+            if (!building) {
+                if (buildingName.length < 3) {
+                    return NextResponse.json({ error: 'Tu edificio todavía no está en Convive: escribe su nombre para crearlo.', code: 'BUILDING_NAME_REQUIRED' }, { status: 400 });
+                }
+                building = await createUnmanagedCommunity(admin, buildingName, address);
+                createdCommunity = true;
+            }
+            // El trigger handle_new_user crea el perfil y la unidad a partir del
+            // código; el de la comunidad sin administrar no se muestra a nadie.
+            accessCode = building.residentCode.toUpperCase();
+        }
+
         const { data: communities, error: communityError } = await admin
             .from('communities')
-            .select('id,name,resident_code,concierge_code,admin_code')
+            .select('id,name,managed,resident_code,concierge_code,admin_code')
             .or(`resident_code.eq.${accessCode},concierge_code.eq.${accessCode},admin_code.eq.${accessCode}`)
             .limit(1);
         if (communityError) throw communityError;
@@ -72,6 +102,11 @@ export async function POST(req: NextRequest) {
         const community = communities?.[0];
         const resolvedRole = community ? roleForCode(community, accessCode) : null;
         if (!community || !resolvedRole) {
+            return NextResponse.json({ error: 'El código de invitación no es válido.' }, { status: 403 });
+        }
+        // En una comunidad sin administrar solo hay residentes, sin validar.
+        const communityManaged = community.managed !== false;
+        if (!communityManaged && resolvedRole !== 'resident') {
             return NextResponse.json({ error: 'El código de invitación no es válido.' }, { status: 403 });
         }
         if (resolvedRole === 'resident' && !departmentNumber) {
@@ -89,6 +124,8 @@ export async function POST(req: NextRequest) {
             },
         });
         if (createError) {
+            // No queda un edificio vacío creado por un registro que no prosperó.
+            if (createdCommunity) await admin.from('communities').delete().eq('id', community.id).eq('managed', false);
             const status = isExistingUserError(createError) ? 409 : 400;
             return NextResponse.json({
                 error: status === 409 ? 'Este correo ya tiene una cuenta.' : 'No se pudo crear la cuenta.',
@@ -113,10 +150,14 @@ export async function POST(req: NextRequest) {
             department_number: resolvedRole === 'resident' ? departmentNumber : null,
             unit_id: unitId,
             whatsapp_enabled: whatsappOptIn,
+            residence_verified: communityManaged,
         }, { onConflict: 'id' });
         if (profileError) {
             await admin.auth.admin.deleteUser(userId);
             throw profileError;
+        }
+        if (createdCommunity) {
+            await admin.from('communities').update({ created_by_resident: userId }).eq('id', community.id);
         }
 
         const consentEvents = [
@@ -192,6 +233,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             ok: true,
             role: resolvedRole,
+            communityManaged,
+            communityCreated: createdCommunity,
             requiresEmailConfirmation: true,
             confirmationEmailSent: !confirmationError,
         });
