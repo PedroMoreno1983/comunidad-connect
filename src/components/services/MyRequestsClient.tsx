@@ -368,6 +368,13 @@ export function MyRequestsClient() {
                                                 Confirmar servicio recibido
                                             </button>
                                         )}
+                                        {request.status === "completed" && request.provider_id && (
+                                            <Link href={`/services/provider/${request.provider_id}?review=1`}
+                                                className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold"
+                                                style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
+                                                Valorar el servicio
+                                            </Link>
+                                        )}
                                         {(request.status === "pending" || request.status === "accepted") && (
                                             <>
                                                 <button

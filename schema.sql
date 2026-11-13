@@ -336,6 +336,8 @@ CREATE TABLE IF NOT EXISTS public.service_providers (
   verified BOOLEAN DEFAULT FALSE,
   review_count INTEGER DEFAULT 0,
   community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  background_checked_at TIMESTAMPTZ,
+  identity_checked_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -359,6 +361,8 @@ CREATE TABLE IF NOT EXISTS public.reviews (
   comment TEXT NOT NULL,
   service_type TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verified_service BOOLEAN NOT NULL DEFAULT FALSE,
+  service_request_id UUID REFERENCES public.service_requests(id) ON DELETE SET NULL,
   UNIQUE(provider_id, user_id)
 );
 
@@ -6749,4 +6753,33 @@ CREATE TABLE IF NOT EXISTS public.service_provider_links (
   last_used_at TIMESTAMPTZ,
   use_count INTEGER NOT NULL DEFAULT 0,
   CONSTRAINT service_provider_links_expiry_check CHECK (expires_at > created_at)
+);
+
+-- Fotos de trabajos del maestro: visibles para quien ve al proveedor.
+CREATE TABLE IF NOT EXISTS public.service_provider_photos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL,
+  url TEXT NOT NULL,
+  caption TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Documentos del maestro (antecedentes, cédula): solo del servidor.
+CREATE TABLE IF NOT EXISTS public.service_provider_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('background_certificate', 'identity')),
+  storage_path TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  auto_check JSONB NOT NULL DEFAULT '{}'::jsonb,
+  issued_on DATE,
+  review_note TEXT,
+  reviewed_by UUID,
+  reviewed_at TIMESTAMPTZ,
+  uploaded_via TEXT NOT NULL DEFAULT 'app',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

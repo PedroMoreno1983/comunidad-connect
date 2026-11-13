@@ -11,10 +11,10 @@ export default async function ProviderProfilePage({
     searchParams,
 }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ contact?: string }>;
+    searchParams: Promise<{ contact?: string; review?: string }>;
 }) {
     const resolvedParams = await params;
-    const { contact } = await searchParams;
+    const { contact, review } = await searchParams;
 
     // Fetch provider from Supabase
     const [provider, providerReviews] = await Promise.all([
@@ -37,7 +37,7 @@ export default async function ProviderProfilePage({
                 Volver a Servicios
             </Link>
 
-            <ProviderProfileClient provider={provider} reviews={providerReviews} openContact={contact === "1"} />
+            <ProviderProfileClient provider={provider} reviews={providerReviews} openContact={contact === "1"} openReview={review === "1"} />
         </div>
     );
 }

@@ -1523,7 +1523,7 @@ export async function executeTool(
                 const search = (input.query || (!['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'].includes(category) ? category : '')).trim();
                 const query = supabaseAdmin
                     .from('service_providers')
-                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude, community_id')
+                    .select('id, name, category, rating, contact_phone, bio, specialties, verified, service_address, service_latitude, service_longitude, community_id, background_checked_at')
                     // Los de la comunidad y los de la Red Convive (community_id NULL).
                     .or(communityProvidersFilter(communityId))
                     .order('rating', { ascending: false });

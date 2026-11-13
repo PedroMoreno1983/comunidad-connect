@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Copy, Link2, Network, Plus, Search, Undo2 } from "lucide-react";
+import { BadgeCheck, Copy, FileCheck2, Link2, Network, Plus, Search, Undo2 } from "lucide-react";
+import { ProviderDocumentsReview } from "@/components/services/ProviderDocumentsReview";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -32,6 +33,7 @@ export default function ProviderNetworkPanel() {
     const [showForm, setShowForm] = useState(false);
     const [invite, setInvite] = useState<(ProviderInviteLink & { phone: string }) | null>(null);
     const [returnTo, setReturnTo] = useState<Record<string, string>>({});
+    const [docsFor, setDocsFor] = useState<string | null>(null);
 
     // La búsqueda va al servidor: los candidatos se filtran antes de cortar, así
     // ningún maestro queda fuera por haber muchos otros mejor evaluados.
@@ -180,6 +182,9 @@ export default function ProviderNetworkPanel() {
                                                     <Link2 className="h-3.5 w-3.5" /> Enlace
                                                 </Button>
                                             )}
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setDocsFor(docsFor === row.id ? null : row.id)}>
+                                                <FileCheck2 className="h-3.5 w-3.5" /> Documentos
+                                            </Button>
                                         </div>
                                     </div>
                                     <div className="mt-2 flex items-center gap-2">
@@ -197,6 +202,11 @@ export default function ProviderNetworkPanel() {
                                             <Undo2 className="h-3.5 w-3.5" /> Mover
                                         </Button>
                                     </div>
+                                    {docsFor === row.id && (
+                                        <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--cc-line)" }}>
+                                            <ProviderDocumentsReview providerId={row.id} scope="superadmin" />
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>

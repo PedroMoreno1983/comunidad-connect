@@ -79,9 +79,11 @@ describe('service_providers_guard (Postgres real)', () => {
             provider_id IN (SELECT id FROM public.service_providers WHERE community_id = public.get_my_community_id())
           );
           GRANT SELECT ON public.reviews TO authenticated;
+          CREATE TABLE public.service_requests (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
         `);
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261113120000_service_provider_portal.sql'), 'utf8'));
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261113160000_service_provider_network.sql'), 'utf8'));
+        await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261114120000_service_provider_media_documents.sql'), 'utf8'));
     });
 
     const networkProvider = async () => {
@@ -98,6 +100,45 @@ describe('service_providers_guard (Postgres real)', () => {
             const { rows } = await asUser(db, community.residentId, () => db.query('SELECT id FROM public.service_providers WHERE id = $1', [id]));
             expect(rows).toHaveLength(1);
         }
+    });
+
+    it('las marcas de antecedentes e identidad solo las pone el servidor', async () => {
+        const community = await seedCommunity(db);
+        const { rows } = await db.query<{ id: string }>(
+            'INSERT INTO public.service_providers (name, user_id, community_id) VALUES ($1, $2, $3) RETURNING id',
+            ['Rosa', community.ownerId, community.communityId],
+        );
+        const id = rows[0].id;
+        for (const userId of [community.ownerId, community.adminId]) {
+            await asUser(db, userId, async () => {
+                await expect(db.query('UPDATE public.service_providers SET background_checked_at = now() WHERE id = $1', [id])).rejects.toThrow(/Convive/);
+                await expect(db.query('UPDATE public.service_providers SET identity_checked_at = now() WHERE id = $1', [id])).rejects.toThrow(/Convive/);
+            });
+        }
+        await asServiceRole(db, () => db.query('UPDATE public.service_providers SET background_checked_at = now() WHERE id = $1', [id]));
+    });
+
+    it('las fotos de trabajos se ven igual que el proveedor; los documentos, nunca', async () => {
+        const [a, b] = [await seedCommunity(db), await seedCommunity(db)];
+        const { rows } = await db.query<{ id: string }>(
+            "INSERT INTO public.service_providers (name, community_id) VALUES ('Local', $1) RETURNING id", [a.communityId],
+        );
+        const local = rows[0].id;
+        const network = await networkProvider();
+        await asServiceRole(db, async () => {
+            for (const id of [local, network]) {
+                await db.query("INSERT INTO public.service_provider_photos (provider_id, storage_path, url) VALUES ($1, 'p', 'https://x/p.jpg')", [id]);
+                await db.query("INSERT INTO public.service_provider_documents (provider_id, kind, storage_path, file_name, mime_type, size_bytes) VALUES ($1, 'identity', 'd', 'c.pdf', 'application/pdf', 10)", [id]);
+            }
+        });
+        const seen = async (userId: string) => (await asUser(db, userId, () => db.query<{ provider_id: string }>(
+            'SELECT provider_id FROM public.service_provider_photos WHERE provider_id = ANY($1)', [[local, network]],
+        ))).rows.map(row => row.provider_id).sort();
+        expect(await seen(a.residentId)).toEqual([local, network].sort());
+        expect(await seen(b.residentId)).toEqual([network]);
+        await asUser(db, a.adminId, async () => {
+            await expect(db.query('SELECT * FROM public.service_provider_documents')).rejects.toThrow(/permission denied/);
+        });
     });
 
     it('las reseñas de un maestro de la red las leen todas las comunidades', async () => {

@@ -1,7 +1,11 @@
 import type {
     NetworkProviderAction,
     NetworkProviderInput,
+    ProviderDocument,
+    ProviderDocumentKind,
     ProviderInviteLink,
+    ProviderMediaTarget,
+    ProviderWorkPhoto,
     ProviderPortalData,
     ProviderProfileInput,
     ServiceRequestStatus,
@@ -82,5 +86,60 @@ export const ProviderNetworkService = {
 
     async createInvite(providerId: string): Promise<ProviderInviteLink> {
         return readJson<ProviderInviteLink>(await fetch(`/api/superadmin/providers/${encodeURIComponent(providerId)}/invite`, { method: 'POST' }));
+    },
+};
+
+function mediaBase(target: ProviderMediaTarget) {
+    return target.kind === 'provider'
+        ? `/api/providers/${encodeURIComponent(target.id)}`
+        : `/api/provider-portal/${encodeURIComponent(target.token)}`;
+}
+
+/**
+ * Foto de perfil, fotos de trabajos y documentos del maestro. Funciona con
+ * sesión (el maestro o la administración) o con el enlace del maestro.
+ */
+export const ProviderMediaService = {
+    async uploadPhoto(target: ProviderMediaTarget, kind: 'profile' | 'work', file: File, caption?: string): Promise<{ url: string }> {
+        const form = new FormData();
+        form.set('kind', kind);
+        form.set('file', file);
+        if (caption) form.set('caption', caption);
+        return readJson<{ url: string }>(await fetch(`${mediaBase(target)}/media`, { method: 'POST', body: form }));
+    },
+
+    /** Con sesión (el maestro o la administración). */
+    async listWorkPhotos(providerId: string): Promise<ProviderWorkPhoto[]> {
+        const data = await readJson<{ photos: ProviderWorkPhoto[] }>(await fetch(`/api/providers/${encodeURIComponent(providerId)}/media`, { cache: 'no-store' }));
+        return data.photos;
+    },
+
+    async deletePhoto(target: ProviderMediaTarget, photoId: string): Promise<void> {
+        await readJson(await fetch(`${mediaBase(target)}/media?photoId=${encodeURIComponent(photoId)}`, { method: 'DELETE' }));
+    },
+
+    async uploadDocument(target: ProviderMediaTarget, kind: ProviderDocumentKind, file: File): Promise<{ id: string; verdict: string }> {
+        const form = new FormData();
+        form.set('kind', kind);
+        form.set('file', file);
+        return readJson<{ id: string; verdict: string }>(await fetch(`${mediaBase(target)}/documents`, { method: 'POST', body: form }));
+    },
+
+    /** Con sesión. La administración recibe además el chequeo y el enlace temporal. */
+    async listDocuments(providerId: string, scope: 'admin' | 'superadmin' = 'admin'): Promise<ProviderDocument[]> {
+        const url = scope === 'superadmin'
+            ? `/api/superadmin/providers/${encodeURIComponent(providerId)}/documents`
+            : `/api/providers/${encodeURIComponent(providerId)}/documents`;
+        const data = await readJson<{ documents: ProviderDocument[] }>(await fetch(url, { cache: 'no-store' }));
+        return data.documents;
+    },
+
+    async reviewDocument(providerId: string, scope: 'admin' | 'superadmin', documentId: string, approve: boolean, note?: string): Promise<void> {
+        const url = scope === 'superadmin'
+            ? `/api/superadmin/providers/${encodeURIComponent(providerId)}/documents`
+            : `/api/providers/${encodeURIComponent(providerId)}/documents`;
+        await readJson(await fetch(url, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId, approve, note }),
+        }));
     },
 };

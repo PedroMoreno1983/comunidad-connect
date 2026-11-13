@@ -8,6 +8,8 @@ import { serviceRequestTransitionError, validServiceSchedule } from '@/lib/servi
 import { providerProfileUpdate } from '@/lib/services/providerProfile';
 import { sendProviderRequestEmail } from '@/lib/email';
 import { INTERNAL_SERVICE_PROVIDER_IDS } from '@/lib/config';
+import { realPhotoUrl } from '@/lib/utils/stockPhoto';
+import { listProviderDocuments, listWorkPhotos } from '@/lib/services/providerMedia';
 import type { ProviderPortalData, ServiceRequestStatus } from '@/lib/types';
 
 /**
@@ -32,7 +34,7 @@ export class ProviderPortalError extends Error {
 }
 
 const DEFAULT_DAYS = 90;
-const PROFILE_COLUMNS = 'id, name, category, contact_phone, email, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, service_address, verified, rating, review_count, completed_jobs, community_id, user_id';
+const PROFILE_COLUMNS = 'id, name, category, contact_phone, email, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, service_address, verified, rating, review_count, completed_jobs, community_id, user_id, photo, background_checked_at, identity_checked_at';
 const NETWORK_NAME = 'Red Convive';
 const OPEN_REQUEST_STATUSES = ['pending', 'accepted', 'awaiting_confirmation'];
 
@@ -114,6 +116,12 @@ export async function createProviderInvite(communityId: string | null, createdBy
     return { token, expiresAt, providerName: String(provider.name) };
 }
 
+/** Proveedor de un enlace válido: para las rutas del portal que gestionan fotos y documentos. */
+export async function resolvePortalProvider(token: string) {
+    const link = await resolveLink(token);
+    return { providerId: link.providerId, communityId: link.communityId };
+}
+
 async function resolveLink(token: string) {
     if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) throw new ProviderPortalError('Enlace no válido.', 404);
     const { data: link } = await supabaseAdmin.from('service_provider_links')
@@ -170,8 +178,11 @@ export async function getProviderPortal(token: string): Promise<ProviderPortalDa
         unit: unitLabel.get(String(row.unit_id || '')) || '',
     }]));
     const communityName = new Map((communities || []).map(row => [String(row.id), String(row.name || 'Comunidad')]));
+    const [workPhotos, documents] = await Promise.all([listWorkPhotos(link.providerId), listProviderDocuments(link.providerId, false)]);
 
     return {
+        workPhotos,
+        documents,
         communityName: link.communityId ? communityName.get(link.communityId) || 'tu comunidad' : NETWORK_NAME,
         network: link.communityId === null,
         expiresAt: link.expiresAt,
@@ -193,6 +204,9 @@ export async function getProviderPortal(token: string): Promise<ProviderPortalDa
             rating: Number(provider.rating || 0),
             reviewCount: Number(provider.review_count || 0),
             completedJobs: Number(provider.completed_jobs || 0),
+            photo: realPhotoUrl(provider.photo ? String(provider.photo) : undefined) ?? null,
+            backgroundCheckedAt: provider.background_checked_at ? String(provider.background_checked_at) : null,
+            identityCheckedAt: provider.identity_checked_at ? String(provider.identity_checked_at) : null,
         },
         requests: (requests || []).map(row => ({
             id: String(row.id),
