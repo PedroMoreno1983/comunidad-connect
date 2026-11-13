@@ -2,6 +2,7 @@ import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent, recordPlatformOperationEvent } from '@/lib/operations/audit';
+import { findOrCreateCommunityUnit } from '@/lib/units/resolveCommunityUnit';
 import type { NeighborBuildingRow, NeighborModeSummary, PendingResident, ProviderNetworkActor } from '@/lib/types';
 
 /**
@@ -23,6 +24,11 @@ export const HIGHLIGHT_INVITE_RESIDENTS = 10;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Vecinos registrados de la comunidad. No hay registro de actividad por persona
+ * para filtrar por los últimos 30 días; en esta etapa casi todos los registros
+ * son recientes. Ver docs/comercial/entrada-por-residente.md.
+ */
 export async function countResidents(communityId: string) {
     const { count } = await getSupabaseAdmin().from('profiles').select('id', { count: 'exact', head: true })
         .eq('community_id', communityId).eq('role', 'resident');
@@ -39,12 +45,21 @@ export async function neighborModeSummary(communityId: string): Promise<Neighbor
 /** Avisa (bitácora global) cuando un edificio sin administrar cruza un umbral de vecinos. */
 export async function noteResidentThreshold(communityId: string, buildingName: string) {
     const residents = await countResidents(communityId);
-    if (residents !== SALES_ALERT_RESIDENTS && residents !== HIGHLIGHT_INVITE_RESIDENTS) return;
-    await recordPlatformOperationEvent({
-        action: 'neighbor_mode.residents_threshold', entityType: 'community', entityId: communityId,
-        summary: `${buildingName} llegó a ${residents} vecinos sin administración: ${residents === SALES_ALERT_RESIDENTS ? 'listo para contactar' : 'invitación destacada'}`,
-        metadata: { residents },
-    });
+    const admin = getSupabaseAdmin();
+    // Por cruce (>=) y no por igualdad: si dos vecinos se registran a la vez el
+    // conteo puede saltarse el 5 o el 10. Cada umbral se anota una sola vez.
+    for (const threshold of [SALES_ALERT_RESIDENTS, HIGHLIGHT_INVITE_RESIDENTS]) {
+        if (residents < threshold) continue;
+        const action = `neighbor_mode.residents_threshold_${threshold}`;
+        const { count } = await admin.from('platform_operation_events').select('id', { count: 'exact', head: true })
+            .eq('action', action).eq('entity_id', communityId);
+        if (count) continue;
+        await recordPlatformOperationEvent({
+            action, entityType: 'community', entityId: communityId,
+            summary: `${buildingName} llegó a ${threshold} vecinos sin administración: ${threshold === SALES_ALERT_RESIDENTS ? 'listo para contactar' : 'invitación destacada'}`,
+            metadata: { residents, threshold },
+        });
+    }
 }
 
 /** Edificios sin administrar, los con más vecinos primero: la lista de prospectos. */
@@ -79,23 +94,51 @@ export async function activateBuilding(communityId: string, actor: ProviderNetwo
         .select('id, name, admin_code').maybeSingle();
     if (error) throw new NeighborBuildingError('No se pudo activar el edificio.', 500);
     if (!community) throw new NeighborBuildingError('Ese edificio ya está administrado o no existe.', 409);
+    // Lo que sigue ya no deshace la activación: si algo falla se informa como
+    // aviso (y queda en el log) en vez de un error que no se podría reintentar.
+    const warnings: string[] = [];
+    // Hasta que la administración los valide, los vecinos que entraron sin
+    // código no quedan ligados a una unidad: quien dijo "504" sin vivir ahí no
+    // ve los gastos de la 504.
+    const unlinked = await unlinkUnverifiedUnits(communityId);
+    if (!unlinked) warnings.push('No se pudieron desvincular las unidades de los vecinos por validar: revisa Unidades.');
     // Sin la fila demo vuelve al presupuesto de IA por defecto de un edificio que paga.
-    await admin.from('ai_budgets').delete().eq('community_id', communityId).eq('plan', 'demo');
+    const { error: budgetError } = await admin.from('ai_budgets').delete().eq('community_id', communityId).eq('plan', 'demo');
+    if (budgetError) warnings.push('No se pudo quitar el presupuesto de IA de prueba: CoCo sigue con límites bajos en este edificio.');
     const residents = await countResidents(communityId);
     const audit = await recordPlatformOperationEvent({
         actorId: actor.id, actorEmail: actor.email, action: 'neighbor_mode.building_activated', entityType: 'community', entityId: communityId,
         summary: `Edificio entregado a su administración: ${community.name} (${residents} vecinos por validar)`,
-        metadata: { residents },
+        metadata: { residents, warnings },
     });
-    if (!audit.ok) throw new NeighborBuildingError('Se activó, pero la auditoría global no pudo certificarse.', 500);
-    return { name: String(community.name), adminCode: String(community.admin_code || ''), residents };
+    if (!audit.ok) warnings.push('La entrega no quedó en la bitácora global.');
+    if (warnings.length) console.error('[neighbor buildings] activación con avisos', { communityId, warnings });
+    return { name: String(community.name), adminCode: String(community.admin_code || ''), residents, warnings };
+}
+
+/** Quita el vínculo entre los vecinos sin validar y sus unidades. */
+async function unlinkUnverifiedUnits(communityId: string) {
+    const admin = getSupabaseAdmin();
+    const { data: pending, error } = await admin.from('profiles').select('id')
+        .eq('community_id', communityId).eq('residence_verified', false);
+    if (error) return false;
+    const ids = (pending || []).map(row => String(row.id));
+    if (!ids.length) return true;
+    const results = await Promise.all([
+        admin.from('units').update({ owner_id: null }).eq('community_id', communityId).in('owner_id', ids),
+        admin.from('units').update({ resident_profile_id: null }).eq('community_id', communityId).in('resident_profile_id', ids),
+        admin.from('profiles').update({ unit_id: null }).eq('community_id', communityId).in('id', ids),
+    ]);
+    return results.every(result => !result.error);
 }
 
 /** Vecinos que entraron sin código: la administración los valida. */
 export async function listPendingResidents(communityId: string): Promise<PendingResident[]> {
-    const { data } = await getSupabaseAdmin().from('profiles')
+    const { data, error } = await getSupabaseAdmin().from('profiles')
         .select('id, name, email, department_number, created_at')
         .eq('community_id', communityId).eq('residence_verified', false).order('created_at').limit(500);
+    // Un error no es "no hay pendientes": la administración tiene que saberlo.
+    if (error) throw new NeighborBuildingError('No se pudieron cargar los vecinos por validar.', 500);
     return (data || []).map(row => ({
         id: String(row.id),
         name: String(row.name || 'Vecino'),
@@ -117,9 +160,23 @@ export async function decidePendingResident(communityId: string, adminId: string
     const update = approve ? { residence_verified: true } : { community_id: null, unit_id: null };
     const { data, error } = await admin.from('profiles').update(update)
         .eq('id', profileId).eq('community_id', communityId).eq('residence_verified', false)
-        .select('id, name').maybeSingle();
+        .select('id, name, department_number').maybeSingle();
     if (error) throw new NeighborBuildingError('No se pudo guardar.', 500);
     if (!data) throw new NeighborBuildingError('Ese vecino ya fue revisado o no es de tu edificio.', 409);
+    if (approve) {
+        // Validado: recién ahora queda ligado a su unidad.
+        if (data.department_number) {
+            const unitId = await findOrCreateCommunityUnit(admin, communityId, String(data.department_number));
+            await admin.from('profiles').update({ unit_id: unitId }).eq('id', profileId);
+            await admin.from('units').update({ resident_profile_id: profileId }).eq('id', unitId).is('resident_profile_id', null);
+            await admin.from('units').update({ owner_id: profileId }).eq('id', unitId).is('owner_id', null);
+        }
+    } else {
+        // Quitado: suelta cualquier unidad que tuviera tomada, para que el
+        // vecino real pueda ligarse a ella.
+        await admin.from('units').update({ owner_id: null }).eq('community_id', communityId).eq('owner_id', profileId);
+        await admin.from('units').update({ resident_profile_id: null }).eq('community_id', communityId).eq('resident_profile_id', profileId);
+    }
     await recordOperationEvent({
         communityId, actorId: adminId, actorRole: 'admin',
         action: approve ? 'resident.residence_verified' : 'resident.removed_unverified',

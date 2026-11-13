@@ -124,7 +124,9 @@ function DashboardShell({
     };
     const buildingName = user.communityName || "Mi comunidad";
     // Modo vecino: las pantallas de la administración muestran cómo invitarla.
-    const neighborGate = user.communityManaged === false ? neighborModeGateFor(pathname) : null;
+    // También para quien espera validación en un edificio ya administrado.
+    const pendingValidation = user.communityManaged !== false && user.residenceVerified === false;
+    const neighborGate = user.communityManaged === false || pendingValidation ? neighborModeGateFor(pathname) : null;
 
 
     // Admin, Concierge, & Resident wrapped in responsive AdminShell layout
@@ -148,7 +150,7 @@ function DashboardShell({
                         {user.communityManaged === false && !neighborGate && pathname ? (
                             <NeighborModeBanner pathname={pathname} buildingName={user.communityName} />
                         ) : null}
-                        {neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} /> : children}
+                        {neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} pendingValidation={pendingValidation} /> : children}
                     </ErrorBoundary>
                 </AdminShell>
             </ErrorBoundary>

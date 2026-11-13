@@ -1498,8 +1498,12 @@ export async function executeTool(
     try {
         if (!isToolAllowedForRole(name, userCtx.role)) return forbidden();
         if (NEIGHBOR_MODE_BLOCKED_TOOLS.has(name) && userCtx.community_id) {
-            const { data: community } = await supabaseAdmin.from('communities').select('managed').eq('id', userCtx.community_id).maybeSingle();
+            const [{ data: community }, { data: profile }] = await Promise.all([
+                supabaseAdmin.from('communities').select('managed').eq('id', userCtx.community_id).maybeSingle(),
+                userCtx.user_id ? supabaseAdmin.from('profiles').select('residence_verified').eq('id', userCtx.user_id).maybeSingle() : Promise.resolve({ data: null }),
+            ]);
             if (community?.managed === false) return forbidden('Eso se activa cuando la administración del edificio se suma a Convive.');
+            if (profile?.residence_verified === false) return forbidden('Eso se activa cuando la administración confirme que vives en el edificio.');
         }
         if (MUTATING_TOOLS.has(name)) {
             const blocked = await blockCoCoWrite(userCtx);

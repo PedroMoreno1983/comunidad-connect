@@ -16,7 +16,7 @@ export default function NeighborBuildingsPanel() {
     const { toast } = useToast();
     const [buildings, setBuildings] = useState<NeighborBuildingRow[] | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
-    const [handover, setHandover] = useState<{ name: string; adminCode: string; residents: number } | null>(null);
+    const [handover, setHandover] = useState<{ name: string; adminCode: string; residents: number; warnings: string[] } | null>(null);
 
     const load = useCallback(async () => {
         try {
@@ -56,6 +56,7 @@ export default function NeighborBuildingsPanel() {
             {handover && (
                 <div className="space-y-2 border-b p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-copper-tint)" }}>
                     <p className="text-sm font-semibold cc-text-primary">{handover.name} quedó administrado ({handover.residents} vecinos por validar).</p>
+                    {handover.warnings.map(warning => <p key={warning} className="text-sm font-semibold" style={{ color: "var(--cc-danger, #b42318)" }}>{warning}</p>)}
                     <p className="text-sm cc-text-secondary">Envíale este código a la administración para que se registre en /signup con &ldquo;Tengo código&rdquo;:</p>
                     <div className="flex items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono font-bold" style={{ background: "var(--cc-paper)" }}>

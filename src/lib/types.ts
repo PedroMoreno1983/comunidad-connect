@@ -1563,6 +1563,8 @@ export type NeighborModeGate = { title: string; description: string };
 export interface NeighborModeGateProps {
   gate: NeighborModeGate;
   buildingName?: string;
+  /** El edificio ya está administrado pero la administración no ha validado a este vecino. */
+  pendingValidation?: boolean;
 }
 
 export interface BuildingAddressPickerProps {

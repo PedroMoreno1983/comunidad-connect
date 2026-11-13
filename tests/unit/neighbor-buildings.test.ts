@@ -34,6 +34,7 @@ beforeEach(() => {
         ],
         profiles: [...residents(A, 12), ...residents(B, 3)],
         ai_budgets: [{ community_id: A, plan: 'demo' }],
+        units: [],
         platform_operation_events: [],
         operation_events: [],
     });
@@ -56,14 +57,17 @@ describe('contador y prospectos', () => {
         state.db.tables.profiles.push(...residents(B, 2).map((row, index) => ({ ...row, id: `extra-${index}` })));
         const { noteResidentThreshold } = await import('@/lib/onboarding/neighborBuildings');
         await noteResidentThreshold(B, 'El Roble');
-        expect(state.db.tables.platform_operation_events[0]).toMatchObject({ action: 'neighbor_mode.residents_threshold', entity_id: B });
+        expect(state.db.tables.platform_operation_events[0]).toMatchObject({ action: 'neighbor_mode.residents_threshold_5', entity_id: B });
+        // Una sola vez, aunque se vuelva a revisar o se pase del umbral de golpe.
+        await noteResidentThreshold(B, 'El Roble');
+        expect(state.db.tables.platform_operation_events).toHaveLength(1);
     });
 });
 
 describe('entregar el edificio a su administración', () => {
     it('lo deja administrado, devuelve el código de administración y quita el presupuesto demo', async () => {
         const { activateBuilding } = await import('@/lib/onboarding/neighborBuildings');
-        expect(await activateBuilding(A, ACTOR)).toEqual({ name: 'Los Aromos', adminCode: 'ADM-AROMOS', residents: 12 });
+        expect(await activateBuilding(A, ACTOR)).toEqual({ name: 'Los Aromos', adminCode: 'ADM-AROMOS', residents: 12, warnings: [] });
         expect(state.db.tables.communities[0]).toMatchObject({ managed: true });
         expect(state.db.tables.ai_budgets).toHaveLength(0);
         expect(state.db.tables.platform_operation_events[0]).toMatchObject({ action: 'neighbor_mode.building_activated', actor_id: ACTOR.id });
@@ -93,5 +97,34 @@ describe('la administración valida a sus vecinos', () => {
         await decidePendingResident(A, ADMIN, removed, false);
         expect(state.db.tables.profiles.find(row => row.id === removed)).toMatchObject({ community_id: null, unit_id: null });
         expect(state.db.tables.operation_events[0]).toMatchObject({ action: 'resident.removed_unverified' });
+    });
+});
+
+describe('unidades y vecinos sin validar', () => {
+    it('al entregar el edificio, quien dijo ser del 504 deja de estar ligado a la 504', async () => {
+        const fake = '77777777-7777-4777-8777-777777777777';
+        state.db.tables.profiles.push({ id: fake, community_id: A, role: 'resident', residence_verified: false, unit_id: 'u-504', name: 'Falso', email: 'f@x.cl', department_number: '504', created_at: '2026-11-13T10:00:00Z' });
+        state.db.tables.units.push({ id: 'u-504', community_id: A, number: '504', owner_id: fake, resident_profile_id: fake });
+        const { activateBuilding } = await import('@/lib/onboarding/neighborBuildings');
+        await activateBuilding(A, ACTOR);
+        expect(state.db.tables.units[0]).toMatchObject({ owner_id: null, resident_profile_id: null });
+        expect(state.db.tables.profiles.find(row => row.id === fake)).toMatchObject({ unit_id: null });
+    });
+
+    it('validar lo liga a su unidad; quitar suelta la que tenía', async () => {
+        const real = '88888888-8888-4888-8888-888888888888';
+        const fake = '99999999-9999-4999-8999-999999999999';
+        state.db.tables.communities[0].managed = true;
+        state.db.tables.units.push({ id: 'u-301', community_id: A, number: '301', owner_id: fake, resident_profile_id: null });
+        state.db.tables.profiles.push(
+            { id: real, community_id: A, role: 'resident', residence_verified: false, unit_id: null, name: 'Real', email: 'r@x.cl', department_number: '301', created_at: '2026-11-13T10:00:00Z' },
+            { id: fake, community_id: A, role: 'resident', residence_verified: false, unit_id: 'u-301', name: 'Falso', email: 'f@x.cl', department_number: '301', created_at: '2026-11-13T10:00:00Z' },
+        );
+        const { decidePendingResident } = await import('@/lib/onboarding/neighborBuildings');
+        await decidePendingResident(A, ADMIN, fake, false);
+        expect(state.db.tables.units[0]).toMatchObject({ owner_id: null });
+        await decidePendingResident(A, ADMIN, real, true);
+        expect(state.db.tables.profiles.find(row => row.id === real)).toMatchObject({ residence_verified: true, unit_id: 'u-301' });
+        expect(state.db.tables.units[0]).toMatchObject({ owner_id: real, resident_profile_id: real });
     });
 });

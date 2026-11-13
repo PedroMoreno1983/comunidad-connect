@@ -24,7 +24,7 @@ export const NeighborBuildingsService = {
         return data.buildings;
     },
 
-    async activate(communityId: string): Promise<{ name: string; adminCode: string; residents: number }> {
+    async activate(communityId: string): Promise<{ name: string; adminCode: string; residents: number; warnings: string[] }> {
         return readJson(await fetch('/api/superadmin/buildings', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ communityId }),
         }));

@@ -34,7 +34,7 @@ export async function POST() {
         const admin = getSupabaseAdmin();
         const { data: profile, error: profileError } = await admin
             .from('profiles')
-            .select('id, role, community_id, unit_id, department_number')
+            .select('id, role, community_id, unit_id, department_number, residence_verified')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -42,6 +42,12 @@ export async function POST() {
         if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 });
         if (profile.role !== 'resident') {
             return NextResponse.json({ ok: true, skipped: 'not_resident' });
+        }
+        // Quien entró sin código y espera que la administración lo valide no se
+        // liga solo a una unidad: la liga la validación.
+        if (profile.residence_verified === false && profile.community_id) {
+            const { data: community } = await admin.from('communities').select('managed').eq('id', profile.community_id).maybeSingle();
+            if (community?.managed !== false) return NextResponse.json({ ok: true, skipped: 'pending_validation' });
         }
 
         const currentUnitId = cleanText(profile.unit_id, 80);
