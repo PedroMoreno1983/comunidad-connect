@@ -12,6 +12,7 @@ import { ACCESS_DENIED_QUERY, ACCESS_DENIED_VALUE } from "@/lib/roleAccess";
 import { BiometricLockGate } from "@/components/native/BiometricLockGate";
 import { NeighborModeGateScreen } from "@/components/neighbor/NeighborModeGate";
 import { NeighborModeBanner } from "@/components/neighbor/NeighborModeBanner";
+import { InviteNeighborsButton } from "@/components/neighbor/InviteNeighborsButton";
 import { neighborModeGateFor } from "@/lib/neighborMode";
 
 export default function DashboardLayout({
@@ -149,6 +150,13 @@ function DashboardShell({
                     <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
                         {user.communityManaged === false && !neighborGate && pathname ? (
                             <NeighborModeBanner pathname={pathname} buildingName={user.communityName} />
+                        ) : null}
+                        {/* Edificio administrado: los residentes también invitan vecinos desde Inicio. */}
+                        {user.communityManaged !== false && user.role === "resident" && pathname === "/home" ? (
+                            <div className="mb-4 flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                                <p className="text-sm cc-text-secondary"><strong className="cc-text-primary">¿Tus vecinos todavía no están?</strong> Invítalos: la administración confirma que viven aquí.</p>
+                                <InviteNeighborsButton variant="secondary" />
+                            </div>
                         ) : null}
                         {neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} pendingValidation={pendingValidation} /> : children}
                     </ErrorBoundary>

@@ -1,4 +1,4 @@
-import type { NeighborBuildingRow, NeighborModeSummary, PendingResident } from '../types';
+import type { NeighborBuildingRow, NeighborInvitePreview, NeighborInviteShare, NeighborModeSummary, PendingResident } from '../types';
 
 /**
  * Entrada por residente: contador de vecinos (modo vecino), edificios por
@@ -41,5 +41,21 @@ export const PendingResidentsService = {
         await readJson(await fetch('/api/admin/pending-residents', {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profileId, approve }),
         }));
+    },
+};
+
+export const NeighborInviteService = {
+    /** Mi enlace para invitar vecinos por WhatsApp. */
+    async myInvite(): Promise<NeighborInviteShare> {
+        const data = await readJson<{ invite: NeighborInviteShare }>(await fetch('/api/neighbor-invite', { cache: 'no-store' }));
+        return data.invite;
+    },
+
+    /** Edificio y quién invita, para la página /unirse. null si la invitación no vale. */
+    async preview(code: string): Promise<NeighborInvitePreview | null> {
+        const response = await fetch(`/api/neighbor-invite/${encodeURIComponent(code)}`, { cache: 'no-store' });
+        if (!response.ok) return null;
+        const data = await response.json() as { preview: NeighborInvitePreview };
+        return data.preview;
     },
 };

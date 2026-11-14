@@ -10,7 +10,8 @@ import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import { BuildingAddressPicker } from "@/components/auth/BuildingAddressPicker";
-import type { GeocodeSuggestion, SignupResponse } from "@/lib/types";
+import { NeighborInviteService } from "@/lib/api";
+import type { GeocodeSuggestion, NeighborInvitePreview, SignupResponse } from "@/lib/types";
 
 export default function SignUpPage() {
     const [fullName, setFullName] = useState("");
@@ -26,10 +27,22 @@ export default function SignUpPage() {
     const [whatsappOptIn, setWhatsappOptIn] = useState(false);
     const [accessCodeError, setAccessCodeError] = useState("");
     // Entrada por residente: sin código, con la dirección del edificio.
-    const [signupMode, setSignupMode] = useState<"code" | "address">("code");
+    const [signupMode, setSignupMode] = useState<"code" | "address" | "invite">("code");
+    // /signup?invitacion=<código>: invitación de un vecino por WhatsApp; ya trae el edificio.
+    const [invite, setInvite] = useState<NeighborInvitePreview | null>(null);
     // /signup?modo=edificio abre directo en "Mi edificio no usa Convive" (enlace para volantes y QR).
     useEffect(() => {
-        if (new URLSearchParams(window.location.search).get("modo") === "edificio") setSignupMode("address");
+        const params = new URLSearchParams(window.location.search);
+        const invitation = params.get("invitacion");
+        if (invitation) {
+            void NeighborInviteService.preview(invitation).then(preview => {
+                if (!preview) return;
+                setInvite(preview);
+                setSignupMode("invite");
+            });
+            return;
+        }
+        if (params.get("modo") === "edificio") setSignupMode("address");
     }, []);
     const [buildingAddress, setBuildingAddress] = useState<GeocodeSuggestion | null>(null);
     const [buildingName, setBuildingName] = useState("");
@@ -73,6 +86,10 @@ export default function SignUpPage() {
             toast({ title: "Error", description: message, variant: "destructive" });
             return;
         }
+        if (signupMode === "invite" && !departmentNumber.trim()) {
+            toast({ title: "Falta tu departamento", description: "Escribe tu departamento o unidad.", variant: "destructive" });
+            return;
+        }
         if (signupMode === "address" && (!buildingAddress || !departmentNumber.trim())) {
             toast({ title: "Faltan datos", description: "Elige la dirección de tu edificio y escribe tu departamento.", variant: "destructive" });
             return;
@@ -94,6 +111,7 @@ export default function SignUpPage() {
                     signupMode,
                     address: signupMode === "address" ? buildingAddress : undefined,
                     buildingName: signupMode === "address" ? buildingName : undefined,
+                    inviteCode: signupMode === "invite" ? invite?.code : undefined,
                     departmentNumber,
                     acceptTerms,
                     acceptPrivacy,
@@ -229,6 +247,13 @@ export default function SignUpPage() {
                                 />
                             </Field>
 
+                            {signupMode === "invite" && invite && (
+                                <p className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }}>
+                                    Te sumas a <strong>{invite.buildingName}</strong> por invitación de {invite.inviterFirstName}.
+                                </p>
+                            )}
+
+                            {signupMode !== "invite" && (
                             <div className="grid grid-cols-2 gap-1 rounded-xl border p-1 text-xs font-semibold" style={{ borderColor: "var(--cc-line-strong)" }} role="tablist">
                                 {([["code", "Tengo código"], ["address", "Mi edificio no usa Convive"]] as const).map(([mode, label]) => (
                                     <button key={mode} type="button" role="tab" aria-selected={signupMode === mode}
@@ -239,6 +264,7 @@ export default function SignUpPage() {
                                     </button>
                                 ))}
                             </div>
+                            )}
 
                             {signupMode === "address" && (
                                 <>
@@ -306,7 +332,7 @@ export default function SignUpPage() {
                             </Field>
                             )}
 
-                            <Field label={signupMode === "address" ? "DEPARTAMENTO / UNIDAD" : "DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)"} htmlFor="department-number">
+                            <Field label={signupMode === "code" ? "DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)" : "DEPARTAMENTO / UNIDAD"} htmlFor="department-number">
                                 <input
                                     id="department-number"
                                     type="text"

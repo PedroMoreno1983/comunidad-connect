@@ -118,6 +118,8 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     review_provider_document: 'write_high',     // marca antecedentes revisados ante todos los vecinos
     save_provider_attachment: 'write_high',     // cambia el perfil público o sube documentos sensibles
     list_provider_documents: 'read',
+    // Solo devuelve el enlace personal (lo crea la primera vez, sin efecto para terceros).
+    get_neighbor_invite_link: 'read',
     // Reseña: contenido público propio, reversible (se puede reescribir).
     rate_provider: 'write_low',
     lock_supermarket_group_order: 'write_high', // cierra la compra de varios vecinos

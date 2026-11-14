@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { findOrCreateCommunityUnit } from '@/lib/units/resolveCommunityUnit';
 import { createUnmanagedCommunity, findBuildingForAddress, parseBuildingAddress } from '@/lib/onboarding/residentBuilding';
 import { noteResidentThreshold } from '@/lib/onboarding/neighborBuildings';
+import { recordInviteUse, resolveInvite } from '@/lib/onboarding/neighborInvites';
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '@/lib/privacy';
 import { logApiError } from '@/lib/observability/logger';
 import type { UserRole } from '@/lib/types';
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const byAddress = body.mode === 'address';
+        const byInvite = body.mode === 'invite';
+        const inviteCode = cleanText(body.inviteCode, 16).toUpperCase();
+        let invite: Awaited<ReturnType<typeof resolveInvite>> = null;
         const accessCode = cleanText(body.accessCode, 40).toUpperCase();
         const departmentNumber = cleanText(body.departmentNumber, 40);
         const buildingName = cleanText(body.buildingName, 120);
@@ -52,7 +56,12 @@ export async function POST(req: NextRequest) {
         let community: { id: string; name: string; managed: boolean } | null = null;
         let role: UserRole = 'resident';
 
-        if (byAddress) {
+        if (byInvite) {
+            invite = await resolveInvite(inviteCode);
+            if (!invite) return NextResponse.json({ error: 'Esta invitación ya no es válida. Pide a tu vecino que te la mande de nuevo.', code: 'INVITE_INVALID' }, { status: 400 });
+            if (!departmentNumber) return NextResponse.json({ error: 'Ingresa tu departamento o unidad.' }, { status: 400 });
+            community = { id: invite.community.id, name: invite.community.name, managed: invite.community.managed };
+        } else if (byAddress) {
             const address = parseBuildingAddress(body.address);
             if (!address) return NextResponse.json({ error: 'Elige la dirección de tu edificio de la lista.' }, { status: 400 });
             // Antes de crear nada: sin departamento no se crea un edificio que quedaría huérfano.
@@ -90,7 +99,7 @@ export async function POST(req: NextRequest) {
         // administrado eso es un error (la administración asigna); en uno sin
         // administrar, el vecino entra igual pero sin unidad.
         let unitId: string | null = null;
-        if (role === 'resident') {
+        if (role === 'resident' && !(byInvite && community.managed)) {
             const candidate = await findOrCreateCommunityUnit(admin, community.id, departmentNumber);
             const { data: unit } = await admin.from('units').select('id, owner_id, resident_profile_id').eq('id', candidate).maybeSingle();
             const takenBySomeoneElse = [unit?.owner_id, unit?.resident_profile_id].some(id => id && id !== user.id);
@@ -123,7 +132,8 @@ export async function POST(req: NextRequest) {
             department_number: role === 'resident' ? departmentNumber : null,
             unit_id: unitId,
             // Con código de un edificio administrado queda validado; por dirección, no.
-            residence_verified: community.managed && !byAddress,
+            residence_verified: community.managed && !byAddress && !byInvite,
+            invited_by: invite?.inviterId ?? null,
             whatsapp_enabled: body.whatsappOptIn === true,
         }).eq('id', user.id).is('community_id', null).select('id').maybeSingle();
         if (profileError) {
@@ -140,6 +150,7 @@ export async function POST(req: NextRequest) {
             await admin.from('units').update({ owner_id: user.id }).eq('id', unitId).is('owner_id', null);
         }
         if (createdCommunityId) await admin.from('communities').update({ created_by_resident: user.id }).eq('id', createdCommunityId);
+        if (invite) await recordInviteUse(invite.code, invite.uses).catch(() => undefined);
         if (!community.managed) await noteResidentThreshold(community.id, community.name).catch(() => undefined);
 
         return NextResponse.json({ ok: true, role, communityManaged: community.managed, communityCreated: Boolean(createdCommunityId) });
