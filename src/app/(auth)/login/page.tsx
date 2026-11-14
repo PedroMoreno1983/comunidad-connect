@@ -9,6 +9,7 @@ import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import { AuthProvidersService, PasskeyService } from "@/lib/api";
+import { AppleIcon, GoogleIcon } from "@/components/auth/ProviderIcons";
 import { useAuth } from "@/lib/authContext";
 import { postLoginPath } from "@/lib/roleAccess";
 import { isNativeApp } from "@/lib/native/biometricBridge";
@@ -513,7 +514,7 @@ function LoginForm() {
                                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold transition-colors hover:bg-paper-warm disabled:cursor-not-allowed disabled:opacity-55"
                                 style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}
                             >
-                                {googleLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                                {googleLoading ? <Loader2 size={14} className="animate-spin" /> : <GoogleIcon size={14} />}
                                 Google
                             </button>
                             {["Apple", "Clave Única"].map((provider) => (
@@ -522,9 +523,10 @@ function LoginForm() {
                                     type="button"
                                     disabled
                                     title={`${provider} todavía no está disponible`}
-                                    className="cursor-not-allowed rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold opacity-55"
-                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                    className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold opacity-55"
+                                    style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}
                                 >
+                                    {provider === "Apple" ? <AppleIcon size={14} /> : null}
                                     {provider}
                                 </button>
                             ))}

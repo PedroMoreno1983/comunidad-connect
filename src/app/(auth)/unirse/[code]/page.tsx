@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { AuthProvidersService, NeighborInviteService } from "@/lib/api";
+import { GoogleIcon } from "@/components/auth/ProviderIcons";
 import type { NeighborInvitePreview } from "@/lib/types";
 
 /**
@@ -61,7 +62,7 @@ export default function JoinByInvitePage({ params }: { params: Promise<{ code: s
                                 <button type="button" onClick={() => void continueWithGoogle()} disabled={googleLoading}
                                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
                                     style={{ background: "var(--cc-ink)", color: "var(--cc-paper)" }}>
-                                    {googleLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                                    {googleLoading ? <Loader2 size={16} className="animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full bg-white"><GoogleIcon size={13} /></span>}
                                     Continuar con Google
                                 </button>
                             )}

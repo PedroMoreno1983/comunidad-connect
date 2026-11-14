@@ -9,6 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { isPlatformCreatorEmail } from "@/lib/platformAccess";
 import { NavigationService } from "@/lib/api";
+import { neighborModeGateFor } from "@/lib/neighborMode";
 import { clsx } from "clsx";
 import {
   Activity,
@@ -56,6 +57,7 @@ type ActiveSidebarUser = {
   photo?: string | null;
   avatarUrl?: string | null;
   features?: Record<string, boolean>;
+  communityManaged?: boolean;
 };
 
 const ACCENT: Record<Role, string> = {
@@ -290,6 +292,10 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     if (!link.roles.includes(activeUser.role || "resident")) return false;
     if (link.creatorOnly && !isPlatformCreator) return false;
     if (link.href === "/showcase") return false;
+    // Modo vecino (edificio sin administración en Convive): las pantallas que
+    // dependen de la administración no aparecen en el menú. Si alguien llega
+    // por un enlace, el layout muestra cómo invitar a la administración.
+    if (activeUser.communityManaged === false && neighborModeGateFor(link.href)) return false;
     if (link.capability && !capabilities[link.capability]) return false;
     if (link.requiresMarketplaceListing && !residentNavigation.hasMarketplaceListings) return false;
     if (link.requiresServiceProvider && !residentNavigation.isServiceProvider) return false;

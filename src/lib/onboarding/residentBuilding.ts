@@ -47,7 +47,7 @@ export function parseBuildingAddress(value: unknown): BuildingAddressInput | nul
     const placeId = typeof row.placeId === 'string' ? row.placeId.trim().slice(0, 180) : '';
     const latitude = Number(row.latitude);
     const longitude = Number(row.longitude);
-    const source = row.source === 'mapbox' || row.source === 'nominatim' ? row.source : null;
+    const source = row.source === 'mapbox' || row.source === 'photon' || row.source === 'nominatim' ? row.source : null;
     if (label.length < 5 || !placeId || !source) return null;
     // Chile continental e insular (con margen): una coordenada fuera es un error.
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -56 || latitude > -17 || longitude < -110 || longitude > -66) return null;
