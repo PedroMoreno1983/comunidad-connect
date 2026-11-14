@@ -8,11 +8,10 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, ScanFace, Sparkles } from 
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-import { PasskeyService } from "@/lib/api";
+import { AuthProvidersService, PasskeyService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { postLoginPath } from "@/lib/roleAccess";
 import { isNativeApp } from "@/lib/native/biometricBridge";
-import { supabase } from "@/lib/supabase";
 
 const subscribeToBrowserCapabilities = () => () => {};
 // Face ID / huella / PIN solo se ofrece en celulares y tablets (no en PC de escritorio).
@@ -91,23 +90,13 @@ function LoginForm() {
     // (Authentication > Providers): así nadie choca con un error.
     const [googleEnabled, setGoogleEnabled] = useState(false);
     useEffect(() => {
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (!url || !key) return;
         let cancelled = false;
-        fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } })
-            .then(response => response.ok ? response.json() as Promise<{ external?: Record<string, boolean> }> : null)
-            .then(settings => { if (!cancelled) setGoogleEnabled(settings?.external?.google === true); })
-            .catch(() => undefined);
+        void AuthProvidersService.settings().then(settings => { if (!cancelled) setGoogleEnabled(settings.google); });
         return () => { cancelled = true; };
     }, []);
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true);
-        const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-        });
+        const { error } = await AuthProvidersService.signInWithGoogle(nextParam);
         if (error) {
             setGoogleLoading(false);
             toast({ title: "No se pudo entrar con Google", description: "Intenta de nuevo o entra con tu correo.", variant: "destructive" });

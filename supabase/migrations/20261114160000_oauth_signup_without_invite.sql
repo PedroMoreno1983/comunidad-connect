@@ -119,4 +119,10 @@ BEGIN
 END;
 $function$;
 
+-- Un perfil sin edificio (community_id NULL) no pasa profiles_select_community_only
+-- (NULL = NULL no es verdadero): sin esto la persona no se ve a sí misma y el
+-- proxy no la puede llevar a /bienvenida. Cada uno lee su propio perfil.
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
+CREATE POLICY "profiles_select_own" ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid());
+
 COMMIT;

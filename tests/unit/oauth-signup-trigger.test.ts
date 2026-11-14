@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
-import { createParkingDb } from '../fixtures/parkingChargesDb';
+import { asUser, createParkingDb } from '../fixtures/parkingChargesDb';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
 
@@ -19,6 +19,9 @@ describe('handle_new_user', () => {
           ALTER TABLE auth.users ADD COLUMN email TEXT, ADD COLUMN raw_user_meta_data JSONB DEFAULT '{}'::jsonb, ADD COLUMN raw_app_meta_data JSONB DEFAULT '{}'::jsonb;
           ALTER TABLE public.communities ADD COLUMN resident_code TEXT, ADD COLUMN concierge_code TEXT, ADD COLUMN admin_code TEXT;
           ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT, ADD COLUMN IF NOT EXISTS email TEXT, ADD COLUMN IF NOT EXISTS department_number TEXT;
+          ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+          CREATE POLICY "profiles_select_community_only" ON public.profiles FOR SELECT USING (community_id = public.get_my_community_id());
+          GRANT SELECT ON public.profiles TO authenticated;
           ALTER TABLE public.units ADD COLUMN IF NOT EXISTS tower TEXT, ADD COLUMN IF NOT EXISTS floor INTEGER, ADD COLUMN IF NOT EXISTS type TEXT, ADD COLUMN IF NOT EXISTS resident_profile_id UUID;
         `);
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261114160000_oauth_signup_without_invite.sql'), 'utf8'));
@@ -30,6 +33,9 @@ describe('handle_new_user', () => {
         await db.query(`INSERT INTO auth.users (id, email, raw_user_meta_data, raw_app_meta_data) VALUES ($1, 'ana@gmail.com', '{"full_name":"Ana Pérez"}', '{"provider":"google"}')`, ['22222222-2222-4222-8222-222222222222']);
         const { rows } = await db.query<{ role: string; community_id: string | null; name: string }>('SELECT role, community_id, name FROM public.profiles WHERE id = $1', ['22222222-2222-4222-8222-222222222222']);
         expect(rows[0]).toEqual({ role: 'resident', community_id: null, name: 'Ana Pérez' });
+        // Sin edificio igual se ve a sí misma (si no, el proxy no la manda a /bienvenida).
+        const own = await asUser(db, '22222222-2222-4222-8222-222222222222', () => db.query('SELECT id FROM public.profiles WHERE id = $1', ['22222222-2222-4222-8222-222222222222']));
+        expect(own.rows).toHaveLength(1);
     });
 
     it('con correo y sin código: se rechaza, como antes', async () => {

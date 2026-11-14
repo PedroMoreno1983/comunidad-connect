@@ -6,8 +6,8 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { BuildingAddressPicker } from "@/components/auth/BuildingAddressPicker";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
-import type { GeocodeSuggestion, SignupResponse } from "@/lib/types";
+import { AuthProvidersService } from "@/lib/api";
+import type { GeocodeSuggestion } from "@/lib/types";
 
 const inputClass = "w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all";
 
@@ -32,7 +32,7 @@ export default function WelcomePage() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        void supabase.auth.getUser().then((result: { data: { user: { email?: string } | null } }) => setEmail(result.data.user?.email || ""));
+        void AuthProvidersService.currentEmail().then(setEmail);
     }, []);
 
     const submit = async (event: React.FormEvent) => {
@@ -40,15 +40,10 @@ export default function WelcomePage() {
         setMessage("");
         setLoading(true);
         try {
-            const response = await fetch("/api/auth/join-community", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    mode, accessCode, address, buildingName, departmentNumber, acceptTerms, acceptPrivacy, whatsappOptIn,
-                }),
+            const { ok, result } = await AuthProvidersService.joinCommunity({
+                mode, accessCode, address, buildingName, departmentNumber, acceptTerms, acceptPrivacy, whatsappOptIn,
             });
-            const result = await response.json().catch(() => ({})) as SignupResponse;
-            if (!response.ok) {
+            if (!ok) {
                 if (result.code === "BUILDING_NAME_REQUIRED") setNeedsBuildingName(true);
                 setMessage(result.error || "No se pudo completar.");
                 return;
@@ -110,7 +105,7 @@ export default function WelcomePage() {
 
                 <label className="block space-y-1.5">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Departamento / unidad</span>
-                    <input value={departmentNumber} onChange={event => setDepartmentNumber(event.target.value)} placeholder="Ej: 501, 3B, 1201"
+                    <input value={departmentNumber} onChange={event => setDepartmentNumber(event.target.value)} placeholder="Ej: 501, 3B, 1201" required
                         className={inputClass} style={{ borderColor: "var(--cc-line-strong)" }} />
                 </label>
 
