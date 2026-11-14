@@ -59,6 +59,72 @@ async function geocodeWithMapbox(query: string): Promise<GeocodeSuggestion[] | n
         .filter((item): item is GeocodeSuggestion => Boolean(item));
 }
 
+/** Chile continental e insular (minLon, minLat, maxLon, maxLat). */
+const CHILE_BBOX = '-75.8,-56.0,-66.4,-17.4';
+
+type PhotonFeature = {
+    geometry?: { coordinates?: [number, number] };
+    properties?: {
+        osm_type?: string;
+        osm_id?: number;
+        name?: string;
+        street?: string;
+        housenumber?: string;
+        district?: string;
+        city?: string;
+        state?: string;
+        countrycode?: string;
+    };
+};
+
+/** "Avenida Providencia 1234, Providencia, Región Metropolitana de Santiago". */
+function photonLabel(properties: NonNullable<PhotonFeature['properties']>): string {
+    const street = properties.street
+        ? [properties.street, properties.housenumber].filter(Boolean).join(' ')
+        : properties.name || '';
+    const comuna = properties.district || properties.city;
+    return [street, comuna, properties.state]
+        .filter((part, index, parts): part is string => Boolean(part) && parts.indexOf(part) === index)
+        .join(', ');
+}
+
+/**
+ * Photon (OpenStreetMap, komoot): hecho para buscar mientras se escribe. Es
+ * el que autocompleta cuando no hay token de Mapbox; Nominatim prohíbe ese uso.
+ */
+async function geocodeWithPhoton(query: string): Promise<GeocodeSuggestion[]> {
+    const params = new URLSearchParams({ q: query, limit: '6', lang: 'default', bbox: CHILE_BBOX });
+    const response = await fetch(`https://photon.komoot.io/api/?${params.toString()}`, {
+        headers: {
+            'Accept': 'application/json',
+            'User-Agent': process.env.GEOCODING_USER_AGENT || 'ConviveConnect/1.0 (https://conviveconnect.com)',
+        },
+        next: { revalidate: 60 * 60 * 24 },
+    });
+    if (!response.ok) return [];
+    const data = await response.json() as { features?: PhotonFeature[] };
+    const seen = new Set<string>();
+    return (data.features || [])
+        .map((feature): GeocodeSuggestion | null => {
+            const properties = feature.properties;
+            const [longitude, latitude] = feature.geometry?.coordinates || [];
+            if (!properties || properties.countrycode !== 'CL') return null;
+            if (typeof latitude !== 'number' || typeof longitude !== 'number' || !validCoordinate(latitude, longitude)) return null;
+            const label = photonLabel(properties);
+            if (!label || seen.has(label)) return null;
+            seen.add(label);
+            return {
+                label,
+                latitude,
+                longitude,
+                placeId: properties.osm_id ? `${properties.osm_type || ''}${properties.osm_id}` : label,
+                source: 'photon',
+            };
+        })
+        .filter((item): item is GeocodeSuggestion => Boolean(item))
+        .slice(0, 5);
+}
+
 async function geocodeWithNominatim(query: string): Promise<GeocodeSuggestion[]> {
     const params = new URLSearchParams({
         q: query,
@@ -111,9 +177,9 @@ export async function GET(request: NextRequest) {
 
     try {
         const mapbox = await geocodeWithMapbox(query);
-        const suggestions = mapbox && mapbox.length > 0
-            ? mapbox
-            : await geocodeWithNominatim(query);
+        let suggestions = mapbox && mapbox.length > 0 ? mapbox : [];
+        if (!suggestions.length) suggestions = await geocodeWithPhoton(query).catch(() => []);
+        if (!suggestions.length) suggestions = await geocodeWithNominatim(query);
 
         const payload: GeocodeSuggestionsResponse = { suggestions };
         return NextResponse.json(payload);

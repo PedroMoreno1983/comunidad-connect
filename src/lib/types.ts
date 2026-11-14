@@ -2916,8 +2916,10 @@ export interface OnboardingSyncResult {
 
 // ─── Geocodificación de la dirección del condominio ─────────────────────────
 
+/** Geocodificador que entregó la dirección (columna communities.address_geocoding_source). */
+export type GeocodeSource = 'mapbox' | 'photon' | 'nominatim';
 /** Dirección elegida por un residente que se registra sin código (una GeocodeSuggestion validada). */
-export type BuildingAddressInput = { label: string; placeId: string; latitude: number; longitude: number; source: 'mapbox' | 'nominatim' };
+export type BuildingAddressInput = { label: string; placeId: string; latitude: number; longitude: number; source: GeocodeSource };
 
 /** El edificio encontrado para esa dirección. `managed` false: comunidad sin administrar. */
 export type ResidentBuildingMatch = { id: string; name: string; managed: boolean; residentCode: string };
@@ -2927,8 +2929,8 @@ export interface GeocodeSuggestion {
     latitude: number;
     longitude: number;
     placeId: string;
-    /** La página lo declaraba como `string`; el endpoint solo emite estos dos. */
-    source: 'mapbox' | 'nominatim';
+    /** Geocodificador que respondió en /api/geocode/address. */
+    source: GeocodeSource;
 }
 
 export interface GeocodeSuggestionsResponse {
