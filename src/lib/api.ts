@@ -22,4 +22,4 @@ export * from './api/storage';
 export * from './api/deals';
 export * from './api/providers';
 export * from './api/neighbor';
-export * from './api/authProviders';
+export * from './api/auth-providers';
