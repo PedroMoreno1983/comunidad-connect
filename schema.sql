@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   department_number TEXT,
   residence_verified BOOLEAN NOT NULL DEFAULT TRUE, -- false si entró sin código (comunidad sin administrar)
+  invited_by UUID, -- vecino que lo invitó por WhatsApp (/unirse)
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   whatsapp_enabled BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -6783,6 +6784,16 @@ CREATE TABLE IF NOT EXISTS public.service_provider_photos (
   url TEXT NOT NULL,
   caption TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Invitaciones entre vecinos por WhatsApp (/unirse/<código>): solo del servidor.
+CREATE TABLE IF NOT EXISTS public.neighbor_invites (
+  code TEXT PRIMARY KEY CHECK (code ~ '^[A-Z2-9]{8}$'),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  inviter_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  uses INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (community_id, inviter_id)
 );
 
 -- Documentos del maestro (antecedentes, cédula): solo del servidor.

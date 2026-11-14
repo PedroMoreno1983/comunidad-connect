@@ -9,6 +9,7 @@ import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '@/lib/privacy';
 import { findOrCreateCommunityUnit } from '@/lib/units/resolveCommunityUnit';
 import { createUnmanagedCommunity, findBuildingForAddress, parseBuildingAddress } from '@/lib/onboarding/residentBuilding';
 import { noteResidentThreshold } from '@/lib/onboarding/neighborBuildings';
+import { recordInviteUse, resolveInvite } from '@/lib/onboarding/neighborInvites';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
         // Entrada por residente: sin código, con la dirección del edificio
         // (docs/comercial/entrada-por-residente.md).
         const byAddress = body.signupMode === 'address';
+        // Invitación de un vecino (/unirse/<código>): el enlace ya trae el edificio.
+        const byInvite = body.signupMode === 'invite';
+        const inviteCode = cleanText(body.inviteCode, 16).toUpperCase();
         let accessCode = cleanText(body.accessCode, 40).toUpperCase();
         const departmentNumber = cleanText(body.departmentNumber, 40);
         const buildingName = cleanText(body.buildingName, 120);
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
         if (!fullName) return NextResponse.json({ error: 'Ingresa tu nombre.' }, { status: 400 });
         if (!isEmail(email)) return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
         if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
-        if (!byAddress && !/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
+        if (!byAddress && !byInvite && !/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
             return NextResponse.json({ error: 'Código de invitación inválido.' }, { status: 400 });
         }
 
@@ -69,6 +73,13 @@ export async function POST(req: NextRequest) {
 
         const admin = getSupabaseAdmin();
         let createdCommunity = false;
+        let invite: Awaited<ReturnType<typeof resolveInvite>> = null;
+        if (byInvite) {
+            invite = await resolveInvite(inviteCode);
+            if (!invite) return NextResponse.json({ error: 'Esta invitación ya no es válida. Pide a tu vecino que te la mande de nuevo.', code: 'INVITE_INVALID' }, { status: 400 });
+            if (!departmentNumber) return NextResponse.json({ error: 'Ingresa tu departamento o unidad.' }, { status: 400 });
+            accessCode = invite.community.residentCode.toUpperCase();
+        }
         if (byAddress) {
             const address = parseBuildingAddress(body.address);
             if (!address) return NextResponse.json({ error: 'Elige la dirección de tu edificio de la lista.' }, { status: 400 });
@@ -121,7 +132,7 @@ export async function POST(req: NextRequest) {
             user_metadata: {
                 name: fullName,
                 invite_code: accessCode,
-                department_number: resolvedRole === 'resident' ? departmentNumber : undefined,
+                department_number: resolvedRole === 'resident' && !(byInvite && community.managed !== false) ? departmentNumber : undefined,
             },
         });
         if (createError) {
@@ -137,7 +148,7 @@ export async function POST(req: NextRequest) {
         if (!userId) throw new Error('No se pudo crear el usuario.');
 
         let unitId: string | null = null;
-        if (resolvedRole === 'resident' && departmentNumber) {
+        if (resolvedRole === 'resident' && departmentNumber && !(byInvite && communityManaged)) {
             unitId = await findOrCreateCommunityUnit(admin, community.id, departmentNumber);
         }
 
@@ -151,7 +162,9 @@ export async function POST(req: NextRequest) {
             department_number: resolvedRole === 'resident' ? departmentNumber : null,
             unit_id: unitId,
             whatsapp_enabled: whatsappOptIn,
-            residence_verified: communityManaged,
+            // Por invitación de un vecino nunca queda validado: lo confirma la administración.
+            residence_verified: communityManaged && !byInvite,
+            invited_by: invite?.inviterId ?? null,
         }, { onConflict: 'id' });
         if (profileError) {
             await admin.auth.admin.deleteUser(userId);
@@ -160,6 +173,7 @@ export async function POST(req: NextRequest) {
         if (createdCommunity) {
             await admin.from('communities').update({ created_by_resident: userId }).eq('id', community.id);
         }
+        if (invite) await recordInviteUse(invite.code, invite.uses).catch(() => undefined);
         // Con 5 y 10 vecinos sin administración, el equipo comercial se entera.
         if (!communityManaged) {
             await noteResidentThreshold(community.id, String(community.name)).catch(error => logger.warn('auth.signup_threshold_note_failed', { error }));

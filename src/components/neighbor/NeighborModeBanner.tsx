@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle, ShieldAlert, Users } from "lucide-react";
 import { NeighborModeService } from "@/lib/api";
+import { InviteNeighborsButton } from "@/components/neighbor/InviteNeighborsButton";
 import { PUBLIC_SITE_URL } from "@/lib/config";
 import { adminInviteMessage } from "@/lib/neighborMode";
 import type { NeighborModeBannerProps, NeighborModeSummary } from "@/lib/types";
@@ -58,10 +59,14 @@ export function NeighborModeBanner({ pathname, buildingName }: NeighborModeBanne
                     </p>
                 </div>
             </div>
-            <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white" style={{ background: "var(--cc-sage)" }}>
-                <MessageCircle className="h-4 w-4" /> Invitar a mi administración
-            </a>
+            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                {/* Primero los vecinos: más vecinos es lo que convence a la administración. */}
+                <InviteNeighborsButton />
+                <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold underline" style={{ color: "var(--cc-copper)" }}>
+                    <MessageCircle className="h-3.5 w-3.5" /> Invitar a mi administración
+                </a>
+            </div>
         </div>
     );
 }

@@ -1567,12 +1567,23 @@ export interface NeighborModeGateProps {
   pendingValidation?: boolean;
 }
 
+/** El enlace personal de un residente para invitar vecinos por WhatsApp. */
+export type NeighborInviteShare = { code: string; url: string; message: string; whatsappUrl: string; buildingName: string };
+
+export interface InviteNeighborsButtonProps {
+  variant?: 'primary' | 'secondary';
+}
+
+/** Lo que ve quien abre un enlace de invitación (/unirse/<código>). */
+export type NeighborInvitePreview = { code: string; buildingName: string; inviterFirstName: string };
+
 /** Proveedores de inicio de sesión habilitados en Supabase Auth. */
 export type AuthProviderSettings = { google: boolean };
 
 /** Elegir edificio después de entrar con Google por primera vez. */
 export type JoinCommunityInput = {
-  mode: 'code' | 'address';
+  mode: 'code' | 'address' | 'invite';
+  inviteCode?: string;
   accessCode?: string;
   address?: GeocodeSuggestion | null;
   buildingName?: string;
@@ -1591,7 +1602,7 @@ export interface SignupResponse {
   ok?: boolean;
   role?: UserRole;
   /** BUILDING_MANAGED: el edificio ya contrató; BUILDING_NAME_REQUIRED: es el primero y falta el nombre. */
-  code?: 'BUILDING_MANAGED' | 'BUILDING_NAME_REQUIRED' | 'UNIT_TAKEN';
+  code?: 'BUILDING_MANAGED' | 'BUILDING_NAME_REQUIRED' | 'UNIT_TAKEN' | 'INVITE_INVALID';
   communityManaged?: boolean;
   communityCreated?: boolean;
   requiresEmailConfirmation?: boolean;

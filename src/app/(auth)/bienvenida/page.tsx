@@ -6,8 +6,8 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { BuildingAddressPicker } from "@/components/auth/BuildingAddressPicker";
 import { useToast } from "@/components/ui/Toast";
-import { AuthProvidersService } from "@/lib/api";
-import type { GeocodeSuggestion } from "@/lib/types";
+import { AuthProvidersService, NeighborInviteService } from "@/lib/api";
+import type { GeocodeSuggestion, NeighborInvitePreview } from "@/lib/types";
 
 const inputClass = "w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all";
 
@@ -19,7 +19,9 @@ const inputClass = "w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text
 export default function WelcomePage() {
     const { toast } = useToast();
     const [email, setEmail] = useState("");
-    const [mode, setMode] = useState<"code" | "address">("code");
+    const [mode, setMode] = useState<"code" | "address" | "invite">("code");
+    // /bienvenida?invitacion=<código>: vino por la invitación de un vecino (Google).
+    const [invite, setInvite] = useState<NeighborInvitePreview | null>(null);
     const [accessCode, setAccessCode] = useState("");
     const [address, setAddress] = useState<GeocodeSuggestion | null>(null);
     const [buildingName, setBuildingName] = useState("");
@@ -33,6 +35,14 @@ export default function WelcomePage() {
 
     useEffect(() => {
         void AuthProvidersService.currentEmail().then(setEmail);
+        const invitation = new URLSearchParams(window.location.search).get("invitacion");
+        if (invitation) {
+            void NeighborInviteService.preview(invitation).then(preview => {
+                if (!preview) return;
+                setInvite(preview);
+                setMode("invite");
+            });
+        }
     }, []);
 
     const submit = async (event: React.FormEvent) => {
@@ -42,7 +52,13 @@ export default function WelcomePage() {
         try {
             const { ok, result } = await AuthProvidersService.joinCommunity({
                 mode, accessCode, address, buildingName, departmentNumber, acceptTerms, acceptPrivacy, whatsappOptIn,
+                inviteCode: invite?.code,
             });
+            if (!ok && result.error === "Tu cuenta ya tiene un edificio.") {
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                window.location.assign("/home");
+                return;
+            }
             if (!ok) {
                 if (result.code === "BUILDING_NAME_REQUIRED") setNeedsBuildingName(true);
                 setMessage(result.error || "No se pudo completar.");
@@ -71,6 +87,13 @@ export default function WelcomePage() {
                     {email && <p className="mt-2 text-xs text-slate-600">Entraste como {email}.</p>}
                 </div>
 
+                {mode === "invite" && invite && (
+                    <p className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }}>
+                        Te sumas a <strong>{invite.buildingName}</strong> por invitación de {invite.inviterFirstName}.
+                    </p>
+                )}
+
+                {mode !== "invite" && (
                 <div className="grid grid-cols-2 gap-1 rounded-xl border p-1 text-xs font-semibold" style={{ borderColor: "var(--cc-line-strong)" }} role="tablist">
                     {([["code", "Tengo código"], ["address", "Mi edificio no usa Convive"]] as const).map(([value, label]) => (
                         <button key={value} type="button" role="tab" aria-selected={mode === value} onClick={() => { setMode(value); setMessage(""); }}
@@ -81,7 +104,9 @@ export default function WelcomePage() {
                     ))}
                 </div>
 
-                {mode === "code" ? (
+                )}
+
+                {mode === "invite" ? null : mode === "code" ? (
                     <label className="block space-y-1.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Código de invitación</span>
                         <input value={accessCode} onChange={event => setAccessCode(event.target.value.toUpperCase())} placeholder="INV-X93F" required

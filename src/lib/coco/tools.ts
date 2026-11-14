@@ -11,6 +11,7 @@ import { compareShoppingListForUser, supermarketListLink } from './shoppingTools
 import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
+import { getOrCreateInvite } from '@/lib/onboarding/neighborInvites';
 import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ALICUOTA_TOOL_DEFINITIONS, runCreateUnit, runDistributeEqually, runSetUnitAlicuota } from './alicuotaTools';
@@ -958,6 +959,11 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'get_neighbor_invite_link',
+        description: 'Entrega el enlace personal de la persona para invitar a sus vecinos a Convive, con el mensaje listo para WhatsApp. Úsalo cuando quiera invitar o sumar vecinos. Quien entra por el enlace queda como vecino por validar.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
         name: 'rate_provider',
         description: 'Publica la reseña de la persona sobre un maestro de su comunidad o de la Red Convive: nota de 1 a 5 y comentario. Si ya lo había valorado, la actualiza. Se marca "servicio verificado" si tuvo un servicio completado con él. Pide la nota y el comentario si faltan; no los inventes.',
         input_schema: {
@@ -1168,6 +1174,7 @@ const RESIDENT_TOOLS = new Set([
     // Perfil del maestro: valorar, y que el propio maestro (con cuenta) suba
     // fotos o documentos por el chat; el ejecutor comprueba que sea su perfil.
     'rate_provider', 'save_provider_attachment',
+    'get_neighbor_invite_link',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -2746,6 +2753,20 @@ export async function executeTool(
                     message: notifications.length > 0
                         ? `Se notificó a ${notifications.length} residente(s) de la unidad ${input.unit_id} para autorizar acceso urgente.`
                         : `No encontré residentes asociados a la unidad ${input.unit_id}; escalar a conserjería.`
+                };
+            }
+
+            case 'get_neighbor_invite_link': {
+                if (!userCtx.user_id) return forbidden('No pude identificarte.');
+                const invite = await getOrCreateInvite(userCtx.user_id);
+                if (!invite) return { error: 'Solo los residentes de un edificio pueden invitar vecinos.' };
+                return {
+                    url: invite.url,
+                    whatsapp_link: invite.whatsappUrl,
+                    message_to_share: invite.message,
+                    message: userCtx.channel === 'whatsapp'
+                        ? 'Reenvía message_to_share tal cual a tus vecinos: ya trae tu enlace personal.'
+                        : 'Entrega el enlace y el botón [Invitar por WhatsApp](whatsapp_link). Quien entra queda como vecino por validar.',
                 };
             }
 
