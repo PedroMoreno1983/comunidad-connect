@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -27,6 +27,10 @@ export default function SignUpPage() {
     const [accessCodeError, setAccessCodeError] = useState("");
     // Entrada por residente: sin código, con la dirección del edificio.
     const [signupMode, setSignupMode] = useState<"code" | "address">("code");
+    // /signup?modo=edificio abre directo en "Mi edificio no usa Convive" (enlace para volantes y QR).
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get("modo") === "edificio") setSignupMode("address");
+    }, []);
     const [buildingAddress, setBuildingAddress] = useState<GeocodeSuggestion | null>(null);
     const [buildingName, setBuildingName] = useState("");
     const [needsBuildingName, setNeedsBuildingName] = useState(false);

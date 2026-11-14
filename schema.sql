@@ -591,8 +591,16 @@ ON CONFLICT (id) DO NOTHING;
 -- 17. TRIGGER AUTOMÁTICO DE REGISTRO DE USUARIOS
 -- =====================================================================
 
+-- Cada uno lee su propio perfil (también sin edificio, community_id NULL).
+CREATE POLICY "profiles_select_own" ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid());
+
+-- Entrar con Google sin código: perfil sin edificio (elige en /bienvenida). Ver migración 20261114160000.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
 DECLARE
   v_community_id UUID;
   v_name TEXT;
@@ -603,35 +611,43 @@ DECLARE
   v_tower TEXT;
   v_floor INTEGER;
   v_numeric_part TEXT;
+  v_provider TEXT;
 BEGIN
-  -- Never trust role or community_id supplied by the browser. The invitation
-  -- code is the only source of truth and is resolved again inside PostgreSQL
-  -- for every auth user creation (fixed in migration 035; this master schema
-  -- previously reverted to the vulnerable client-trusting version).
   v_invite_code := UPPER(BTRIM(COALESCE(NEW.raw_user_meta_data->>'invite_code', '')));
-
-  SELECT c.id,
-         CASE
-           WHEN UPPER(c.resident_code) = v_invite_code THEN 'resident'
-           WHEN UPPER(c.concierge_code) = v_invite_code THEN 'concierge'
-           WHEN UPPER(c.admin_code) = v_invite_code THEN 'admin'
-         END
-    INTO v_community_id, v_role
-  FROM public.communities c
-  WHERE UPPER(c.resident_code) = v_invite_code
-     OR UPPER(c.concierge_code) = v_invite_code
-     OR UPPER(c.admin_code) = v_invite_code
-  LIMIT 1;
-
-  IF v_community_id IS NULL OR v_role IS NULL THEN
-    RAISE EXCEPTION 'A valid invitation code is required';
-  END IF;
+  v_provider := COALESCE(NEW.raw_app_meta_data->>'provider', 'email');
 
   v_name := COALESCE(
     NULLIF(NEW.raw_user_meta_data->>'full_name', ''),
     NULLIF(NEW.raw_user_meta_data->>'name', ''),
     NEW.email
   );
+
+  SELECT c.id,
+         CASE
+           WHEN c.resident_code = v_invite_code THEN 'resident'
+           WHEN c.concierge_code = v_invite_code THEN 'concierge'
+           WHEN c.admin_code = v_invite_code THEN 'admin'
+         END
+    INTO v_community_id, v_role
+  FROM public.communities c
+  WHERE v_invite_code <> ''
+    AND (c.resident_code = v_invite_code
+      OR c.concierge_code = v_invite_code
+      OR c.admin_code = v_invite_code)
+  LIMIT 1;
+
+  IF v_community_id IS NULL OR v_role IS NULL THEN
+    -- Google y otros proveedores OAuth: perfil sin comunidad; elige su
+    -- edificio en /bienvenida.
+    IF v_provider <> 'email' THEN
+      INSERT INTO public.profiles (id, name, full_name, email, role, community_id)
+      VALUES (NEW.id, v_name, v_name, NEW.email, 'resident', NULL)
+      ON CONFLICT (id) DO NOTHING;
+      RETURN NEW;
+    END IF;
+    RAISE EXCEPTION 'A valid invitation code is required';
+  END IF;
+
   v_department := NULLIF(BTRIM(COALESCE(
     NEW.raw_user_meta_data->>'department_number',
     NEW.raw_user_meta_data->>'unit_number',
@@ -681,7 +697,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$function$;
 
 -- Crear trigger de inserción en auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;

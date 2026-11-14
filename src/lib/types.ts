@@ -1567,6 +1567,21 @@ export interface NeighborModeGateProps {
   pendingValidation?: boolean;
 }
 
+/** Proveedores de inicio de sesión habilitados en Supabase Auth. */
+export type AuthProviderSettings = { google: boolean };
+
+/** Elegir edificio después de entrar con Google por primera vez. */
+export type JoinCommunityInput = {
+  mode: 'code' | 'address';
+  accessCode?: string;
+  address?: GeocodeSuggestion | null;
+  buildingName?: string;
+  departmentNumber: string;
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  whatsappOptIn: boolean;
+};
+
 export interface BuildingAddressPickerProps {
   value: GeocodeSuggestion | null;
   onChange: (value: GeocodeSuggestion | null) => void;
@@ -1576,7 +1591,7 @@ export interface SignupResponse {
   ok?: boolean;
   role?: UserRole;
   /** BUILDING_MANAGED: el edificio ya contrató; BUILDING_NAME_REQUIRED: es el primero y falta el nombre. */
-  code?: 'BUILDING_MANAGED' | 'BUILDING_NAME_REQUIRED';
+  code?: 'BUILDING_MANAGED' | 'BUILDING_NAME_REQUIRED' | 'UNIT_TAKEN';
   communityManaged?: boolean;
   communityCreated?: boolean;
   requiresEmailConfirmation?: boolean;
