@@ -30,6 +30,7 @@ const EXCLUDED = {
   "/admin-onboarding": "Alta de un edificio nuevo (antes de tener cuenta)",
   "/fiscalizador/[token]": "Portal de solo lectura por enlace firmado; no navegable",
   "/proveedor/[token]": "Portal del maestro externo por enlace personal; no navegable ni para residentes",
+  "/bienvenida": "Elegir edificio tras entrar con Google por primera vez; antes de tener comunidad, CoCo no existe",
   "/showcase": "Lienzo de diseño interno, oculto del menú",
   "/marketing/reels": "Herramienta interna del creador de la plataforma",
   "/superadmin": "Consola SaaS interna",

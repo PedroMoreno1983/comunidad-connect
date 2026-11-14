@@ -126,9 +126,14 @@ export async function proxy(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, community_id")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Entró con Google y todavía no eligió edificio: primero eso.
+  if (profile && !profile.community_id) {
+    return secureResponse(NextResponse.redirect(new URL("/bienvenida", req.url)), nonce);
+  }
 
   const role = typeof profile?.role === "string" ? profile.role : "resident";
 

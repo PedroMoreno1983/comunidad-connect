@@ -12,6 +12,7 @@ import { PasskeyService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { postLoginPath } from "@/lib/roleAccess";
 import { isNativeApp } from "@/lib/native/biometricBridge";
+import { supabase } from "@/lib/supabase";
 
 const subscribeToBrowserCapabilities = () => () => {};
 // Face ID / huella / PIN solo se ofrece en celulares y tablets (no en PC de escritorio).
@@ -82,6 +83,42 @@ function LoginForm() {
         router.replace(destination);
         router.refresh();
     };
+
+    // Google: vuelve por /auth/callback; si la persona es nueva, el proxy la
+    // lleva a /bienvenida para elegir su edificio.
+    const [googleLoading, setGoogleLoading] = useState(false);
+    // El botón se activa solo si Google está habilitado en Supabase Auth
+    // (Authentication > Providers): así nadie choca con un error.
+    const [googleEnabled, setGoogleEnabled] = useState(false);
+    useEffect(() => {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!url || !key) return;
+        let cancelled = false;
+        fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } })
+            .then(response => response.ok ? response.json() as Promise<{ external?: Record<string, boolean> }> : null)
+            .then(settings => { if (!cancelled) setGoogleEnabled(settings?.external?.google === true); })
+            .catch(() => undefined);
+        return () => { cancelled = true; };
+    }, []);
+    const handleGoogleSignIn = async () => {
+        setGoogleLoading(true);
+        const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+        });
+        if (error) {
+            setGoogleLoading(false);
+            toast({ title: "No se pudo entrar con Google", description: "Intenta de nuevo o entra con tu correo.", variant: "destructive" });
+        }
+    };
+
+    useEffect(() => {
+        if (searchParams.get("oauth") === "error") {
+            toast({ title: "No se pudo entrar con Google", description: "Intenta de nuevo o entra con tu correo.", variant: "destructive" });
+        }
+    }, [searchParams, toast]);
 
     const handlePasskeySignIn = async () => {
         // Si el usuario ya escribió su correo y contraseña y toca el botón de Face ID,
@@ -478,12 +515,24 @@ function LoginForm() {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2">
-                            {["Google", "Apple", "Clave Única"].map((provider) => (
+                            {/* Google bloquea su inicio de sesión dentro de vistas web de apps: en la app nativa queda desactivado. */}
+                            <button
+                                type="button"
+                                onClick={() => { void handleGoogleSignIn(); }}
+                                disabled={googleLoading || !googleEnabled || isNativeApp()}
+                                title={googleEnabled ? "Entrar con tu cuenta de Google" : "Google todavía no está disponible"}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold transition-colors hover:bg-paper-warm disabled:cursor-not-allowed disabled:opacity-55"
+                                style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}
+                            >
+                                {googleLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                                Google
+                            </button>
+                            {["Apple", "Clave Única"].map((provider) => (
                                 <button
                                     key={provider}
                                     type="button"
                                     disabled
-                                    title={`${provider} se activa por contrato del condominio`}
+                                    title={`${provider} todavía no está disponible`}
                                     className="cursor-not-allowed rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold opacity-55"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 >
@@ -498,6 +547,9 @@ function LoginForm() {
                             </Link>
                             <Link href="/signup" className="text-center text-xs font-semibold text-slate-500 hover:text-slate-700">
                                 ¿Tienes un código de invitación? <span className="text-copper underline">Crear cuenta</span>
+                            </Link>
+                            <Link href="/signup?modo=edificio" className="text-center text-xs font-semibold text-slate-500 hover:text-slate-700">
+                                ¿Tu edificio no usa Convive? <span className="text-copper underline">Súmate con tus vecinos</span>
                             </Link>
                             <Link href="/admin-onboarding" className="text-center text-xs font-semibold text-slate-500 hover:text-slate-700">
                                 ¿Eres administrador? <span className="text-copper underline">Registrar edificio</span>
