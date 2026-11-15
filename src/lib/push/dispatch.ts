@@ -24,28 +24,42 @@ export async function dispatchNotificationPush(admin: SupabaseClient, id: string
         .select('id, user_id, title, body, link, created_at')
         .maybeSingle();
     if (error) throw error;
-    if (!claimed) return { status: 'ya enviado o inexistente', sent: 0, invalidTokens: [] };
-    if (!isFreshEnough(String(claimed.created_at))) return { status: 'aviso antiguo', sent: 0, invalidTokens: [] };
+    if (!claimed) return { status: 'ya enviado o inexistente', sent: 0, failed: 0, invalidTokens: [] };
+    if (!isFreshEnough(String(claimed.created_at))) return { status: 'aviso antiguo', sent: 0, failed: 0, invalidTokens: [] };
 
-    const { data: devices, error: devicesError } = await admin.from('push_devices')
-        .select('token')
-        .eq('user_id', claimed.user_id);
-    if (devicesError) throw devicesError;
-    const tokens = (devices ?? []).map(row => String(row.token));
+    const release = () => admin.from('notifications').update({ push_sent_at: null }).eq('id', claimed.id);
 
-    const result = await sendPush(tokens, {
-        notificationId: String(claimed.id),
-        title: String(claimed.title ?? 'Convive Connect'),
-        body: String(claimed.body ?? ''),
-        link: pushLinkFor(claimed.link),
-    });
+    let result: PushSendResult;
+    try {
+        const { data: devices, error: devicesError } = await admin.from('push_devices')
+            .select('token')
+            .eq('user_id', claimed.user_id);
+        if (devicesError) throw devicesError;
+        const tokens = (devices ?? []).map(row => String(row.token));
 
-    if (result.skipped) {
-        // Sin credencial de Firebase: se libera para no marcar como enviado algo que no salió.
-        await admin.from('notifications').update({ push_sent_at: null }).eq('id', claimed.id);
+        result = await sendPush(tokens, {
+            notificationId: String(claimed.id),
+            title: String(claimed.title ?? 'Convive Connect'),
+            body: String(claimed.body ?? ''),
+            link: pushLinkFor(claimed.link),
+        });
+    } catch (sendError) {
+        // Falló la consulta, el OAuth de Google o la red: se libera para que un reintento lo envíe.
+        await release();
+        throw sendError;
     }
+
     if (result.invalidTokens.length) {
         await admin.from('push_devices').delete().in('token', result.invalidTokens);
     }
-    return { status: result.skipped ? 'sin credencial' : 'enviado', ...result };
+    if (shouldReleaseClaim(result)) {
+        await release();
+        return { status: result.skipped ? 'sin credencial' : 'falló, se puede reintentar', ...result };
+    }
+    return { status: 'enviado', ...result };
+}
+
+/** Sin credencial, o ningún teléfono lo recibió por un error pasajero: el aviso queda sin enviar. */
+export function shouldReleaseClaim(result: PushSendResult): boolean {
+    return Boolean(result.skipped) || (result.sent === 0 && result.failed > 0);
 }

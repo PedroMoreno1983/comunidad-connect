@@ -81,12 +81,13 @@ export function fcmMessageBody(token: string, message: PushMessage) {
 /** Envía a cada token. Devuelve cuáles ya no sirven (app desinstalada) para borrarlos. */
 export async function sendPush(tokens: string[], message: PushMessage): Promise<PushSendResult> {
     const account = readServiceAccount();
-    if (!account) return { sent: 0, invalidTokens: [], skipped: 'sin FIREBASE_SERVICE_ACCOUNT' };
-    if (!tokens.length) return { sent: 0, invalidTokens: [] };
+    if (!account) return { sent: 0, failed: 0, invalidTokens: [], skipped: 'sin FIREBASE_SERVICE_ACCOUNT' };
+    if (!tokens.length) return { sent: 0, failed: 0, invalidTokens: [] };
 
     const bearer = await accessToken(account);
     const url = `https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`;
     let sent = 0;
+    let failed = 0;
     const invalidTokens: string[] = [];
 
     await Promise.all(tokens.map(async token => {
@@ -102,7 +103,8 @@ export async function sendPush(tokens: string[], message: PushMessage): Promise<
         // 404 UNREGISTERED o 400 INVALID_ARGUMENT sobre el token: el teléfono ya no lo usa.
         const text = await response.text().catch(() => '');
         if (response.status === 404 || /UNREGISTERED|registration token/i.test(text)) invalidTokens.push(token);
-    }));
+        else failed += 1; // 429/5xx u otro error pasajero: se puede reintentar.
+    }).map(p => p.catch(() => { failed += 1; })));
 
-    return { sent, invalidTokens };
+    return { sent, failed, invalidTokens };
 }

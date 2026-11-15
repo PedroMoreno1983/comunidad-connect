@@ -33,8 +33,10 @@ function rememberedToken(): string | null {
  */
 export async function startNativePush(navigate: (path: string) => void): Promise<() => void> {
     if (!isNativeApp()) return () => {};
+    // Solo Android por ahora: en iOS el plugin entrega un token de APNs (no de FCM)
+    // y falta la capacidad Push + el puente de Firebase Messaging en el proyecto Xcode.
     const platform = nativePlatform();
-    if (platform === 'web') return () => {};
+    if (platform !== 'android') return () => {};
 
     const { PushNotifications } = await import('@capacitor/push-notifications');
 
@@ -56,23 +58,30 @@ export async function startNativePush(navigate: (path: string) => void): Promise
     }
     if (permission.receive !== 'granted') return stop;
 
-    if (platform === 'android') {
-        await PushNotifications.createChannel({
-            id: 'avisos',
-            name: 'Avisos del edificio',
-            description: 'Pagos, reservas, encomiendas y comunicados',
-            importance: 4,
-            visibility: 1,
-        }).catch(() => {});
-    }
+    // Privado (0): en la pantalla bloqueada no se ve el contenido (montos, deudas).
+    await PushNotifications.createChannel({
+        id: 'avisos',
+        name: 'Avisos del edificio',
+        description: 'Pagos, reservas, encomiendas y comunicados',
+        importance: 4,
+        visibility: 0,
+    }).catch(() => {});
     await PushNotifications.register();
     return stop;
 }
 
 /** Al cerrar sesión: el teléfono deja de recibir los avisos de esa cuenta. */
 export async function forgetNativePushDevice(): Promise<void> {
+    if (!isNativeApp()) return;
     const token = rememberedToken();
-    if (!isNativeApp() || !token) return;
-    await PushService.unregisterDevice(token).catch(() => {});
-    rememberToken(null);
+    if (token) await PushService.unregisterDevice(token).catch(() => {});
+    // Además se anula el token en el propio teléfono: aunque el DELETE falle (sin
+    // red), FCM lo rechaza desde ahora y el servidor borra la fila en el próximo envío.
+    try {
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+        await PushNotifications.unregister();
+        rememberToken(null);
+    } catch {
+        // Si tampoco se pudo anular, se guarda el token para reintentar en el próximo cierre.
+    }
 }

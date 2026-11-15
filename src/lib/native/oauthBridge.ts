@@ -36,6 +36,25 @@ export async function openInSystemBrowser(url: string): Promise<void> {
     await Browser.open({ url, presentationStyle: 'popover' });
 }
 
+const HANDLED_KEY = 'convive.oauth.handled';
+
+function wasHandled(url: string): boolean {
+    try {
+        return (JSON.parse(localStorage.getItem(HANDLED_KEY) ?? '[]') as string[]).includes(url);
+    } catch {
+        return false;
+    }
+}
+
+function markHandled(url: string) {
+    try {
+        const list = JSON.parse(localStorage.getItem(HANDLED_KEY) ?? '[]') as string[];
+        localStorage.setItem(HANDLED_KEY, JSON.stringify([url, ...list.filter(item => item !== url)].slice(0, 5)));
+    } catch {
+        // Sin almacenamiento no hay cómo recordarlo; el canje repetido falla y lleva a /login.
+    }
+}
+
 /**
  * Escucha la vuelta desde el navegador (también si la app se abrió por el
  * enlace) y devuelve cómo dejar de escuchar.
@@ -47,7 +66,11 @@ export async function listenNativeOAuthReturn(navigate: (path: string) => void):
 
     const handle = (url: string | undefined) => {
         const path = url ? webCallbackPathFor(url) : null;
-        if (!path) return;
+        if (!path || !url) return;
+        // En Android getLaunchUrl() no consume el intent: tras navegar, la vista
+        // web se recarga y lo devolvería otra vez con el mismo código (de un uso).
+        if (wasHandled(url)) return;
+        markHandled(url);
         void Browser.close().catch(() => undefined);
         navigate(path);
     };

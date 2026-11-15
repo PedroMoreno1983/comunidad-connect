@@ -4164,6 +4164,8 @@ export interface PushMessage {
 
 export interface PushSendResult {
   sent: number;
+  /** Envíos que fallaron por algo pasajero (429/5xx, red). */
+  failed: number;
   invalidTokens: string[];
   skipped?: string;
 }

@@ -69,12 +69,14 @@ Google no permite iniciar sesión dentro de la vista web de una app. En la app n
 Todo aviso nuevo en `notifications` (pagos, reservas, encomiendas, CoCo…) sale también como push al teléfono de la persona, sin tocar el código que crea los avisos:
 
 1. Al iniciar sesión en la app, `NativePushRegistration` pide permiso, registra el token de FCM del teléfono en `push_devices` (`/api/push/devices`) y lo suelta al cerrar sesión.
-2. El trigger `notifications_dispatch_push` (pg_net) llama a `/api/push/dispatch` con el id del aviso, solo si la persona tiene un teléfono registrado.
-3. El endpoint relee el aviso, lo marca con `push_sent_at` (una sola vez, solo si tiene menos de 10 minutos) y lo envía por FCM. Los tokens que FCM rechaza se borran.
+2. El trigger `notifications_dispatch_push` (pg_net) llama a `/api/push/dispatch` con el id del aviso y la cabecera `x-push-secret`, solo si la persona tiene un teléfono registrado.
+3. El endpoint valida el secreto, relee el aviso, lo marca con `push_sent_at` (una sola vez, solo si tiene menos de 10 minutos) y lo envía por FCM. Si nada salió por un error pasajero, libera la marca. Los tokens que FCM rechaza se borran.
+
+La notificación usa visibilidad privada: en la pantalla bloqueada no se ve el contenido (montos, deudas). Por ahora solo Android: iOS necesita la capacidad Push en Xcode y el puente de Firebase Messaging.
 4. Tocar la notificación abre la ruta del aviso (`link`) o `/notifications`.
 
 **Requisitos (una vez):**
 
 - Proyecto en [Firebase](https://console.firebase.google.com) con una app Android `com.conviveconnect.app`. Su `google-services.json` va en `android/app/` **antes de compilar** (no es secreto: se puede versionar): sin él la app no puede registrarse para push.
 - En Vercel, `FIREBASE_SERVICE_ACCOUNT` con el JSON de la cuenta de servicio (Firebase → Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada), en una sola línea. Sin esa variable el servidor no envía nada y el aviso queda solo dentro de la app.
-- iOS necesita además una llave APNs cargada en Firebase.
+- Secreto del despacho: el mismo valor aleatorio en Vercel (`PUSH_DISPATCH_SECRET`) y en Supabase Vault con el nombre `push_dispatch_secret` (`select vault.create_secret('<valor>', 'push_dispatch_secret');`). Sin ambos, no sale ningún push.

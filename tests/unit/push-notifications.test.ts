@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pushLinkFor } from '@/lib/push/links';
 import { fcmMessageBody, readServiceAccount } from '@/lib/push/fcm';
-import { isFreshEnough, PUSH_MAX_AGE_MS } from '@/lib/push/dispatch';
+import { isFreshEnough, PUSH_MAX_AGE_MS, shouldReleaseClaim } from '@/lib/push/dispatch';
 
 describe('notificaciones push', () => {
   it('solo deja abrir rutas internas al tocar el aviso', () => {
@@ -30,6 +30,13 @@ describe('notificaciones push', () => {
     expect(readServiceAccount(undefined)).toBeNull();
     expect(readServiceAccount('no json')).toBeNull();
     expect(readServiceAccount(JSON.stringify({ project_id: 'p' }))).toBeNull();
+  });
+
+  it('libera el aviso si no salió por un error pasajero o falta la credencial', () => {
+    expect(shouldReleaseClaim({ sent: 0, failed: 1, invalidTokens: [] })).toBe(true);
+    expect(shouldReleaseClaim({ sent: 0, failed: 0, invalidTokens: [], skipped: 'sin credencial' })).toBe(true);
+    expect(shouldReleaseClaim({ sent: 1, failed: 1, invalidTokens: [] })).toBe(false);
+    expect(shouldReleaseClaim({ sent: 0, failed: 0, invalidTokens: ['x'] })).toBe(false);
   });
 
   it('no envía avisos viejos', () => {
