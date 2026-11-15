@@ -12,7 +12,15 @@
 -- ============================================================
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS pg_net;
+-- pg_net existe en Supabase; en la base de pruebas (PGlite) no, y ahí el
+-- trigger simplemente no envía (el EXCEPTION de abajo lo absorbe).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_net') THEN
+    CREATE EXTENSION IF NOT EXISTS pg_net;
+  END IF;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS public.push_devices (
   token TEXT PRIMARY KEY,
