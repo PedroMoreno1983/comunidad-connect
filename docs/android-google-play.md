@@ -6,7 +6,7 @@ La app de Android es Capacitor: abre `https://conviveconnect.com` dentro de una 
 |---|---|
 | ID (permanente) | `com.conviveconnect.app` |
 | Nombre | Convive Connect |
-| Versión | `versionName 1.0.0`, `versionCode 1` (en `android/app/build.gradle`) |
+| Versión | `versionName 1.1.0`, `versionCode 2` (en `android/app/build.gradle`) |
 | SDK | min 24, target 36 |
 | Llave de subida | `~/.android-keys/convive-upload.jks` (alias `upload`) |
 | SHA-256 de la llave de subida | `54:06:DA:F8:AA:83:7D:2E:27:78:60:61:A5:55:35:BE:17:E1:3E:3C:7A:20:45:CA:64:CD:60:17:89:A1:D0:12` |
@@ -77,6 +77,6 @@ La notificación usa visibilidad privada: en la pantalla bloqueada no se ve el c
 
 **Requisitos (una vez):**
 
-- Proyecto en [Firebase](https://console.firebase.google.com) con una app Android `com.conviveconnect.app`. Su `google-services.json` va en `android/app/` **antes de compilar** (no es secreto: se puede versionar): sin él la app no puede registrarse para push.
+- Proyecto en [Firebase](https://console.firebase.google.com) con una app Android `com.conviveconnect.app`. Su `google-services.json` va en `android/app/` **antes de compilar**. No se versiona (gitleaks marcaría su clave de API); si se pierde, se rearma desde Firebase → Configuración del proyecto → app Android: sin él la app no puede registrarse para push.
 - En Vercel, `FIREBASE_SERVICE_ACCOUNT` con el JSON de la cuenta de servicio (Firebase → Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada), en una sola línea. Sin esa variable el servidor no envía nada y el aviso queda solo dentro de la app.
 - Secreto del despacho: el mismo valor aleatorio en Vercel (`PUSH_DISPATCH_SECRET`) y en Supabase Vault con el nombre `push_dispatch_secret` (`select vault.create_secret('<valor>', 'push_dispatch_secret');`). Sin ambos, no sale ningún push.
