@@ -4150,3 +4150,22 @@ export interface ProviderAdminPanelProps {
 export interface ProviderPortalClientProps {
   token: string;
 }
+
+// ── Notificaciones push (app nativa, FCM) ──
+export type PushPlatform = 'android' | 'ios';
+
+export interface PushMessage {
+  notificationId: string;
+  title: string;
+  body: string;
+  /** Ruta interna que abre la app al tocar el aviso. */
+  link?: string | null;
+}
+
+export interface PushSendResult {
+  sent: number;
+  /** Envíos que fallaron por algo pasajero (429/5xx, red). */
+  failed: number;
+  invalidTokens: string[];
+  skipped?: string;
+}

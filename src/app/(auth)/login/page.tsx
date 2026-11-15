@@ -101,6 +101,9 @@ function LoginForm() {
         if (error) {
             setGoogleLoading(false);
             toast({ title: "No se pudo entrar con Google", description: "Intenta de nuevo o entra con tu correo.", variant: "destructive" });
+        } else if (isNativeApp()) {
+            // En la app, Google quedó en el navegador del teléfono: si la persona lo cierra, el botón vuelve a estar disponible.
+            setGoogleLoading(false);
         }
     };
 
@@ -505,11 +508,11 @@ function LoginForm() {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2">
-                            {/* Google bloquea su inicio de sesión dentro de vistas web de apps: en la app nativa queda desactivado. */}
+                            {/* En la app nativa, Google se abre en el navegador del teléfono y vuelve por com.conviveconnect.app://auth/callback. */}
                             <button
                                 type="button"
                                 onClick={() => { void handleGoogleSignIn(); }}
-                                disabled={googleLoading || !googleEnabled || isNativeApp()}
+                                disabled={googleLoading || !googleEnabled}
                                 title={googleEnabled ? "Entrar con tu cuenta de Google" : "Google todavía no está disponible"}
                                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold transition-colors hover:bg-paper-warm disabled:cursor-not-allowed disabled:opacity-55"
                                 style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}

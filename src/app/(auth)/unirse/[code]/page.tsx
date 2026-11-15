@@ -6,6 +6,7 @@ import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { AuthProvidersService, NeighborInviteService } from "@/lib/api";
 import { GoogleIcon } from "@/components/auth/ProviderIcons";
+import { isNativeApp } from "@/lib/native/biometricBridge";
 import type { NeighborInvitePreview } from "@/lib/types";
 
 /**
@@ -28,7 +29,7 @@ export default function JoinByInvitePage({ params }: { params: Promise<{ code: s
     const continueWithGoogle = async () => {
         setGoogleLoading(true);
         const { error } = await AuthProvidersService.signInWithGoogle(`/bienvenida?invitacion=${encodeURIComponent(code)}`);
-        if (error) setGoogleLoading(false);
+        if (error || isNativeApp()) setGoogleLoading(false);
     };
 
     return (

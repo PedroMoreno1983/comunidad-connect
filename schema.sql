@@ -505,8 +505,72 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   link TEXT,
   read BOOLEAN DEFAULT FALSE,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  push_sent_at TIMESTAMPTZ
 );
+
+-- Teléfonos con la app instalada (token de FCM). Solo del servidor.
+-- Migraciones: 20261115120000_push_devices.sql y 20261115140000_push_dispatch_secret.sql.
+CREATE TABLE IF NOT EXISTS public.push_devices (
+  token TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL CHECK (platform IN ('android', 'ios')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS push_devices_user_id_idx ON public.push_devices (user_id);
+ALTER TABLE public.push_devices ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.push_devices FROM anon, authenticated;
+GRANT ALL ON public.push_devices TO service_role;
+
+-- Cada aviso nuevo de alguien con teléfono registrado se envía como push
+-- (pg_net -> /api/push/dispatch, con el secreto "push_dispatch_secret" de Vault).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_net') THEN
+    CREATE EXTENSION IF NOT EXISTS pg_net;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.dispatch_notification_push()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  dispatch_secret TEXT;
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.push_devices WHERE user_id = NEW.user_id) THEN
+    BEGIN
+      SELECT decrypted_secret INTO dispatch_secret
+      FROM vault.decrypted_secrets
+      WHERE name = 'push_dispatch_secret'
+      LIMIT 1;
+
+      IF dispatch_secret IS NOT NULL THEN
+        PERFORM net.http_post(
+          url := 'https://conviveconnect.com/api/push/dispatch',
+          body := jsonb_build_object('id', NEW.id),
+          headers := jsonb_build_object('Content-Type', 'application/json', 'x-push-secret', dispatch_secret),
+          timeout_milliseconds := 5000
+        );
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.dispatch_notification_push() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS notifications_dispatch_push ON public.notifications;
+CREATE TRIGGER notifications_dispatch_push
+  AFTER INSERT ON public.notifications
+  FOR EACH ROW EXECUTE FUNCTION public.dispatch_notification_push();
 
 -- =====================================================================
 -- 14. AULA INTERACTIVA & CAPACITACIÓN MULTI-AGENTE (TRAINING)

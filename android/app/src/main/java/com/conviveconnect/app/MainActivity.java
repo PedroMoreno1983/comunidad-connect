@@ -1,4 +1,4 @@
-package com.pedromoreno.comunidadconnect;
+package com.conviveconnect.app;
 
 import com.getcapacitor.BridgeActivity;
 
