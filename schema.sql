@@ -505,7 +505,18 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   link TEXT,
   read BOOLEAN DEFAULT FALSE,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  push_sent_at TIMESTAMPTZ
+);
+
+-- Teléfonos con la app instalada (token de FCM). Solo del servidor.
+-- Ver supabase/migrations/20261115120000_push_devices.sql (trigger de despacho).
+CREATE TABLE IF NOT EXISTS public.push_devices (
+  token TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL CHECK (platform IN ('android', 'ios')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- =====================================================================

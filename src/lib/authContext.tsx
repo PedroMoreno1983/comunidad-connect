@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from './types';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { forgetNativePushDevice } from '@/lib/native/pushBridge';
 
 // ============================================
 // Unified Auth Context
@@ -292,6 +293,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Logout
     const logout = async () => {
+        // Antes de cerrar la sesión: el servidor necesita la sesión para soltar este teléfono.
+        await forgetNativePushDevice();
         if (typeof window !== 'undefined') {
             localStorage.removeItem(LEGACY_LOCAL_USER_STORAGE_KEY);
         }
