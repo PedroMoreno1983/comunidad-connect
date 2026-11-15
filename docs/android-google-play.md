@@ -63,3 +63,18 @@ Google no permite iniciar sesión dentro de la vista web de una app. En la app n
 3. `NativeOAuthReturn` (en `AppProviders`) recibe el enlace, cierra el navegador y lleva la vista web a `/auth/callback?code=…`, que canjea el código como en la web (el verificador PKCE quedó en las cookies de la vista web).
 
 **Requisito en Supabase:** Authentication → URL Configuration → Redirect URLs debe incluir `com.conviveconnect.app://**`. Sin eso, Supabase manda a la persona al sitio web en el navegador y la app no recibe la sesión.
+
+## Notificaciones push
+
+Todo aviso nuevo en `notifications` (pagos, reservas, encomiendas, CoCo…) sale también como push al teléfono de la persona, sin tocar el código que crea los avisos:
+
+1. Al iniciar sesión en la app, `NativePushRegistration` pide permiso, registra el token de FCM del teléfono en `push_devices` (`/api/push/devices`) y lo suelta al cerrar sesión.
+2. El trigger `notifications_dispatch_push` (pg_net) llama a `/api/push/dispatch` con el id del aviso, solo si la persona tiene un teléfono registrado.
+3. El endpoint relee el aviso, lo marca con `push_sent_at` (una sola vez, solo si tiene menos de 10 minutos) y lo envía por FCM. Los tokens que FCM rechaza se borran.
+4. Tocar la notificación abre la ruta del aviso (`link`) o `/notifications`.
+
+**Requisitos (una vez):**
+
+- Proyecto en [Firebase](https://console.firebase.google.com) con una app Android `com.conviveconnect.app`. Su `google-services.json` va en `android/app/` **antes de compilar** (no es secreto: se puede versionar): sin él la app no puede registrarse para push.
+- En Vercel, `FIREBASE_SERVICE_ACCOUNT` con el JSON de la cuenta de servicio (Firebase → Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada), en una sola línea. Sin esa variable el servidor no envía nada y el aviso queda solo dentro de la app.
+- iOS necesita además una llave APNs cargada en Firebase.

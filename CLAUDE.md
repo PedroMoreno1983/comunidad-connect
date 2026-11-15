@@ -63,6 +63,9 @@ WHATSAPP_WEBHOOK_SECRET=
 TWILIO_WHATSAPP_PAYMENT_CONTENT_SID=   # Plantilla de aviso de cobro (fuera de la ventana de 24 h)
 TWILIO_WHATSAPP_NOTICE_CONTENT_SID=    # Plantilla de aviso general
 
+# Push (app nativa, ver docs/android-google-play.md)
+FIREBASE_SERVICE_ACCOUNT= # JSON de la cuenta de servicio de Firebase en una línea. Sin ella, los avisos no salen como push
+
 # Pagos (pendiente credenciales Haulmer/Tuu)
 HAULMER_ACCOUNT_ID=
 HAULMER_SECRET_KEY=
