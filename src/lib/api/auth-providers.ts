@@ -1,4 +1,6 @@
 import { supabase } from '../supabase';
+import { isNativeApp } from '../native/biometricBridge';
+import { NATIVE_OAUTH_CALLBACK, openInSystemBrowser } from '../native/oauthBridge';
 import type { AuthProviderSettings, JoinCommunityInput, SignupResponse } from '../types';
 
 /**
@@ -24,6 +26,16 @@ export const AuthProvidersService = {
     /** Va a Google y vuelve por /auth/callback al destino (solo rutas internas). */
     async signInWithGoogle(next: string | null): Promise<{ error: string | null }> {
         const destination = next && next.startsWith('/') && !next.startsWith('//') ? next : '/home';
+        if (isNativeApp()) {
+            // App nativa: Google en el navegador del teléfono y vuelta por el enlace de la app.
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: `${NATIVE_OAUTH_CALLBACK}?next=${encodeURIComponent(destination)}`, skipBrowserRedirect: true },
+            });
+            if (error || !data?.url) return { error: error ? error.message : 'Sin enlace de Google' };
+            await openInSystemBrowser(data.url);
+            return { error: null };
+        }
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}` },
