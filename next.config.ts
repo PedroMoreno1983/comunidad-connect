@@ -58,6 +58,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'auth.conviveconnect.com',
+      },
       ...SUPERMARKET_OPTIMIZED_IMAGE_SOURCES.map(source => ({
         ...source,
         protocol: 'https' as const,

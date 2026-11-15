@@ -9,6 +9,35 @@ const SUPERMARKET_DIRECT_IMAGE_CSP = SUPERMARKET_DIRECT_IMAGE_HOSTS
   .map(hostname => `https://${hostname}`)
   .join(" ");
 
+// Dominio propio de Supabase (Custom Domain). Se mantiene *.supabase.co como respaldo.
+const SUPABASE_CUSTOM_DOMAIN_HOST = "auth.conviveconnect.com";
+
+function supabaseHostFromEnv(): string | null {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || !url.hostname) return null;
+    return url.host;
+  } catch {
+    return null;
+  }
+}
+
+function supabaseCspHosts(): string[] {
+  const hosts = new Set<string>([SUPABASE_CUSTOM_DOMAIN_HOST]);
+  const envHost = supabaseHostFromEnv();
+  if (envHost && !envHost.endsWith(".supabase.co")) hosts.add(envHost);
+  return [...hosts];
+}
+
+const SUPABASE_EXTRA_HTTPS_CSP = supabaseCspHosts()
+  .map(host => `https://${host}`)
+  .join(" ");
+const SUPABASE_EXTRA_WSS_CSP = supabaseCspHosts()
+  .map(host => `wss://${host}`)
+  .join(" ");
+
 const PROTECTED_DASHBOARD_PREFIXES = [
   "/admin",
   "/agent-center",
@@ -51,10 +80,10 @@ function contentSecurityPolicy(nonce: string) {
     "form-action 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentEval} blob: https://www.googletagmanager.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    `img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com https://*.supabase.co https://www.google-analytics.com ${SUPERMARKET_DIRECT_IMAGE_CSP}`,
+    `img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com https://*.supabase.co ${SUPABASE_EXTRA_HTTPS_CSP} https://www.google-analytics.com ${SUPERMARKET_DIRECT_IMAGE_CSP}`,
     "font-src 'self' data: https://fonts.gstatic.com",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.resend.com https://api.twilio.com https://www.google-analytics.com https://region1.google-analytics.com",
-    "media-src 'self' data: blob: https://*.supabase.co",
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${SUPABASE_EXTRA_HTTPS_CSP} ${SUPABASE_EXTRA_WSS_CSP} https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.resend.com https://api.twilio.com https://www.google-analytics.com https://region1.google-analytics.com`,
+    `media-src 'self' data: blob: https://*.supabase.co ${SUPABASE_EXTRA_HTTPS_CSP}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
