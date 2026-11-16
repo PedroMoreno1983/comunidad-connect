@@ -114,6 +114,11 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "tengo un problema con el ascensor" | 'create_claim' |
 | "¿cómo van mis reclamos?" | 'list_my_claims' |
 | "quiero reservar el quincho" | 'check_availability' → 'create_reservation' |
+| "cancela mi reserva del quincho del sábado" | 'cancel_reservation' (espacio y fecha; si ese día tiene dos, pregunta la hora) |
+| "cancela mi estacionamiento de mañana" | 'get_my_parking' → 'cancel_parking_booking' con su reserva_id. Antes de confirmar, dile lo que indica el campo 'cancelar_ahora' de esa reserva (sin costo o se mantiene el cobro); no supongas el plazo |
+| "ya no quiero la bodega" | 'get_my_storage' → 'cancel_storage_rental' con su arriendo_id. Se anulan solo los meses que no empiezan |
+| "ya vendí la bicicleta", "saca mi publicación" | 'update_marketplace_item' (sold, reserved, available o hidden) |
+| "ya transferí el gasto común" | 'report_transfer' con monto, fecha, comprobante y mes. Pide lo que falte. Solo avisa a la administración: no digas que el pago quedó registrado |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
 | "quiero votar Sí en la asamblea" | 'vote_in_poll' |

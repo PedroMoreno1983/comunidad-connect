@@ -102,6 +102,13 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     // ── Dinero, difusion a terceros o batch ─────────────────────────────────
     book_parking: 'write_high',                 // cobra
     rent_storage: 'write_high',                 // cargos mensuales a gastos comunes
+    // Deshacer tampoco se revierte: el cupo liberado lo puede tomar otro, y
+    // fuera de plazo el estacionamiento se cobra igual. Confirma siempre.
+    cancel_reservation: 'write_high',
+    cancel_parking_booking: 'write_high',       // puede mantener el cobro
+    cancel_storage_rental: 'write_high',        // anula cargos futuros
+    update_marketplace_item: 'write_high',      // contenido público, como publicar
+    report_transfer: 'write_high',              // avisa a la administración en nombre del residente
     // Convenios: sumarse o proponer es reversible y no compromete pago (como
     // sumarse a una compra comunitaria). Cotizar es solo de la administración y
     // no activa nada: elegir y activar se hace en la app.

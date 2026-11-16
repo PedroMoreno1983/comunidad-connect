@@ -307,6 +307,11 @@ function requiredMutationTool(message: string, role?: string) {
     // se fuerza nada, porque request_service necesita antes el provider_id de
     // list_services.
     if (/(gasf[ií]ter|plomer|electricist|cerrajer|pintor|carpinter|t[eé]cnico|maestro|jardiner|proveedor|fumigad|lavado de alfombras)/.test(text)) return undefined;
+    // "Cancela mi reserva del quincho" contiene "reserva": sin esto se forzaba
+    // create_reservation y CoCo intentaba reservar lo que el residente quería
+    // anular. Cancelar no se fuerza: el modelo elige entre cancel_reservation,
+    // cancel_parking_booking o cancel_storage_rental según lo que pidió.
+    if (/\b(cancela|cancelar|canc[eé]lame|cancelen|anula|anular|an[uú]lame|elimina|eliminar|ya no (voy|quiero|necesito))\b/.test(text)) return undefined;
     if (/\b(reserva|reservar|res[eé]rvame|agenda|agendar)\b/.test(text)) return 'create_reservation';
     if (/\b(registra|registrar|anota|anotar)\b.*\b(visita|visitante)\b|\bva a llegar\b/.test(text)) return 'register_visitor';
     if ((role === 'admin' || role === 'concierge') && /\b(registra|registrar|recib[ií]|lleg[oó])\b.*\b(paquete|encomienda)\b/.test(text)) return 'register_package';
