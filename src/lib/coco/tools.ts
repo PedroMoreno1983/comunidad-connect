@@ -9,7 +9,7 @@ import { MAX_SHOPPING_LIST_CHARS, parseGroupShoppingList as parsePersonalShoppin
 import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
 import { compareShoppingListForUser, supermarketListLink } from './shoppingTools';
 import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
-import { cancelParkingBookingForUser, cancelReservationForUser, cancelStorageRentalForUser, updateMarketplaceItemForUser } from './undoActions';
+import { cancelParkingBookingForUser, cancelReservationForUser, cancelStorageRentalForUser, parkingCancellationWindow, updateMarketplaceItemForUser } from './undoActions';
 import { reportTransferForUnit } from '@/lib/finance/transferReport';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
@@ -1890,6 +1890,17 @@ export async function executeTool(
                     .eq('user_id', userCtx.user_id)
                     .maybeSingle();
 
+                // Plazo de cancelación sin costo de ESTA comunidad (2 h si no
+                // lo configuró). CoCo tiene que decir antes de confirmar si
+                // cancelar cobra; con el default supuesto se equivocaría cerca
+                // del corte en comunidades que lo cambiaron.
+                const { data: community } = await supabaseAdmin
+                    .from('communities')
+                    .select('parking_free_cancellation_hours')
+                    .eq('id', communityId)
+                    .maybeSingle();
+                const freeHours = Number(community?.parking_free_cancellation_hours ?? 2);
+
                 let bookings: unknown[] = [];
                 if (driver?.id) {
                     const { data } = await supabaseAdmin
@@ -1902,12 +1913,16 @@ export async function executeTool(
                         .neq('status', 'cancelled')
                         .order('starts_at', { ascending: true })
                         .limit(10);
-                    bookings = data ?? [];
+                    bookings = ((data ?? []) as Array<Record<string, unknown>>).map(booking => ({
+                        ...booking,
+                        ...parkingCancellationWindow(String(booking.starts_at), freeHours),
+                    }));
                 }
 
                 return {
                     espacios_que_arriendo: spots ?? [],
                     mis_reservas_vigentes: bookings,
+                    plazo_cancelacion_sin_costo_horas: freeHours,
                     vehiculo_registrado: driver
                         ? { patente: driver.plate, descripcion: driver.vehicle_description }
                         : null,

@@ -47,7 +47,10 @@ function routeActions(dir: string, rel = ''): string[] {
         if (entry.isDirectory()) return routeActions(dir, child);
         if (entry.name !== 'route.ts' || SYSTEM_ROUTE.test(rel)) return [];
         const source = fs.readFileSync(path.join(dir, child), 'utf8');
-        return /export (async function|const) (POST|PATCH|PUT|DELETE)\b/.test(source) ? [`/api/${rel}`] : [];
+        // Un verbo por entrada: si la ruta exporta PUT y DELETE, son dos
+        // acciones y cada una necesita su propia clasificación.
+        const verbs = new Set([...source.matchAll(/export (?:async function|const) (POST|PATCH|PUT|DELETE)\b/g)].map(match => match[1]));
+        return [...verbs].map(verb => `${verb} /api/${rel}`);
     });
 }
 

@@ -95,6 +95,21 @@ export async function cancelReservationForUser(
     };
 }
 
+/**
+ * Hasta cuándo se cancela gratis y si cancelar AHORA cobra, con la misma regla
+ * que parking_charge_on_cancel: sin costo si se cancela al menos N horas antes
+ * del inicio. Lo calcula el servidor para que CoCo no suponga el plazo.
+ */
+export function parkingCancellationWindow(startsAt: string, freeHours: number, now = new Date()) {
+    const start = new Date(startsAt);
+    if (!Number.isFinite(start.getTime())) return {};
+    const deadline = new Date(start.getTime() - freeHours * 3_600_000);
+    return {
+        cancelar_gratis_hasta: deadline.toISOString(),
+        cancelar_ahora: now <= deadline ? 'sin costo' : 'se mantiene el cobro',
+    };
+}
+
 export async function cancelParkingBookingForUser(
     admin: SupabaseClient,
     communityId: string,
@@ -121,16 +136,44 @@ export async function cancelParkingBookingForUser(
     // Los mensajes de la función están escritos para el residente.
     if (error) return { error: error.message || 'No se pudo cancelar la reserva.' };
 
+    return { success: true, message: 'Reserva de estacionamiento cancelada.', cobro: await parkingCancellationOutcome(admin, bookingId), donde_verla: '/estacionamientos' };
+}
+
+/**
+ * Qué pasó con el dinero al cancelar. No se deduce del estado del cobro: una
+ * cancelación a tiempo sobre un cobro ya pagado deja el cobro en 'paid' y pide
+ * reembolso. Lo dice el último evento que el trigger de cancelación dejó en la
+ * bitácora (parking_charge_on_cancel / parking_charge_void).
+ */
+async function parkingCancellationOutcome(admin: SupabaseClient, bookingId: string) {
     const { data: charge } = await admin
         .from('parking_charges')
-        .select('amount, status')
+        .select('id, amount, status')
         .eq('booking_id', bookingId)
         .maybeSingle();
-    const cobro = !charge ? undefined
-        : charge.status === 'voided'
-            ? 'Cancelada a tiempo: no tiene costo.'
-            : `Se canceló fuera del plazo sin costo: el cobro de $${Number(charge.amount || 0).toLocaleString('es-CL')} se mantiene.`;
-    return { success: true, message: 'Reserva de estacionamiento cancelada.', cobro, donde_verla: '/estacionamientos' };
+    if (!charge) return undefined;
+    const monto = `$${Number(charge.amount || 0).toLocaleString('es-CL')}`;
+
+    const { data: events } = await admin
+        .from('parking_charge_events')
+        .select('event_type')
+        .eq('charge_id', String(charge.id))
+        .in('event_type', ['voided', 'late_cancellation_retained', 'refund_required', 'void_blocked'])
+        .order('seq', { ascending: false })
+        .limit(1);
+    const outcome = ((events ?? []) as Row[])[0]?.event_type;
+
+    if (outcome === 'refund_required') {
+        return `Cancelada a tiempo, sin costo. Como el cobro de ${monto} ya estaba pagado, la administración tiene que devolvértelo; quedó marcado para revisión.`;
+    }
+    if (outcome === 'void_blocked') {
+        return `Cancelada a tiempo, sin costo, pero el cargo de ${monto} no se pudo revertir solo; quedó marcado para que la administración lo anule.`;
+    }
+    if (outcome === 'late_cancellation_retained') {
+        return `Se canceló dentro del plazo en que ya no es gratis: el cobro de ${monto} se mantiene.`;
+    }
+    if (outcome === 'voided' || charge.status === 'voided') return 'Cancelada a tiempo: no tiene costo.';
+    return `Cancelada. El cobro de ${monto} quedó en estado "${charge.status}"; revisa el detalle en /estacionamientos.`;
 }
 
 export async function cancelStorageRentalForUser(

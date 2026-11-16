@@ -15,6 +15,7 @@ import {
     cancelParkingBookingForUser,
     cancelReservationForUser,
     cancelStorageRentalForUser,
+    parkingCancellationWindow,
     updateMarketplaceItemForUser,
 } from '@/lib/coco/undoActions';
 import { TOOL_DEFINITIONS, MUTATING_TOOLS, isToolAllowedForRole, describePendingAction } from '@/lib/coco/tools';
@@ -137,9 +138,35 @@ describe('cancel_parking_booking', () => {
     });
 
     it('fuera de plazo avisa que el cobro se mantiene', async () => {
-        const { db } = fakeDb({ parking_bookings: [{ id: RESERVA, community_id: COMUNIDAD }], parking_charges: [{ amount: 3000, status: 'charged' }] });
+        const { db } = fakeDb({
+            parking_bookings: [{ id: RESERVA, community_id: COMUNIDAD }],
+            parking_charges: [{ id: 'charge-1', amount: 3000, status: 'charged' }],
+            parking_charge_events: [{ event_type: 'late_cancellation_retained' }],
+        });
         const result = await cancelParkingBookingForUser(db, COMUNIDAD, VECINA, { booking_id: RESERVA }) as Row;
         expect(result.cobro).toMatch(/se mantiene/);
+    });
+
+    it('a tiempo sobre un cobro ya pagado dice que corresponde reembolso, no que se mantiene', async () => {
+        // parking_charge_void deja el cobro en 'paid' y marca refund_required:
+        // el estado solo no distingue esto de una cancelación tardía.
+        const { db } = fakeDb({
+            parking_bookings: [{ id: RESERVA, community_id: COMUNIDAD }],
+            parking_charges: [{ id: 'charge-1', amount: 3000, status: 'paid' }],
+            parking_charge_events: [{ event_type: 'refund_required' }],
+        });
+        const result = await cancelParkingBookingForUser(db, COMUNIDAD, VECINA, { booking_id: RESERVA }) as Row;
+        expect(result.cobro).toMatch(/sin costo/);
+        expect(result.cobro).toMatch(/devolv/);
+        expect(result.cobro).not.toMatch(/se mantiene/);
+    });
+
+    it('la ventana sin costo usa el plazo de la comunidad, no el de fábrica', () => {
+        const ahora = new Date('2026-11-20T10:00:00Z');
+        // Reserva a las 15:00; con 6 h de plazo, a las 10:00 ya no es gratis.
+        expect(parkingCancellationWindow('2026-11-20T15:00:00Z', 6, ahora).cancelar_ahora).toBe('se mantiene el cobro');
+        expect(parkingCancellationWindow('2026-11-20T15:00:00Z', 2, ahora).cancelar_ahora).toBe('sin costo');
+        expect(parkingCancellationWindow('2026-11-20T15:00:00Z', 6, ahora).cancelar_gratis_hasta).toBe('2026-11-20T09:00:00.000Z');
     });
 
     it('una reserva de otra comunidad no existe para el residente', async () => {
