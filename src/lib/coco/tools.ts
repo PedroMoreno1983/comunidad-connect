@@ -13,6 +13,8 @@ import { cancelParkingBookingForUser, cancelReservationForUser, cancelStorageRen
 import { reportTransferForUnit } from '@/lib/finance/transferReport';
 import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingResidentsForAdmin } from './residentAdminTools';
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
+import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
+import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
 import { getOrCreateInvite } from '@/lib/onboarding/neighborInvites';
@@ -182,6 +184,76 @@ export const TOOL_DEFINITIONS = [
             },
             required: ['status'],
         },
+    },
+    {
+        name: 'list_my_marketplace_conversations',
+        description: 'Conversaciones del residente en el Marketplace (como comprador o vendedor): artículo, con quién, mensajes sin leer y los últimos mensajes. Úsalo para "¿me respondieron?", "¿tengo mensajes?" y antes de reply_marketplace_conversation.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'message_marketplace_seller',
+        description: 'Le escribe al vendedor de un artículo del Marketplace de la comunidad, en nombre del residente. Identifica el artículo por título (o item_id de search_marketplace). Redacta el mensaje con lo que el residente pidió y muéstraselo antes. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                item_title: { type: 'string', description: 'Título o parte del título del artículo.' },
+                item_id: { type: 'string', description: 'ID exacto, si search_marketplace lo devolvió.' },
+                message: { type: 'string', description: 'El mensaje para el vendedor (máx. 2.000 caracteres).' },
+            },
+            required: ['message'],
+        },
+    },
+    {
+        name: 'reply_marketplace_conversation',
+        description: 'Responde en una conversación del Marketplace del residente. Usa antes list_my_marketplace_conversations para el conversation_id; nunca lo inventes. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                conversation_id: { type: 'string' },
+                message: { type: 'string', description: 'Respuesta (máx. 2.000 caracteres).' },
+            },
+            required: ['conversation_id', 'message'],
+        },
+    },
+    {
+        name: 'update_my_name',
+        description: 'Corrige el nombre con que aparece el usuario en la comunidad. Solo el nombre: el departamento lo asigna la administración, y el WhatsApp se activa en /privacy-center con el aviso a la vista. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { full_name: { type: 'string' } },
+            required: ['full_name'],
+        },
+    },
+    {
+        name: 'delete_shopping_list',
+        description: 'Borra una lista del súper guardada por el residente. Identifícala por título; si hay varias parecidas, la herramienta devuelve la lista para que elija. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string' },
+                list_id: { type: 'string', description: 'ID exacto, si una respuesta anterior lo devolvió.' },
+            },
+            required: [],
+        },
+    },
+    {
+        name: 'register_my_vehicle',
+        description: 'Registra o actualiza el vehículo del residente (patente y teléfono de contacto), necesario para reservar estacionamiento. Úsalo cuando book_parking falle por falta de vehículo o lo pidan. Pide la patente y el teléfono; no los inventes. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                plate: { type: 'string', description: 'Patente, ej. ABCD12.' },
+                phone: { type: 'string', description: 'Teléfono de contacto.' },
+                vehicle_description: { type: 'string', description: 'Ej. "Toyota Yaris gris".' },
+                full_name: { type: 'string', description: 'Nombre del conductor; por defecto el del perfil.' },
+            },
+            required: ['plate', 'phone'],
+        },
+    },
+    {
+        name: 'request_payment_agreement',
+        description: 'Avisa a la administración que el residente quiere conversar un convenio de pago de su gasto común. No crea el convenio ni menciona montos: lo propone la administración. Úsalo con tacto ("no alcanzo a pagar", "¿puedo pagar en cuotas?"). Requiere confirmación.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
     },
     {
         name: 'request_service',
@@ -1248,6 +1320,13 @@ export const MUTATING_TOOLS = new Set<string>([
     // público con precio. Confirma.
     'publish_my_parking_spot',
     'publish_my_storage_unit',
+    // Hablan con terceros o cambian datos propios: confirma.
+    'message_marketplace_seller',
+    'reply_marketplace_conversation',
+    'update_my_name',
+    'delete_shopping_list',
+    'register_my_vehicle',
+    'request_payment_agreement',
     'publish_marketplace_item',
     'update_marketplace_item',
     // Avisa a la administración en nombre del residente.
@@ -1322,6 +1401,8 @@ const RESIDENT_TOOLS = new Set([
     'get_my_storage', 'search_storage', 'rent_storage',
     'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
     'publish_my_parking_spot', 'publish_my_storage_unit',
+    'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
+    'update_my_name', 'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
     'list_community_deals', 'suggest_community_deals', 'propose_community_deal', 'join_community_deal',
     // Perfil del maestro: valorar, y que el propio maestro (con cuenta) suba
@@ -1370,7 +1451,12 @@ const SYSTEM_TOOLS = new Set([
 // que lo rechaza.
 // Informar una transferencia es del residente: la administración registra el
 // pago en cobranza (la ruta de la pantalla también la rechaza para admin).
-const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item', 'update_marketplace_item', 'compare_shopping_list', 'save_shopping_list', 'report_transfer']);
+const RESIDENT_ONLY_TOOLS = new Set([
+    'vote_in_poll', 'publish_marketplace_item', 'update_marketplace_item', 'compare_shopping_list', 'save_shopping_list', 'report_transfer',
+    // Comprar y vender entre vecinos, su súper, su auto y su deuda: del residente.
+    'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
+    'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
+]);
 
 // Conserjería no abre /services (roleAccess.ts): pedir un servicio lo dejaría
 // sin forma de revisar ni gestionar la solicitud que creó.
@@ -1467,6 +1553,18 @@ export function describePendingAction(name: string, input: Record<string, unknow
                 summary: `"${str('label')}"${precios.length ? ` · ${precios.join(', ')}` : ''}. Queda pendiente hasta que la administración lo apruebe.`,
             };
         }
+        case 'message_marketplace_seller':
+            return { title: 'Escribirle al vendedor', summary: `Sobre "${str('item_title') || 'el artículo'}": ${str('message')}` };
+        case 'reply_marketplace_conversation':
+            return { title: 'Responder en el Marketplace', summary: str('message') };
+        case 'update_my_name':
+            return { title: 'Cambiar mi nombre', summary: `Aparecerás como ${str('full_name')}.` };
+        case 'delete_shopping_list':
+            return { title: 'Borrar lista del súper', summary: str('title') || 'La lista elegida.' };
+        case 'register_my_vehicle':
+            return { title: 'Registrar mi vehículo', summary: `Patente ${str('plate').toUpperCase()}${str('vehicle_description') ? ` · ${str('vehicle_description')}` : ''}, contacto ${str('phone')}.` };
+        case 'request_payment_agreement':
+            return { title: 'Pedir un convenio de pago', summary: 'La administración recibe tu solicitud para conversar un convenio. No se crea ningún compromiso todavía.' };
         case 'publish_my_storage_unit':
             return {
                 title: 'Publicar mi bodega',
@@ -2223,6 +2321,34 @@ export async function executeTool(
                     cobro,
                     donde_verla: '/estacionamientos',
                 };
+            }
+
+            case 'list_my_marketplace_conversations':
+            case 'message_marketplace_seller':
+            case 'reply_marketplace_conversation': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                if (name === 'list_my_marketplace_conversations') return listMyMarketplaceConversations(supabaseAdmin, communityId, userCtx.user_id);
+                const run = name === 'message_marketplace_seller' ? messageMarketplaceSeller : replyMarketplaceConversation;
+                return run(supabaseAdmin, communityId, userCtx.user_id, input as Record<string, unknown>);
+            }
+
+            case 'update_my_name':
+            case 'delete_shopping_list':
+            case 'register_my_vehicle': {
+                if (!userCtx.user_id) return forbidden('No pude identificarte.');
+                const run = { update_my_name: updateMyName, delete_shopping_list: deleteMyShoppingList, register_my_vehicle: registerMyVehicle }[name];
+                return run(supabaseAdmin, userCtx.user_id, input as Record<string, unknown>);
+            }
+
+            case 'request_payment_agreement': {
+                if (!userCtx.user_id) return forbidden('No pude identificarte.');
+                const unitId = await scopedUnit(userCtx, undefined);
+                const result = await requestAgreementConversation(supabaseAdmin, {
+                    id: userCtx.user_id, role: userCtx.role || 'resident', communityId: scopedCommunity(userCtx) ?? null, unitId: unitId ?? null,
+                }, 'coco');
+                if ('error' in result) return { error: result.error };
+                return { success: true, message: result.message };
             }
 
             case 'publish_my_parking_spot':

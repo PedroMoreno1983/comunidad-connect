@@ -44,7 +44,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'AmenitiesService.createAmenity': { gap: 'La administración no puede crear un espacio común conversando.' },
     'ParkingService.book': { tool: 'book_parking' },
     'ParkingService.cancelBooking': { tool: 'cancel_parking_booking' },
-    'ParkingService.saveMyDriver': { gap: 'Registrar la patente: hoy CoCo manda a /estacionamientos y la reserva falla hasta hacerlo.' },
+    'ParkingService.saveMyDriver': { tool: 'register_my_vehicle' },
     'ParkingService.createSpot': { tool: 'publish_my_parking_spot' },
     'ParkingService.updateSpot': { gap: 'Cambiar precio o datos del estacionamiento propio.' },
     'ParkingService.deleteSpot': { gap: 'Retirar el estacionamiento propio.' },
@@ -69,8 +69,8 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
 
     'PATCH /api/marketplace-items/[id]': { tool: 'update_marketplace_item' },
     'POST /api/marketplace-items/embed': { system: 'Indexa la publicación para la búsqueda, después de crearla.' },
-    'MarketplaceMessagingService.startConversation': { gap: 'Escribirle al vendedor de un artículo.' },
-    'MarketplaceMessagingService.sendMessage': { gap: 'Responder un mensaje del Marketplace.' },
+    'MarketplaceMessagingService.startConversation': { tool: 'message_marketplace_seller' },
+    'MarketplaceMessagingService.sendMessage': { tool: ['message_marketplace_seller', 'reply_marketplace_conversation'] },
     'MarketplaceMessagingService.markRead': { system: 'La pantalla marca leído al abrir la conversación.' },
     'PollsService.submitVote': { tool: 'vote_in_poll' },
     'POST /api/polls': { tool: 'create_poll' },
@@ -84,14 +84,14 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     // ── Residente: dinero ───────────────────────────────────────────────────
     'ResidentFinanceService.reportTransfer': { tool: 'report_transfer' },
     'POST /api/finance/transfer-report': { tool: 'report_transfer' },
-    'ResidentFinanceService.requestAgreementConversation': { gap: 'Pedir un convenio de pago.' },
-    'POST /api/resident/agreement-request': { gap: 'Pedir un convenio de pago.' },
+    'ResidentFinanceService.requestAgreementConversation': { tool: 'request_payment_agreement' },
+    'POST /api/resident/agreement-request': { tool: 'request_payment_agreement' },
     'POST /api/payments/create-haulmer-link': { gap: 'Link de pago en línea: espera las credenciales de Haulmer.' },
     'POST /api/payments/transbank/return': { system: 'Retorno del proveedor de pagos.' },
 
     // ── Residente: perfil y cuenta ──────────────────────────────────────────
-    'ProfileService.saveProfile': { gap: 'Actualizar los datos del propio perfil.' },
-    'ProfileService.saveWhatsapp': { gap: 'Activar o cambiar el WhatsApp donde CoCo le escribe.' },
+    'ProfileService.saveProfile': { tool: 'update_my_name' },
+    'ProfileService.saveWhatsapp': { ui: 'Consentimiento de WhatsApp (Ley 19.628): se da en /privacy-center con el aviso a la vista; la evidencia solo admite ese canal. CoCo lleva ahí.' },
     'ProfileService.uploadAvatar': { ui: 'Subir una foto de perfil.' },
     'POST /api/profile/avatar': { ui: 'Subir una foto de perfil.' },
     'ProfileService.sendPasswordReset': { ui: 'Recuperar la clave: pasa por el correo, fuera de la sesión.' },
@@ -128,10 +128,10 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
 
     // ── Supermercado ────────────────────────────────────────────────────────
     'SupermarketCatalogService.saveList': { tool: 'save_shopping_list' },
-    'DELETE /api/supermarket/lists': { gap: 'Borrar una lista guardada.' },
+    'DELETE /api/supermarket/lists': { tool: 'delete_shopping_list' },
     'PUT /api/supermarket/lists': { tool: 'save_shopping_list' },
     'SupermarketCatalogService.resolveList': { read: 'Interpreta una lista contra el catálogo.' },
-    'SupermarketCatalogService.deleteList': { gap: 'Borrar una lista guardada.' },
+    'SupermarketCatalogService.deleteList': { tool: 'delete_shopping_list' },
     'SupermarketGroupService.create': { tool: 'create_supermarket_group_order' },
     'SupermarketGroupService.join': { tool: 'join_supermarket_group_order' },
     'SupermarketGroupService.settle': { tool: 'lock_supermarket_group_order' },
