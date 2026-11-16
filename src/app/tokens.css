@@ -180,8 +180,8 @@
   --cc-ink-muted:        #C8BFB6; /* Muted text */
   --cc-ink-tertiary:     #8A8580; /* Tertiary text */
   /* Era #5F5A54 (2,8:1 sobre las tarjetas): se usa como texto en ~30 lugares,
-     no solo deshabilitado. #807A73 queda en 4,4:1 y debajo de tertiary. */
-  --cc-ink-faint:        #807A73;
+     no solo deshabilitado. #89837D cumple 4,5:1 en todas las superficies. */
+  --cc-ink-faint:        #89837D;
 
   /* Acentos como texto: >= 4,5:1 sobre lienzo y tarjetas oscuras (WCAG AA). */
   --cc-copper-text:      #C47A52;

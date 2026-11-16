@@ -35,7 +35,14 @@ function contrast(a: string, b: string) {
 }
 
 const SURFACES = ['cc-ivory', 'cc-paper', 'cc-paper-warm'];
-const READABLE_TEXT = ['cc-ink', 'cc-ink-soft', 'cc-ink-muted', 'cc-ink-tertiary', 'cc-copper-text', 'cc-sage-text', 'cc-rose-text', 'cc-plum-text'];
+// ink-faint incluido: se usa como texto en ~30 lugares, no solo deshabilitado.
+const READABLE_TEXT = ['cc-ink', 'cc-ink-soft', 'cc-ink-muted', 'cc-ink-tertiary', 'cc-ink-faint', 'cc-copper-text', 'cc-sage-text', 'cc-rose-text', 'cc-plum-text'];
+
+const rules = () => fs.readFileSync(path.join(root, 'src/app/dark-readability.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('}')
+    .map(rule => rule.split('{')[0].trim())
+    .filter(Boolean);
 
 describe('modo oscuro legible', () => {
     it.each(READABLE_TEXT)('--%s cumple 4,5:1 sobre todas las superficies oscuras', (token) => {
@@ -44,10 +51,16 @@ describe('modo oscuro legible', () => {
         }
     });
 
-    it('--cc-ink-faint (usado como texto en ~30 lugares) queda sobre 4:1', () => {
-        for (const surface of SURFACES) {
-            expect(contrast(darkToken('cc-ink-faint'), darkToken(surface))).toBeGreaterThanOrEqual(4);
+    it('cada regla respeta variantes propias, superficies claras y estados de interacción', () => {
+        for (const selector of rules()) {
+            expect(selector, selector.slice(0, 80)).toContain(':not([class*="dark:text-"])');
+            expect(selector, selector.slice(0, 80)).toContain('.bg-white');
+            expect(selector, selector.slice(0, 80)).toContain('[class*="hover:text-"]:hover');
         }
+    });
+
+    it('las superficies claras se reconocen por clase exacta, no por sufijo (opacity-50 no es un fondo)', () => {
+        for (const selector of rules()) expect(selector).not.toMatch(/\[class[*$]="-(50|100)/);
     });
 
     it('dark-readability.css compila sin advertencias y está importada', () => {
