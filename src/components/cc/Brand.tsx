@@ -29,7 +29,7 @@ export function Brand({ size = 22, className = "", withMark = false, tone = "def
             fontStyle: "italic",
             fontSize: size * 0.9,
             lineHeight: 1,
-            background: isInverse ? "rgba(250, 247, 241, 0.12)" : "var(--cc-ink)",
+            background: isInverse ? "rgba(250, 247, 241, 0.12)" : "var(--cc-carbon)",
             color: isInverse ? "var(--cc-copper-soft)" : "var(--cc-copper-soft)",
             boxShadow: isInverse ? "inset 0 0 0 1px rgba(250, 247, 241, 0.14)" : "none",
           }}

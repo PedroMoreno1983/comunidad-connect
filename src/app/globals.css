@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 @import "./tokens.css";
+@import "./dark-readability.css";
 
 @layer base {
   body {

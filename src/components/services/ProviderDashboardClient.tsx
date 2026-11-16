@@ -250,7 +250,7 @@ export function ProviderDashboardClient() {
                     <div className="flex items-center gap-4">
                         <div
                             className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl"
-                            style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 20 }}
+                            style={{ background: "var(--cc-carbon)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 20 }}
                         >
                             {selectedProvider ? getInitials(selectedProvider.name) : "?"}
                         </div>

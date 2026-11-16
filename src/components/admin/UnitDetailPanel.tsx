@@ -148,7 +148,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                     <div className="flex items-center gap-4">
                                         <div
                                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                                            style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)" }}
+                                            style={{ background: "var(--cc-carbon)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)" }}
                                         >
                                             {resident?.name.charAt(0) || "U"}
                                         </div>

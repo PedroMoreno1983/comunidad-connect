@@ -272,7 +272,7 @@ export default function HomePage() {
                     }}
                 >
                     <div className="flex items-start gap-3">
-                        <div className="grid shrink-0 place-items-center" style={{ width: 40, height: 40, borderRadius: 13, background: "var(--cc-ink)", color: "var(--cc-copper-soft)" }}>
+                        <div className="grid shrink-0 place-items-center" style={{ width: 40, height: 40, borderRadius: 13, background: "var(--cc-carbon)", color: "var(--cc-copper-soft)" }}>
                             <Bot size={18} />
                         </div>
                         <div className="min-w-0 flex-1">

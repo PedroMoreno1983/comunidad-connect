@@ -432,7 +432,7 @@ export default function LandingPage() {
             <div className="pointer-events-none absolute left-[16.5%] right-[16.5%] top-[19px] hidden h-px md:block" style={{ borderTop: '1px dashed var(--cc-copper)', opacity: 0.5 }} />
             {steps.map((s, i) => (
               <div key={i} className="relative min-w-0">
-                <div className="relative z-10 mb-6 flex h-9 w-9 items-center justify-center rounded-full border-[1.5px]" style={{ borderColor: 'var(--cc-carbon)', color: 'var(--cc-carbon)', background: 'var(--cc-paper-warm)', fontFamily: 'var(--cc-font-mono)' }}>
+                <div className="relative z-10 mb-6 flex h-9 w-9 items-center justify-center rounded-full border-[1.5px]" style={{ borderColor: 'var(--cc-ink)', color: 'var(--cc-ink)', background: 'var(--cc-paper-warm)', fontFamily: 'var(--cc-font-mono)' }}>
                   {s.n}
                 </div>
                 <div className="mb-2.5 text-xl tracking-tight sm:text-2xl" style={{ fontFamily: 'var(--cc-font-display)' }}>{s.t}</div>
