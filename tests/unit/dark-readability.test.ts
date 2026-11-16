@@ -51,10 +51,28 @@ describe('modo oscuro legible', () => {
         }
     });
 
-    it('cada regla respeta variantes propias, superficies claras y estados de interacción', () => {
+    it.each([['copper', 0.15], ['sage', 0.18], ['rose', 0.18], ['plum', 0.18]] as const)(
+        '--cc-%s-text cumple 4,5:1 sobre su propio tinte encima de cada superficie',
+        (accent, alpha) => {
+            // Los tintes (--cc-<acento>-tint) son el tono base con transparencia
+            // sobre la tarjeta: una etiqueta cobre sobre fondo cobre suave.
+            const base = tokens.match(new RegExp(`--cc-${accent}:\\s*(#[0-9A-Fa-f]{6})`))![1];
+            const mix = (surface: string) => '#' + [0, 1, 2].map(i => {
+                const channel = (hex: string) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+                return Math.round(channel(base) * alpha + channel(surface) * (1 - alpha)).toString(16).padStart(2, '0');
+            }).join('');
+            for (const surface of SURFACES) {
+                const background = mix(darkToken(surface));
+                expect(contrast(darkToken(`cc-${accent}-text`), background), `${accent} sobre su tinte en ${surface}`).toBeGreaterThanOrEqual(4.5);
+            }
+        },
+    );
+
+    it('cada regla respeta variantes propias, superficies claras (clase o en línea) y estados de interacción', () => {
         for (const selector of rules()) {
             expect(selector, selector.slice(0, 80)).toContain(':not([class*="dark:text-"])');
             expect(selector, selector.slice(0, 80)).toContain('.bg-white');
+            expect(selector, selector.slice(0, 80)).toContain('[style*="background: #fff" i]');
             expect(selector, selector.slice(0, 80)).toContain('[class*="hover:text-"]:hover');
         }
     });

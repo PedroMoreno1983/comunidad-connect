@@ -183,8 +183,9 @@
      no solo deshabilitado. #89837D cumple 4,5:1 en todas las superficies. */
   --cc-ink-faint:        #89837D;
 
-  /* Acentos como texto: >= 4,5:1 sobre lienzo y tarjetas oscuras (WCAG AA). */
-  --cc-copper-text:      #C47A52;
+  /* Acentos como texto: >= 4,5:1 sobre lienzo, tarjetas oscuras y su propio
+     tinte encima de ellas (p. ej. una etiqueta cobre sobre --cc-copper-tint). */
+  --cc-copper-text:      #C8805A;
   --cc-sage-text:        #9DB386;
   --cc-rose-text:        #E0857F;
   --cc-plum-text:        #AF9EC3;
