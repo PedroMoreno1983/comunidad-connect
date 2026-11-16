@@ -28,8 +28,9 @@ const root = path.resolve(__dirname, '../..');
 // debe calzar con cancelBooking, ni "to" con toggleSpot.
 const READ_VERB = /^(get|list|fetch|load|search|find|check|count|preview|read|is|has|can|subscribe|watch|current|lookup|describe|summarize|diagnostic|export|download|calculate|compute|estimate|quote|compare|format|map|parse|to|build|ensure|validate|signIn|signOut|login|logout|refresh|track|saved)(?=[A-Z]|$)/;
 // Rutas que no responden a una persona en la interfaz: CoCo mismo, webhooks,
-// tareas programadas, autenticación y notificaciones push.
-const SYSTEM_ROUTE = /^(coco|agent-center|webhooks|cron|internal|auth|push|whatsapp|qa|health)(\/|$)/;
+// tareas programadas, autenticación y notificaciones push. El Agent Center NO va
+// aquí: tiene acciones que una persona dispara (reanudar tareas, aprobar informes).
+const SYSTEM_ROUTE = /^(coco|webhooks|cron|internal|auth|push|whatsapp|qa|health)(\/|$)/;
 
 function serviceActions(dir: string) {
     const out: string[] = [];
