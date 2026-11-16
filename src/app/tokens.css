@@ -65,6 +65,15 @@
   --cc-plum:          #5C4868;
   --cc-plum-tint:     rgba(92, 72, 104, 0.10);
 
+  /* Acentos usados como COLOR DE TEXTO. En claro son el mismo tono; en
+     oscuro se aclaran (ver .dark), porque el tono sólido sigue siendo el
+     fondo de botones con texto blanco y no puede aclararse sin romperlos.
+     dark-readability.css los aplica a los usos de texto existentes. */
+  --cc-copper-text:   var(--cc-copper);
+  --cc-sage-text:     var(--cc-sage);
+  --cc-rose-text:     var(--cc-rose);
+  --cc-plum-text:     var(--cc-plum);
+
   /* ─── Semantic (alias quiet accents) ───────────────────── */
   --cc-success:       var(--cc-sage);
   --cc-success-tint:  var(--cc-sage-tint);
@@ -170,7 +179,15 @@
   --cc-ink-soft:         #EDE6D9; /* Soft light text */
   --cc-ink-muted:        #C8BFB6; /* Muted text */
   --cc-ink-tertiary:     #8A8580; /* Tertiary text */
-  --cc-ink-faint:        #5F5A54; /* Disabled text */
+  /* Era #5F5A54 (2,8:1 sobre las tarjetas): se usa como texto en ~30 lugares,
+     no solo deshabilitado. #807A73 queda en 4,4:1 y debajo de tertiary. */
+  --cc-ink-faint:        #807A73;
+
+  /* Acentos como texto: >= 4,5:1 sobre lienzo y tarjetas oscuras (WCAG AA). */
+  --cc-copper-text:      #C47A52;
+  --cc-sage-text:        #9DB386;
+  --cc-rose-text:        #E0857F;
+  --cc-plum-text:        #AF9EC3;
 
   /* ─── Borders & lines ──────────────────────────────────── */
   --cc-line:             rgba(251, 248, 243, 0.08);
@@ -257,6 +274,10 @@
   --cc-text-secondary: #524A40;
   --cc-text-tertiary:  #8B8278;
   --cc-text-disabled:  #B8B0A3;
+  --cc-copper-text:    #9C5636;
+  --cc-sage-text:      #5F7A46;
+  --cc-rose-text:      #B5524E;
+  --cc-plum-text:      #5C4868;
   --cc-border-default: rgba(26, 22, 17, 0.08);
   --cc-border-strong:  rgba(26, 22, 17, 0.16);
   color: var(--cc-ink);

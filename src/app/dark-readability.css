@@ -1,0 +1,144 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Legibilidad en modo oscuro
+   ═══════════════════════════════════════════════════════════════════════
+   El tema por defecto es "system": todo celular en modo oscuro ve la app
+   oscura sin haberlo elegido. Residentes reportaron que costaba leer, y la
+   medición (contraste WCAG calculado en el navegador) lo confirmó en tres
+   patrones repetidos en cientos de componentes:
+
+     1. Grises fijos de Tailwind (text-slate-500/600, text-gray-600…) escritos
+        para fondo claro: 2,6–4,1:1 sobre las superficies oscuras.
+     2. Acentos como texto (cobre, salvia, rosa, ciruela) con el mismo tono
+        oscuro del tema claro: 2,3–3,9:1. El cobre es el color de enlaces y
+        etiquetas en 281 lugares.
+     3. (Resuelto en tokens.css) --cc-ink-faint usado como texto, 2,8:1.
+
+   Esta hoja corrige 1 y 2 sin tocar cada componente, con dos salvaguardas
+   para no empeorar nada de lo que hoy se lee bien:
+
+     - Solo actúa si el elemento NO trae su propia variante dark:text-*.
+     - No actúa dentro de superficies que siguen claras en modo oscuro
+       (.cc-force-light, bg-white sin dark:bg-*, tintes -50/-100). Ahí el
+       texto oscuro original es el correcto.
+
+   No está en una @layer a propósito: los estilos sin capa le ganan a las
+   utilidades de Tailwind (que sí están en capa) sin necesitar !important.
+   Los colores en línea (style={{ color: 'var(--cc-copper)' }}) sí necesitan
+   !important para ganarle al atributo style.
+
+   Componentes nuevos: usar los tokens del tema (var(--cc-ink-muted),
+   var(--cc-copper-text)…) en vez de grises fijos, y esta hoja no hace falta.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Grises fijos de Tailwind ────────────────────────────────────────── */
+/* La lista dentro de :not(:where(…)) son las superficies claras: el propio
+   elemento con bg-white, o cualquier ancestro claro. Se repite en cada regla
+   porque CSS no tiene variables de selector. */
+:where(.dark) :is(.text-slate-500, .text-gray-500, .text-zinc-500, .text-stone-500, .text-neutral-500):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-ink-tertiary);
+}
+
+:where(.dark) :is(.text-slate-600, .text-gray-600, .text-zinc-600, .text-stone-600, .text-neutral-600):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-ink-muted);
+}
+
+:where(.dark) :is(.text-slate-700, .text-gray-700, .text-zinc-700, .text-stone-700, .text-neutral-700,
+                  .text-slate-800, .text-gray-800, .text-zinc-800, .text-stone-800, .text-neutral-800):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-ink-soft);
+}
+
+:where(.dark) :is(.text-slate-900, .text-gray-900, .text-zinc-900, .text-stone-900, .text-neutral-900, .text-black):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-ink);
+}
+
+/* ── 2. Acentos usados como texto ──────────────────────────────────────── */
+/* Clases: solo la clase exacta (class~=), no hover:text-… ni bg-…. Incluye el
+   hex escrito directo (text-[#9C5636]), que aparece en ~35 lugares. */
+:where(.dark) :is(.text-copper, [class~="text-[var(--cc-copper)]"], [class~="text-[#9C5636]"]):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-copper-text);
+}
+:where(.dark) :is(.text-sage, [class~="text-[var(--cc-sage)]"], [class~="text-[#5F7A46]"]):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-sage-text);
+}
+:where(.dark) :is(.text-rose, [class~="text-[var(--cc-rose)]"], [class~="text-[#B5524E]"]):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-rose-text);
+}
+:where(.dark) :is(.text-plum, [class~="text-[var(--cc-plum)]"], [class~="text-[#5C4868]"]):not([class*="dark:text-"]):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-plum-text);
+}
+
+/* Estilos en línea: la propiedad color al inicio o después de ";", nunca
+   background-color. React los escribe con o sin espacio según renderice en
+   el servidor o en el cliente. */
+:where(.dark) :is(
+  [style^="color:var(--cc-copper)"], [style^="color: var(--cc-copper)"],
+  [style*=";color:var(--cc-copper)"], [style*="; color: var(--cc-copper)"]
+):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-copper-text) !important;
+}
+:where(.dark) :is(
+  [style^="color:var(--cc-sage)"], [style^="color: var(--cc-sage)"],
+  [style*=";color:var(--cc-sage)"], [style*="; color: var(--cc-sage)"]
+):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-sage-text) !important;
+}
+:where(.dark) :is(
+  [style^="color:var(--cc-rose)"], [style^="color: var(--cc-rose)"],
+  [style*=";color:var(--cc-rose)"], [style*="; color: var(--cc-rose)"]
+):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-rose-text) !important;
+}
+:where(.dark) :is(
+  [style^="color:var(--cc-plum)"], [style^="color: var(--cc-plum)"],
+  [style*=";color:var(--cc-plum)"], [style*="; color: var(--cc-plum)"]
+):not(:where(
+  .cc-force-light *, [class~="bg-white"]:not([class*="dark:bg-"]) *, [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class*="-50 "]:not([class*="dark:bg-"]) *, [class$="-50"]:not([class*="dark:bg-"]) *,
+  [class*="-100 "]:not([class*="dark:bg-"]) *, [class$="-100"]:not([class*="dark:bg-"]) *
+)) {
+  color: var(--cc-plum-text) !important;
+}

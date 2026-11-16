@@ -335,7 +335,7 @@ export default function UnitsPage() {
                                         <tr key={unit.id} className="transition-colors hover:bg-[var(--cc-paper-warm)]" style={{ borderTop: "1px solid var(--cc-line)" }}>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)" }}>
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--cc-carbon)", color: "var(--cc-copper-soft)" }}>
                                                         <Home className="h-5 w-5" />
                                                     </div>
                                                     <div>

@@ -292,7 +292,7 @@ export default function UsersPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm"
-                                                        style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 16 }}
+                                                        style={{ background: "var(--cc-carbon)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 16 }}
                                                     >
                                                         {name.charAt(0).toUpperCase()}
                                                     </div>
