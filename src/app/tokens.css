@@ -14,8 +14,8 @@
   --cc-ink:           #1A1611;
   --cc-ink-soft:      #2A241D;
   --cc-ink-muted:     #524A40;
-  --cc-ink-tertiary:  #8B8278;
-  --cc-ink-faint:     #B8B0A3;
+  --cc-ink-tertiary:  #6A6157; /* era #8B8278: 3,3:1 */
+  --cc-ink-faint:     #6E655B; /* era #B8B0A3: 1,9:1; se usa como texto */
 
   /* ─── Fixed text on always-light surfaces ───────────────
      NOT redefined in .dark: use it for text on bg-white,
@@ -51,7 +51,7 @@
   --cc-carbon-line:   rgba(32, 30, 26, 0.16);
 
   /* ─── Role accents — quiet ──────────────────────────────── */
-  --cc-sage:          #5F7A46;
+  --cc-sage:          #506A39; /* era #5F7A46: 4,2:1 como texto */
   --cc-sage-soft:     #A9BC93;
   --cc-sage-tint:     rgba(95, 122, 70, 0.12);
 
@@ -59,7 +59,7 @@
   --cc-amber-soft:    #E2C892;
   --cc-amber-tint:    rgba(201, 154, 74, 0.10);
 
-  --cc-rose:          #B5524E;
+  --cc-rose:          #A1423C; /* era #B5524E: 4,3:1 como texto */
   --cc-rose-tint:     rgba(181, 82, 78, 0.10);
 
   --cc-plum:          #5C4868;
@@ -142,7 +142,7 @@
   --cc-role-admin-border: rgba(156, 86, 54, 0.20);
 
   /* ─── Role Accents — Conserje (Amber) ──────────────────── */
-  --cc-role-conserje-fg:     #C99A4A;
+  --cc-role-conserje-fg:     #7F5C1C; /* ámbar como texto: #C99A4A daba 2,2:1 */
   --cc-role-conserje-bg:     var(--cc-amber-tint);
   --cc-role-conserje-border: rgba(201, 154, 74, 0.20);
 
@@ -156,7 +156,7 @@
   --cc-success-bg:     var(--cc-sage-tint);
   --cc-success-border: rgba(95, 122, 70, 0.20);
 
-  --cc-warning-fg:     #C99A4A;
+  --cc-warning-fg:     #7F5C1C;
   --cc-warning-bg:     var(--cc-amber-tint);
   --cc-warning-border: rgba(201, 154, 74, 0.20);
 
@@ -267,17 +267,17 @@
   --cc-ink:            #1A1611;
   --cc-ink-soft:       #2A241D;
   --cc-ink-muted:      #524A40;
-  --cc-ink-tertiary:   #8B8278;
-  --cc-ink-faint:      #B8B0A3;
+  --cc-ink-tertiary:   #6A6157;
+  --cc-ink-faint:      #6E655B;
   --cc-line:           rgba(26, 22, 17, 0.08);
   --cc-line-strong:    rgba(26, 22, 17, 0.16);
   --cc-text-primary:   #1A1611;
   --cc-text-secondary: #524A40;
-  --cc-text-tertiary:  #8B8278;
-  --cc-text-disabled:  #B8B0A3;
+  --cc-text-tertiary:  #6A6157;
+  --cc-text-disabled:  #6E655B;
   --cc-copper-text:    #9C5636;
-  --cc-sage-text:      #5F7A46;
-  --cc-rose-text:      #B5524E;
+  --cc-sage-text:      #506A39;
+  --cc-rose-text:      #A1423C;
   --cc-plum-text:      #5C4868;
   --cc-border-default: rgba(26, 22, 17, 0.08);
   --cc-border-strong:  rgba(26, 22, 17, 0.16);
@@ -289,6 +289,10 @@
    Generates utilities like:  bg-ink, text-copper, font-display, rounded-xl, etc.
    ============================================================ */
 @theme {
+  /* slate-500 y gray-500 de Tailwind quedaban en 4,2 y 4,1:1 sobre el lienzo
+     claro (etiquetas de formularios). En oscuro los cubre dark-readability.css. */
+  --color-slate-500:     #56657A;
+  --color-gray-500:      #5E6573;
   --color-ivory:         var(--cc-ivory);
   --color-ivory-soft:    var(--cc-ivory-soft);
   --color-paper:         var(--cc-paper);

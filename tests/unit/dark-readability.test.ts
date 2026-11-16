@@ -95,3 +95,33 @@ describe('modo oscuro legible', () => {
         for (const selector of selectors) expect(selector.startsWith(':where(.dark)'), selector).toBe(true);
     });
 });
+
+describe('tema claro legible', () => {
+    // Bloque :root (tema claro), antes de .dark.
+    const lightBlock = tokens.slice(tokens.indexOf(':root {'), tokens.indexOf('.dark {'));
+    const lightToken = (name: string) => {
+        const match = lightBlock.match(new RegExp(`--${name}:\\s*(#[0-9A-Fa-f]{6})`));
+        if (!match) throw new Error(`--${name} no está definido con un hex en :root`);
+        return match[1];
+    };
+    const LIGHT_SURFACES = ['cc-ivory', 'cc-ivory-soft', 'cc-paper', 'cc-paper-warm'];
+    // El cobre de marca queda fuera a propósito: 4,46:1 solo sobre ivory-soft.
+    const LIGHT_TEXT = ['cc-ink', 'cc-ink-muted', 'cc-ink-tertiary', 'cc-ink-faint', 'cc-sage', 'cc-rose', 'cc-plum', 'cc-warning-fg', 'cc-role-conserje-fg'];
+
+    it.each(LIGHT_TEXT)('--%s cumple 4,5:1 sobre todas las superficies claras', (token) => {
+        for (const surface of LIGHT_SURFACES) {
+            expect(contrast(lightToken(token), lightToken(surface)), `${token} sobre ${surface}`).toBeGreaterThanOrEqual(4.5);
+        }
+    });
+
+    it('slate-500 y gray-500 de Tailwind cumplen 4,5:1 sobre las superficies claras', () => {
+        for (const name of ['color-slate-500', 'color-gray-500']) {
+            const value = tokens.match(new RegExp(`--${name}:\\s*(#[0-9A-Fa-f]{6})`))![1];
+            for (const surface of LIGHT_SURFACES) expect(contrast(value, lightToken(surface)), `${name} sobre ${surface}`).toBeGreaterThanOrEqual(4.5);
+        }
+    });
+
+    it('salvia y rosa siguen llevando texto blanco encima (botones)', () => {
+        for (const token of ['cc-sage', 'cc-rose']) expect(contrast('#FFFFFF', lightToken(token))).toBeGreaterThanOrEqual(4.5);
+    });
+});
