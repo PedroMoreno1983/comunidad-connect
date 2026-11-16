@@ -286,6 +286,10 @@ El agente CoCo tiene dos capas:
 
 El gateway IoT está en `coco-gateway.js` (Node.js standalone) para recibir datos de sensores.
 
+**Cobertura agéntica.** La meta es que todo lo que se hace en la interfaz se pueda pedir conversando con CoCo. `src/lib/coco/agentCoverage.ts` clasifica cada acción que modifica datos (método de Service o ruta POST/PATCH/PUT/DELETE): `tool` (CoCo la hace), `gap` (le falta, con qué), `ui` / `read` / `system` (se queda fuera, con la razón). `tests/unit/coco-agent-coverage.test.ts` falla si una acción nueva no está clasificada. Al agregar una pantalla o ruta que escribe, decide ahí qué hace CoCo con ella; al cerrar una brecha, pásala de `gap` a `tool`.
+
+**Al agregar una herramienta a CoCo:** definición y ejecutor en `src/lib/coco/tools.ts`, `MUTATING_TOOLS` si escribe, el set de rol (`RESIDENT_TOOLS`, `ADMIN_TOOLS`…), `describePendingAction` para la confirmación, su riesgo en `src/lib/agent-center/cocoRisk.ts` (CI falla sin él) y, si depende de la administración, `NEIGHBOR_MODE_BLOCKED_TOOLS` en `src/lib/neighborMode.ts`. Si la función de base usa `auth.uid()`, CoCo (service role) necesita una variante `<dominio>_as(p_user_id, …)` con su wrapper `coco_*` solo para `service_role`.
+
 ---
 
 ## Comandos Útiles

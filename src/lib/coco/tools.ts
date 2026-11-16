@@ -9,6 +9,8 @@ import { MAX_SHOPPING_LIST_CHARS, parseGroupShoppingList as parsePersonalShoppin
 import { savedListKey, savedListTitle } from '@/lib/supermarketSavedLists';
 import { compareShoppingListForUser, supermarketListLink } from './shoppingTools';
 import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
+import { cancelParkingBookingForUser, cancelReservationForUser, cancelStorageRentalForUser, updateMarketplaceItemForUser } from './undoActions';
+import { reportTransferForUnit } from '@/lib/finance/transferReport';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
 import { getOrCreateInvite } from '@/lib/onboarding/neighborInvites';
@@ -102,6 +104,20 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'report_transfer',
+        description: 'Avisa a la administración que el residente pagó su gasto común por transferencia, con monto, fecha, número de comprobante y mes al que corresponde. NO registra el pago: el saldo cambia cuando la administración verifica el comprobante. Úsalo para "ya transferí", "pagué por transferencia". Pide los datos que falten; nunca los inventes. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                amount: { type: 'integer', description: 'Monto transferido, en pesos.' },
+                paid_at: { type: 'string', description: 'Fecha de la transferencia, AAAA-MM-DD.' },
+                reference: { type: 'string', description: 'Número de comprobante u operación (al menos 4 caracteres).' },
+                month: { type: 'string', description: 'Mes del gasto común que paga, YYYY-MM. Si no lo dice, usa get_payment_status y pregúntale cuál.' },
+            },
+            required: ['amount', 'paid_at', 'reference', 'month'],
+        },
+    },
+    {
         name: 'get_water_consumption',
         description: 'Consulta el consumo de agua (m3) y el cobro correspondiente del residente para un período.',
         input_schema: {
@@ -150,6 +166,19 @@ export const TOOL_DEFINITIONS = [
                 swap_details: { type: 'string', description: 'Qué aceptaría a cambio.' },
             },
             required: ['title', 'price'],
+        },
+    },
+    {
+        name: 'update_marketplace_item',
+        description: 'Cambia el estado de un artículo que el propio usuario publicó en el Marketplace: vendido, reservado, disponible otra vez u oculto (lo retira). Úsalo para "ya vendí la bicicleta", "saca mi publicación", "la silla está reservada". Busca por título entre SUS publicaciones; si hay varias parecidas, devuelve la lista para que elija. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string', description: 'Título o parte del título de su publicación.' },
+                item_id: { type: 'string', description: 'ID exacto, solo si una respuesta anterior de esta herramienta lo devolvió.' },
+                status: { type: 'string', enum: ['sold', 'reserved', 'available', 'hidden'], description: 'sold = vendido, reserved = reservado, available = disponible de nuevo, hidden = retirar la publicación.' },
+            },
+            required: ['status'],
         },
     },
     {
@@ -256,6 +285,19 @@ export const TOOL_DEFINITIONS = [
             required: ['unit_id', 'space_name', 'date', 'start_time', 'end_time'],
         },
     },
+    {
+        name: 'cancel_reservation',
+        description: 'Cancela una reserva de espacio común (quincho, piscina, sala) que hizo el propio residente, de hoy en adelante. Identifícala por espacio y fecha; si ese día tiene más de una, agrega start_time. No tiene costo. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                space_name: { type: 'string', description: 'Nombre del espacio, como lo dice el residente.' },
+                date: { type: 'string', description: 'YYYY-MM-DD' },
+                start_time: { type: 'string', description: 'HH:MM. Solo si ese día tiene más de una reserva del mismo espacio.' },
+            },
+            required: ['space_name', 'date'],
+        },
+    },
 
     // ── MÓDULO: ESTACIONAMIENTOS ─────────────────────────────────────────────
     {
@@ -295,6 +337,18 @@ export const TOOL_DEFINITIONS = [
             required: ['spot_id', 'starts_at', 'ends_at'],
         },
     },
+    {
+        name: 'cancel_parking_booking',
+        description: 'Cancela una reserva de estacionamiento que hizo el residente como conductor. Usa antes get_my_parking para obtener el reserva_id; nunca lo inventes. Sin costo si se cancela con la anticipación que fija la comunidad (2 h por defecto); después, si cancela el conductor, el cobro se mantiene: díselo antes de confirmar. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                booking_id: { type: 'string', description: 'reserva_id tal como lo devolvió get_my_parking.' },
+                reason: { type: 'string', description: 'Motivo, si lo dio.' },
+            },
+            required: ['booking_id'],
+        },
+    },
 
     // ── MÓDULO: BODEGAS ──────────────────────────────────────────────────────
     {
@@ -325,6 +379,18 @@ export const TOOL_DEFINITIONS = [
                 months: { type: 'integer', description: 'Cuántos meses (1 a 24).' },
             },
             required: ['storage_id', 'starts_on', 'months'],
+        },
+    },
+    {
+        name: 'cancel_storage_rental',
+        description: 'Termina un arriendo de bodega del residente. Usa antes get_my_storage para obtener el arriendo_id; nunca lo inventes. Se anulan los cobros de los meses que aún no empiezan; el mes en curso y lo ya pagado se mantienen (díselo antes de confirmar). Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                rental_id: { type: 'string', description: 'arriendo_id tal como lo devolvió get_my_storage.' },
+                reason: { type: 'string', description: 'Motivo, si lo dio.' },
+            },
+            required: ['rental_id'],
         },
     },
 
@@ -1104,7 +1170,15 @@ export const MUTATING_TOOLS = new Set<string>([
     'book_parking',
     // Genera cargos mensuales en gastos comunes: el residente confirma antes.
     'rent_storage',
+    // Deshacer lo que CoCo reserva o publica. Cancelar libera un cupo que otro
+    // puede tomar, así que no se revierte: también confirma.
+    'cancel_reservation',
+    'cancel_parking_booking',
+    'cancel_storage_rental',
     'publish_marketplace_item',
+    'update_marketplace_item',
+    // Avisa a la administración en nombre del residente.
+    'report_transfer',
     'request_service',
     'propose_community_deal',
     'join_community_deal',
@@ -1169,7 +1243,8 @@ const RESIDENT_TOOLS = new Set([
     // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
     'get_my_parking', 'search_parking', 'book_parking',
     'get_my_storage', 'search_storage', 'rent_storage',
-    'compare_shopping_list', 'publish_marketplace_item', 'request_service',
+    'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
+    'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
     'list_community_deals', 'suggest_community_deals', 'propose_community_deal', 'join_community_deal',
     // Perfil del maestro: valorar, y que el propio maestro (con cuenta) suba
     // fotos o documentos por el chat; el ejecutor comprueba que sea su perfil.
@@ -1214,7 +1289,9 @@ const SYSTEM_TOOLS = new Set([
 // El supermercado personal (/resident/supermercado) solo lo abre un residente:
 // ofrecerle al personal comparar o guardar listas lo llevaría a una pantalla
 // que lo rechaza.
-const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item', 'compare_shopping_list', 'save_shopping_list']);
+// Informar una transferencia es del residente: la administración registra el
+// pago en cobranza (la ruta de la pantalla también la rechaza para admin).
+const RESIDENT_ONLY_TOOLS = new Set(['vote_in_poll', 'publish_marketplace_item', 'update_marketplace_item', 'compare_shopping_list', 'save_shopping_list', 'report_transfer']);
 
 // Conserjería no abre /services (roleAccess.ts): pedir un servicio lo dejaría
 // sin forma de revisar ni gestionar la solicitud que creó.
@@ -1285,6 +1362,35 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return {
                 title: 'Arrendar bodega',
                 summary: `Desde el ${str('starts_on')} por ${meses} ${meses === 1 ? 'mes' : 'meses'}. Cada mes se carga el arriendo a la cuenta de gastos comunes de tu unidad.`,
+            };
+        }
+        case 'cancel_reservation':
+            return {
+                title: 'Cancelar reserva',
+                summary: `${str('space_name') || 'Espacio común'} el ${str('date')}${str('start_time') ? ` a las ${str('start_time')}` : ''}. El horario queda libre para otros vecinos.`,
+            };
+        case 'cancel_parking_booking':
+            return {
+                title: 'Cancelar reserva de estacionamiento',
+                summary: 'Sin costo si faltan más horas que el plazo de la comunidad (2 h por defecto); si no, el cobro se mantiene.',
+            };
+        case 'cancel_storage_rental':
+            return {
+                title: 'Terminar arriendo de bodega',
+                summary: 'Se anulan los cobros de los meses que aún no empiezan. El mes en curso y lo ya pagado se mantienen.',
+            };
+        case 'update_marketplace_item': {
+            const estados: Record<string, string> = {
+                sold: 'Marcar como vendido', reserved: 'Marcar como reservado',
+                available: 'Volver a ofrecer', hidden: 'Retirar la publicación',
+            };
+            return { title: estados[str('status')] || 'Actualizar publicación', summary: str('title') || 'Tu publicación del Marketplace.' };
+        }
+        case 'report_transfer': {
+            const monto = Number(input.amount);
+            return {
+                title: 'Informar transferencia a la administración',
+                summary: `${Number.isFinite(monto) ? `$${monto.toLocaleString('es-CL')}` : 'Transferencia'} del ${str('paid_at')}, comprobante ${str('reference')}, para el gasto común ${str('month')}. Tu saldo cambia cuando la administración lo verifique.`,
             };
         }
         case 'create_circular':
@@ -1788,7 +1894,8 @@ export async function executeTool(
                 if (driver?.id) {
                     const { data } = await supabaseAdmin
                         .from('parking_bookings')
-                        .select('starts_at, ends_at, status, total_amount, access_code, parking_spots(label, floor_level)')
+                        // reserva_id: lo necesita cancel_parking_booking.
+                        .select('reserva_id:id, starts_at, ends_at, status, total_amount, access_code, parking_spots(label, floor_level)')
                         .eq('community_id', communityId)
                         .eq('driver_id', driver.id)
                         .gte('ends_at', new Date().toISOString())
@@ -2001,6 +2108,43 @@ export async function executeTool(
                     ...(creada ?? {}),
                     cobro,
                     donde_verla: '/estacionamientos',
+                };
+            }
+
+            case 'cancel_reservation':
+            case 'cancel_parking_booking':
+            case 'cancel_storage_rental':
+            case 'update_marketplace_item': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                const run = {
+                    cancel_reservation: cancelReservationForUser,
+                    cancel_parking_booking: cancelParkingBookingForUser,
+                    cancel_storage_rental: cancelStorageRentalForUser,
+                    update_marketplace_item: updateMarketplaceItemForUser,
+                }[name];
+                return run(supabaseAdmin, communityId, userCtx.user_id, input as Record<string, unknown>);
+            }
+
+            case 'report_transfer': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                const unitId = await scopedUnit(userCtx, undefined);
+                if (!unitId) return forbidden('Tu perfil todavía no tiene una unidad asignada; pídele a la administración que la asocie.');
+                const result = await reportTransferForUnit(supabaseAdmin, {
+                    communityId,
+                    unitId,
+                    amount: input.amount,
+                    paidAt: input.paid_at,
+                    reference: input.reference,
+                    month: input.month,
+                });
+                if ('error' in result) return { error: result.error };
+                return {
+                    success: true,
+                    message: result.notified
+                        ? `Le avisé a la administración de tu transferencia de $${result.amount.toLocaleString('es-CL')} para ${result.month}. Tu saldo cambia cuando la verifique y la registre.`
+                        : 'Quedó informada, pero tu comunidad no tiene una administración con cuenta que la reciba todavía.',
                 };
             }
 

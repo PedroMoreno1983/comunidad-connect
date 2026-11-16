@@ -33,11 +33,13 @@ export function neighborModeGateFor(pathname: string | null | undefined): Neighb
 export const NEIGHBOR_MODE_BLOCKED_TOOLS = new Set([
     'get_payment_status', 'get_water_consumption',
     'create_claim', 'get_claim_status', 'list_my_claims',
-    'check_availability', 'create_reservation',
+    'check_availability', 'create_reservation', 'cancel_reservation',
     'list_active_polls', 'vote_in_poll',
     'register_visitor', 'get_pending_packages',
-    'get_my_parking', 'search_parking', 'book_parking',
-    'get_my_storage', 'search_storage', 'rent_storage',
+    'get_my_parking', 'search_parking', 'book_parking', 'cancel_parking_booking',
+    'get_my_storage', 'search_storage', 'rent_storage', 'cancel_storage_rental',
+    // Sin administración no hay gasto común que pagar ni a quién avisarle.
+    'report_transfer',
 ]);
 
 /** Lo que CoCo sabe de una comunidad sin administrar. */

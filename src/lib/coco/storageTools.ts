@@ -133,6 +133,8 @@ export async function myStorageForResident(admin: SupabaseClient, communityId: s
   const label = (row: Row) => (row.storage_units as { label?: string } | null)?.label || 'Bodega';
   return {
     arriendos: ((rentals || []) as Row[]).filter(row => row.tenant_id === userId).map(row => ({
+      // Lo necesita cancel_storage_rental.
+      arriendo_id: row.id,
       bodega: label(row), desde: row.starts_on, hasta: row.ends_on, meses: row.months,
       cobro_mensual: row.monthly_rate, estado: row.status,
     })),
