@@ -4169,3 +4169,21 @@ export interface PushSendResult {
   invalidTokens: string[];
   skipped?: string;
 }
+
+/** Clave JSON de una cuenta de servicio de Google (solo fuera de Vercel). */
+export interface FirebaseServiceAccountKey {
+  project_id: string;
+  client_email: string;
+  private_key: string;
+}
+
+/** Acceso sin clave: OIDC de Vercel → Workload Identity Federation de Google. */
+export interface FirebaseFederatedAccount {
+  projectId: string;
+  serviceAccountEmail: string;
+  provider: string;
+}
+
+export type FirebaseCredential =
+  | { kind: 'key'; account: FirebaseServiceAccountKey }
+  | { kind: 'federated'; account: FirebaseFederatedAccount };

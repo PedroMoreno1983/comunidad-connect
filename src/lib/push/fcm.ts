@@ -16,23 +16,15 @@
  */
 import { createSign } from 'node:crypto';
 import { getVercelOidcToken } from '@vercel/oidc';
-import type { PushMessage, PushSendResult } from '@/lib/types';
+import type {
+    FirebaseCredential as Credential,
+    FirebaseFederatedAccount as FederatedAccount,
+    FirebaseServiceAccountKey as ServiceAccount,
+    PushMessage,
+    PushSendResult,
+} from '@/lib/types';
 
 const FCM_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
-
-interface ServiceAccount {
-    project_id: string;
-    client_email: string;
-    private_key: string;
-}
-
-interface FederatedAccount {
-    projectId: string;
-    serviceAccountEmail: string;
-    provider: string;
-}
-
-type Credential = { kind: 'key'; account: ServiceAccount } | { kind: 'federated'; account: FederatedAccount };
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
