@@ -64,7 +64,10 @@ TWILIO_WHATSAPP_PAYMENT_CONTENT_SID=   # Plantilla de aviso de cobro (fuera de l
 TWILIO_WHATSAPP_NOTICE_CONTENT_SID=    # Plantilla de aviso general
 
 # Push (app nativa, ver docs/android-google-play.md)
-FIREBASE_SERVICE_ACCOUNT= # JSON de la cuenta de servicio de Firebase en una línea. Sin ella, los avisos no salen como push
+FIREBASE_PROJECT_ID=                 # convive-login. Con las dos siguientes, Vercel entra a Firebase sin clave (OIDC)
+FIREBASE_SERVICE_ACCOUNT_EMAIL=      # firebase-adminsdk-fbsvc@convive-login.iam.gserviceaccount.com
+FIREBASE_WORKLOAD_IDENTITY_PROVIDER= # projects/948751568382/locations/global/workloadIdentityPools/vercel/providers/vercel
+FIREBASE_SERVICE_ACCOUNT= # Alternativa fuera de Vercel: JSON de la clave en una línea (la organización de Google prohíbe crear claves)
 PUSH_DISPATCH_SECRET=    # Igual al secreto push_dispatch_secret de Supabase Vault: autentica al trigger que despacha
 
 # Pagos (pendiente credenciales Haulmer/Tuu)

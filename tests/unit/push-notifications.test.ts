@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushLinkFor } from '@/lib/push/links';
-import { fcmMessageBody, readServiceAccount } from '@/lib/push/fcm';
+import { fcmMessageBody, readFederatedAccount, readServiceAccount } from '@/lib/push/fcm';
 import { isFreshEnough, PUSH_MAX_AGE_MS, shouldReleaseClaim } from '@/lib/push/dispatch';
 
 describe('notificaciones push', () => {
@@ -30,6 +30,17 @@ describe('notificaciones push', () => {
     expect(readServiceAccount(undefined)).toBeNull();
     expect(readServiceAccount('no json')).toBeNull();
     expect(readServiceAccount(JSON.stringify({ project_id: 'p' }))).toBeNull();
+  });
+
+  it('lee la federación sin clave solo si están las tres variables y el proveedor es válido', () => {
+    const env = {
+      FIREBASE_PROJECT_ID: 'convive-login',
+      FIREBASE_SERVICE_ACCOUNT_EMAIL: 'sa@convive-login.iam.gserviceaccount.com',
+      FIREBASE_WORKLOAD_IDENTITY_PROVIDER: 'projects/948751568382/locations/global/workloadIdentityPools/vercel/providers/vercel',
+    } as NodeJS.ProcessEnv;
+    expect(readFederatedAccount(env)?.provider).toContain('workloadIdentityPools/vercel');
+    expect(readFederatedAccount({ ...env, FIREBASE_PROJECT_ID: '' })).toBeNull();
+    expect(readFederatedAccount({ ...env, FIREBASE_WORKLOAD_IDENTITY_PROVIDER: '//iam.googleapis.com/otro' })).toBeNull();
   });
 
   it('libera el aviso si no salió por un error pasajero o falta la credencial', () => {
