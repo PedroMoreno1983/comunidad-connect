@@ -14,6 +14,7 @@ import { Tag } from "@/components/cc/Tag";
 import { Button } from "@/components/cc/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { NextUpCard } from "@/components/home/NextUpCard";
+import { NeighborHome } from "@/components/home/NeighborHome";
 import { todayInChile } from "@/lib/finance/chileDates";
 import type { ResidentNextUp } from "@/lib/home/types";
 
@@ -43,6 +44,8 @@ export default function HomePage() {
     // ── Fetch Resident Data ──
     useEffect(() => {
         if (!user || user.role !== "resident") return;
+        // Modo vecino: el inicio no muestra gastos ni reservas; no hace falta pedirlos.
+        if (user.communityManaged === false || user.residenceVerified === false) return;
 
         const fetchData = async () => {
             setSummaryStatus('loading');
@@ -61,6 +64,24 @@ export default function HomePage() {
     }, [user]);
 
     if (!user || user.role !== "resident") return null;
+
+    // Modo vecino o esperando validación: el inicio de abajo (gastos, reservas,
+    // visitas) lleva a pantallas que todavía no existen para esta persona.
+    const pendingValidation = user.communityManaged !== false && user.residenceVerified === false;
+    if (user.communityManaged === false || pendingValidation) {
+        const name = user.name || "";
+        return (
+            <ErrorBoundary name="Inicio modo vecino">
+                <NeighborHome
+                    firstName={name ? name.split(" ")[0] : "vecino"}
+                    buildingName={user.communityName || "tu edificio"}
+                    pendingValidation={pendingValidation}
+                    initials={name ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "U"}
+                />
+            </ErrorBoundary>
+        );
+    }
+
     if (summaryStatus !== 'ready') {
         return <div className="mx-auto max-w-md px-5 py-20" role={summaryStatus === 'error' ? 'alert' : 'status'}>{summaryStatus === 'error' ? 'No pudimos verificar tu resumen. Vuelve a cargar la página para consultar tu saldo.' : 'Cargando tu resumen…'}</div>;
     }

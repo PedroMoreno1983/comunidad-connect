@@ -653,6 +653,15 @@ export interface ResidentHomeQuickActionProps {
   detail: string;
 }
 
+/** Inicio del residente en modo vecino o esperando validación. */
+export interface NeighborHomeProps {
+  firstName: string;
+  buildingName: string;
+  /** true: edificio administrado, la administración aún no confirma que vive ahí. */
+  pendingValidation: boolean;
+  initials: string;
+}
+
 export interface ConciergeQuickActionProps {
   href: string;
   icon: ReactNode;
