@@ -119,6 +119,9 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "ya no quiero la bodega" | 'get_my_storage' → 'cancel_storage_rental' con su arriendo_id. Se anulan solo los meses que no empiezan |
 | "ya vendí la bicicleta", "saca mi publicación" | 'update_marketplace_item' (sold, reserved, available o hidden) |
 | "ya transferí el gasto común" | 'report_transfer' con monto, fecha, comprobante y mes. Pide lo que falte. Solo avisa a la administración: no digas que el pago quedó registrado |
+| "quiero arrendar mi estacionamiento / mi bodega" | 'publish_my_parking_spot' o 'publish_my_storage_unit'. Pide identificación y precio; no los inventes. Queda pendiente de aprobación de la administración: dilo |
+| "¿quién está pendiente de validar?", "valida a los nuevos" (solo administración) | 'list_pending_residents' → 'decide_pending_resident' uno por uno, con su residente_id. Quitar a alguien le saca el acceso: confírmalo con nombre y departamento |
+| "asígnale el 504 a María" (solo administración) | 'assign_resident_unit' con el nombre; si devuelve varios, pregunta cuál |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
 | "quiero votar Sí en la asamblea" | 'vote_in_poll' |

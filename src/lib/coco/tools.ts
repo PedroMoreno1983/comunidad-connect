@@ -11,6 +11,8 @@ import { compareShoppingListForUser, supermarketListLink } from './shoppingTools
 import { publishMarketplaceItemForUser, requestServiceForUser } from './residentActions';
 import { cancelParkingBookingForUser, cancelReservationForUser, cancelStorageRentalForUser, parkingCancellationWindow, updateMarketplaceItemForUser } from './undoActions';
 import { reportTransferForUnit } from '@/lib/finance/transferReport';
+import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingResidentsForAdmin } from './residentAdminTools';
+import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
 import { getOrCreateInvite } from '@/lib/onboarding/neighborInvites';
@@ -393,6 +395,42 @@ export const TOOL_DEFINITIONS = [
             required: ['rental_id'],
         },
     },
+    {
+        name: 'publish_my_parking_spot',
+        description: 'Publica el estacionamiento PROPIO del residente para arrendarlo a vecinos por hora, día o mes. Queda pendiente hasta que la administración lo apruebe. Pide lo que falte (identificación y al menos un precio); no inventes precios. Úsalo para "quiero arrendar mi estacionamiento". Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                label: { type: 'string', description: 'Cómo se identifica (ej. "E-23").' },
+                hourly_rate: { type: 'integer', description: 'Precio por hora en pesos.' },
+                daily_rate: { type: 'integer', description: 'Precio por día en pesos.' },
+                monthly_rate: { type: 'integer', description: 'Precio por mes en pesos.' },
+                floor_level: { type: 'string', enum: ['S1', 'S2', 'S3', 'PB', 'EXT'], description: 'Subterráneo 1-3, primer piso (PB) o exterior.' },
+                is_covered: { type: 'boolean' },
+                has_ev_charger: { type: 'boolean' },
+                vehicle_size: { type: 'string', enum: ['moto', 'auto', 'suv', 'camioneta'] },
+                min_hours: { type: 'integer', description: 'Mínimo de horas por reserva (1 a 24).' },
+                description: { type: 'string' },
+            },
+            required: ['label'],
+        },
+    },
+    {
+        name: 'publish_my_storage_unit',
+        description: 'Publica la bodega PROPIA del residente para arrendarla a vecinos por meses; el arriendo se cobra en los gastos comunes del arrendatario. Queda pendiente hasta que la administración la apruebe. Pide la identificación y el precio mensual; no los inventes. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                label: { type: 'string', description: 'Cómo se identifica (ej. "Bodega 12").' },
+                monthly_rate: { type: 'integer', description: 'Precio mensual en pesos.' },
+                min_months: { type: 'integer', description: 'Mínimo de meses (1 a 24).' },
+                floor_level: { type: 'string', description: 'Piso o nivel, ej. "-1".' },
+                area_m2: { type: 'number', description: 'Superficie en m².' },
+                description: { type: 'string' },
+            },
+            required: ['label', 'monthly_rate'],
+        },
+    },
 
     // ── MÓDULO: CONVENIOS COMUNITARIOS ───────────────────────────────────────
     {
@@ -593,6 +631,37 @@ export const TOOL_DEFINITIONS = [
                 floor: { type: 'string', description: 'Nuevo piso del departamento' },
             },
             required: ['unit_id'],
+        },
+    },
+    {
+        name: 'list_pending_residents',
+        description: 'Vecinos que se registraron solos (link de registro o invitación) y esperan que la administración confirme que viven en el edificio. Devuelve residente_id, nombre, departamento y fecha. Úsalo para "¿quién está pendiente?", "valida a los nuevos". SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'decide_pending_resident',
+        description: 'Valida a un vecino pendiente (vive en el edificio: queda con acceso completo y ligado a su departamento) o lo quita (no vive aquí: pierde el acceso a la comunidad). Usa antes list_pending_residents para el residente_id; nunca lo inventes. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                resident_id: { type: 'string', description: 'residente_id tal como lo devolvió list_pending_residents.' },
+                approve: { type: 'boolean', description: 'true = validar; false = quitar porque no vive en el edificio.' },
+                resident_name: { type: 'string', description: 'Nombre, solo para mostrar en la confirmación.' },
+            },
+            required: ['resident_id', 'approve'],
+        },
+    },
+    {
+        name: 'assign_resident_unit',
+        description: 'Asigna o corrige el departamento de un residente de la comunidad. Búscalo por nombre (resident_name) o usa resident_id si ya lo tienes; si hay varios con ese nombre, la herramienta devuelve la lista para que elija. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                resident_name: { type: 'string', description: 'Nombre o parte del nombre del residente.' },
+                resident_id: { type: 'string', description: 'ID exacto, solo si una respuesta anterior lo devolvió.' },
+                unit_number: { type: 'string', description: 'Departamento o unidad, ej. 504 o B-12.' },
+            },
+            required: ['unit_number'],
         },
     },
 
@@ -1175,6 +1244,10 @@ export const MUTATING_TOOLS = new Set<string>([
     'cancel_reservation',
     'cancel_parking_booking',
     'cancel_storage_rental',
+    // Publicar lo propio: queda pendiente de aprobación, pero es contenido
+    // público con precio. Confirma.
+    'publish_my_parking_spot',
+    'publish_my_storage_unit',
     'publish_marketplace_item',
     'update_marketplace_item',
     // Avisa a la administración en nombre del residente.
@@ -1191,6 +1264,10 @@ export const MUTATING_TOOLS = new Set<string>([
     'send_whatsapp_notification',
     'create_poll',
     'update_unit_data',
+    // Validar o quitar a un vecino, y asignar su departamento: cambian el
+    // acceso de otra persona. Confirma siempre.
+    'decide_pending_resident',
+    'assign_resident_unit',
     'request_urgent_access_approval',
     'dispatch_provider',
     'register_external_provider',
@@ -1244,6 +1321,7 @@ const RESIDENT_TOOLS = new Set([
     'get_my_parking', 'search_parking', 'book_parking',
     'get_my_storage', 'search_storage', 'rent_storage',
     'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
+    'publish_my_parking_spot', 'publish_my_storage_unit',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
     'list_community_deals', 'suggest_community_deals', 'propose_community_deal', 'join_community_deal',
     // Perfil del maestro: valorar, y que el propio maestro (con cuenta) suba
@@ -1264,6 +1342,7 @@ const ADMIN_TOOLS = new Set([
     'prepare_legal_draft',
     'add_community_deal_quote',
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
+    'list_pending_residents', 'decide_pending_resident', 'assign_resident_unit',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1379,6 +1458,20 @@ export function describePendingAction(name: string, input: Record<string, unknow
                 title: 'Terminar arriendo de bodega',
                 summary: 'Se anulan los cobros de los meses que aún no empiezan. El mes en curso y lo ya pagado se mantienen.',
             };
+        case 'publish_my_parking_spot': {
+            const precios = [['hourly_rate', 'hora'], ['daily_rate', 'día'], ['monthly_rate', 'mes']]
+                .filter(([key]) => Number(input[key]) > 0)
+                .map(([key, unidad]) => `$${Number(input[key]).toLocaleString('es-CL')} por ${unidad}`);
+            return {
+                title: 'Publicar mi estacionamiento',
+                summary: `"${str('label')}"${precios.length ? ` · ${precios.join(', ')}` : ''}. Queda pendiente hasta que la administración lo apruebe.`,
+            };
+        }
+        case 'publish_my_storage_unit':
+            return {
+                title: 'Publicar mi bodega',
+                summary: `"${str('label')}" · $${(Number(input.monthly_rate) || 0).toLocaleString('es-CL')} al mes. Queda pendiente hasta que la administración la apruebe.`,
+            };
         case 'update_marketplace_item': {
             const estados: Record<string, string> = {
                 sold: 'Marcar como vendido', reserved: 'Marcar como reservado',
@@ -1409,6 +1502,12 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Crear votación', summary: str('title') || 'Nueva votación para la comunidad.' };
         case 'update_unit_data':
             return { title: 'Modificar unidad', summary: `Actualizar datos de la unidad ${unit('unit_id')}.` };
+        case 'decide_pending_resident':
+            return input.approve === false
+                ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
+                : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'assign_resident_unit':
+            return { title: 'Asignar departamento', summary: `${str('resident_name') || 'Residente'} → departamento ${str('unit_number')}.` };
         case 'create_unit':
             return { title: 'Crear unidad', summary: `Depto ${str('number')}${str('tower') ? `, torre ${str('tower')}` : ''}${describeAlicuotaInput('create_unit', input) ? `, alícuota ${describeAlicuotaInput('create_unit', input)}` : ''}.` };
         case 'set_unit_alicuota':
@@ -2126,6 +2225,14 @@ export async function executeTool(
                 };
             }
 
+            case 'publish_my_parking_spot':
+            case 'publish_my_storage_unit': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificar al residente.');
+                const publish = name === 'publish_my_parking_spot' ? publishParkingSpotForUser : publishStorageUnitForUser;
+                return publish(supabaseAdmin, communityId, userCtx.user_id, input as Record<string, unknown>);
+            }
+
             case 'cancel_reservation':
             case 'cancel_parking_booking':
             case 'cancel_storage_rental':
@@ -2479,6 +2586,17 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'list_pending_residents':
+            case 'decide_pending_resident':
+            case 'assign_resident_unit': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración valida vecinos y asigna departamentos.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                if (name === 'list_pending_residents') return listPendingResidentsForAdmin(communityId);
+                if (name === 'decide_pending_resident') return decidePendingResidentForAdmin(communityId, userCtx.user_id, input as Record<string, unknown>);
+                return assignResidentUnitForAdmin(supabaseAdmin, communityId, input as Record<string, unknown>);
             }
 
             case 'update_unit_data': {
