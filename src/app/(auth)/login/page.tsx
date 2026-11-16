@@ -507,7 +507,7 @@ function LoginForm() {
                             </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             {/* En la app nativa, Google se abre en el navegador del teléfono y vuelve por com.conviveconnect.app://auth/callback. */}
                             <button
                                 type="button"
@@ -520,19 +520,16 @@ function LoginForm() {
                                 {googleLoading ? <Loader2 size={14} className="animate-spin" /> : <GoogleIcon size={14} />}
                                 Google
                             </button>
-                            {["Apple", "Clave Única"].map((provider) => (
-                                <button
-                                    key={provider}
-                                    type="button"
-                                    disabled
-                                    title={`${provider} todavía no está disponible`}
-                                    className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold opacity-55"
-                                    style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}
-                                >
-                                    {provider === "Apple" ? <AppleIcon size={14} /> : null}
-                                    {provider}
-                                </button>
-                            ))}
+                            <button
+                                type="button"
+                                disabled
+                                title="Apple todavía no está disponible"
+                                className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold opacity-55"
+                                style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink)" }}
+                            >
+                                <AppleIcon size={14} />
+                                Apple
+                            </button>
                         </div>
 
                         <div className="flex flex-col gap-2 pt-2">
