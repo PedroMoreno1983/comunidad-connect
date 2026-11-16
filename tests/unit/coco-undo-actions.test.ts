@@ -120,6 +120,16 @@ describe('cancel_reservation', () => {
         expect(calls).toHaveLength(0);
     });
 
+    it('una reserva de hoy que ya terminó no se reescribe como cancelada', async () => {
+        const { chileTodayISO } = await import('@/lib/agent-center/chileDate');
+        const hoy = chileTodayISO();
+        const terminada = { ...reserva, date: hoy, start_time: '00:00:00', end_time: '00:01:00' };
+        const { db, calls } = fakeDb({ amenities: [quincho], bookings: [terminada] });
+        const result = await cancelReservationForUser(db, COMUNIDAD, VECINA, { space_name: 'quincho', date: hoy }) as Row;
+        expect(result.error).toMatch(/ya terminó/);
+        expect(calls.some(c => c.op === 'update')).toBe(false);
+    });
+
     it('el nombre del espacio no actúa como comodín', async () => {
         const { db, calls } = fakeDb({ amenities: [] });
         await cancelReservationForUser(db, COMUNIDAD, VECINA, { space_name: '%', date: '2099-01-10' });

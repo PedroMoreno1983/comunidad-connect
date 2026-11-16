@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { chileNowTime, chileTodayISO } from '@/lib/agent-center/chileDate';
 
 /**
  * Deshacer lo que CoCo hace por el residente: cancelar una reserva de espacio
@@ -79,6 +79,11 @@ export async function cancelReservationForUser(
     }
 
     const booking = rows[0];
+    // Hoy, pero ya terminó: es uso, no una reserva por venir. Marcarla como
+    // cancelada reescribiría el historial y diría que el horario quedó libre.
+    if (date === chileTodayISO() && hhmm(booking.end_time) <= chileNowTime()) {
+        return { error: `Esa reserva de ${nameOf(booking.amenity_id)} ya terminó (hasta las ${hhmm(booking.end_time)}); no se puede cancelar.` };
+    }
     const { data: updated, error } = await admin
         .from('bookings')
         .update({ status: 'cancelled' })

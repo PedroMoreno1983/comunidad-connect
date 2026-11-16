@@ -20,8 +20,13 @@ import { TOOL_DEFINITIONS } from '@/lib/coco/tools';
 
 const root = path.resolve(__dirname, '../..');
 
-// Un método de Service "escribe" si su nombre empieza con uno de estos verbos.
-const MUTATING_VERB = /^(create|update|delete|cancel|add|remove|book|reserve|send|submit|approve|reject|mark|set|pay|register|publish|vote|join|leave|rent|request|close|assign|confirm|toggle|upload|accept|decline|invite|issue|record|resolve|report|save|rate|end|start|archive|block|unblock|respond|reply|claim|release|return|move|schedule|edit|post|like|comment|follow|share|flag|settle)/;
+// Un método de Service se trata como escritura SALVO que su nombre empiece con
+// un verbo de lectura. Al revés (una lista de verbos de escritura) se escapaban
+// extendBooking, completeTask o decide: un verbo nuevo quedaba fuera del guard
+// en silencio. Así, lo dudoso entra y alguien lo clasifica.
+// El verbo tiene que cerrar en mayúscula o en el final del nombre: "can" no
+// debe calzar con cancelBooking, ni "to" con toggleSpot.
+const READ_VERB = /^(get|list|fetch|load|search|find|check|count|preview|read|is|has|can|subscribe|watch|current|lookup|describe|summarize|diagnostic|export|download|calculate|compute|estimate|quote|compare|format|map|parse|to|build|ensure|validate|signIn|signOut|login|logout|refresh|track|saved)(?=[A-Z]|$)/;
 // Rutas que no responden a una persona en la interfaz: CoCo mismo, webhooks,
 // tareas programadas, autenticación y notificaciones push.
 const SYSTEM_ROUTE = /^(coco|agent-center|webhooks|cron|internal|auth|push|whatsapp|qa|health)(\/|$)/;
@@ -34,8 +39,9 @@ function serviceActions(dir: string) {
         for (const line of fs.readFileSync(path.join(dir, file), 'utf8').split(/\r?\n/)) {
             const declared = line.match(/^export const ([A-Za-z]+Service)\s*=/);
             if (declared) service = declared[1];
-            const method = line.match(/^ {4}async ([a-zA-Z]+)\s*[(<]/);
-            if (method && service && MUTATING_VERB.test(method[1])) out.push(`${service}.${method[1]}`);
+            // Cualquier indentación, y también la forma `nombre: async (…) =>`.
+            const method = line.match(/^\s+async ([a-zA-Z]+)\s*[(<]/) ?? line.match(/^\s+([a-zA-Z]+)\s*:\s*async\b/);
+            if (method && service && !READ_VERB.test(method[1])) out.push(`${service}.${method[1]}`);
         }
     }
     return out;
