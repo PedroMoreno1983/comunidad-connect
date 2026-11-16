@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus, PanelLeft } from "lucide-react";
+import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus, PanelLeft, ShoppingCart, Wrench, Store } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import confetti from "canvas-confetti";
@@ -40,6 +40,15 @@ const CHIPS = [
     { label: "¿Cómo reservo un espacio?", icon: Calendar },
     { label: "¿Cómo pago mis gastos?", icon: DollarSign },
     { label: "Muéstrame el tour", icon: Sparkles },
+];
+
+// Modo vecino (edificio sin administración en Convive) o vecino esperando
+// validación: reservas y gastos no existen todavía. Los chips de arriba lo
+// mandaban a un muro; estos llevan a lo que sí funciona.
+const NEIGHBOR_CHIPS = [
+    { label: "Compara precios de mi lista del súper", icon: ShoppingCart },
+    { label: "Necesito un gasfiter de confianza", icon: Wrench },
+    { label: "Quiero vender algo a mis vecinos", icon: Store },
 ];
 
 const ADMIN_CHIPS = [
@@ -385,8 +394,27 @@ export default function CoCoChatPage() {
         }
     };
 
+    // /chat?q=…: el inicio abre CoCo con una pregunta lista. Se envía una sola
+    // vez, cuando el hilo terminó de cargar, y se limpia de la URL para que
+    // recargar no la repita.
+    const pendingQuestionRef = useRef<string | null>(null);
+    useEffect(() => {
+        const question = new URLSearchParams(window.location.search).get('q')?.trim().slice(0, 300);
+        if (question) pendingQuestionRef.current = question;
+    }, []);
+    useEffect(() => {
+        const question = pendingQuestionRef.current;
+        if (!question || historyLoading || loading || !activeThreadId) return;
+        pendingQuestionRef.current = null;
+        window.history.replaceState(null, '', '/chat');
+        void send(question);
+        // send cambia en cada render; el envío depende solo de que el hilo esté listo.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [historyLoading, loading, activeThreadId]);
+
     const firstName = user?.name ? user.name.split(" ")[0] : "vecino/a";
-    const chips = user?.role === 'admin' ? ADMIN_CHIPS : CHIPS;
+    const neighborMode = user?.role === 'resident' && (user.communityManaged === false || user.residenceVerified === false);
+    const chips = user?.role === 'admin' ? ADMIN_CHIPS : neighborMode ? NEIGHBOR_CHIPS : CHIPS;
 
     return (
         <div
