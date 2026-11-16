@@ -109,6 +109,14 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     cancel_storage_rental: 'write_high',        // anula cargos futuros
     update_marketplace_item: 'write_high',      // contenido público, como publicar
     report_transfer: 'write_high',              // avisa a la administración en nombre del residente
+    list_pending_residents: 'read',
+    // Cambian el acceso de otra persona a la comunidad, como update_unit_data.
+    decide_pending_resident: 'write_high',
+    assign_resident_unit: 'write_high',
+    // Contenido público con precio, como publish_marketplace_item; queda
+    // pendiente de aprobación de la administración.
+    publish_my_parking_spot: 'write_high',
+    publish_my_storage_unit: 'write_high',
     // Convenios: sumarse o proponer es reversible y no compromete pago (como
     // sumarse a una compra comunitaria). Cotizar es solo de la administración y
     // no activa nada: elegir y activar se hace en la app.

@@ -38,6 +38,7 @@ export const NEIGHBOR_MODE_BLOCKED_TOOLS = new Set([
     'register_visitor', 'get_pending_packages',
     'get_my_parking', 'search_parking', 'book_parking', 'cancel_parking_booking',
     'get_my_storage', 'search_storage', 'rent_storage', 'cancel_storage_rental',
+    'publish_my_parking_spot', 'publish_my_storage_unit',
     // Sin administración no hay gasto común que pagar ni a quién avisarle.
     'report_transfer',
 ]);
