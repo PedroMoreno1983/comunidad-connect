@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { joinInitiative, listCommunityInitiatives, proposeInitiative, requestMediation, resolveParticipation, reviewInitiative } from './convivenciaTools';
 import { listServiceRequests, recordWaterReading, registerIncidentForStaff, updateServiceRequestStatusForUser } from './operationsTools';
 import { listMyListings, removeMyListing, setMyListingStatus, updateMyListing } from './ownerListingTools';
 import { listOpenCases, listPendingListings, reviewGroupOrderForAdmin, reviewListingForAdmin, updateCaseStatusForStaff } from './adminReviewTools';
@@ -755,6 +756,89 @@ export const TOOL_DEFINITIONS = [
                 floor: { type: 'string', description: 'Nuevo piso del departamento' },
             },
             required: ['unit_id'],
+        },
+    },
+    {
+        name: 'list_community_initiatives',
+        description: 'Iniciativas de convivencia de la comunidad: banco de tiempo, compras colectivas y proyectos (aprobadas, más las propias pendientes), con initiative_id y estado; y las solicitudes de participación que el usuario debe resolver como coordinador (o todas, si es administración).',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'propose_initiative',
+        description: 'Propone una iniciativa de convivencia a nombre del usuario: ofrecer algo en el banco de tiempo (title = qué ofrece), una compra colectiva (title, supplier, deadline AAAA-MM-DD, precios, mínimo de participantes) o un proyecto comunitario (title, description, area). Queda pendiente hasta que la administración la valida. Pide lo que falte. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                type: { type: 'string', enum: ['time_bank', 'collective_purchase', 'community_project'], description: 'time_bank = banco de tiempo, collective_purchase = compra colectiva, community_project = proyecto comunitario.' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                availability: { type: 'string', description: 'Banco de tiempo: cuándo puede.' },
+                category: { type: 'string', description: 'Banco de tiempo: tools, care, digital, home, learning, other. Compra: water, gas, cleaning, food, eco, other.' },
+                credits: { type: 'integer', description: 'Banco de tiempo: horas que vale.' },
+                supplier: { type: 'string' },
+                deadline: { type: 'string' },
+                unit_price: { type: 'integer' },
+                retail_price: { type: 'integer' },
+                minimum_participants: { type: 'integer' },
+                area: { type: 'string', enum: ['huerto', 'reciclaje', 'cuidados', 'mascotas', 'cultura', 'otro'] },
+                impact: { type: 'string' },
+                needed: { type: 'string' },
+            },
+            required: ['type', 'title'],
+        },
+    },
+    {
+        name: 'join_initiative',
+        description: 'Pide sumarse a una iniciativa aprobada (o pedir un ofrecimiento del banco de tiempo). Usa antes list_community_initiatives para el initiative_id. El coordinador la acepta o rechaza. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                type: { type: 'string', enum: ['time_bank', 'collective_purchase', 'community_project'], description: 'time_bank = banco de tiempo, collective_purchase = compra colectiva, community_project = proyecto comunitario.' },
+                initiative_id: { type: 'string' },
+                message: { type: 'string', description: 'Mensaje opcional para el coordinador.' },
+                initiative_title: { type: 'string', description: 'Título, solo para la confirmación.' },
+            },
+            required: ['type', 'initiative_id'],
+        },
+    },
+    {
+        name: 'resolve_participation',
+        description: 'Acepta o rechaza una solicitud para sumarse a una iniciativa que el usuario coordina (la administración puede resolver cualquiera). Usa el request_id de list_community_initiatives. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { request_id: { type: 'string' }, accept: { type: 'boolean' } },
+            required: ['request_id', 'accept'],
+        },
+    },
+    {
+        name: 'review_initiative',
+        description: 'Valida una iniciativa propuesta: approved (con coordinador; por defecto quien la propuso), changes_requested o rejected (con motivo, que el vecino verá). Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                type: { type: 'string', enum: ['time_bank', 'collective_purchase', 'community_project'], description: 'time_bank = banco de tiempo, collective_purchase = compra colectiva, community_project = proyecto comunitario.' },
+                initiative_id: { type: 'string' },
+                decision: { type: 'string', enum: ['approved', 'changes_requested', 'rejected'] },
+                coordinator_id: { type: 'string', description: 'Opcional: otro vecino como coordinador.' },
+                note: { type: 'string' },
+                initiative_title: { type: 'string', description: 'Título, solo para la confirmación.' },
+            },
+            required: ['type', 'initiative_id', 'decision'],
+        },
+    },
+    {
+        name: 'request_mediation',
+        description: 'Prepara una mediación con un vecino (comunicación no violenta): a qué depto, qué observa (hechos), cómo se siente, qué necesita y qué le pide. Genera el borrador del mensaje; el residente lo revisa y envía desde Convivencia. Pide lo que falte. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                target_unit: { type: 'string' },
+                observation: { type: 'string' },
+                feeling: { type: 'string' },
+                need: { type: 'string' },
+                request: { type: 'string' },
+            },
+            required: ['target_unit', 'observation', 'feeling', 'need', 'request'],
         },
     },
     {
@@ -1506,6 +1590,11 @@ export const MUTATING_TOOLS = new Set<string>([
     'review_listing',
     'update_service_request_status',
     'register_incident',
+    'propose_initiative',
+    'join_initiative',
+    'resolve_participation',
+    'review_initiative',
+    'request_mediation',
     'record_water_reading',
     'review_group_order',
     'request_urgent_access_approval',
@@ -1564,6 +1653,7 @@ const RESIDENT_TOOLS = new Set([
     'publish_my_parking_spot', 'publish_my_storage_unit',
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
     'list_service_requests', 'update_service_request_status',
+    'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
     'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
     'update_my_name', 'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
@@ -1588,7 +1678,7 @@ const ADMIN_TOOLS = new Set([
     'add_community_deal_quote',
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'list_pending_residents', 'decide_pending_resident', 'assign_resident_unit',
-    'list_pending_listings', 'review_listing', 'review_group_order', 'record_water_reading',
+    'list_pending_listings', 'review_listing', 'review_group_order', 'record_water_reading', 'review_initiative',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1782,6 +1872,20 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return input.approve === false
                 ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
                 : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'propose_initiative': {
+            const tipos: Record<string, string> = { time_bank: 'banco de tiempo', collective_purchase: 'compra colectiva', community_project: 'proyecto comunitario' };
+            return { title: `Proponer ${tipos[str('type')] || 'iniciativa'}`, summary: `${str('title')}. Queda pendiente hasta que la administración la valide.` };
+        }
+        case 'join_initiative':
+            return { title: 'Pedir sumarme', summary: `${str('initiative_title') || 'La iniciativa'}${str('message') ? `: "${str('message')}"` : ''}. El coordinador decide.` };
+        case 'resolve_participation':
+            return { title: input.accept === false ? 'Rechazar solicitud' : 'Aceptar solicitud', summary: 'El vecino recibe el aviso.' };
+        case 'review_initiative': {
+            const decisiones: Record<string, string> = { approved: 'Aprobar', changes_requested: 'Pedir cambios a', rejected: 'Rechazar' };
+            return { title: `${decisiones[str('decision')] || 'Revisar'} iniciativa`, summary: `${str('initiative_title') || 'La iniciativa'}${str('note') ? `: ${str('note')}` : ''}.` };
+        }
+        case 'request_mediation':
+            return { title: 'Preparar mediación', summary: `Con el depto ${str('target_unit')}: "${str('request')}". Revisas el mensaje antes de enviarlo.` };
         case 'update_service_request_status': {
             const estados: Record<string, string> = { accepted: 'Aceptar', awaiting_confirmation: 'Marcar como realizada', completed: 'Confirmar terminada', cancelled: 'Cancelar', pending: 'Reprogramar' };
             const fecha = str('preferred_date') ? ` · nueva fecha ${str('preferred_date')} ${str('preferred_time')}` : '';
@@ -2918,6 +3022,22 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'list_community_initiatives':
+            case 'propose_initiative':
+            case 'join_initiative':
+            case 'resolve_participation':
+            case 'review_initiative':
+            case 'request_mediation': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const actor = { id: userCtx.user_id, role: userCtx.role || 'resident', communityId, name: userCtx.name || null };
+                const run = {
+                    list_community_initiatives: listCommunityInitiatives, propose_initiative: proposeInitiative, join_initiative: joinInitiative,
+                    resolve_participation: resolveParticipation, review_initiative: reviewInitiative, request_mediation: requestMediation,
+                }[name];
+                return run(supabaseAdmin, actor, input as Record<string, unknown>);
             }
 
             case 'list_service_requests':

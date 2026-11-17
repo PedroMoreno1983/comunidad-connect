@@ -40,6 +40,8 @@ export const NEIGHBOR_MODE_BLOCKED_TOOLS = new Set([
     'get_my_storage', 'search_storage', 'rent_storage', 'cancel_storage_rental',
     'publish_my_parking_spot', 'publish_my_storage_unit', 'register_my_vehicle',
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
+    // Convivencia espera a la administración (valida iniciativas y coordinadores).
+    'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
     // Sin administración no hay gasto común ni a quién pedirle un convenio.
     'request_payment_agreement',
     // Sin administración no hay gasto común que pagar ni a quién avisarle.
