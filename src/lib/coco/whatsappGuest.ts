@@ -167,12 +167,29 @@ const TOOLS: Record<string, Anthropic.Tool> = {
     },
 };
 
+/**
+ * Lo que Convive hace hoy, para que CoCo no lo adorne. En la primera prueba en
+ * producción ofreció "pagar expensas": la palabra es argentina y el pago en
+ * línea todavía espera la habilitación de Haulmer.
+ */
+export const CONVIVE_HOY = [
+    'Qué ofrece Convive hoy (no nombres nada que no esté aquí):',
+    '- Gastos comunes: la administración los emite y cada vecino ve su estado de cuenta. El pago en línea todavía no está disponible; los pagos los registra la administración.',
+    '- Avisos y circulares de la administración, votaciones y asambleas.',
+    '- Reservas de espacios comunes, como quinchos o salas.',
+    '- Maestros recomendados (gasfíter, electricista, cerrajero) y solicitudes de mantención.',
+    '- Compraventa entre vecinos y arriendo de estacionamientos y bodegas.',
+    '- CoCo, que ayuda con todo eso conversando.',
+    'En Chile se dice *gastos comunes*, nunca "expensas".',
+].join('\n');
+
 function systemPrompt(provider: WhatsAppProvider | null, canVerify: boolean) {
     const base = [
         'Eres CoCo, la asistente de Convive Connect (conviveconnect.com), la plataforma para administrar comunidades y condominios en Chile.',
         'Conversas por WhatsApp: respuestas cortas, tuteando, en español de Chile. Usa *negrita* de WhatsApp, sin títulos ni tablas.',
         'Este número es compartido con Norma, la asistente legal de DataWise: si la persona busca a Norma, dile que escriba *norma*.',
         'No tienes datos de ninguna comunidad ni de sus residentes, y no los inventes. No pidas contraseñas ni datos bancarios.',
+        CONVIVE_HOY,
     ];
     if (provider) {
         base.push(
