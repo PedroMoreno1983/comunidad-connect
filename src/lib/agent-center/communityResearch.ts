@@ -3,6 +3,7 @@ import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estim
 import type { AgentProfile } from '@/lib/agent-center/domain';
 import { normalizeIntentText } from '@/lib/agent-center/intentSafety';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { ADMIN_VISIBLE_EVENTS_FILTER } from '@/lib/operations/audit';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 
 const MODEL = anthropicModelFor('agent-center.research');
@@ -168,7 +169,7 @@ async function runReadTool(name: string, rawInput: unknown, profile: AgentProfil
     if (name === 'read_service_requests') {
         const { data, error } = await admin.from('service_requests')
             .select('id, description, status, preferred_date, preferred_time, created_at')
-            .eq('community_id', communityId).order('created_at', { ascending: false }).limit(200);
+            .eq('community_id', communityId).or(ADMIN_VISIBLE_EVENTS_FILTER).order('created_at', { ascending: false }).limit(200);
         if (error) throw error;
         const text = clean(input.query, 120);
         const status = clean(input.status, 30);

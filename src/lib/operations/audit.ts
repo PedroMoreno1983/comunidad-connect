@@ -145,3 +145,34 @@ export async function recordPlatformOperationEvent(input: PlatformOperationEvent
         return { ok: false as const, reason: message };
     }
 }
+
+/**
+ * CONFIDENCIALIDAD DE CoCo (17-11-2026). La administración no sabe qué le pide
+ * cada residente a CoCo: ni sus conversaciones ni las acciones que CoCo hizo a
+ * su nombre (guardar una lista, crearse un recordatorio). Lo que el residente
+ * envía a la administración (una solicitud, una reserva) llega por su módulo,
+ * no por esta bitácora. Filtro PostgREST para toda lectura de la administración
+ * sobre operation_events: deja pasar lo que no es de CoCo, lo del sistema y lo
+ * que hizo el propio personal.
+ */
+export const COCO_STAFF_ROLES = ['admin', 'concierge', 'superadmin'] as const;
+export const ADMIN_VISIBLE_EVENTS_FILTER =
+    `action.not.like.coco.*,actor_role.is.null,actor_role.in.(${COCO_STAFF_ROLES.join(',')})`;
+
+/** Lo mismo, para filas ya leídas. */
+export function adminMaySeeEvent(row: { action?: unknown; actor_role?: unknown }) {
+    const action = String(row.action || '');
+    if (!action.startsWith('coco.')) return true;
+    const role = row.actor_role;
+    return role === null || role === undefined || role === '' || (COCO_STAFF_ROLES as readonly string[]).includes(String(role));
+}
+
+/** De estos perfiles, los que son personal de la comunidad (sus registros sí los ve la administración). */
+export async function staffProfileIds(ids: string[]): Promise<Set<string>> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (!unique.length) return new Set();
+    const { data } = await getSupabaseAdmin().from('profiles').select('id, role').in('id', unique);
+    return new Set((data || [])
+        .filter(row => (COCO_STAFF_ROLES as readonly string[]).includes(String(row.role)))
+        .map(row => String(row.id)));
+}

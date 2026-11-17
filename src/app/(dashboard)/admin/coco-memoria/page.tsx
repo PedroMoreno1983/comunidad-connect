@@ -42,7 +42,7 @@ export default function CocoMemoryPage() {
             <div>
                 <h1 className="text-2xl font-semibold">Memoria de la comunidad</h1>
                 <p className="mt-2 text-sm text-slate-600">
-                    Al cerrar una conversación, CoCo propone datos del reglamento, de proveedores o de acuerdos. Nada se guarda hasta que lo apruebas.
+                    Al cerrar una conversación tuya con CoCo, te propone datos del reglamento, de proveedores o de acuerdos. Nada se guarda hasta que lo apruebas. Las conversaciones de los residentes son privadas: de ellas no sale ninguna propuesta.
                 </p>
             </div>
             {error ? <p className="text-sm text-red-700">{error}</p> : null}

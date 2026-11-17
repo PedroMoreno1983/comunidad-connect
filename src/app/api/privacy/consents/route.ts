@@ -3,6 +3,7 @@ import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { PRIVACY_POLICY_VERSION } from '@/lib/privacy';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { recordCocoConsent } from '@/lib/coco/privacyConsent';
 
 export async function GET(request: NextRequest) {
     const limited = await enforceDistributedRateLimit(request, 'privacy.consents.list', { limit: 30, windowMs: 60_000 });
@@ -24,7 +25,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'No se pudieron cargar tus preferencias.' }, { status: 500 });
     }
 
-    return NextResponse.json({ whatsappEnabled: settings?.whatsapp_enabled === true, events: events || [] });
+    const lastCoco = (events || []).find(event => event.consent_type === 'ai_processing');
+    return NextResponse.json({
+        whatsappEnabled: settings?.whatsapp_enabled === true,
+        // 'unknown': nunca decidió; el chat le muestra el aviso.
+        cocoConsent: lastCoco ? (lastCoco.action === 'granted' ? 'granted' : 'withdrawn') : 'unknown',
+        events: events || [],
+    });
 }
 
 export async function POST(request: NextRequest) {
@@ -35,6 +42,25 @@ export async function POST(request: NextRequest) {
     if (!profile?.email) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+
+    // CoCo: si sus conversaciones pueden alimentar las propuestas a la administración.
+    // Desde el chat (primer uso) o desde el centro de privacidad.
+    if (body.consentType === 'ai_processing' && typeof body.granted === 'boolean') {
+        try {
+            await recordCocoConsent({
+                userId: profile.id,
+                communityId: profile.community_id || null,
+                email: profile.email,
+                action: body.granted ? 'granted' : 'withdrawn',
+                channel: body.channel === 'chat' ? 'chat' : 'privacy_center',
+            });
+        } catch (error) {
+            console.error('[privacy consents] coco consent failed', error);
+            return NextResponse.json({ error: 'No se pudo guardar tu decisión.' }, { status: 500 });
+        }
+        return NextResponse.json({ ok: true, cocoConsent: body.granted ? 'granted' : 'withdrawn' });
+    }
+
     if (body.consentType !== 'whatsapp' || typeof body.granted !== 'boolean') {
         return NextResponse.json({ error: 'Preferencia inválida.' }, { status: 400 });
     }

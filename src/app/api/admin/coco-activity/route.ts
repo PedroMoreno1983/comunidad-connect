@@ -3,7 +3,7 @@ import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { canUndoCoCoEvent } from '@/lib/coco/autonomy';
 import { cancelCoCoReminder } from '@/lib/agent-center/cocoReminders';
-import { recordOperationEvent } from '@/lib/operations/audit';
+import { ADMIN_VISIBLE_EVENTS_FILTER, recordOperationEvent } from '@/lib/operations/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +22,8 @@ export async function GET() {
             .select('id, action, summary, status, actor_role, created_at, metadata')
             .eq('community_id', profile.community_id)
             .like('action', 'coco.%')
+            // Solo lo del personal y del sistema: lo que CoCo hizo para un residente no se muestra.
+            .or(ADMIN_VISIBLE_EVENTS_FILTER)
             .order('created_at', { ascending: false })
             .limit(40),
         admin.from('communities').select('coco_autonomy').eq('id', profile.community_id).maybeSingle(),

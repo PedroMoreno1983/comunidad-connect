@@ -18,6 +18,7 @@ import {
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getWhatsAppConfigStatus } from '@/lib/whatsapp';
+import { COCO_WHATSAPP_PRIVACY_LINE } from '@/lib/privacy';
 import {
     askCoCoGuest,
     findProviderByPhone,
@@ -186,9 +187,16 @@ export async function POST(req: NextRequest) {
         return new NextResponse('', { status: 401 });
     }
 
-    const respond = (text: string, mediaUrl?: string) => relayedFromNorma
-        ? NextResponse.json({ reply: text, ...(mediaUrl ? { mediaUrl } : {}) })
-        : twiml(text, mediaUrl);
+    // Primer contacto (sesión nueva): la respuesta lleva una línea de privacidad.
+    let firstContact = false;
+    const respond = (text: string, mediaUrl?: string) => {
+        const body = firstContact && text ? `${text}
+
+${COCO_WHATSAPP_PRIVACY_LINE}` : text;
+        return relayedFromNorma
+            ? NextResponse.json({ reply: body, ...(mediaUrl ? { mediaUrl } : {}) })
+            : twiml(body, mediaUrl);
+    };
 
     const message = ((formData.get('Body') as string) || '').trim();
     const waId    = formData.get('WaId') as string; // número sin +
@@ -238,6 +246,7 @@ export async function POST(req: NextRequest) {
     try {
         const sessionKey = `wa:${waId}`;
         let session = await getSession(sessionKey);
+        firstContact = !session || (session.auth_state !== 'verified' && session.auth_state !== 'guest');
 
         // Un solo perfil con WhatsApp activado tiene este número: es esa persona.
         // WhatsApp ya acredita que escribe desde ese teléfono, así que no se le
@@ -329,7 +338,7 @@ export async function POST(req: NextRequest) {
             const { reply, updatedHistory, pendingActions } = agentResponse;
             await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext }, Boolean(pendingActions?.length));
             if (isConversationClosing(message)) {
-                void learnFromClosing(verifiedContext.community_id, linesFromConversation(updatedHistory)).catch(error => {
+                void learnFromClosing({ communityId: verifiedContext.community_id, role: verifiedContext.role, lines: linesFromConversation(updatedHistory) }).catch(error => {
                     console.error('[coco] no se pudieron proponer recuerdos', error);
                 });
             }

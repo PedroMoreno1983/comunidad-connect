@@ -1524,8 +1524,9 @@ export interface DebugStatsSnapshot {
 }
 
 export type PrivacyConsentType = 'terms' | 'privacy_notice' | 'whatsapp' | 'ai_processing' | 'sensitive_data';
+export type CocoConsentState = 'granted' | 'withdrawn' | 'unknown';
 export type PrivacyConsentAction = 'granted' | 'withdrawn';
-export type PrivacyConsentChannel = 'signup' | 'profile' | 'privacy_center' | 'admin_onboarding';
+export type PrivacyConsentChannel = 'signup' | 'profile' | 'privacy_center' | 'admin_onboarding' | 'chat' | 'whatsapp';
 
 export interface PrivacyConsentEvent {
   id: string;
@@ -1648,6 +1649,8 @@ export interface PrivacyConsentRecord {
 
 export interface PrivacyConsentsResponse {
   whatsappEnabled?: boolean;
+  /** Lo último que decidió sobre CoCo: unknown si nunca vio el aviso. */
+  cocoConsent?: CocoConsentState;
   events?: PrivacyConsentRecord[];
   error?: string;
 }
