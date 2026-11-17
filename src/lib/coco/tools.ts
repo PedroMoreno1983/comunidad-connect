@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { listServiceRequests, recordWaterReading, registerIncidentForStaff, updateServiceRequestStatusForUser } from './operationsTools';
 import { listMyListings, removeMyListing, setMyListingStatus, updateMyListing } from './ownerListingTools';
 import { listOpenCases, listPendingListings, reviewGroupOrderForAdmin, reviewListingForAdmin, updateCaseStatusForStaff } from './adminReviewTools';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
@@ -757,6 +758,53 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'list_service_requests',
+        description: 'Solicitudes de servicio abiertas (pendientes, aceptadas o realizadas por confirmar): request_id, descripción, proveedor, estado, fecha y hora. La administración y conserjería ven las de la comunidad; un residente, las suyas. Úsalo antes de update_service_request_status.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'update_service_request_status',
+        description: 'Avanza una solicitud de servicio: accepted (aceptar), awaiting_confirmation (trabajo realizado), completed (el vecino confirma), cancelled, o reprograma con preferred_date y preferred_time. Las reglas de quién puede qué las aplica el sistema. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                request_id: { type: 'string' },
+                status: { type: 'string', enum: ['pending', 'accepted', 'awaiting_confirmation', 'completed', 'cancelled'] },
+                preferred_date: { type: 'string', description: 'AAAA-MM-DD, solo al reprogramar.' },
+                preferred_time: { type: 'string', description: 'HH:MM, solo al reprogramar.' },
+                request_description: { type: 'string', description: 'Descripción, solo para la confirmación.' },
+            },
+            required: ['request_id', 'status'],
+        },
+    },
+    {
+        name: 'register_incident',
+        description: 'Registra una incidencia del edificio (portón trabado, ascensor detenido, filtración en áreas comunes…) y avisa a la administración. Urgencia: baja, media, alta o emergencia. Requiere confirmación. SOLO conserjería y administración.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string', description: 'Qué pasa, en una línea.' },
+                description: { type: 'string' },
+                urgency: { type: 'string', enum: ['baja', 'media', 'alta', 'emergencia'] },
+            },
+            required: ['title'],
+        },
+    },
+    {
+        name: 'record_water_reading',
+        description: 'Registra la lectura del medidor de agua (m³) de un departamento para un mes (por defecto el actual). Si ya hay lectura de ese mes, no la reemplaza. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_number: { type: 'string' },
+                tower: { type: 'string', description: 'Solo si hay varias torres con ese número.' },
+                reading_value: { type: 'number', description: 'Lectura del medidor en m³.' },
+                month: { type: 'string', description: 'AAAA-MM; por defecto el mes actual.' },
+            },
+            required: ['unit_number', 'reading_value'],
+        },
+    },
+    {
         name: 'list_open_cases',
         description: 'Casos abiertos o en revisión de la comunidad (reclamos y solicitudes que registró CoCo): case_id, título, estado, urgencia y unidad. Úsalo para "¿qué casos hay pendientes?" y antes de update_case_status. SOLO administración y conserjería.',
         input_schema: { type: 'object' as const, properties: {}, required: [] },
@@ -1456,6 +1504,9 @@ export const MUTATING_TOOLS = new Set<string>([
     // Estado de casos y aprobaciones: el vecino recibe el resultado. Confirma.
     'update_case_status',
     'review_listing',
+    'update_service_request_status',
+    'register_incident',
+    'record_water_reading',
     'review_group_order',
     'request_urgent_access_approval',
     'dispatch_provider',
@@ -1512,6 +1563,7 @@ const RESIDENT_TOOLS = new Set([
     'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
     'publish_my_parking_spot', 'publish_my_storage_unit',
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
+    'list_service_requests', 'update_service_request_status',
     'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
     'update_my_name', 'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
@@ -1525,7 +1577,7 @@ const RESIDENT_TOOLS = new Set([
 const CONCIERGE_TOOLS = new Set([
     ...RESIDENT_TOOLS,
     'register_package', 'send_whatsapp_notification', 'request_urgent_access_approval',
-    'list_open_cases', 'update_case_status',
+    'list_open_cases', 'update_case_status', 'register_incident',
     'dispatch_provider',
 ]);
 
@@ -1536,7 +1588,7 @@ const ADMIN_TOOLS = new Set([
     'add_community_deal_quote',
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'list_pending_residents', 'decide_pending_resident', 'assign_resident_unit',
-    'list_pending_listings', 'review_listing', 'review_group_order',
+    'list_pending_listings', 'review_listing', 'review_group_order', 'record_water_reading',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1730,6 +1782,15 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return input.approve === false
                 ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
                 : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'update_service_request_status': {
+            const estados: Record<string, string> = { accepted: 'Aceptar', awaiting_confirmation: 'Marcar como realizada', completed: 'Confirmar terminada', cancelled: 'Cancelar', pending: 'Reprogramar' };
+            const fecha = str('preferred_date') ? ` · nueva fecha ${str('preferred_date')} ${str('preferred_time')}` : '';
+            return { title: `${estados[str('status')] || 'Actualizar'} solicitud de servicio`, summary: `${str('request_description') || 'La solicitud elegida'}${fecha}.` };
+        }
+        case 'register_incident':
+            return { title: `Registrar incidencia${str('urgency') ? ` (${str('urgency')})` : ''}`, summary: `${str('title')}. Se avisa a la administración.` };
+        case 'record_water_reading':
+            return { title: 'Registrar lectura de agua', summary: `Depto ${str('unit_number')}: ${input.reading_value} m³${str('month') ? ` (${str('month')})` : ''}.` };
         case 'update_case_status': {
             const estados: Record<string, string> = { open: 'abierto', in_progress: 'en revisión', resolved: 'resuelto', closed: 'cerrado', cancelled: 'cancelado' };
             return { title: 'Cambiar estado del caso', summary: `${str('case_title') || 'El caso'} → ${estados[str('status')] || str('status')}. El residente recibe el aviso.` };
@@ -2857,6 +2918,23 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'list_service_requests':
+            case 'update_service_request_status':
+            case 'register_incident':
+            case 'record_water_reading': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const actor = { id: userCtx.user_id, role: userCtx.role || 'resident', communityId };
+                if (name === 'list_service_requests') return listServiceRequests(supabaseAdmin, actor);
+                if (name === 'update_service_request_status') return updateServiceRequestStatusForUser(supabaseAdmin, actor, input as Record<string, unknown>);
+                if (name === 'register_incident') {
+                    if (!isStaff(userCtx)) return { error: 'Solo conserjería o administración registran incidencias.' };
+                    return registerIncidentForStaff(supabaseAdmin, actor, input as Record<string, unknown>);
+                }
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración registra lecturas de agua.' };
+                return recordWaterReading(supabaseAdmin, actor, input as Record<string, unknown>);
             }
 
             case 'list_open_cases':
