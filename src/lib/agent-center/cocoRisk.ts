@@ -110,6 +110,12 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     update_marketplace_item: 'write_high',      // contenido público, como publicar
     report_transfer: 'write_high',              // avisa a la administración en nombre del residente
     list_pending_residents: 'read',
+    list_open_cases: 'read',
+    list_pending_listings: 'read',
+    // El vecino recibe el resultado (aviso o publicación visible): confirma.
+    update_case_status: 'write_high',
+    review_listing: 'write_high',
+    review_group_order: 'write_high',
     // Cambian el acceso de otra persona a la comunidad, como update_unit_data.
     decide_pending_resident: 'write_high',
     assign_resident_unit: 'write_high',

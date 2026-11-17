@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { listOpenCases, listPendingListings, reviewGroupOrderForAdmin, reviewListingForAdmin, updateCaseStatusForStaff } from './adminReviewTools';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
 import { getOrCreateInvite } from '@/lib/onboarding/neighborInvites';
@@ -706,6 +707,58 @@ export const TOOL_DEFINITIONS = [
         },
     },
     {
+        name: 'list_open_cases',
+        description: 'Casos abiertos o en revisión de la comunidad (reclamos y solicitudes que registró CoCo): case_id, título, estado, urgencia y unidad. Úsalo para "¿qué casos hay pendientes?" y antes de update_case_status. SOLO administración y conserjería.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'update_case_status',
+        description: 'Cambia el estado de un caso: in_progress (en revisión), resolved, closed o cancelled. El residente recibe el aviso. Usa antes list_open_cases para el case_id. Requiere confirmación. SOLO administración y conserjería.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                case_id: { type: 'string' },
+                status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'closed', 'cancelled'] },
+                case_title: { type: 'string', description: 'Título, solo para mostrar en la confirmación.' },
+            },
+            required: ['case_id', 'status'],
+        },
+    },
+    {
+        name: 'list_pending_listings',
+        description: 'Estacionamientos y bodegas que publicaron vecinos y esperan aprobación: listing_id, tipo, nombre, dueño y precio. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'review_listing',
+        description: 'Aprueba (aparece para los vecinos) o rechaza (con motivo, que el vecino verá) un estacionamiento o bodega publicado. Usa antes list_pending_listings. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                kind: { type: 'string', enum: ['parking', 'storage'] },
+                listing_id: { type: 'string' },
+                approve: { type: 'boolean' },
+                reason: { type: 'string', description: 'Obligatorio al rechazar.' },
+                listing_name: { type: 'string', description: 'Nombre, solo para mostrar en la confirmación.' },
+            },
+            required: ['kind', 'listing_id', 'approve'],
+        },
+    },
+    {
+        name: 'review_group_order',
+        description: 'Aprueba o rechaza una compra comunitaria del supermercado que propuso un vecino. Usa antes list_supermarket_group_orders para el id. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                order_id: { type: 'string' },
+                approve: { type: 'boolean' },
+                note: { type: 'string', description: 'Nota para el vecino, opcional.' },
+                order_title: { type: 'string', description: 'Título, solo para mostrar en la confirmación.' },
+            },
+            required: ['order_id', 'approve'],
+        },
+    },
+    {
         name: 'list_pending_residents',
         description: 'Vecinos que se registraron solos (link de registro o invitación) y esperan que la administración confirme que viven en el edificio. Devuelve residente_id, nombre, departamento y fecha. Úsalo para "¿quién está pendiente?", "valida a los nuevos". SOLO administradores.',
         input_schema: { type: 'object' as const, properties: {}, required: [] },
@@ -1347,6 +1400,10 @@ export const MUTATING_TOOLS = new Set<string>([
     // acceso de otra persona. Confirma siempre.
     'decide_pending_resident',
     'assign_resident_unit',
+    // Estado de casos y aprobaciones: el vecino recibe el resultado. Confirma.
+    'update_case_status',
+    'review_listing',
+    'review_group_order',
     'request_urgent_access_approval',
     'dispatch_provider',
     'register_external_provider',
@@ -1414,6 +1471,7 @@ const RESIDENT_TOOLS = new Set([
 const CONCIERGE_TOOLS = new Set([
     ...RESIDENT_TOOLS,
     'register_package', 'send_whatsapp_notification', 'request_urgent_access_approval',
+    'list_open_cases', 'update_case_status',
     'dispatch_provider',
 ]);
 
@@ -1424,6 +1482,7 @@ const ADMIN_TOOLS = new Set([
     'add_community_deal_quote',
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'list_pending_residents', 'decide_pending_resident', 'assign_resident_unit',
+    'list_pending_listings', 'review_listing', 'review_group_order',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1604,6 +1663,16 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return input.approve === false
                 ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
                 : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'update_case_status': {
+            const estados: Record<string, string> = { open: 'abierto', in_progress: 'en revisión', resolved: 'resuelto', closed: 'cerrado', cancelled: 'cancelado' };
+            return { title: 'Cambiar estado del caso', summary: `${str('case_title') || 'El caso'} → ${estados[str('status')] || str('status')}. El residente recibe el aviso.` };
+        }
+        case 'review_listing':
+            return input.approve === false
+                ? { title: 'Rechazar publicación', summary: `${str('listing_name') || 'La publicación'}: ${str('reason')}` }
+                : { title: 'Aprobar publicación', summary: `${str('listing_name') || 'La publicación'} aparecerá para los vecinos.` };
+        case 'review_group_order':
+            return { title: input.approve === false ? 'Rechazar compra comunitaria' : 'Aprobar compra comunitaria', summary: str('order_title') || 'La compra propuesta por un vecino.' };
         case 'assign_resident_unit':
             return { title: 'Asignar departamento', summary: `${str('resident_name') || 'Residente'} → departamento ${str('unit_number')}.` };
         case 'create_unit':
@@ -2712,6 +2781,27 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'list_open_cases':
+            case 'update_case_status': {
+                if (!isStaff(userCtx)) return { error: 'Solo la administración o conserjería gestiona casos.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                if (name === 'list_open_cases') return listOpenCases(supabaseAdmin, communityId);
+                return updateCaseStatusForStaff(supabaseAdmin, { id: userCtx.user_id, role: userCtx.role || '', communityId, name: userCtx.name || null }, input as Record<string, unknown>);
+            }
+
+            case 'list_pending_listings':
+            case 'review_listing':
+            case 'review_group_order': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración aprueba publicaciones y compras comunitarias.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const actor = { id: userCtx.user_id, role: userCtx.role || 'admin', communityId, name: userCtx.name || null };
+                if (name === 'list_pending_listings') return listPendingListings(supabaseAdmin, communityId);
+                if (name === 'review_listing') return reviewListingForAdmin(supabaseAdmin, actor, input as Record<string, unknown>);
+                return reviewGroupOrderForAdmin(actor, input as Record<string, unknown>);
             }
 
             case 'list_pending_residents':

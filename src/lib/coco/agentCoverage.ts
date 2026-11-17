@@ -77,7 +77,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'POST /api/service-requests': { tool: 'request_service' },
     'PATCH /api/service-requests/[id]/status': { gap: 'Aceptar, reprogramar o cerrar una solicitud de servicio.' },
     'POST /api/reviews': { tool: 'rate_provider' },
-    'CocoCasesService.updateStatus': { gap: 'La administración no puede cambiar el estado de un caso conversando.' },
+    'CocoCasesService.updateStatus': { tool: 'update_case_status' },
     'MaintenanceService.createServiceTask': { tool: 'create_claim' },
     'POST /api/admin/maintenance/tasks/[id]/complete': { gap: 'Cerrar una tarea de mantención.' },
 
@@ -272,7 +272,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'ParkingService.processCharge': { system: 'Procesa el cobro de una reserva recién creada.' },
     'ParkingService.adminPostChargeToUnit': { ui: 'La administración carga a mano un cobro de estacionamiento, con el detalle a la vista.' },
     'ParkingService.adminMarkChargeRefunded': { ui: 'Marcar un reembolso registra la salida de banco: revisión de la administración.' },
-    'ParkingService.reviewSpot': { gap: 'La administración aprueba un estacionamiento publicado.' },
+    'ParkingService.reviewSpot': { tool: 'review_listing' },
     'ParkingService.applyEarningsToExpenses': { gap: 'Abonar lo ganado arrendando el estacionamiento a los gastos comunes.' },
     'ParkingService.extendBooking': { gap: 'Extender una reserva de estacionamiento (cambia el cobro).' },
     'ParkingService.reviewAccessRequest': { gap: 'La administración resuelve una solicitud de acceso a estacionamientos.' },
@@ -280,11 +280,11 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'ProviderNetworkService.act': SUPERADMIN,
     'ProviderMediaService.reviewDocument': { tool: 'review_provider_document' },
     'PushService.unregisterDevice': { system: 'La app nativa da de baja el dispositivo de notificaciones.' },
-    'StorageService.reviewUnit': { gap: 'La administración aprueba una bodega publicada.' },
+    'StorageService.reviewUnit': { tool: 'review_listing' },
     'SupermarketCartService.prepareHandoff': { ui: 'Prepara la compra para abrirla en el sitio de la tienda.' },
     'SupermarketCatalogService.extractList': { read: 'Interpreta una foto o archivo de lista.' },
     'SupermarketGroupService.lock': { tool: 'lock_supermarket_group_order' },
-    'SupermarketGroupService.review': { gap: 'La administración aprueba una compra comunitaria.' },
+    'SupermarketGroupService.review': { tool: 'review_group_order' },
 
     // ── Comercial, marketing, capacitación, superadmin ──────────────────────
     'CommercialService.submitLead': { ui: 'Formulario comercial de la landing, sin sesión.' },
