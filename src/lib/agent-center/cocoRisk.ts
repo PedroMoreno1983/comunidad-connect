@@ -114,6 +114,13 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     list_service_requests: 'read',
     list_community_initiatives: 'read',
     get_unit_account: 'read',
+    list_payment_agreements: 'read',
+    list_my_mediations: 'read',
+    // Convenios: dinero y compromisos de la unidad. Mediación: avisa a la administración al escalar.
+    create_payment_agreement: 'write_high',
+    cancel_payment_agreement: 'write_high',
+    pay_agreement_installment: 'write_high',
+    update_mediation_status: 'write_high',
     list_community_expenses: 'read',
     // Dinero: cambian la deuda de una unidad o el gasto del mes.
     add_unit_charge: 'write_high',
