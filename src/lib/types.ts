@@ -1524,6 +1524,20 @@ export interface DebugStatsSnapshot {
 }
 
 export type PrivacyConsentType = 'terms' | 'privacy_notice' | 'whatsapp' | 'ai_processing' | 'sensitive_data';
+/** Temas de las consultas a CoCo, para los datos agregados de la administración. */
+export type CocoTopicKey = 'gastos_comunes' | 'reservas' | 'mantencion' | 'convivencia' | 'seguridad_accesos' | 'estacionamientos_bodegas' | 'asambleas_votaciones' | 'reglamento_legal' | 'compras_marketplace' | 'otros';
+
+/** Uso de CoCo en la comunidad, agregado y sin identificar a nadie (null: muy pocas personas para mostrarlo). */
+export interface CocoInsights {
+  days: number;
+  minPeople: number;
+  residents: number | null;
+  messages: number | null;
+  whatsappShare: number | null;
+  topics: Array<{ topic: CocoTopicKey; label: string; messages: number; people: number }>;
+  hiddenTopics: number;
+}
+
 export type CocoConsentState = 'granted' | 'withdrawn' | 'unknown';
 export type PrivacyConsentAction = 'granted' | 'withdrawn';
 export type PrivacyConsentChannel = 'signup' | 'profile' | 'privacy_center' | 'admin_onboarding' | 'chat' | 'whatsapp';

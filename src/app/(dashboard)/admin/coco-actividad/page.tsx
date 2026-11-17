@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CocoInsightsCard } from "@/components/admin/CocoInsightsCard";
 
 type Row = {
     id: string;
@@ -108,8 +109,9 @@ export default function CocoActivityPage() {
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
             <div>
                 <h1 className="text-2xl font-semibold">Actividad de CoCo</h1>
-                <p className="mt-2 text-sm text-slate-600">Qué hizo CoCo en esta comunidad, quién lo aprobó y qué se puede deshacer.</p>
+                <p className="mt-2 text-sm text-slate-600">Qué hizo CoCo por la administración y el sistema, quién lo aprobó y qué se puede deshacer. Lo que CoCo hace para cada vecino es privado.</p>
             </div>
+            <CocoInsightsCard />
             <label className="flex items-center justify-between rounded-xl border px-4 py-3">
                 <span>CoCo puede cambiar datos</span>
                 <button type="button" onClick={toggle} className="rounded-full border px-3 py-1 text-sm">

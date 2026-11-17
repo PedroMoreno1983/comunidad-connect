@@ -17,6 +17,7 @@ import {
     type SessionData,
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { recordUsageSignal } from '@/lib/coco/usageSignals';
 import { getWhatsAppConfigStatus } from '@/lib/whatsapp';
 import { COCO_WHATSAPP_PRIVACY_LINE } from '@/lib/privacy';
 import {
@@ -311,6 +312,8 @@ ${COCO_WHATSAPP_PRIVACY_LINE}` : text;
                     console.error('[CoCo WhatsApp] No se pudo leer el adjunto', mediaError);
                 }
             }
+            // Solo el tema del mensaje, para los datos agregados de la administración. Nunca el texto.
+            if (message) void recordUsageSignal({ communityId: verifiedContext.community_id, userId: verifiedContext.user_id, role: verifiedContext.role, channel: 'whatsapp', message });
             const messageForAgent = [message, understood?.note].filter(Boolean).join('\n\n')
                 || (understood?.image || understood?.document ? 'Te envío un archivo.' : '');
             if (!messageForAgent && !understood?.image && !understood?.document) {
