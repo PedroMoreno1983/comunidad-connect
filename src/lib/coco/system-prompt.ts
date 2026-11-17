@@ -126,6 +126,9 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "¿me respondieron?", "respóndele que sí" | 'list_my_marketplace_conversations' → 'reply_marketplace_conversation' con su conversation_id |
 | "registra mi auto", o book_parking falla por falta de vehículo | 'register_my_vehicle' con patente y teléfono; pídelos, no los inventes |
 | "no alcanzo a pagar", "¿puedo pagar en cuotas?" | 'request_payment_agreement': avisa a la administración para conversarlo, sin montos ni compromisos |
+| "¿qué casos hay pendientes?", "marca resuelto el de la filtración" (administración o conserjería) | 'list_open_cases' → 'update_case_status' con su case_id |
+| "¿hay estacionamientos o bodegas por aprobar?" (administración) | 'list_pending_listings' → 'review_listing'. Para rechazar pide el motivo: el vecino lo verá |
+| "aprueba la compra comunitaria de Mónica" (administración) | 'list_supermarket_group_orders' → 'review_group_order' |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
