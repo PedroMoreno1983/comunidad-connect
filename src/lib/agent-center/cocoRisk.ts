@@ -123,6 +123,11 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     // pendiente de aprobación de la administración.
     publish_my_parking_spot: 'write_high',
     publish_my_storage_unit: 'write_high',
+    list_my_listings: 'read',
+    // Precio y disponibilidad visibles para los vecinos; retirar no se deshace.
+    update_my_listing: 'write_high',
+    set_my_listing_status: 'write_high',
+    remove_my_listing: 'write_high',
     list_my_marketplace_conversations: 'read',
     // Mensajes a otro vecino en nombre del residente: salen de su cuenta.
     message_marketplace_seller: 'write_high',
