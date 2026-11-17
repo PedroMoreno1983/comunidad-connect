@@ -111,6 +111,12 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     report_transfer: 'write_high',              // avisa a la administración en nombre del residente
     list_pending_residents: 'read',
     list_open_cases: 'read',
+    list_service_requests: 'read',
+    // Afecta a un proveedor o vecino, avisa a la administración, o deja un
+    // dato que entra al cobro del agua: confirma.
+    update_service_request_status: 'write_high',
+    register_incident: 'write_high',
+    record_water_reading: 'write_high',
     list_pending_listings: 'read',
     // El vecino recibe el resultado (aviso o publicación visible): confirma.
     update_case_status: 'write_high',
