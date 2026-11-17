@@ -20,6 +20,7 @@ export const COCO_PRIVACY_NOTICE = {
     points: [
         'Tus conversaciones con CoCo son privadas: la administración de tu comunidad no las lee, no recibe resúmenes ni sabe qué le preguntas.',
         'La administración solo recibe lo que tú le pides a CoCo que le envíe, como una solicitud, una reserva o un reclamo.',
+        'Sí ve datos en conjunto, como cuántos vecinos usan CoCo y sobre qué temas consultan, sin textos ni nombres y nunca de grupos de menos de 3 personas.',
         'Tus mensajes los procesa un proveedor de inteligencia artificial para responderte.',
     ],
     accept: 'Entendido',

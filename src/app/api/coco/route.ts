@@ -25,6 +25,7 @@ import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/na
 import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { attachmentNote, canAttachToProviders, chatAttachmentAvailable, currentChatAttachment, stashChatImage, withAttachmentPreviews } from '@/lib/coco/chatAttachments';
+import { recordUsageSignal } from '@/lib/coco/usageSignals';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -668,6 +669,8 @@ export async function POST(req: NextRequest) {
         const userId = profile.id;
         const unitId = profile.unit_id || '';
         const communityId = profile.community_id || '';
+        // Solo el tema del mensaje, para los datos agregados de la administración. Nunca el texto.
+        if (message) void recordUsageSignal({ communityId, userId, role: safeRole, channel: 'web', message });
         const selectedThreadKey = threadKey(userId, body.threadId);
         if (!selectedThreadKey) return NextResponse.json({ reply: 'Conversación inválida.' }, { status: 400 });
         const storedSession = await getSession(selectedThreadKey);
