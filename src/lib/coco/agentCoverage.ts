@@ -219,7 +219,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
 
     'POST /api/admin/billing': { tool: ['preview_billing', 'issue_billing'] },
     'POST /api/admin/billing-review': { ui: 'Revisión del comité antes de emitir: decisión con el detalle a la vista.' },
-    'DELETE /api/admin/payments': { gap: 'Anular un pago registrado por error.' },
+    'DELETE /api/admin/payments': { tool: 'delete_unit_payment' },
 
     'POST /api/admin/payments': { tool: 'record_payment' },
     'POST /api/admin/payments/import': { ui: 'Importar la cartola del banco (archivo).' },
@@ -227,12 +227,12 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
 
     'POST /api/admin/bank-reconciliation': { ui: 'Conciliación bancaria: cuadrar movimiento por movimiento.' },
     'POST /api/admin/bank-reconciliation/parse': { read: 'Interpreta una cartola subida.' },
-    'DELETE /api/admin/community-expenses': { gap: 'Borrar un gasto de la comunidad mal ingresado.' },
+    'DELETE /api/admin/community-expenses': { tool: 'delete_community_expense' },
 
     'POST /api/admin/community-expenses': { tool: 'add_community_expense' },
-    'DELETE /api/admin/charges': { gap: 'Anular un cargo puntual de una unidad.' },
+    'DELETE /api/admin/charges': { tool: 'cancel_unit_charge' },
 
-    'POST /api/admin/charges': { gap: 'Agregar o anular un cargo puntual a una unidad (multa, reembolso).' },
+    'POST /api/admin/charges': { tool: 'add_unit_charge' },
     'POST /api/admin/agreements': { gap: 'Crear o aprobar un convenio de pago.' },
     'POST /api/finance/agreement-review': { ui: 'Revisión de convenios por el comité.' },
     'POST /api/finance/committee-review': { ui: 'Revisión del comité de finanzas.' },
