@@ -138,3 +138,13 @@ describe('número sin registrar', () => {
         expect(anthropic.calls).toHaveLength(1);
     });
 });
+
+describe('lo que CoCo dice de Convive', () => {
+    it('no promete pago en línea ni habla de expensas', async () => {
+        anthropic.create.mockResolvedValueOnce(text('Convive es una plataforma para comunidades.'));
+        await askCoCoGuest({ message: '¿qué es Convive?', session: null, waId: '56911112222', provider: null, verifyResident: null });
+        const system = String(anthropic.calls[0].system);
+        expect(system).toContain('El pago en línea todavía no está disponible');
+        expect(system).toContain('nunca "expensas"');
+    });
+});
