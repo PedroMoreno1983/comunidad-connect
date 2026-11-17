@@ -151,6 +151,10 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     publish_my_parking_spot: 'write_high',
     publish_my_storage_unit: 'write_high',
     list_my_listings: 'read',
+    list_parking_access_requests: 'read',
+    extend_parking_booking: 'write_high',       // cambia el cobro
+    set_my_spot_availability: 'write_high',     // decide cuándo otros reservan
+    review_parking_access: 'write_high',        // rechazar cancela reservas futuras
     // Precio y disponibilidad visibles para los vecinos; retirar no se deshace.
     update_my_listing: 'write_high',
     set_my_listing_status: 'write_high',

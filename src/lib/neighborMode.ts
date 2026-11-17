@@ -40,6 +40,7 @@ export const NEIGHBOR_MODE_BLOCKED_TOOLS = new Set([
     'get_my_storage', 'search_storage', 'rent_storage', 'cancel_storage_rental',
     'publish_my_parking_spot', 'publish_my_storage_unit', 'register_my_vehicle',
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
+    'extend_parking_booking', 'set_my_spot_availability',
     // Convivencia espera a la administración (valida iniciativas y coordinadores).
     'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
     'list_my_mediations', 'update_mediation_status',

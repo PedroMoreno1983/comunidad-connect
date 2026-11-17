@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { extendParkingBooking, listParkingAccessRequests, reviewParkingAccess, setMySpotAvailability } from './parkingExtraTools';
 import { cancelPaymentAgreement, createPaymentAgreement, listMyMediations, listPaymentAgreements, payAgreementInstallment, updateMediationStatus } from './agreementTools';
 import { addChargeForAdmin, cancelChargeForAdmin, deleteExpenseForAdmin, deletePaymentForAdmin, getUnitAccount, listExpensesForAdmin } from './financeAdminTools';
 import { joinInitiative, listCommunityInitiatives, proposeInitiative, requestMediation, resolveParticipation, reviewInitiative } from './convivenciaTools';
@@ -471,6 +472,52 @@ export const TOOL_DEFINITIONS = [
                 reason: { type: 'string', description: 'Motivo, si lo dio.' },
             },
             required: ['rental_id'],
+        },
+    },
+    {
+        name: 'extend_parking_booking',
+        description: 'Extiende una reserva de estacionamiento del residente (conductor) entre 1 y 720 minutos, si el dueño la tiene disponible hasta esa hora y nadie más la reservó. Cambia el cobro: dilo antes de confirmar. Usa el reserva_id de get_my_parking. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                booking_id: { type: 'string' },
+                additional_minutes: { type: 'integer', description: 'Minutos extra (60 = una hora).' },
+            },
+            required: ['booking_id', 'additional_minutes'],
+        },
+    },
+    {
+        name: 'set_my_spot_availability',
+        description: 'Fija los horarios en que el estacionamiento propio se puede reservar. Reemplaza todos los horarios anteriores. Días: 0 = domingo … 6 = sábado. Usa el listing_id de list_my_listings. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                listing_id: { type: 'string' },
+                windows: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: { weekday: { type: 'integer' }, start_time: { type: 'string', description: 'HH:MM' }, end_time: { type: 'string', description: 'HH:MM' } },
+                        required: ['weekday', 'start_time', 'end_time'],
+                    },
+                },
+                listing_name: { type: 'string', description: 'Solo para la confirmación.' },
+            },
+            required: ['listing_id', 'windows'],
+        },
+    },
+    {
+        name: 'list_parking_access_requests',
+        description: 'Solicitudes pendientes de conductores externos (de otros condominios) para usar los estacionamientos de la comunidad: access_id, nombre, patente y mensaje. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'review_parking_access',
+        description: 'Aprueba o rechaza a un conductor externo. Rechazar cancela sus reservas futuras en la comunidad. Usa el access_id de list_parking_access_requests. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { access_id: { type: 'string' }, approve: { type: 'boolean' }, reason: { type: 'string' }, driver_name: { type: 'string', description: 'Solo para la confirmación.' } },
+            required: ['access_id', 'approve'],
         },
     },
     {
@@ -1670,6 +1717,10 @@ export const MUTATING_TOOLS = new Set<string>([
     'publish_my_storage_unit',
     'update_my_listing',
     'set_my_listing_status',
+    // Extender cambia el cobro; los horarios y el acceso deciden quién reserva.
+    'extend_parking_booking',
+    'set_my_spot_availability',
+    'review_parking_access',
     'remove_my_listing',
     // Hablan con terceros o cambian datos propios: confirma.
     'message_marketplace_seller',
@@ -1774,6 +1825,7 @@ const RESIDENT_TOOLS = new Set([
     'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
     'publish_my_parking_spot', 'publish_my_storage_unit',
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
+    'extend_parking_booking', 'set_my_spot_availability',
     'list_service_requests', 'update_service_request_status',
     'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
     'list_my_mediations', 'update_mediation_status',
@@ -1804,6 +1856,7 @@ const ADMIN_TOOLS = new Set([
     'list_pending_listings', 'review_listing', 'review_group_order', 'record_water_reading', 'review_initiative',
     'get_unit_account', 'add_unit_charge', 'cancel_unit_charge', 'delete_unit_payment', 'list_community_expenses', 'delete_community_expense',
     'list_payment_agreements', 'create_payment_agreement', 'cancel_payment_agreement', 'pay_agreement_installment',
+    'list_parking_access_requests', 'review_parking_access',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1945,6 +1998,21 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Registrar mi vehículo', summary: `Patente ${str('plate').toUpperCase()}${str('vehicle_description') ? ` · ${str('vehicle_description')}` : ''}, contacto ${str('phone')}.` };
         case 'request_payment_agreement':
             return { title: 'Pedir un convenio de pago', summary: 'La administración recibe tu solicitud para conversar un convenio. No se crea ningún compromiso todavía.' };
+        case 'extend_parking_booking': {
+            const minutos = Number(input.additional_minutes) || 0;
+            const tramo = minutos % 60 === 0 ? `${minutos / 60} ${minutos === 60 ? 'hora' : 'horas'}` : `${minutos} minutos`;
+            return { title: 'Extender reserva de estacionamiento', summary: `${tramo} más. Si cuesta más, se suma al cobro de la reserva.` };
+        }
+        case 'set_my_spot_availability': {
+            const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+            const ventanas = (Array.isArray(input.windows) ? input.windows as Record<string, unknown>[] : [])
+                .map(w => `${dias[Number(w.weekday)] ?? '?'} ${w.start_time}–${w.end_time}`).join(', ');
+            return { title: 'Horarios de mi estacionamiento', summary: `${str('listing_name') || 'Tu estacionamiento'}: ${ventanas || 'sin horarios (no recibe reservas)'}. Reemplaza los anteriores.` };
+        }
+        case 'review_parking_access':
+            return input.approve === false
+                ? { title: 'Rechazar conductor externo', summary: `${str('driver_name') || 'El conductor'}. Se cancelan sus reservas futuras.` }
+                : { title: 'Aprobar conductor externo', summary: `${str('driver_name') || 'El conductor'} podrá reservar estacionamientos de la comunidad.` };
         case 'update_my_listing': {
             const cambios = [['hourly_rate', 'por hora'], ['daily_rate', 'por día'], ['monthly_rate', 'por mes']]
                 .filter(([key]) => input[key] !== undefined && input[key] !== '')
@@ -2793,6 +2861,22 @@ export async function executeTool(
                 }, 'coco');
                 if ('error' in result) return { error: result.error };
                 return { success: true, message: result.message };
+            }
+
+            case 'extend_parking_booking':
+            case 'set_my_spot_availability': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al residente.');
+                const run = name === 'extend_parking_booking' ? extendParkingBooking : setMySpotAvailability;
+                return run(supabaseAdmin, userCtx.user_id, input as Record<string, unknown>);
+            }
+
+            case 'list_parking_access_requests':
+            case 'review_parking_access': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración resuelve el acceso de conductores externos.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                if (name === 'list_parking_access_requests') return listParkingAccessRequests(supabaseAdmin, communityId);
+                return reviewParkingAccess(supabaseAdmin, userCtx.user_id, input as Record<string, unknown>);
             }
 
             case 'list_my_listings':

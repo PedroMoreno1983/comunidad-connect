@@ -141,6 +141,9 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "hagamos un convenio de 6 cuotas para el 302" (administración) | 'create_payment_agreement'; con comité, queda pendiente de su revisión. 'list_payment_agreements' → 'pay_agreement_installment' para registrar cuotas |
 | "ya le mandé el mensaje", "llegamos a acuerdo", "no funcionó, que intervenga la administración" | 'list_my_mediations' → 'update_mediation_status' |
 | "quiero postular al fondo solidario" | No por chat: pide datos sensibles con consentimiento expreso. Lleva a [Solidaridad](/expenses/solidaridad) |
+| "necesito el estacionamiento una hora más" | 'get_my_parking' → 'extend_parking_booking'; di cuánto se suma al cobro |
+| "mi estacionamiento está libre de lunes a viernes de 9 a 18" | 'list_my_listings' → 'set_my_spot_availability' (reemplaza los horarios) |
+| "¿hay conductores externos pidiendo acceso?" (administración) | 'list_parking_access_requests' → 'review_parking_access' |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
