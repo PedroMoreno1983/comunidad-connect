@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { createAmenityForAdmin, deleteDealQuote, deleteMarketplaceItem, deleteProviderPhoto, listProviderPhotos, setUnitOwner, updateCommunityDeal, updateProviderProfile } from './finalGapTools';
 import { extendParkingBooking, listParkingAccessRequests, rateParkingBooking, reviewParkingAccess, setMySpotAvailability } from './parkingExtraTools';
 import { cancelPaymentAgreement, createPaymentAgreement, listMyMediations, listPaymentAgreements, payAgreementInstallment, updateMediationStatus } from './agreementTools';
 import { addChargeForAdmin, cancelChargeForAdmin, deleteExpenseForAdmin, deletePaymentForAdmin, getUnitAccount, listExpensesForAdmin } from './financeAdminTools';
@@ -818,6 +819,93 @@ export const TOOL_DEFINITIONS = [
                 floor: { type: 'string', description: 'Nuevo piso del departamento' },
             },
             required: ['unit_id'],
+        },
+    },
+    {
+        name: 'delete_marketplace_item',
+        description: 'Borra (definitivamente) una publicación del Marketplace: el vendedor las suyas, la administración cualquiera de la comunidad (moderación). Si solo quiere retirarla, usa update_marketplace_item con hidden. Requiere confirmación.',
+        input_schema: { type: 'object' as const, properties: { title: { type: 'string' }, item_id: { type: 'string' } }, required: [] },
+    },
+    {
+        name: 'update_community_deal',
+        description: 'Administra un convenio comunitario: estado (gauging, quoting, active, closed, rejected), precio del convenio y de referencia, cotización elegida, condiciones, horario y fechas. Usa deal_id y quote_id de list_community_deals. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                deal_id: { type: 'string' },
+                status: { type: 'string', enum: ['proposed', 'gauging', 'quoting', 'active', 'closed', 'rejected'] },
+                deal_price: { type: 'integer' },
+                reference_price: { type: 'integer' },
+                selected_quote_id: { type: 'string' },
+                terms: { type: 'string' },
+                schedule: { type: 'string' },
+                starts_on: { type: 'string' },
+                ends_on: { type: 'string' },
+                review_note: { type: 'string' },
+                deal_title: { type: 'string', description: 'Solo para la confirmación.' },
+            },
+            required: ['deal_id'],
+        },
+    },
+    {
+        name: 'delete_deal_quote',
+        description: 'Borra una cotización de un convenio comunitario. Usa el quote_id de list_community_deals. Requiere confirmación. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: { quote_id: { type: 'string' }, quote_label: { type: 'string', description: 'Solo para la confirmación.' } }, required: ['quote_id'] },
+    },
+    {
+        name: 'update_provider_profile',
+        description: 'Edita el perfil de un maestro: el propio maestro el suyo, o la administración los de su comunidad. Campos: name, contactPhone, email, bio, responseTime, hourlyRate, yearsExperience, specialties, certifications, availability, serviceAddress. No verifica (eso es review_provider_document). Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                provider_id: { type: 'string', description: 'Opcional; sin él, el perfil de maestro del propio usuario.' },
+                provider_name: { type: 'string', description: 'Opcional: la administración busca por nombre.' },
+                fields: { type: 'object', description: 'Solo los campos a cambiar, con los nombres de la descripción.' },
+            },
+            required: ['fields'],
+        },
+    },
+    {
+        name: 'list_provider_photos',
+        description: 'Fotos de trabajos del perfil de un maestro (photo_id, descripción, fecha). Para el propio maestro o la administración de su comunidad.',
+        input_schema: { type: 'object' as const, properties: { provider_id: { type: 'string', description: 'Opcional; sin él, el perfil de maestro del propio usuario.' },
+                provider_name: { type: 'string', description: 'Opcional: la administración busca por nombre.' }, }, required: [] },
+    },
+    {
+        name: 'delete_provider_photo',
+        description: 'Borra una foto de trabajos del perfil de un maestro. Usa el photo_id de list_provider_photos. Requiere confirmación.',
+        input_schema: { type: 'object' as const, properties: { provider_id: { type: 'string', description: 'Opcional; sin él, el perfil de maestro del propio usuario.' },
+                provider_name: { type: 'string', description: 'Opcional: la administración busca por nombre.' },
+                photo_id: { type: 'string' } }, required: ['photo_id'] },
+    },
+    {
+        name: 'create_amenity',
+        description: 'Crea un espacio común reservable (quincho, sala multiuso, gimnasio…): nombre, capacidad, tarifa por hora (0 = sin costo) y descripción. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                name: { type: 'string' },
+                description: { type: 'string' },
+                max_capacity: { type: 'integer' },
+                hourly_rate: { type: 'integer' },
+                icon: { type: 'string', enum: ['Calendar', 'Flame', 'Waves', 'PartyPopper', 'Dumbbell', 'Monitor'] },
+            },
+            required: ['name'],
+        },
+    },
+    {
+        name: 'set_unit_owner',
+        description: 'Fija o cambia el dueño (propietario) de una unidad, o la deja sin dueño (clear: true). Distinto de assign_resident_unit, que asigna el departamento a un residente. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_number: { type: 'string' },
+                tower: { type: 'string' },
+                resident_name: { type: 'string' },
+                resident_id: { type: 'string' },
+                clear: { type: 'boolean' },
+            },
+            required: ['unit_number'],
         },
     },
     {
@@ -1776,6 +1864,13 @@ export const MUTATING_TOOLS = new Set<string>([
     'delete_unit_payment',
     'delete_community_expense',
     'create_payment_agreement',
+    'delete_marketplace_item',
+    'update_community_deal',
+    'delete_deal_quote',
+    'update_provider_profile',
+    'delete_provider_photo',
+    'create_amenity',
+    'set_unit_owner',
     'cancel_payment_agreement',
     'pay_agreement_installment',
     'update_mediation_status',
@@ -1843,6 +1938,7 @@ const RESIDENT_TOOLS = new Set([
     'list_service_requests', 'update_service_request_status',
     'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
     'list_my_mediations', 'update_mediation_status',
+    'delete_marketplace_item', 'update_provider_profile', 'list_provider_photos', 'delete_provider_photo',
     'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
     'update_my_name', 'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
@@ -1871,6 +1967,7 @@ const ADMIN_TOOLS = new Set([
     'get_unit_account', 'add_unit_charge', 'cancel_unit_charge', 'delete_unit_payment', 'list_community_expenses', 'delete_community_expense',
     'list_payment_agreements', 'create_payment_agreement', 'cancel_payment_agreement', 'pay_agreement_installment',
     'list_parking_access_requests', 'review_parking_access',
+    'update_community_deal', 'delete_deal_quote', 'create_amenity', 'set_unit_owner',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -2083,6 +2180,20 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return input.approve === false
                 ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
                 : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'delete_marketplace_item':
+            return { title: 'Borrar publicación', summary: `${str('title') || 'La publicación elegida'} se borra definitivamente del Marketplace.` };
+        case 'update_community_deal':
+            return { title: 'Actualizar convenio', summary: `${str('deal_title') || 'El convenio'}${str('status') ? ` → ${str('status')}` : ''}${input.deal_price ? ` · ${Number(input.deal_price).toLocaleString('es-CL')}` : ''}.` };
+        case 'delete_deal_quote':
+            return { title: 'Borrar cotización', summary: str('quote_label') || 'La cotización elegida.' };
+        case 'update_provider_profile':
+            return { title: 'Editar perfil de maestro', summary: `Cambia: ${Object.keys((typeof input.fields === 'object' && input.fields) || {}).join(', ') || 'nada'}.` };
+        case 'delete_provider_photo':
+            return { title: 'Borrar foto del perfil', summary: 'La foto deja de verse en el perfil del maestro.' };
+        case 'create_amenity':
+            return { title: 'Crear espacio común', summary: `${str('name')} · ${input.max_capacity ?? 12} personas · ${Number(input.hourly_rate) ? `${Number(input.hourly_rate).toLocaleString('es-CL')} por hora` : 'sin costo'}.` };
+        case 'set_unit_owner':
+            return { title: 'Dueño de la unidad', summary: input.clear === true ? `El ${str('unit_number')} queda sin dueño.` : `${str('resident_name') || 'El residente'} → dueño del ${str('unit_number')}.` };
         case 'create_payment_agreement':
             return { title: 'Crear convenio de pago', summary: `Depto ${str('unit_number')}: ${(Number(input.total_amount) || 0).toLocaleString('es-CL')} en ${input.installment_count} cuotas; la primera vence hoy.` };
         case 'cancel_payment_agreement':
@@ -3268,6 +3379,29 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'delete_marketplace_item':
+            case 'update_provider_profile':
+            case 'list_provider_photos':
+            case 'delete_provider_photo':
+            case 'update_community_deal':
+            case 'delete_deal_quote':
+            case 'create_amenity':
+            case 'set_unit_owner': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const actor = { id: userCtx.user_id, role: userCtx.role || 'resident', communityId };
+                const args = input as Record<string, unknown>;
+                if (name === 'delete_marketplace_item') return deleteMarketplaceItem(supabaseAdmin, actor, args);
+                if (name === 'update_provider_profile') return updateProviderProfile(supabaseAdmin, actor, args);
+                if (name === 'list_provider_photos') return listProviderPhotos(supabaseAdmin, actor, args);
+                if (name === 'delete_provider_photo') return deleteProviderPhoto(supabaseAdmin, actor, args);
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración puede hacer eso.' };
+                if (name === 'update_community_deal') return updateCommunityDeal(supabaseAdmin, communityId, args);
+                if (name === 'delete_deal_quote') return deleteDealQuote(supabaseAdmin, communityId, args);
+                if (name === 'create_amenity') return createAmenityForAdmin(supabaseAdmin, communityId, args);
+                return setUnitOwner(supabaseAdmin, communityId, args);
             }
 
             case 'list_payment_agreements':

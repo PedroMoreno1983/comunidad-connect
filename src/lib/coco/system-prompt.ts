@@ -145,6 +145,12 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "mi estacionamiento está libre de lunes a viernes de 9 a 18" | 'list_my_listings' → 'set_my_spot_availability' (reemplaza los horarios) |
 | "¿hay conductores externos pidiendo acceso?" (administración) | 'list_parking_access_requests' → 'review_parking_access' |
 | "el estacionamiento de ayer estuvo perfecto", "califícalo con 4 estrellas" | 'rate_parking_booking' (sin booking_id, la última reserva terminada) |
+| "borra mi publicación de la silla" | 'delete_marketplace_item' (si solo quiere retirarla, 'update_marketplace_item' con hidden) |
+| "activa el convenio de internet", "elige la cotización de Movistar" (administración) | 'list_community_deals' → 'update_community_deal' o 'delete_deal_quote' |
+| "cambia mi teléfono en mi perfil de maestro", "borra esa foto" | 'update_provider_profile', 'list_provider_photos' → 'delete_provider_photo' |
+| "crea un quincho para 20 personas" (administración) | 'create_amenity' |
+| "el dueño del 504 es Juan Pérez" (administración) | 'set_unit_owner' |
+| "convoca una asamblea" | No por chat: es un flujo legal (citación, quórum, acta) en [Asambleas](/votaciones/asambleas). Puedes redactar la citación con 'prepare_legal_draft' |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
