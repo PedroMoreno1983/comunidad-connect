@@ -112,6 +112,13 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     list_pending_residents: 'read',
     list_open_cases: 'read',
     list_service_requests: 'read',
+    list_community_initiatives: 'read',
+    // Convivencia: avisa a la administración, a un coordinador o a un vecino.
+    propose_initiative: 'write_high',
+    join_initiative: 'write_high',
+    resolve_participation: 'write_high',
+    review_initiative: 'write_high',
+    request_mediation: 'write_high',
     // Afecta a un proveedor o vecino, avisa a la administración, o deja un
     // dato que entra al cobro del agua: confirma.
     update_service_request_status: 'write_high',

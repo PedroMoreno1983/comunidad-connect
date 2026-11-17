@@ -104,14 +104,14 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'POST /api/privacy/requests': { ui: 'Solicitudes de datos personales (Ley 19.628): formulario con identidad verificada.' },
 
     // ── Comunidad (convivencia) ─────────────────────────────────────────────
-    'CommunityCollaborationService.createTimeBankOffer': { gap: 'Ofrecer ayuda en el Banco de Tiempo.' },
-    'CommunityCollaborationService.requestTimeBankOffer': { gap: 'Pedir una oferta del Banco de Tiempo.' },
-    'CommunityCollaborationService.createCollectivePurchase': { gap: 'Proponer una compra colectiva (Abasto Comunitario).' },
-    'CommunityCollaborationService.joinCollectivePurchase': { gap: 'Sumarse a una compra colectiva.' },
-    'CommunityCollaborationService.createCommunityProject': { gap: 'Proponer un proyecto comunitario.' },
-    'CommunityCollaborationService.joinCommunityProject': { gap: 'Sumarse a un proyecto comunitario.' },
-    'CommunityCollaborationService.resolveParticipationRequest': { gap: 'La administración valida iniciativas y participantes.' },
-    'CommunityCollaborationService.createMediationCase': { gap: 'Pedir una mediación entre vecinos.' },
+    'CommunityCollaborationService.createTimeBankOffer': { tool: 'propose_initiative' },
+    'CommunityCollaborationService.requestTimeBankOffer': { tool: 'join_initiative' },
+    'CommunityCollaborationService.createCollectivePurchase': { tool: 'propose_initiative' },
+    'CommunityCollaborationService.joinCollectivePurchase': { tool: 'join_initiative' },
+    'CommunityCollaborationService.createCommunityProject': { tool: 'propose_initiative' },
+    'CommunityCollaborationService.joinCommunityProject': { tool: 'join_initiative' },
+    'CommunityCollaborationService.resolveParticipationRequest': { tool: 'resolve_participation' },
+    'CommunityCollaborationService.createMediationCase': { tool: 'request_mediation' },
     'CommunityCollaborationService.updateMediationStatus': { gap: 'Avanzar una mediación.' },
     'CommunityDealsService.setInterest': { tool: 'join_community_deal' },
     'CommunityDealsService.addQuote': { tool: 'add_community_deal_quote' },
@@ -259,7 +259,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'POST /api/email/outreach': { tool: ['draft_outbound_email', 'send_gmail'] },
 
     // ── Detectados al tratar todo método como escritura salvo verbo de lectura ─
-    'CommunityCollaborationService.reviewInitiative': { gap: 'La administración valida una iniciativa comunitaria.' },
+    'CommunityCollaborationService.reviewInitiative': { tool: 'review_initiative' },
     'CommunityDealsService.propose': { tool: 'propose_community_deal' },
     'FinanceCommitteeService.decideAgreement': { ui: 'El comité de finanzas decide un convenio con el detalle a la vista.' },
     'FinanceCommitteeService.appoint': { ui: 'Nombrar integrantes del comité de finanzas.' },
