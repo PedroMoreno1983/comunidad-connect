@@ -92,3 +92,37 @@ export async function reviewParkingAccess(admin: SupabaseClient, adminId: string
             : 'Solicitud rechazada. Si tenía reservas futuras, se cancelaron.',
     };
 }
+
+/**
+ * Califica una reserva terminada (1 a 5 estrellas). Sin booking_id, la última
+ * reserva que el residente terminó: get_my_parking solo lista las vigentes, y
+ * "califica el estacionamiento de ayer" es lo que se pide.
+ */
+export async function rateParkingBooking(admin: SupabaseClient, userId: string, input: Record<string, unknown>) {
+    const rating = Math.round(Number(input.rating));
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) return { error: 'La calificación va de 1 a 5 estrellas.' };
+
+    let bookingId = text(input.booking_id, 36);
+    let label = '';
+    if (!UUID.test(bookingId)) {
+        const { data: driver } = await admin.from('parking_drivers').select('id').eq('user_id', userId).maybeSingle();
+        if (!driver) return { error: 'No tienes reservas de estacionamiento.' };
+        const { data: last } = await admin.from('parking_bookings')
+            .select('id, ends_at, parking_spots(label)')
+            .eq('driver_id', String(driver.id))
+            .lt('ends_at', new Date().toISOString())
+            .not('status', 'in', '(cancelled,no_show)')
+            .order('ends_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (!last) return { error: 'No tienes reservas terminadas para calificar.' };
+        bookingId = String(last.id);
+        label = String((last.parking_spots as { label?: string } | null)?.label ?? '');
+    }
+
+    const { error } = await admin.rpc('coco_rate_parking_booking', {
+        p_user_id: userId, p_booking_id: bookingId, p_rating: rating, p_comment: text(input.comment, 500) || null,
+    });
+    if (error) return { error: error.message || 'No se pudo guardar la calificación.' };
+    return { success: true, message: `Guardé tu calificación de ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}${label ? ` para "${label}"` : ''}. Gracias.` };
+}
