@@ -44,7 +44,8 @@ export interface SessionData {
          */
         chat_attachment?: ChatAttachmentState;
     };
-    auth_state?: 'pending' | 'verified';
+    /** 'guest': conversa sin ser residente verificado (maestro o número sin registrar). */
+    auth_state?: 'pending' | 'verified' | 'guest';
     auth_attempts?: number;
     last_activity?: string;
 }
