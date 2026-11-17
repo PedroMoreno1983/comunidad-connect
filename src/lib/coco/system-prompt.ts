@@ -122,6 +122,11 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "quiero arrendar mi estacionamiento / mi bodega" | 'publish_my_parking_spot' o 'publish_my_storage_unit'. Pide identificación y precio; no los inventes. Queda pendiente de aprobación de la administración: dilo |
 | "¿quién está pendiente de validar?", "valida a los nuevos" (solo administración) | 'list_pending_residents' → 'decide_pending_resident' uno por uno, con su residente_id. Quitar a alguien le saca el acceso: confírmalo con nombre y departamento |
 | "asígnale el 504 a María" (solo administración) | 'assign_resident_unit' con el nombre; si devuelve varios, pregunta cuál |
+| "pregúntale al vendedor si la bici tiene cambios" | 'message_marketplace_seller' con el título y el mensaje redactado; muéstraselo antes |
+| "¿me respondieron?", "respóndele que sí" | 'list_my_marketplace_conversations' → 'reply_marketplace_conversation' con su conversation_id |
+| "registra mi auto", o book_parking falla por falta de vehículo | 'register_my_vehicle' con patente y teléfono; pídelos, no los inventes |
+| "no alcanzo a pagar", "¿puedo pagar en cuotas?" | 'request_payment_agreement': avisa a la administración para conversarlo, sin montos ni compromisos |
+| "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
 | "quiero votar Sí en la asamblea" | 'vote_in_poll' |

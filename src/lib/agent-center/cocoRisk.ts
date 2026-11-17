@@ -117,6 +117,14 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     // pendiente de aprobación de la administración.
     publish_my_parking_spot: 'write_high',
     publish_my_storage_unit: 'write_high',
+    list_my_marketplace_conversations: 'read',
+    // Mensajes a otro vecino en nombre del residente: salen de su cuenta.
+    message_marketplace_seller: 'write_high',
+    reply_marketplace_conversation: 'write_high',
+    update_my_name: 'write_high',              // visible para toda la comunidad
+    delete_shopping_list: 'write_high',        // no se recupera
+    register_my_vehicle: 'write_high',         // datos personales (patente, teléfono)
+    request_payment_agreement: 'write_high',   // avisa a la administración
     // Convenios: sumarse o proponer es reversible y no compromete pago (como
     // sumarse a una compra comunitaria). Cotizar es solo de la administración y
     // no activa nada: elegir y activar se hace en la app.
