@@ -46,6 +46,11 @@ export const AI_TASKS = {
         complexity: 'light',
         description: 'Respuesta de respaldo de CoCo, solo texto y sin herramientas',
     },
+    'coco.whatsapp.guest': {
+        complexity: 'light',
+        needsTools: true,
+        description: 'CoCo por WhatsApp con maestros y números sin registrar: perfil del maestro y verificación de residente',
+    },
     'agent-center.planner': {
         complexity: 'standard',
         needsTools: true,

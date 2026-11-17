@@ -14,9 +14,17 @@ import {
     saveSession,
     saveDeliveredTurn,
     deleteSession,
+    type SessionData,
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
+import { getWhatsAppConfigStatus } from '@/lib/whatsapp';
+import {
+    askCoCoGuest,
+    findProviderByPhone,
+    findResidentProfilesByPhone,
+    phoneMatches,
+    type ResidentVerifier,
+} from '@/lib/coco/whatsappGuest';
 import { whatsappPendingReply } from '@/lib/coco/confirmation';
 import { LEGAL_DRAFT_MARKER, canDraftLegalDocuments } from '@/lib/coco/legalDraftMarker';
 import { markdownToPdf } from '@/lib/coco/pdf';
@@ -80,21 +88,36 @@ function cleanUnitValue(value: string) {
         .replace(/[^a-z0-9]/g, '');
 }
 
-function phoneDigits(value: unknown) {
-    return typeof value === 'string' ? value.replace(/\D/g, '') : '';
+/** Unidad del perfil: la vinculada o, si no hay, la que el perfil tiene como dueño. */
+async function residentUnit(profileRecord: Record<string, unknown>) {
+    const embedded = getUnitRecord(profileRecord.units);
+    if (embedded) return embedded;
+    const admin = getSupabaseAdmin();
+    const linkedUnitId = typeof profileRecord.unit_id === 'string' ? profileRecord.unit_id : '';
+    if (linkedUnitId) {
+        const { data: linkedUnit } = await admin.from('units')
+            .select('id, number, unit_number, tower, community_id').eq('id', linkedUnitId).maybeSingle();
+        if (linkedUnit) return linkedUnit as Record<string, unknown>;
+    }
+    const { data: ownedUnit } = await admin.from('units')
+        .select('id, number, unit_number, tower, community_id').eq('owner_id', String(profileRecord.id)).maybeSingle();
+    return (ownedUnit as Record<string, unknown> | null) || null;
 }
 
-function canonicalChileanPhone(value: unknown) {
-    const digits = phoneDigits(value);
-    if (/^56\d{9}$/.test(digits)) return digits;
-    if (/^9\d{8}$/.test(digits)) return `56${digits}`;
-    return '';
-}
-
-function phoneMatches(savedPhone: unknown, waId: string) {
-    const saved = canonicalChileanPhone(savedPhone);
-    const incoming = canonicalChileanPhone(formatWhatsAppPhone(waId));
-    return Boolean(saved && incoming && saved === incoming);
+function verifiedSession(resident: Record<string, unknown>, unitRecord: Record<string, unknown> | null, unitLabel: string): SessionData {
+    return {
+        conversation: [],
+        user_context: {
+            user_id:      String(resident.id),
+            unit_id:      String(resident.unit_id || unitRecord?.id || unitLabel),
+            role:         String(resident.role || 'resident'),
+            community_id: String(resident.community_id || ''),
+            name:         String(resident.name || resident.full_name || 'vecino/a'),
+            channel:      'whatsapp',
+        },
+        auth_state:   'verified',
+        auth_attempts: 0,
+    };
 }
 
 function unitMatches(input: string, candidates: string[]) {
@@ -175,9 +198,13 @@ export async function POST(req: NextRequest) {
     if (!waId || (!message && inboundMedia.length === 0)) return new NextResponse('', { status: 400 });
 
     if (relayedFromNorma) {
+        // Por el número compartido, Scrapp manda aquí a quien saludó a CoCo, a
+        // quien ya conversa con ella y a quien responde un mensaje que salió de
+        // Convive (X-CoCo-Route: last-outbound). Lo demás es de Norma.
         const sessionKey = `wa:${waId}`;
         const existingSession = await getSession(sessionKey);
-        if (!existingSession && !/^(hola\s+)?coco[.!?]?$/i.test(message)) {
+        const answersConvive = req.headers.get('x-coco-route') === 'last-outbound';
+        if (!existingSession && !answersConvive && !/^(hola\s+)?coco[.!?]?$/i.test(message)) {
             return new NextResponse('', { status: 204 });
         }
     }
@@ -210,7 +237,20 @@ export async function POST(req: NextRequest) {
 
     try {
         const sessionKey = `wa:${waId}`;
-        const session = await getSession(sessionKey);
+        let session = await getSession(sessionKey);
+
+        // Un solo perfil con WhatsApp activado tiene este número: es esa persona.
+        // WhatsApp ya acredita que escribe desde ese teléfono, así que no se le
+        // pregunta el depto. Con dos o más perfiles, el depto desempata.
+        let residentProfiles: Record<string, unknown>[] | null = null;
+        if (session?.auth_state !== 'verified') {
+            residentProfiles = await findResidentProfilesByPhone(waId);
+            if (residentProfiles.length === 1) {
+                const unitRecord = await residentUnit(residentProfiles[0]);
+                session = verifiedSession(residentProfiles[0], unitRecord, getUnitDisplay(unitCandidates(unitRecord, residentProfiles[0])));
+                await saveSession(sessionKey, session);
+            }
+        }
 
         // ── ¿Ya está autenticado? ────────────────────────────────────────────
         if (session?.auth_state === 'verified') {
@@ -301,110 +341,46 @@ export async function POST(req: NextRequest) {
             return respond(draftUrl ? `${reply}\n\nTe dejo el PDF del borrador en este mensaje. Caduca en 15 minutos.` : (reply || 'La solicitud fue procesada.'), draftUrl);
         }
 
-        // ── Flujo de autenticación ───────────────────────────────────────────
-        const attempts = session?.auth_attempts ?? 0;
-
+        // ── Conversación sin residente verificado ────────────────────────────
+        // Maestros, números sin registrar y quien comparte teléfono con otro
+        // residente. CoCo conversa; el depto se pide solo si hace falta.
         if (!message) {
-            return respond('Escríbeme tu número de depto para verificarte. Las fotos, los audios y los PDF los leo cuando ya estés verificado.');
+            return respond('Recibí tu archivo. Por ahora leo fotos, audios y PDF cuando ya sé quién eres: cuéntame primero en qué te ayudo.');
         }
-
-        if (attempts === 0) {
-            // Primer mensaje → pedir número de depto
-            await saveSession(sessionKey, {
-                conversation: [],
-                user_context: { channel: 'whatsapp' },
-                auth_state: 'pending',
-                auth_attempts: 1,
-            });
-            return respond(
-                '👋 Hola, soy *CoCo*, la asistente de tu comunidad.\n\n' +
-                'Para ayudarte necesito verificar que eres residente. ' +
-                '¿Cuál es tu número de depto? (ej: *8B*, *101*, *Casa 3*)'
-            );
-        }
-
-        // Verificar residente en Supabase usando profiles + units reales del schema actual.
-        const admin = getSupabaseAdmin();
-        const { data: enabledProfiles } = await admin
-            .from('profiles')
-            .select('id, name, full_name, role, unit_id, community_id, phone_number, whatsapp_enabled, department_number')
-            .eq('whatsapp_enabled', true)
-            .limit(500);
-
-        const profileRecord = (enabledProfiles || [])
-            .find(profile => phoneMatches((profile as Record<string, unknown>).phone_number, waId)) as Record<string, unknown> | undefined;
-        let unitRecord = profileRecord ? getUnitRecord(profileRecord.units) : null;
-        if (profileRecord && !unitRecord) {
-            const linkedUnitId = typeof profileRecord.unit_id === 'string' ? profileRecord.unit_id : '';
-            const unitQuery = admin
-                .from('units')
-                .select('id, number, unit_number, tower, community_id');
-
-            const { data: linkedUnit } = linkedUnitId
-                ? await unitQuery.eq('id', linkedUnitId).maybeSingle()
-                : { data: null };
-
-            if (linkedUnit) {
-                unitRecord = linkedUnit as Record<string, unknown>;
-            } else {
-                const { data: ownedUnit } = await admin
-                    .from('units')
-                    .select('id, number, unit_number, tower, community_id')
-                    .eq('owner_id', String(profileRecord.id))
-                    .maybeSingle();
-                unitRecord = (ownedUnit as Record<string, unknown> | null) || null;
+        const profiles = residentProfiles ?? await findResidentProfilesByPhone(waId);
+        const provider = await findProviderByPhone(waId);
+        const attempts = session?.auth_attempts ?? 0;
+        let verified: SessionData | null = null;
+        const verifyResident: ResidentVerifier | null = profiles.length ? async depto => {
+            if (attempts >= 3) {
+                return { ok: false, message: 'Ya hubo 3 intentos con este número. Debe revisar su depto en la app o hablar con la administración.' };
             }
-        }
-        const candidates = profileRecord ? unitCandidates(unitRecord, profileRecord) : [];
-        const resident = profileRecord && unitMatches(message, candidates) ? profileRecord : null;
-        const unitLabel = getUnitDisplay(candidates);
+            for (const profile of profiles) {
+                const unitRecord = await residentUnit(profile);
+                const candidates = unitCandidates(unitRecord, profile);
+                if (unitMatches(depto, candidates)) {
+                    verified = verifiedSession(profile, unitRecord, getUnitDisplay(candidates));
+                    return { ok: true, name: String(profile.name || profile.full_name || 'vecino/a') };
+                }
+            }
+            await saveSession(sessionKey, { ...(session || { conversation: [], user_context: { channel: 'whatsapp' } }), auth_state: 'guest', auth_attempts: attempts + 1 });
+            return { ok: false, message: `Ese depto no coincide con este número (intento ${attempts + 1} de 3). Que lo revise tal como aparece en su app.` };
+        } : null;
 
-        if (resident) {
-            const name = String(resident.name || resident.full_name || 'vecino/a');
-            await saveSession(sessionKey, {
-                conversation: [],
-                user_context: {
-                    user_id:      String(resident.id),
-                    unit_id:      String(resident.unit_id || unitRecord?.id || unitLabel),
-                    role:         String(resident.role || 'resident'),
-                    community_id: String(resident.community_id || ''),
-                    name,
-                    channel:      'whatsapp',
-                },
-                auth_state:   'verified',
-                auth_attempts: 0,
-            });
-            return respond(
-                `¡Listo, ${name}! ✅\n` +
-                `Soy CoCo, tu asistente en tu comunidad. ¿En qué te ayudo?`
-            );
+        const turn = await askCoCoGuest({ message, session: session?.auth_state === 'guest' ? session : null, waId, provider, verifyResident });
+        if (turn.verifiedResident && verified) {
+            const residentSession: SessionData = verified;
+            await saveSession(sessionKey, residentSession);
+            return respond(`¡Listo, ${residentSession.user_context.name}! ✅\nYa sé quién eres. ¿En qué te ayudo con tu comunidad?`);
         }
-
-        // Intento fallido
-        const newAttempts = attempts + 1;
-        if (newAttempts > 3) {
-            await saveSession(sessionKey, {
-                conversation: [],
-                user_context: { channel: 'whatsapp' },
-                auth_state: 'pending',
-                auth_attempts: 0,
-            });
-            return respond(
-                'No pude verificar tu identidad. Si crees que hay un error, ' +
-                'contacta al administrador de tu comunidad.'
-            );
-        }
-
+        const latest = await getSession(sessionKey);
         await saveSession(sessionKey, {
-            conversation: [],
-            user_context: { channel: 'whatsapp' },
-            auth_state: 'pending',
-            auth_attempts: newAttempts,
+            conversation: turn.history,
+            user_context: { channel: 'whatsapp', ...(provider ? { name: provider.name, role: 'external_provider' } : {}) },
+            auth_state: 'guest',
+            auth_attempts: latest?.auth_state === 'guest' ? latest.auth_attempts ?? 0 : 0,
         });
-        return respond(
-            `No encontré ese depto con tu número. Intento ${newAttempts - 1}/3. ` +
-            '¿Puedes revisar cómo aparece en tu app?'
-        );
+        return respond(turn.reply);
 
     } catch (err) {
         console.error('[CoCo WhatsApp Error]', err);
