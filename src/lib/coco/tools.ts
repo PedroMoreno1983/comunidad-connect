@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { listMyListings, removeMyListing, setMyListingStatus, updateMyListing } from './ownerListingTools';
 import { listOpenCases, listPendingListings, reviewGroupOrderForAdmin, reviewListingForAdmin, updateCaseStatusForStaff } from './adminReviewTools';
 import { registerExternalProviderForAdmin, sendProviderPortalLinkForAdmin } from './providerTools';
 import { listProviderDocumentsForAdmin, rateProviderForUser, reviewProviderDocumentForAdmin, saveProviderAttachment } from './providerProfileTools';
@@ -466,6 +467,55 @@ export const TOOL_DEFINITIONS = [
                 reason: { type: 'string', description: 'Motivo, si lo dio.' },
             },
             required: ['rental_id'],
+        },
+    },
+    {
+        name: 'list_my_listings',
+        description: 'Estacionamientos y bodegas que el residente publicó: listing_id, tipo, nombre, estado (pendiente, publicada, pausada, rechazada con motivo) y precios. Úsalo antes de editarlas, pausarlas o retirarlas.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'update_my_listing',
+        description: 'Cambia el precio o la descripción de un estacionamiento o bodega propio. Las reservas y arriendos ya confirmados mantienen su precio. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                kind: { type: 'string', enum: ['parking', 'storage'], description: 'parking = estacionamiento, storage = bodega.' },
+                listing_id: { type: 'string', description: 'Tal como lo devolvió list_my_listings.' },
+                hourly_rate: { type: 'integer', description: 'Solo estacionamientos.' },
+                daily_rate: { type: 'integer', description: 'Solo estacionamientos.' },
+                monthly_rate: { type: 'integer' },
+                description: { type: 'string' },
+                listing_name: { type: 'string', description: 'Nombre, solo para la confirmación.' },
+            },
+            required: ['kind', 'listing_id'],
+        },
+    },
+    {
+        name: 'set_my_listing_status',
+        description: 'Pausa (deja de recibir reservas), retoma (si la administración la aprobó antes) o reenvía a revisión (si fue rechazada) un estacionamiento o bodega propio. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                kind: { type: 'string', enum: ['parking', 'storage'], description: 'parking = estacionamiento, storage = bodega.' },
+                listing_id: { type: 'string', description: 'Tal como lo devolvió list_my_listings.' },
+                action: { type: 'string', enum: ['pause', 'resume', 'resubmit'] },
+                listing_name: { type: 'string', description: 'Nombre, solo para la confirmación.' },
+            },
+            required: ['kind', 'listing_id', 'action'],
+        },
+    },
+    {
+        name: 'remove_my_listing',
+        description: 'Retira (borra) un estacionamiento o bodega propio. Solo si nunca tuvo reservas ni arriendos; si tiene historial, ofrece pausarlo. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                kind: { type: 'string', enum: ['parking', 'storage'], description: 'parking = estacionamiento, storage = bodega.' },
+                listing_id: { type: 'string', description: 'Tal como lo devolvió list_my_listings.' },
+                listing_name: { type: 'string', description: 'Nombre, solo para la confirmación.' },
+            },
+            required: ['kind', 'listing_id'],
         },
     },
     {
@@ -1373,6 +1423,9 @@ export const MUTATING_TOOLS = new Set<string>([
     // público con precio. Confirma.
     'publish_my_parking_spot',
     'publish_my_storage_unit',
+    'update_my_listing',
+    'set_my_listing_status',
+    'remove_my_listing',
     // Hablan con terceros o cambian datos propios: confirma.
     'message_marketplace_seller',
     'reply_marketplace_conversation',
@@ -1458,6 +1511,7 @@ const RESIDENT_TOOLS = new Set([
     'get_my_storage', 'search_storage', 'rent_storage',
     'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
     'publish_my_parking_spot', 'publish_my_storage_unit',
+    'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
     'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
     'update_my_name', 'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
@@ -1624,6 +1678,19 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Registrar mi vehículo', summary: `Patente ${str('plate').toUpperCase()}${str('vehicle_description') ? ` · ${str('vehicle_description')}` : ''}, contacto ${str('phone')}.` };
         case 'request_payment_agreement':
             return { title: 'Pedir un convenio de pago', summary: 'La administración recibe tu solicitud para conversar un convenio. No se crea ningún compromiso todavía.' };
+        case 'update_my_listing': {
+            const cambios = [['hourly_rate', 'por hora'], ['daily_rate', 'por día'], ['monthly_rate', 'por mes']]
+                .filter(([key]) => input[key] !== undefined && input[key] !== '')
+                .map(([key, unidad]) => `${Number(input[key]).toLocaleString('es-CL')} ${unidad}`);
+            if (str('description')) cambios.push('nueva descripción');
+            return { title: 'Editar mi publicación', summary: `${str('listing_name') || 'Tu publicación'}: ${cambios.join(', ') || 'sin cambios'}.` };
+        }
+        case 'set_my_listing_status': {
+            const accion: Record<string, string> = { pause: 'Pausar', resume: 'Retomar', resubmit: 'Reenviar a revisión' };
+            return { title: `${accion[str('action')] || 'Cambiar estado'}: ${str('listing_name') || 'mi publicación'}`, summary: str('action') === 'pause' ? 'Deja de recibir reservas nuevas; las confirmadas siguen.' : 'Vuelve a estar disponible para los vecinos.' };
+        }
+        case 'remove_my_listing':
+            return { title: 'Retirar mi publicación', summary: `${str('listing_name') || 'La publicación'} se borra. Solo si nunca tuvo reservas ni arriendos.` };
         case 'publish_my_storage_unit':
             return {
                 title: 'Publicar mi bodega',
@@ -2418,6 +2485,15 @@ export async function executeTool(
                 }, 'coco');
                 if ('error' in result) return { error: result.error };
                 return { success: true, message: result.message };
+            }
+
+            case 'list_my_listings':
+            case 'update_my_listing':
+            case 'set_my_listing_status':
+            case 'remove_my_listing': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al residente.');
+                const run = { list_my_listings: listMyListings, update_my_listing: updateMyListing, set_my_listing_status: setMyListingStatus, remove_my_listing: removeMyListing }[name];
+                return run(supabaseAdmin, userCtx.user_id, input as Record<string, unknown>);
             }
 
             case 'publish_my_parking_spot':

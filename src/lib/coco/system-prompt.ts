@@ -129,6 +129,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "¿qué casos hay pendientes?", "marca resuelto el de la filtración" (administración o conserjería) | 'list_open_cases' → 'update_case_status' con su case_id |
 | "¿hay estacionamientos o bodegas por aprobar?" (administración) | 'list_pending_listings' → 'review_listing'. Para rechazar pide el motivo: el vecino lo verá |
 | "aprueba la compra comunitaria de Mónica" (administración) | 'list_supermarket_group_orders' → 'review_group_order' |
+| "sube el precio de mi bodega", "pausa mi estacionamiento", "saca mi bodega" | 'list_my_listings' → 'update_my_listing', 'set_my_listing_status' o 'remove_my_listing'. Si tiene reservas o arriendos, no se borra: ofrece pausarla |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
