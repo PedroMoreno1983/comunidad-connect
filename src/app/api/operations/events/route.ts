@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { ADMIN_VISIBLE_EVENTS_FILTER } from '@/lib/operations/audit';
 import type { OperationEvent, OperationsResponse } from '@/lib/types';
 
 const MAX_LIMIT = 100;
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
             .from('operation_events')
             .select('*')
             .eq('community_id', profile.community_id)
+            .or(ADMIN_VISIBLE_EVENTS_FILTER)
             .order('created_at', { ascending: false })
             .limit(Number.isFinite(limit) && limit > 0 ? limit : 50);
 
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest) {
             .from('operation_events')
             .select('severity,status')
             .eq('community_id', profile.community_id)
+            .or(ADMIN_VISIBLE_EVENTS_FILTER)
             .gte('created_at', since);
         if (profile.role === 'concierge') summaryQuery = summaryQuery.like('action', 'concierge.%');
         const { data: lastDayEvents, error: summaryError } = await summaryQuery;

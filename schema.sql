@@ -1542,6 +1542,22 @@ COMMIT;
 ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS iot_webhook_secret TEXT;
 ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS coco_autonomy boolean NOT NULL DEFAULT true;
 
+-- Confidencialidad de CoCo (17-11-2026): ¿es personal de la comunidad? La usan las políticas de operation_events, ai_usage_events, agent_tasks y agent_trigger_rules.
+CREATE OR REPLACE FUNCTION public.is_staff_profile(p_profile_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = p_profile_id AND role IN ('admin', 'concierge', 'superadmin')
+    );
+$;
+REVOKE ALL ON FUNCTION public.is_staff_profile(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_staff_profile(uuid) TO authenticated, service_role;
+
 -- Twilio's webhook signature scheme has no timestamp/nonce, so a captured
 -- valid request can otherwise be replayed indefinitely. Twilio's own
 -- MessageSid is unique per message; recording it lets us reject replays
@@ -1568,7 +1584,7 @@ CREATE TABLE IF NOT EXISTS public.privacy_consent_events (
   consent_type TEXT NOT NULL CHECK (consent_type IN ('terms', 'privacy_notice', 'whatsapp', 'ai_processing', 'sensitive_data')),
   action TEXT NOT NULL CHECK (action IN ('granted', 'withdrawn')),
   policy_version TEXT NOT NULL,
-  channel TEXT NOT NULL CHECK (channel IN ('signup', 'profile', 'privacy_center', 'admin_onboarding')),
+  channel TEXT NOT NULL CHECK (channel IN ('signup', 'profile', 'privacy_center', 'admin_onboarding', 'chat', 'whatsapp')),
   subject_email TEXT,
   evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -3867,7 +3883,12 @@ CREATE POLICY "Admins can read marketing reels" ON "public"."marketing_reels" FO
    FROM "public"."profiles" "p"
   WHERE (("p"."id" = "auth"."uid"()) AND ("p"."role" = 'admin'::"text") AND ("p"."community_id" = "marketing_reels"."community_id")))));
 
-CREATE POLICY "Admins can read own community operation events" ON "public"."operation_events" FOR SELECT USING ((("community_id" = "public"."get_my_community_id"()) AND ("public"."get_my_role"() = 'admin'::"text")));
+CREATE POLICY "Admins can read own community operation events" ON public.operation_events
+    FOR SELECT USING (
+        community_id = public.get_my_community_id()
+        AND public.get_my_role() = 'admin'
+        AND (action NOT LIKE 'coco.%' OR actor_role IS NULL OR actor_role IN ('admin', 'concierge', 'superadmin'))
+    );
 
 CREATE POLICY "Admins can read own instagram connection" ON "public"."instagram_connections" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."profiles" "p"
@@ -3959,21 +3980,23 @@ CREATE POLICY "agent_task_steps_tenant_select" ON "public"."agent_task_steps" FO
 
 ALTER TABLE "public"."agent_tasks" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "agent_tasks_admin_write" ON "public"."agent_tasks" USING ((("community_id" = ( SELECT "profiles"."community_id"
-   FROM "public"."profiles"
-  WHERE ("profiles"."id" = "auth"."uid"()))) AND (EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text")))))) WITH CHECK ((("community_id" = ( SELECT "profiles"."community_id"
-   FROM "public"."profiles"
-  WHERE ("profiles"."id" = "auth"."uid"()))) AND (EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text"))))));
+CREATE POLICY "agent_tasks_admin_write" ON public.agent_tasks
+    USING (
+        community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+        AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+        AND (created_by IS NULL OR public.is_staff_profile(created_by))
+    )
+    WITH CHECK (
+        community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+        AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
 
-CREATE POLICY "agent_tasks_tenant_select" ON "public"."agent_tasks" FOR SELECT USING ((("community_id" = ( SELECT "profiles"."community_id"
-   FROM "public"."profiles"
-  WHERE ("profiles"."id" = "auth"."uid"()))) AND (EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text"))))));
+CREATE POLICY "agent_tasks_tenant_select" ON public.agent_tasks
+    FOR SELECT USING (
+        community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+        AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+        AND (created_by IS NULL OR public.is_staff_profile(created_by))
+    );
 
 ALTER TABLE "public"."agent_tool_calls" ENABLE ROW LEVEL SECURITY;
 
@@ -3989,21 +4012,27 @@ CREATE POLICY "agent_trigger_events_admin" ON "public"."agent_trigger_events" FO
 
 ALTER TABLE "public"."agent_trigger_rules" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "agent_trigger_rules_admin" ON "public"."agent_trigger_rules" USING ((("community_id" = ( SELECT "profiles"."community_id"
-   FROM "public"."profiles"
-  WHERE ("profiles"."id" = "auth"."uid"()))) AND (EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text")))))) WITH CHECK ((("community_id" = ( SELECT "profiles"."community_id"
-   FROM "public"."profiles"
-  WHERE ("profiles"."id" = "auth"."uid"()))) AND (EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text"))))));
+CREATE POLICY "agent_trigger_rules_admin" ON public.agent_trigger_rules
+    USING (
+        community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+        AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+        AND (signal_key <> 'coco_reminder' OR created_by IS NULL OR public.is_staff_profile(created_by))
+    )
+    WITH CHECK (
+        community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+        AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
 
 ALTER TABLE "public"."ai_budgets" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "ai_budgets_admin_read" ON "public"."ai_budgets" FOR SELECT USING ((("community_id" = "public"."current_profile_community_id"()) AND ("public"."current_profile_role"() = 'admin'::"text")));
 
-CREATE POLICY "ai_usage_admin_read" ON "public"."ai_usage_events" FOR SELECT USING ((("community_id" = "public"."current_profile_community_id"()) AND ("public"."current_profile_role"() = 'admin'::"text")));
+CREATE POLICY "ai_usage_admin_read" ON public.ai_usage_events
+    FOR SELECT USING (
+        community_id = public.current_profile_community_id()
+        AND public.current_profile_role() = 'admin'
+        AND (user_id IS NULL OR public.is_staff_profile(user_id))
+    );
 
 ALTER TABLE "public"."ai_usage_events" ENABLE ROW LEVEL SECURITY;
 

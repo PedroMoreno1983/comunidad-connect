@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Download, Loader2, MessageCircle, Send, ShieldCheck } from "lucide-react";
+import { Bot, Download, Loader2, MessageCircle, Send, ShieldCheck } from "lucide-react";
+import { COCO_PRIVACY_NOTICE } from "@/lib/privacy";
 import type {
     DataSubjectRequestRecord,
     DataSubjectRequestType,
@@ -23,6 +24,7 @@ export function PrivacySettings() {
     const [requestType, setRequestType] = useState<DataSubjectRequestType>("access");
     const [details, setDetails] = useState("");
     const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+    const [cocoAcknowledged, setCocoAcknowledged] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
@@ -36,7 +38,10 @@ export function PrivacySettings() {
             const requestData = await requestsResponse.json() as PrivacyRequestsResponse;
             const consentData = await consentsResponse.json() as PrivacyConsentsResponse;
             if (requestsResponse.ok) setRequests(requestData.requests || []);
-            if (consentsResponse.ok) setWhatsappEnabled(consentData.whatsappEnabled === true);
+            if (consentsResponse.ok) {
+                setWhatsappEnabled(consentData.whatsappEnabled === true);
+                setCocoAcknowledged(consentData.cocoConsent === "granted");
+            }
             if (!requestsResponse.ok || !consentsResponse.ok) {
                 setMessage(requestData.error || consentData.error || "No se pudo cargar toda la información.");
             }
@@ -98,6 +103,30 @@ export function PrivacySettings() {
         }
     }
 
+    async function acknowledgeCoco() {
+        const granted = true;
+        setSaving(true);
+        setMessage("");
+        try {
+            const response = await fetch("/api/privacy/consents", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ consentType: "ai_processing", granted, channel: "privacy_center" }),
+            });
+            const data = await response.json() as PrivacyConsentsResponse;
+            if (response.ok) {
+                setCocoAcknowledged(granted);
+                setMessage("Listo, quedó registrado.");
+            } else {
+                setMessage(data.error || "No se pudo guardar la preferencia.");
+            }
+        } catch {
+            setMessage("No se pudo guardar la preferencia.");
+        } finally {
+            setSaving(false);
+        }
+    }
+
     return (
         <section id="privacidad" className="scroll-mt-24 space-y-5">
             <header className="space-y-2">
@@ -106,7 +135,7 @@ export function PrivacySettings() {
                 </div>
                 <h2 className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Tus datos, en el mismo perfil</h2>
                 <p className="max-w-3xl text-sm leading-6 cc-text-secondary">
-                    Descarga una copia, administra el consentimiento de WhatsApp o ejerce tus derechos de datos personales.
+                    Descarga una copia, decide sobre WhatsApp, revisa cómo cuida CoCo tus conversaciones o ejerce tus derechos de datos personales.
                 </p>
                 <Link href="/privacy" className="inline-flex text-sm font-semibold underline" style={{ color: "var(--cc-sage)" }}>
                     Leer la política de privacidad
@@ -133,6 +162,19 @@ export function PrivacySettings() {
                         <input type="checkbox" checked={whatsappEnabled} disabled={saving} onChange={event => void updateWhatsapp(event.target.checked)} />
                         Recibir avisos operativos por WhatsApp
                     </label>
+                </article>
+
+                <article className="rounded-2xl border p-5 shadow-sm md:col-span-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <Bot className="mb-3 h-6 w-6" style={{ color: "var(--cc-sage)" }} />
+                    <h3 className="text-lg font-semibold cc-text-primary">{COCO_PRIVACY_NOTICE.title}</h3>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 cc-text-secondary">
+                        {COCO_PRIVACY_NOTICE.points.map(point => <li key={point}>{point}</li>)}
+                    </ul>
+                    {!cocoAcknowledged && (
+                        <button type="button" disabled={saving} onClick={() => void acknowledgeCoco()} className="mt-4 inline-flex min-h-11 items-center rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--cc-sage)" }}>
+                            {COCO_PRIVACY_NOTICE.accept}
+                        </button>
+                    )}
                 </article>
             </div>
 

@@ -13,7 +13,8 @@ import { useRouter } from "next/navigation";
 import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
 import { CoCoThreadSidebar } from "@/components/CoCo/CoCoThreadSidebar";
-import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, WhatsAppStartStatus } from "@/lib/types";
+import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, CocoConsentState, PrivacyConsentsResponse, WhatsAppStartStatus } from "@/lib/types";
+import { COCO_PRIVACY_NOTICE, PRIVACY_POLICY_VERSION } from "@/lib/privacy";
 
 function CoCoMarkdown({ text }: { text: string }) {
     return (
@@ -86,6 +87,9 @@ export default function CoCoChatPage() {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [whatsApp, setWhatsApp] = useState<WhatsAppStartStatus | null>(null);
+    // Aviso de privacidad de CoCo: se muestra hasta que la persona lo lee y lo acepta.
+    const [cocoConsent, setCocoConsent] = useState<CocoConsentState | null>(null);
+    const [savingConsent, setSavingConsent] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const hasUnresolvedPending = msgs.some(message =>
         message.pendingActions?.some(action => !message.resolvedActions?.[action.toolUseId]),
@@ -220,6 +224,30 @@ export default function CoCoChatPage() {
             .catch(() => { if (active) setWhatsApp(null); });
         return () => { active = false; };
     }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        let active = true;
+        fetch(getApiUrl("/api/privacy/consents"), { cache: "no-store" })
+            .then(response => response.ok ? response.json() as Promise<PrivacyConsentsResponse> : null)
+            .then(data => { if (active) setCocoConsent(data?.cocoConsent ?? null); })
+            .catch(() => { if (active) setCocoConsent(null); });
+        return () => { active = false; };
+    }, [user]);
+
+    const decideCocoConsent = async (granted: boolean) => {
+        setSavingConsent(true);
+        try {
+            const response = await fetch(getApiUrl("/api/privacy/consents"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ consentType: "ai_processing", granted, channel: "chat" }),
+            });
+            if (response.ok) setCocoConsent(granted ? "granted" : "withdrawn");
+        } finally {
+            setSavingConsent(false);
+        }
+    };
 
     const postToCoCo = async (body: Record<string, unknown>): Promise<CoCoApiResponse> => {
         const res = await fetch(getApiUrl("/api/coco"), {
@@ -601,6 +629,18 @@ export default function CoCoChatPage() {
 
                 {/* Suggestion Chips & Input bar */}
                 <div className="space-y-4 border-t border-white/5 pt-6 bg-[#0E0B08]">
+                    {cocoConsent === "unknown" && (
+                        <section aria-label={COCO_PRIVACY_NOTICE.title} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-slate-300">
+                            <p className="flex items-center gap-2 font-semibold text-white"><ShieldCheck className="h-4 w-4 text-emerald-300" /> {COCO_PRIVACY_NOTICE.title}</p>
+                            <ul className="mt-2 list-disc space-y-1 pl-5 leading-6">
+                                {COCO_PRIVACY_NOTICE.points.map(point => <li key={point}>{point}</li>)}
+                            </ul>
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                                <button type="button" disabled={savingConsent} onClick={() => void decideCocoConsent(true)} className="min-h-11 rounded-full bg-emerald-500/20 px-4 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-60">{COCO_PRIVACY_NOTICE.accept}</button>
+                                <a href="/privacy" className="text-xs text-slate-400 underline">Política de privacidad, versión {PRIVACY_POLICY_VERSION}</a>
+                            </div>
+                        </section>
+                    )}
                     {whatsApp?.available && (
                         <div className="text-center">
                             <a href={whatsApp.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-5 py-2.5 text-sm font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/25">

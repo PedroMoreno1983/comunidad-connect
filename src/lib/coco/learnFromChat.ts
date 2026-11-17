@@ -59,7 +59,18 @@ export function extractFactCandidates(lines: string[]): FactCandidate[] {
     return found;
 }
 
-export async function learnFromClosing(communityId: string, lines: string[]) {
+/**
+ * Propone a la administración datos de una conversación que se cierra, solo si
+ * la conversación es de la propia administración. De las conversaciones de un
+ * residente no sale nada hacia la administración (confidencialidad de CoCo).
+ */
+export function mayLearnFromConversation(role: string | null | undefined) {
+    return role === 'admin';
+}
+
+export async function learnFromClosing(input: { communityId: string; role: string | null | undefined; lines: string[] }) {
+    const { communityId, role, lines } = input;
+    if (!mayLearnFromConversation(role)) return { proposed: 0 };
     const candidates = extractFactCandidates(lines);
     if (!candidates.length) return { proposed: 0 };
     const admin = getSupabaseAdmin();

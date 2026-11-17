@@ -14,6 +14,11 @@
  */
 
 import { AGENT_PLAYBOOKS, type AgentProfile, type AgentTriggerRuleRecord } from '@/lib/agent-center/domain';
+import { COCO_STAFF_ROLES } from '@/lib/operations/audit';
+
+function isStaffRole(role: unknown) {
+    return (COCO_STAFF_ROLES as readonly string[]).includes(String(role || ''));
+}
 import { readCollectionExpenses, resolveCollectionRecipients } from '@/lib/agent-center/collection';
 import { cancelAgentTask, completeAgentTask, createAgentTask, rearmAgentTask, setAgentTaskStep } from '@/lib/agent-center/taskEngine';
 import { stableNotificationId } from '@/lib/agent-center/utils';
@@ -179,7 +184,9 @@ export async function createCoCoReminder(actor: ReminderActor, input: Record<str
         return { error: 'No pude guardar el recordatorio.' };
     }
 
-    const playbook = AGENT_PLAYBOOKS.find(item => item.key === PLAYBOOK);
+    // La tarea del Agent Center la ve la administración: un recordatorio personal
+    // de un residente no se registra ahí (confidencialidad de CoCo).
+    const playbook = isStaffRole(actor.role) ? AGENT_PLAYBOOKS.find(item => item.key === PLAYBOOK) : undefined;
     let taskId: string | null = null;
     if (playbook) {
         try {

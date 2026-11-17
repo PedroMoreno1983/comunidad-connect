@@ -869,7 +869,7 @@ export async function POST(req: NextRequest) {
         // Un caso operativo solo se crea si el residente confirma create_claim
         // (herramienta que muta). No abrir casos al consultar gastos, parking, etc.
         if (communityId && isConversationClosing(message)) {
-            void learnFromClosing(communityId, linesFromConversation(updatedHistory)).catch(error => {
+            void learnFromClosing({ communityId, role: safeRole, lines: linesFromConversation(updatedHistory) }).catch(error => {
                 console.error('[coco] no se pudieron proponer recuerdos', error);
             });
         }

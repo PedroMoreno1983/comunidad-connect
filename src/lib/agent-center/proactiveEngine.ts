@@ -14,6 +14,7 @@ import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { runDueCocoReminder } from '@/lib/agent-center/cocoReminders';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { communityProvidersFilter } from '@/lib/services/providerNetwork';
+import { staffProfileIds } from '@/lib/operations/audit';
 
 function objectValue(value: unknown) {
     return value && typeof value === 'object' ? value as Record<string, unknown> : {};
@@ -306,7 +307,11 @@ export async function getAgentTriggerRules(profile: AgentProfile): Promise<Agent
         .eq('community_id', profile.community_id)
         .order('name');
     if (error) throw error;
-    return (data || []).map(row => {
+    // Confidencialidad de CoCo: el recordatorio personal de un residente no es
+    // una regla de la comunidad; la administración no lo ve.
+    const staff = await staffProfileIds((data || []).map(row => String(row.created_by || '')));
+    const visible = (data || []).filter(row => row.signal_key !== 'coco_reminder' || !row.created_by || staff.has(String(row.created_by)));
+    return visible.map(row => {
         const rule = mapRule(row);
         return {
             id: rule.id,

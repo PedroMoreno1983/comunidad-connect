@@ -6,6 +6,7 @@ import type {
     AgentTaskStepStatus,
 } from '@/lib/agent-center/domain';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { staffProfileIds } from '@/lib/operations/audit';
 
 type TaskStepDefinition = {
     key: string;
@@ -192,14 +193,19 @@ export async function getRecentAgentTasks(profile: AgentProfile): Promise<AgentT
     if (!profile.community_id) return [];
     const { data, error } = await getSupabaseAdmin()
         .from('agent_tasks')
-        .select('id, agent_key, playbook_key, goal, status, current_step, retry_count, last_error, context, result, created_at, updated_at, agent_task_steps(id, position, step_key, title, status, attempts, error)')
+        .select('id, created_by, agent_key, playbook_key, goal, status, current_step, retry_count, last_error, context, result, created_at, updated_at, agent_task_steps(id, position, step_key, title, status, attempts, error)')
         .eq('community_id', profile.community_id)
         .in('status', ['planned', 'running', 'waiting_human', 'failed', 'escalated', 'completed'])
         .order('updated_at', { ascending: false })
-        .limit(8);
+        .limit(24);
     if (error) throw error;
 
-    return (data || []).map(row => {
+    // Confidencialidad de CoCo: una tarea que creó un residente (p. ej., su
+    // recordatorio personal, de antes de este cambio) no se muestra a la administración.
+    const staff = await staffProfileIds((data || []).map(row => String(row.created_by || '')));
+    const visible = (data || []).filter(row => !row.created_by || staff.has(String(row.created_by))).slice(0, 8);
+
+    return visible.map(row => {
         const context = row.context && typeof row.context === 'object' ? row.context as Record<string, unknown> : {};
         const steps = Array.isArray(row.agent_task_steps) ? row.agent_task_steps : [];
         const result = row.result && typeof row.result === 'object' ? row.result as Record<string, unknown> : {};

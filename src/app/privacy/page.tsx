@@ -31,6 +31,10 @@ const sections = [
         body: 'Los mensajes enviados a CoCo pueden procesarse mediante proveedores externos de inteligencia artificial y generar memorias para dar continuidad. CoCo puede clasificar, resumir, recomendar o preparar acciones. Las decisiones con efectos relevantes deben permitir confirmación o intervención humana. Puedes oponerte a tratamientos basados en interés legítimo y solicitar revisión de una decisión automatizada.',
     },
     {
+        title: '4 bis. Confidencialidad de tus conversaciones con CoCo',
+        body: 'Tus conversaciones con CoCo, en la app o por WhatsApp, son privadas. La administración de tu comunidad no puede leerlas, no recibe resúmenes ni datos sacados de ellas, y no ve qué le pediste a CoCo ni qué hizo CoCo por ti, como guardarte un recordatorio o una lista. Solo recibe lo que tú le pides a CoCo que le envíe —una solicitud, una reserva o un reclamo— y lo recibe en el módulo correspondiente, como si lo hubieras hecho desde la app. Registramos que leíste este aviso con la versión de esta política. Las conversaciones por WhatsApp con números que no son residentes verificados, como maestros de la red, se usan solo para atender a esa persona.',
+    },
+    {
         title: '5. Proveedores y transferencias internacionales',
         body: 'Según los módulos habilitados, usamos Supabase (base de datos y autenticación), Vercel (hosting), Anthropic, OpenAI, Google Gemini y Voyage AI (IA y búsqueda), Resend (correo), Twilio (WhatsApp), Haulmer/Tuu (pagos) y Google Analytics (medición). Algunos proveedores pueden tratar datos fuera de Chile, incluido Estados Unidos. Exigimos contratos y medidas adecuadas al servicio y minimizamos lo enviado a cada proveedor.',
     },
