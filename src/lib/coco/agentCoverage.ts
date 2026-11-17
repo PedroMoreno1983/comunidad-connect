@@ -41,7 +41,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     // ── Residente: espacios comunes, estacionamiento, bodega ────────────────
     'AmenitiesService.createBooking': { tool: 'create_reservation' },
     'AmenitiesService.updateBookingStatus': { tool: ['decide_booking', 'cancel_reservation'] },
-    'AmenitiesService.createAmenity': { gap: 'La administración no puede crear un espacio común conversando.' },
+    'AmenitiesService.createAmenity': { tool: 'create_amenity' },
     'ParkingService.book': { tool: 'book_parking' },
     'ParkingService.cancelBooking': { tool: 'cancel_parking_booking' },
     'ParkingService.saveMyDriver': { tool: 'register_my_vehicle' },
@@ -65,7 +65,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     // ── Residente: marketplace, votaciones, servicios ───────────────────────
     'MarketplaceService.createItem': { tool: 'publish_marketplace_item' },
     'MarketplaceService.updateStatus': { tool: 'update_marketplace_item' },
-    'DELETE /api/marketplace-items/[id]': { gap: 'Borrar una publicación (CoCo solo la oculta con update_marketplace_item).' },
+    'DELETE /api/marketplace-items/[id]': { tool: 'delete_marketplace_item' },
 
     'PATCH /api/marketplace-items/[id]': { tool: 'update_marketplace_item' },
     'POST /api/marketplace-items/embed': { system: 'Indexa la publicación para la búsqueda, después de crearla.' },
@@ -79,7 +79,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'POST /api/reviews': { tool: 'rate_provider' },
     'CocoCasesService.updateStatus': { tool: 'update_case_status' },
     'MaintenanceService.createServiceTask': { tool: 'create_claim' },
-    'POST /api/admin/maintenance/tasks/[id]/complete': { gap: 'Cerrar una tarea de mantención.' },
+    'POST /api/admin/maintenance/tasks/[id]/complete': { ui: 'Cerrar una tarea exige subir la foto del trabajo terminado como respaldo (bucket privado); se hace en Mantenimiento.' },
 
     // ── Residente: dinero ───────────────────────────────────────────────────
     'ResidentFinanceService.reportTransfer': { tool: 'report_transfer' },
@@ -115,15 +115,15 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'CommunityCollaborationService.updateMediationStatus': { tool: 'update_mediation_status' },
     'CommunityDealsService.setInterest': { tool: 'join_community_deal' },
     'CommunityDealsService.addQuote': { tool: 'add_community_deal_quote' },
-    'CommunityDealsService.deleteQuote': { gap: 'Borrar una cotización de un convenio.' },
-    'CommunityDealsService.update': { gap: 'La administración activa, pausa o edita un convenio.' },
+    'CommunityDealsService.deleteQuote': { tool: 'delete_deal_quote' },
+    'CommunityDealsService.update': { tool: 'update_community_deal' },
     'POST /api/solidarity/apply': { ui: 'Postular exige consentimiento expreso de datos sensibles (salud, desempleo) con el aviso a la vista; la evidencia solo admite el canal del centro de privacidad.' },
     'PATCH /api/solidarity/applications/[id]/status': { ui: 'Resolver obliga a leer datos sensibles del postulante; no deben pasar por el chat.' },
     'POST /api/solidarity/fund': { ui: 'Configurar el fondo solidario.' },
     'POST /api/solidarity/tasks': { ui: 'Tareas del fondo solidario: se toman y verifican en portería con PIN.' },
 
     'PUT /api/solidarity/tasks': { ui: 'Verificación de tareas con PIN en portería.' },
-    'POST /api/assemblies': { gap: 'Convocar o gestionar una asamblea.' },
+    'POST /api/assemblies': { ui: 'Asambleas (Ley 21.442): citación, quórum, poderes, asistencia y acta son un flujo legal con requisitos formales, en pantalla. CoCo orienta y redacta (prepare_legal_draft).' },
     'POST /api/assemblies/unit-rights': { ui: 'Derechos de voto por unidad: planilla de la asamblea.' },
 
     // ── Supermercado ────────────────────────────────────────────────────────
@@ -160,17 +160,17 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'ProviderProfileService.createInvite': { tool: 'send_provider_portal_link' },
     'POST /api/providers/[id]/invite': { tool: 'send_provider_portal_link' },
     'ProviderProfileService.setVerified': { tool: 'review_provider_document' },
-    'ProviderProfileService.update': { gap: 'Editar los datos de un proveedor.' },
-    'PATCH /api/providers/[id]': { gap: 'Editar los datos de un proveedor.' },
+    'ProviderProfileService.update': { tool: 'update_provider_profile' },
+    'PATCH /api/providers/[id]': { tool: 'update_provider_profile' },
     'ProviderMediaService.uploadPhoto': { tool: 'save_provider_attachment' },
     'ProviderMediaService.uploadDocument': { tool: 'save_provider_attachment' },
-    'DELETE /api/providers/[id]/media': { gap: 'Borrar una foto del perfil del maestro.' },
+    'DELETE /api/providers/[id]/media': { tool: 'delete_provider_photo' },
 
     'POST /api/providers/[id]/media': { tool: 'save_provider_attachment' },
     'PATCH /api/providers/[id]/documents': { tool: 'review_provider_document' },
 
     'POST /api/providers/[id]/documents': { tool: 'save_provider_attachment' },
-    'ProviderMediaService.deletePhoto': { gap: 'Borrar una foto del perfil del maestro.' },
+    'ProviderMediaService.deletePhoto': { tool: 'delete_provider_photo' },
     'ProviderPortalService.updateProfile': PORTAL,
     'ProviderPortalService.updateRequest': PORTAL,
     'PATCH /api/provider-portal/[token]': PORTAL,
@@ -194,7 +194,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'POST /api/admin/users/assign-unit': { tool: 'assign_resident_unit' },
     'WaterService.createUnit': { tool: 'create_unit' },
     'WaterService.updateUnit': { tool: ['update_unit_data', 'set_unit_alicuota'] },
-    'WaterService.assignResident': { gap: 'Asignar un residente a una unidad.' },
+    'WaterService.assignResident': { tool: 'set_unit_owner' },
     'WaterService.saveReading': { tool: 'record_water_reading' },
     'POST /api/onboarding/batches': { ui: 'Carga masiva de unidades y residentes desde una planilla.' },
     'POST /api/onboarding/batches/[id]': { ui: 'Revisión de una carga masiva.' },
@@ -265,7 +265,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'FinanceCommitteeService.appoint': { ui: 'Nombrar integrantes del comité de finanzas.' },
     'FinanceCommitteeService.decide': { ui: 'Decisión del comité de finanzas sobre una revisión.' },
     'MaintenanceService.advanceService': { tool: 'update_service_request_status' },
-    'MaintenanceService.completeTask': { gap: 'Cerrar una tarea de mantención.' },
+    'MaintenanceService.completeTask': { ui: 'Cerrar una tarea exige la foto del trabajo terminado; se hace en Mantenimiento.' },
     'NeighborBuildingsService.activate': { ui: 'Activar un edificio de vecinos como comunidad administrada (operación comercial).' },
     'PendingResidentsService.decide': { tool: 'decide_pending_resident' },
     'NeighborInviteService.myInvite': { tool: 'get_neighbor_invite_link' },

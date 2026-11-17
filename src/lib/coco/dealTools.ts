@@ -34,6 +34,11 @@ export async function listDealsForUser(admin: SupabaseClient, communityId: strin
     .select('deal_id,user_id')
     .in('deal_id', visible.map(deal => String(deal.id)));
   const rows = (interests || []) as Row[];
+  // Cotizaciones: solo la administración las gestiona (elegir o borrar con su quote_id).
+  const { data: quoteRows } = isAdmin
+    ? await admin.from('community_deal_quotes').select('id,deal_id,provider_name,price,offer').in('deal_id', visible.map(deal => String(deal.id)))
+    : { data: [] };
+  const quotes = (quoteRows || []) as Row[];
 
   return {
     convenios: visible.map(deal => {
@@ -58,6 +63,9 @@ export async function listDealsForUser(admin: SupabaseClient, communityId: strin
         cuando: deal.schedule || undefined,
         condiciones: deal.terms || undefined,
         ahorro_mensual_comunidad: savings,
+        cotizaciones: isAdmin
+          ? quotes.filter(q => q.deal_id === deal.id).map(q => ({ quote_id: q.id, proveedor: q.provider_name, precio: q.price, oferta: q.offer }))
+          : undefined,
       };
     }),
   };

@@ -115,6 +115,16 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     list_community_initiatives: 'read',
     get_unit_account: 'read',
     list_payment_agreements: 'read',
+    list_provider_photos: 'read',
+    // Borrar no se deshace; editar perfiles, convenios, espacios y dueños cambia
+    // lo que ven otros o quién responde por una unidad.
+    delete_marketplace_item: 'write_high',
+    update_community_deal: 'write_high',
+    delete_deal_quote: 'write_high',
+    update_provider_profile: 'write_high',
+    delete_provider_photo: 'write_high',
+    create_amenity: 'write_high',
+    set_unit_owner: 'write_high',
     list_my_mediations: 'read',
     // Convenios: dinero y compromisos de la unidad. Mediación: avisa a la administración al escalar.
     create_payment_agreement: 'write_high',
