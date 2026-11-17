@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { cancelPaymentAgreement, createPaymentAgreement, listMyMediations, listPaymentAgreements, payAgreementInstallment, updateMediationStatus } from './agreementTools';
 import { addChargeForAdmin, cancelChargeForAdmin, deleteExpenseForAdmin, deletePaymentForAdmin, getUnitAccount, listExpensesForAdmin } from './financeAdminTools';
 import { joinInitiative, listCommunityInitiatives, proposeInitiative, requestMediation, resolveParticipation, reviewInitiative } from './convivenciaTools';
 import { listServiceRequests, recordWaterReading, registerIncidentForStaff, updateServiceRequestStatusForUser } from './operationsTools';
@@ -757,6 +758,61 @@ export const TOOL_DEFINITIONS = [
                 floor: { type: 'string', description: 'Nuevo piso del departamento' },
             },
             required: ['unit_id'],
+        },
+    },
+    {
+        name: 'list_payment_agreements',
+        description: 'Convenios de pago de la comunidad: agreement_id, unidad, estado (vigente, pendiente del comité, cerrado), total, pagado y cuotas pendientes con installment_id. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'create_payment_agreement',
+        description: 'Crea un convenio de pago para una unidad: total y número de cuotas (la primera vence hoy). Si la comunidad tiene comité, queda pendiente de su revisión (con varios integrantes, la herramienta pide elegir reviewer_id). Una unidad tiene un solo convenio activo. Pide total y cuotas; no los inventes. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_number: { type: 'string' },
+                tower: { type: 'string', description: 'Solo si hay varias torres con ese número.' },
+                total_amount: { type: 'integer', description: 'Monto total en pesos.' },
+                installment_count: { type: 'integer', description: 'Número de cuotas.' },
+                title: { type: 'string' },
+                notes: { type: 'string' },
+                reviewer_id: { type: 'string', description: 'Integrante del comité que revisa, si la herramienta lo pidió.' },
+            },
+            required: ['unit_number', 'total_amount', 'installment_count'],
+        },
+    },
+    {
+        name: 'cancel_payment_agreement',
+        description: 'Anula un convenio vigente o pendiente del comité. Usa el agreement_id de list_payment_agreements. Requiere confirmación. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: { agreement_id: { type: 'string' }, agreement_label: { type: 'string', description: 'Solo para la confirmación.' } }, required: ['agreement_id'] },
+    },
+    {
+        name: 'pay_agreement_installment',
+        description: 'Registra el pago de una cuota de convenio. Usa el installment_id de list_payment_agreements. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                installment_id: { type: 'string' },
+                paid_at: { type: 'string', description: 'AAAA-MM-DD' },
+                method: { type: 'string', enum: ['transfer', 'cash', 'check', 'card', 'online', 'other'] },
+                reference: { type: 'string' },
+            },
+            required: ['installment_id', 'paid_at'],
+        },
+    },
+    {
+        name: 'list_my_mediations',
+        description: 'Mediaciones con vecinos que pidió el usuario (o todas, si es administración): mediation_id, con qué depto, petición y estado.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'update_mediation_status',
+        description: 'Avanza una mediación: sent (ya envié el mensaje), agreement (llegamos a acuerdo) o escalated (pedir ayuda a la administración). La avanza quien la pidió o la administración. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { mediation_id: { type: 'string' }, status: { type: 'string', enum: ['sent', 'agreement', 'escalated'] } },
+            required: ['mediation_id', 'status'],
         },
     },
     {
@@ -1654,6 +1710,10 @@ export const MUTATING_TOOLS = new Set<string>([
     'cancel_unit_charge',
     'delete_unit_payment',
     'delete_community_expense',
+    'create_payment_agreement',
+    'cancel_payment_agreement',
+    'pay_agreement_installment',
+    'update_mediation_status',
     'resolve_participation',
     'review_initiative',
     'request_mediation',
@@ -1716,6 +1776,7 @@ const RESIDENT_TOOLS = new Set([
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
     'list_service_requests', 'update_service_request_status',
     'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
+    'list_my_mediations', 'update_mediation_status',
     'list_my_marketplace_conversations', 'message_marketplace_seller', 'reply_marketplace_conversation',
     'update_my_name', 'delete_shopping_list', 'register_my_vehicle', 'request_payment_agreement',
     'compare_shopping_list', 'publish_marketplace_item', 'update_marketplace_item', 'request_service',
@@ -1742,6 +1803,7 @@ const ADMIN_TOOLS = new Set([
     'list_pending_residents', 'decide_pending_resident', 'assign_resident_unit',
     'list_pending_listings', 'review_listing', 'review_group_order', 'record_water_reading', 'review_initiative',
     'get_unit_account', 'add_unit_charge', 'cancel_unit_charge', 'delete_unit_payment', 'list_community_expenses', 'delete_community_expense',
+    'list_payment_agreements', 'create_payment_agreement', 'cancel_payment_agreement', 'pay_agreement_installment',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1935,6 +1997,16 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return input.approve === false
                 ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
                 : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'create_payment_agreement':
+            return { title: 'Crear convenio de pago', summary: `Depto ${str('unit_number')}: ${(Number(input.total_amount) || 0).toLocaleString('es-CL')} en ${input.installment_count} cuotas; la primera vence hoy.` };
+        case 'cancel_payment_agreement':
+            return { title: 'Anular convenio', summary: `${str('agreement_label') || 'El convenio elegido'}. Las cuotas pendientes dejan de cobrarse.` };
+        case 'pay_agreement_installment':
+            return { title: 'Registrar pago de cuota', summary: `Pagada el ${str('paid_at')}${str('reference') ? `, ref. ${str('reference')}` : ''}.` };
+        case 'update_mediation_status': {
+            const estados: Record<string, string> = { sent: 'Marcar como enviada', agreement: 'Marcar acuerdo', escalated: 'Escalar a la administración' };
+            return { title: estados[str('status')] || 'Actualizar mediación', summary: 'Tu mediación con el vecino.' };
+        }
         case 'add_unit_charge':
             return { title: input.kind === 'committee' ? 'Descuento a la unidad' : 'Cargo a la unidad', summary: `Depto ${str('unit_number')}: ${str('label')} · ${(Number(input.amount) || 0).toLocaleString('es-CL')} (${str('month')}).` };
         case 'cancel_unit_charge':
@@ -3093,6 +3165,29 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'list_payment_agreements':
+            case 'create_payment_agreement':
+            case 'cancel_payment_agreement':
+            case 'pay_agreement_installment': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración gestiona convenios de pago.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const args = input as Record<string, unknown>;
+                if (name === 'list_payment_agreements') return listPaymentAgreements(communityId);
+                if (name === 'create_payment_agreement') return createPaymentAgreement(supabaseAdmin, communityId, userCtx.user_id, args);
+                if (name === 'cancel_payment_agreement') return cancelPaymentAgreement(communityId, args);
+                return payAgreementInstallment(communityId, userCtx.user_id, args);
+            }
+
+            case 'list_my_mediations':
+            case 'update_mediation_status': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const actor = { id: userCtx.user_id, role: userCtx.role || 'resident', communityId };
+                if (name === 'list_my_mediations') return listMyMediations(supabaseAdmin, actor);
+                return updateMediationStatus(supabaseAdmin, actor, input as Record<string, unknown>);
             }
 
             case 'get_unit_account':
