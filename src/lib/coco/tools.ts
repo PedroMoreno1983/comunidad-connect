@@ -15,6 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
+import { addChargeForAdmin, cancelChargeForAdmin, deleteExpenseForAdmin, deletePaymentForAdmin, getUnitAccount, listExpensesForAdmin } from './financeAdminTools';
 import { joinInitiative, listCommunityInitiatives, proposeInitiative, requestMediation, resolveParticipation, reviewInitiative } from './convivenciaTools';
 import { listServiceRequests, recordWaterReading, registerIncidentForStaff, updateServiceRequestStatusForUser } from './operationsTools';
 import { listMyListings, removeMyListing, setMyListingStatus, updateMyListing } from './ownerListingTools';
@@ -756,6 +757,62 @@ export const TOOL_DEFINITIONS = [
                 floor: { type: 'string', description: 'Nuevo piso del departamento' },
             },
             required: ['unit_id'],
+        },
+    },
+    {
+        name: 'get_unit_account',
+        description: 'Cuenta de una unidad para la administración: saldo, vencido, cargos (charge_id, si es anulable) y pagos (payment_id). Úsalo antes de anular un cargo o un pago. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: { unit_number: { type: 'string', description: 'Número de departamento.' },
+                tower: { type: 'string', description: 'Solo si hay varias torres con ese número.' }, }, required: ['unit_number'] },
+    },
+    {
+        name: 'add_unit_charge',
+        description: 'Agrega un cargo puntual a una unidad: multa (fine), interés (interest), extraordinario (extraordinary), servicio (service) u otro (other); o un descuento del comité (kind committee, monto positivo). Pide monto, motivo y mes; no los inventes. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_number: { type: 'string', description: 'Número de departamento.' },
+                tower: { type: 'string', description: 'Solo si hay varias torres con ese número.' },
+                month: { type: 'string', description: 'AAAA-MM del gasto común al que se suma.' },
+                kind: { type: 'string', enum: ['fine', 'interest', 'extraordinary', 'service', 'other', 'committee'] },
+                label: { type: 'string', description: 'Motivo, como lo verá el residente.' },
+                amount: { type: 'integer', description: 'Monto en pesos.' },
+                due_date: { type: 'string', description: 'AAAA-MM-DD, opcional.' },
+                notes: { type: 'string' },
+            },
+            required: ['unit_number', 'month', 'kind', 'label', 'amount'],
+        },
+    },
+    {
+        name: 'cancel_unit_charge',
+        description: 'Anula un cargo puntual de una unidad (no el gasto común emitido: ese se corrige anulando la emisión). Usa el charge_id de get_unit_account. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { charge_id: { type: 'string' }, charge_label: { type: 'string', description: 'Detalle, solo para la confirmación.' } },
+            required: ['charge_id'],
+        },
+    },
+    {
+        name: 'delete_unit_payment',
+        description: 'Anula un pago registrado por error en la cuenta de una unidad; la deuda se recalcula. Usa el payment_id de get_unit_account. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { payment_id: { type: 'string' }, payment_detail: { type: 'string', description: 'Monto y fecha, solo para la confirmación.' } },
+            required: ['payment_id'],
+        },
+    },
+    {
+        name: 'list_community_expenses',
+        description: 'Gastos de la comunidad de un mes (expense_id, detalle, monto, proveedor) y si el mes ya está emitido. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: { month: { type: 'string', description: 'AAAA-MM' } }, required: ['month'] },
+    },
+    {
+        name: 'delete_community_expense',
+        description: 'Borra un gasto de la comunidad mal ingresado, si el mes aún no está emitido. Usa el expense_id de list_community_expenses. Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { expense_id: { type: 'string' }, expense_label: { type: 'string', description: 'Detalle, solo para la confirmación.' } },
+            required: ['expense_id'],
         },
     },
     {
@@ -1592,6 +1649,11 @@ export const MUTATING_TOOLS = new Set<string>([
     'register_incident',
     'propose_initiative',
     'join_initiative',
+    // Dinero: cambian la deuda de una unidad o el gasto del mes. Confirma.
+    'add_unit_charge',
+    'cancel_unit_charge',
+    'delete_unit_payment',
+    'delete_community_expense',
     'resolve_participation',
     'review_initiative',
     'request_mediation',
@@ -1679,6 +1741,7 @@ const ADMIN_TOOLS = new Set([
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
     'list_pending_residents', 'decide_pending_resident', 'assign_resident_unit',
     'list_pending_listings', 'review_listing', 'review_group_order', 'record_water_reading', 'review_initiative',
+    'get_unit_account', 'add_unit_charge', 'cancel_unit_charge', 'delete_unit_payment', 'list_community_expenses', 'delete_community_expense',
     'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
     'add_community_expense', 'record_payment', 'get_monthly_finance_report', 'preview_billing', 'issue_billing',
     'resume_agent_task',
@@ -1872,6 +1935,14 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return input.approve === false
                 ? { title: 'Quitar vecino', summary: `${str('resident_name') || 'El vecino'} no vive en el edificio: pierde el acceso a la comunidad y su departamento queda libre.` }
                 : { title: 'Validar vecino', summary: `${str('resident_name') || 'El vecino'} vive en el edificio: queda con acceso completo y ligado a su departamento.` };
+        case 'add_unit_charge':
+            return { title: input.kind === 'committee' ? 'Descuento a la unidad' : 'Cargo a la unidad', summary: `Depto ${str('unit_number')}: ${str('label')} · ${(Number(input.amount) || 0).toLocaleString('es-CL')} (${str('month')}).` };
+        case 'cancel_unit_charge':
+            return { title: 'Anular cargo', summary: `${str('charge_label') || 'El cargo elegido'} deja de sumar a la deuda.` };
+        case 'delete_unit_payment':
+            return { title: 'Anular pago', summary: `${str('payment_detail') || 'El pago elegido'}. La deuda de la unidad se recalcula.` };
+        case 'delete_community_expense':
+            return { title: 'Borrar gasto del mes', summary: str('expense_label') || 'El gasto elegido.' };
         case 'propose_initiative': {
             const tipos: Record<string, string> = { time_bank: 'banco de tiempo', collective_purchase: 'compra colectiva', community_project: 'proyecto comunitario' };
             return { title: `Proponer ${tipos[str('type')] || 'iniciativa'}`, summary: `${str('title')}. Queda pendiente hasta que la administración la valide.` };
@@ -3022,6 +3093,24 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'get_unit_account':
+            case 'add_unit_charge':
+            case 'cancel_unit_charge':
+            case 'delete_unit_payment':
+            case 'list_community_expenses':
+            case 'delete_community_expense': {
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración gestiona cargos, pagos y gastos.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                const args = input as Record<string, unknown>;
+                if (name === 'get_unit_account') return getUnitAccount(supabaseAdmin, communityId, args);
+                if (name === 'add_unit_charge') return addChargeForAdmin(supabaseAdmin, communityId, userCtx.user_id, args);
+                if (name === 'cancel_unit_charge') return cancelChargeForAdmin(communityId, args);
+                if (name === 'delete_unit_payment') return deletePaymentForAdmin(communityId, args);
+                if (name === 'list_community_expenses') return listExpensesForAdmin(communityId, args);
+                return deleteExpenseForAdmin(communityId, args);
             }
 
             case 'list_community_initiatives':

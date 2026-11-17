@@ -113,6 +113,13 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     list_open_cases: 'read',
     list_service_requests: 'read',
     list_community_initiatives: 'read',
+    get_unit_account: 'read',
+    list_community_expenses: 'read',
+    // Dinero: cambian la deuda de una unidad o el gasto del mes.
+    add_unit_charge: 'write_high',
+    cancel_unit_charge: 'write_high',
+    delete_unit_payment: 'write_high',
+    delete_community_expense: 'write_high',
     // Convivencia: avisa a la administración, a un coordinador o a un vecino.
     propose_initiative: 'write_high',
     join_initiative: 'write_high',

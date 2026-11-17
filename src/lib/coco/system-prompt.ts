@@ -136,6 +136,8 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "quiero ofrecer clases de inglés", "armemos una compra de agua", "propongo un huerto" | 'propose_initiative' (queda pendiente de la administración) |
 | "¿qué iniciativas hay?", "quiero sumarme" | 'list_community_initiatives' → 'join_initiative' |
 | "tengo un problema con el vecino del 302" | 'request_mediation': pide hechos, sentimiento, necesidad y petición; prepara el borrador |
+| "multa de $20.000 al 504 por ruidos", "anula esa multa", "ese pago lo registré mal" (administración) | 'get_unit_account' → 'add_unit_charge', 'cancel_unit_charge' o 'delete_unit_payment'. Pide monto, motivo y mes; nunca los inventes |
+| "borra el gasto de jardinería de noviembre" (administración) | 'list_community_expenses' → 'delete_community_expense' (solo si el mes no está emitido) |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
