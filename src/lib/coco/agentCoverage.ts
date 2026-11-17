@@ -50,7 +50,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'ParkingService.deleteSpot': { tool: 'remove_my_listing' },
     'ParkingService.setAvailability': { tool: 'set_my_spot_availability' },
     'ParkingService.toggleSpotInstantAvailability': { tool: 'set_my_listing_status' },
-    'ParkingService.rateBooking': { ui: 'No implementado: parking_bookings no tiene columnas de calificación y la pantalla falla en silencio. Hay que crearlas antes de que nadie, ni CoCo, pueda calificar.' },
+    'ParkingService.rateBooking': { tool: 'rate_parking_booking' },
     'ParkingService.recordAccess': { ui: 'Conserjería registra entradas y salidas en la portería, con el código a la vista.' },
     'ParkingService.requestCommunityAccess': { gap: 'Pedir que la comunidad habilite estacionamientos.' },
     'ParkingService.requestEarningsPayout': { ui: 'No implementado: la pantalla solo informa que los retiros no están habilitados (esperan las credenciales de Haulmer).' },

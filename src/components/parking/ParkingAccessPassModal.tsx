@@ -130,6 +130,9 @@ export function ParkingAccessPassModal({
   };
 
   const handleRate = async (stars: number) => {
+    // Antes se marcaba como calificado y se agradecía aunque no se guardara
+    // nada. Si falla, las estrellas vuelven a como estaban y se dice por qué.
+    const previous = { rating: userRating, rated };
     setUserRating(stars);
     setRated(true);
     try {
@@ -139,8 +142,14 @@ export function ParkingAccessPassModal({
         description: "Tu reseña ayuda a mantener la calidad de los puestos vecinales.",
         variant: "success",
       });
-    } catch {
-      // Ignore
+    } catch (error) {
+      setUserRating(previous.rating);
+      setRated(previous.rated);
+      toast({
+        title: "No se guardó tu calificación",
+        description: error instanceof Error ? error.message : "Inténtalo de nuevo en un momento.",
+        variant: "destructive",
+      });
     }
   };
 

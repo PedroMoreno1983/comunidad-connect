@@ -15,7 +15,7 @@ import { assignResidentUnitForAdmin, decidePendingResidentForAdmin, listPendingR
 import { publishParkingSpotForUser, publishStorageUnitForUser } from './offerTools';
 import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplaceSeller, registerMyVehicle, replyMarketplaceConversation, updateMyName } from './residentDailyTools';
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
-import { extendParkingBooking, listParkingAccessRequests, reviewParkingAccess, setMySpotAvailability } from './parkingExtraTools';
+import { extendParkingBooking, listParkingAccessRequests, rateParkingBooking, reviewParkingAccess, setMySpotAvailability } from './parkingExtraTools';
 import { cancelPaymentAgreement, createPaymentAgreement, listMyMediations, listPaymentAgreements, payAgreementInstallment, updateMediationStatus } from './agreementTools';
 import { addChargeForAdmin, cancelChargeForAdmin, deleteExpenseForAdmin, deletePaymentForAdmin, getUnitAccount, listExpensesForAdmin } from './financeAdminTools';
 import { joinInitiative, listCommunityInitiatives, proposeInitiative, requestMediation, resolveParticipation, reviewInitiative } from './convivenciaTools';
@@ -484,6 +484,19 @@ export const TOOL_DEFINITIONS = [
                 additional_minutes: { type: 'integer', description: 'Minutos extra (60 = una hora).' },
             },
             required: ['booking_id', 'additional_minutes'],
+        },
+    },
+    {
+        name: 'rate_parking_booking',
+        description: 'Califica de 1 a 5 estrellas una reserva de estacionamiento ya terminada (solo el conductor). Sin booking_id, la última que terminó. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                rating: { type: 'integer', description: '1 a 5 estrellas.' },
+                comment: { type: 'string' },
+                booking_id: { type: 'string', description: 'Opcional; por defecto la última reserva terminada.' },
+            },
+            required: ['rating'],
         },
     },
     {
@@ -1720,6 +1733,7 @@ export const MUTATING_TOOLS = new Set<string>([
     // Extender cambia el cobro; los horarios y el acceso deciden quién reserva.
     'extend_parking_booking',
     'set_my_spot_availability',
+    'rate_parking_booking',
     'review_parking_access',
     'remove_my_listing',
     // Hablan con terceros o cambian datos propios: confirma.
@@ -1825,7 +1839,7 @@ const RESIDENT_TOOLS = new Set([
     'cancel_reservation', 'cancel_parking_booking', 'cancel_storage_rental', 'report_transfer',
     'publish_my_parking_spot', 'publish_my_storage_unit',
     'list_my_listings', 'update_my_listing', 'set_my_listing_status', 'remove_my_listing',
-    'extend_parking_booking', 'set_my_spot_availability',
+    'extend_parking_booking', 'set_my_spot_availability', 'rate_parking_booking',
     'list_service_requests', 'update_service_request_status',
     'list_community_initiatives', 'propose_initiative', 'join_initiative', 'resolve_participation', 'request_mediation',
     'list_my_mediations', 'update_mediation_status',
@@ -2002,6 +2016,10 @@ export function describePendingAction(name: string, input: Record<string, unknow
             const minutos = Number(input.additional_minutes) || 0;
             const tramo = minutos % 60 === 0 ? `${minutos / 60} ${minutos === 60 ? 'hora' : 'horas'}` : `${minutos} minutos`;
             return { title: 'Extender reserva de estacionamiento', summary: `${tramo} más. Si cuesta más, se suma al cobro de la reserva.` };
+        }
+        case 'rate_parking_booking': {
+            const estrellas = Number(input.rating) || 0;
+            return { title: 'Calificar estacionamiento', summary: `${'★'.repeat(Math.max(0, Math.min(5, estrellas)))} (${estrellas}/5)${str('comment') ? `: "${str('comment')}"` : ''}.` };
         }
         case 'set_my_spot_availability': {
             const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -2864,9 +2882,10 @@ export async function executeTool(
             }
 
             case 'extend_parking_booking':
-            case 'set_my_spot_availability': {
+            case 'set_my_spot_availability':
+            case 'rate_parking_booking': {
                 if (!userCtx.user_id) return forbidden('No pude identificar al residente.');
-                const run = name === 'extend_parking_booking' ? extendParkingBooking : setMySpotAvailability;
+                const run = { extend_parking_booking: extendParkingBooking, set_my_spot_availability: setMySpotAvailability, rate_parking_booking: rateParkingBooking }[name];
                 return run(supabaseAdmin, userCtx.user_id, input as Record<string, unknown>);
             }
 

@@ -75,6 +75,8 @@ type ParkingBookingRow = {
     payment_status: ParkingPaymentStatus;
     access_code: string;
     cancellation_reason: string | null;
+    rating?: number | null;
+    rating_comment?: string | null;
     created_at: string;
     parking_spots?: { label?: string | null; unit_label?: string | null } | { label?: string | null; unit_label?: string | null }[] | null;
     parking_drivers?: { full_name?: string | null; plate?: string | null } | { full_name?: string | null; plate?: string | null }[] | null;
@@ -187,6 +189,8 @@ function mapParkingBooking(row: ParkingBookingRow): ParkingBooking {
         paymentStatus: row.payment_status,
         accessCode: row.access_code,
         cancellationReason: row.cancellation_reason || undefined,
+        rating: row.rating ?? undefined,
+        ratingComment: row.rating_comment || undefined,
         createdAt: row.created_at,
     };
 }
@@ -211,7 +215,7 @@ const PARKING_SPOT_COLUMNS =
 
 const PARKING_BOOKING_COLUMNS =
     'id,community_id,spot_id,driver_id,owner_id,driver_is_resident,starts_at,ends_at,total_amount,' +
-    'community_fee_amount,owner_payout_amount,status,payment_status,access_code,cancellation_reason,created_at';
+    'community_fee_amount,owner_payout_amount,status,payment_status,access_code,cancellation_reason,rating,rating_comment,created_at';
 
 /** Orden de arriba hacia abajo del edificio, como lo lee un conductor. */
 const PARKING_LEVEL_ORDER: { id: ParkingFloorLevel; name: string }[] = [
@@ -1009,19 +1013,19 @@ export const ParkingService = {
         if (error) throw error;
     },
 
-    /** Registra una calificación de 1 a 5 estrellas para una reserva completada */
+    /**
+     * Califica de 1 a 5 estrellas una reserva ya terminada. Solo el conductor.
+     * Antes actualizaba columnas que no existían y se tragaba el error, así que
+     * la pantalla agradecía una calificación que nunca se guardó: ahora el
+     * error sube y la pantalla lo muestra.
+     */
     async rateBooking(bookingId: string, rating: number, comment?: string): Promise<void> {
-        const { error } = await supabase
-            .from('parking_bookings')
-            .update({
-                rating,
-                rating_comment: comment || null,
-            })
-            .eq('id', bookingId);
-
-        if (error) {
-            console.warn('[ParkingService] Rating update error, logged locally:', error);
-        }
+        const { error } = await supabase.rpc('rate_parking_booking', {
+            p_booking_id: bookingId,
+            p_rating: rating,
+            p_comment: comment?.trim() || null,
+        });
+        if (error) throw new Error(error.message || 'No se pudo guardar la calificación.');
     },
 };
 

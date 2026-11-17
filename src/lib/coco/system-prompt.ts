@@ -144,6 +144,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "necesito el estacionamiento una hora más" | 'get_my_parking' → 'extend_parking_booking'; di cuánto se suma al cobro |
 | "mi estacionamiento está libre de lunes a viernes de 9 a 18" | 'list_my_listings' → 'set_my_spot_availability' (reemplaza los horarios) |
 | "¿hay conductores externos pidiendo acceso?" (administración) | 'list_parking_access_requests' → 'review_parking_access' |
+| "el estacionamiento de ayer estuvo perfecto", "califícalo con 4 estrellas" | 'rate_parking_booking' (sin booking_id, la última reserva terminada) |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
