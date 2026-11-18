@@ -4,6 +4,7 @@
  * Soporta multi-turn con historial persistido en Supabase.
  */
 
+import { attachmentFailuresTurnNote, type AttachmentFailure } from './attachmentFailures';
 import Anthropic from '@anthropic-ai/sdk';
 import { askOpenAi } from './openai-agent';
 import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolOfferedFor } from './tools';
@@ -313,19 +314,41 @@ export function withoutHeavyBlocks(content: string | object[]): string | object[
     });
 }
 
+/** Tokens por página de PDF leída con visión: Claude cobra ~1.500–3.000 (texto + imagen de la página). */
+export const PDF_TOKENS_PER_PAGE = 2_300;
+
+/**
+ * Páginas de un PDF en base64, contando los objetos /Type /Page. Si el PDF las
+ * guarda comprimidas (object streams) se usa /Count del árbol de páginas, y si
+ * tampoco está, el peso (~1 página cada 200 KB de escaneo).
+ */
+export function pdfPageCountFromBase64(data: string): number {
+    if (!data) return 0;
+    const raw = Buffer.from(data, 'base64').toString('latin1');
+    const pages = raw.match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0;
+    if (pages > 0) return pages;
+    const counts = [...raw.matchAll(/\/Count\s+(\d+)/g)].map(match => Number(match[1])).filter(Number.isFinite);
+    if (counts.length) return Math.max(...counts);
+    return Math.max(1, Math.ceil(Math.floor(data.length * 0.75) / 200_000));
+}
+
+/** Estimación por página, no por peso: un escaneo de 8 MB y 42 páginas son ~97 mil tokens. */
+export function estimatePdfTokens(data: string) {
+    return Math.max(1, pdfPageCountFromBase64(data)) * PDF_TOKENS_PER_PAGE;
+}
+
 /**
  * Estimación de tokens para el presupuesto. JSON.stringify contaría cada
  * imagen o PDF en base64 como texto (una foto de 1 MB serían ~350 mil tokens);
  * el modelo los cobra por tamaño visual: ~1.600 tokens por imagen de hasta
- * 1568 px y del orden de 2.000 por página de PDF (se estima por peso).
+ * 1568 px y PDF_TOKENS_PER_PAGE por página de PDF (se cuentan las páginas).
  */
 export function estimateHistoryTokens(history: unknown) {
     let media = 0;
     const json = JSON.stringify(history ?? '', (_key, value: unknown) => {
         if (value && typeof value === 'object' && (value as { type?: unknown }).type === 'base64') {
             const source = value as { media_type?: string; data?: string };
-            const bytes = Math.floor((source.data?.length || 0) * 0.75);
-            media += source.media_type === 'application/pdf' ? Math.max(2_000, Math.ceil(bytes / 150_000) * 2_000) : 1_600;
+            media += source.media_type === 'application/pdf' ? estimatePdfTokens(source.data || '') : 1_600;
             return { type: 'base64', media_type: source.media_type };
         }
         return value;
@@ -403,6 +426,10 @@ export async function askCoCo(
         turnContext?: string;
         /** Tope de rondas de herramientas. Por defecto MAX_TOOL_ROUNDS. */
         maxToolRounds?: number;
+        /** Adjuntos que no se pudieron usar: llegan al modelo con su causa (attachmentFailures.ts). */
+        attachmentFailures?: AttachmentFailure[];
+        /** Texto del mensaje que queda en el historial (el mensaje y los nombres de sus adjuntos). */
+        storedMessage?: string;
     } = {}
 ): Promise<CoCoResponse> {
     const maxToolRounds = Math.max(1, Math.min(MAX_TOOL_ROUNDS, options.maxToolRounds ?? MAX_TOOL_ROUNDS));
@@ -588,7 +615,8 @@ export async function askCoCo(
         const documents = [...(options.legalDocument ? [options.legalDocument] : []), ...(options.legalDocuments || [])];
         const images = [...(options.image ? [options.image] : []), ...(options.images || [])];
         const documentText = documents.map((document, index) => documentTurnNote(document, index, documents.length)).join('');
-        const content = buildUserContent(`${message}${documentText}`, images);
+        const failureNote = attachmentFailuresTurnNote(options.attachmentFailures || []);
+        const content = buildUserContent(`${message}${documentText}${failureNote}`, images);
         const pages = documents.flatMap(document => document.pageImages || []);
         const pdfs = documents.filter(document => document.visualPdf);
         const extraBlocks = [
@@ -708,6 +736,8 @@ export async function askCoCo(
                 latencyMs: Date.now() - startedAt,
                 stopReason: response.stop_reason,
                 toolRounds: rounds,
+                // El cupo diario cuenta la caché leída al 10 % (dailyTokensOf).
+                cacheReadTokens,
             },
         });
 
@@ -817,7 +847,7 @@ export async function askCoCo(
 
     const updatedHistory: ConversationMessage[] = [
         ...baseConversation,
-        ...(isResuming ? [] : [{ role: 'user' as const, content: message }]),
+        ...(isResuming ? [] : [{ role: 'user' as const, content: options.storedMessage ?? message }]),
         finalAssistantMessage,
     ];
 

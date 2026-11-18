@@ -3,7 +3,8 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent } from '@/lib/operations/audit';
-import { enforceAiBudget, recordAiUsage } from '@/lib/ai/budget';
+import { enforceAiBudget, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
+import type { AttachmentFailureCode } from './attachmentFailures';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import type { CommunityDocumentHit, CommunityDocumentKind } from '@/lib/types';
 import type { CoCoDocumentRead } from '@/lib/coco/chatAttachmentRules';
@@ -47,7 +48,19 @@ export const MAX_VISUAL_PDF_PAGES = 100;
 const SECTION_CHARS = 3_500;
 
 export class CommunityDocumentError extends Error {
-    constructor(message: string, readonly status = 400) { super(message); }
+    constructor(message: string, readonly status = 400, readonly code?: AttachmentFailureCode) { super(message); }
+}
+
+/** Código para el modelo (attachmentFailures.ts) de un error al preparar o leer un documento. */
+export function documentFailureCode(error: unknown): AttachmentFailureCode {
+    if (isAiBudgetExceededError(error)) return 'budget_exceeded';
+    if (error instanceof CommunityDocumentError) {
+        if (error.code) return error.code;
+        if (error.status === 413) return 'too_large';
+        if (error.status === 404 || error.status === 403) return 'upload_failed';
+        if (error.status >= 500 || error.status === 422) return 'ocr_failed';
+    }
+    return 'ocr_failed';
 }
 
 export function documentExtension(fileName: string) {
@@ -58,29 +71,29 @@ export function documentExtension(fileName: string) {
 /** Ruta en el bucket: la comunidad y quien sube, más un id. Sin el nombre original (puede traer datos). */
 export function documentStoragePath(communityId: string, userId: string, fileName: string) {
     const extension = documentExtension(fileName);
-    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX, TXT, XLSX o CSV.');
+    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX, TXT, XLSX o CSV.', 400, 'unsupported_type');
     return `${communityId}/${userId}/${randomUUID()}.${extension}`;
 }
 
 /** URL firmada para subir el archivo directo al bucket desde el navegador. */
 export async function createDocumentUpload(communityId: string, userId: string, fileName: string, size: number) {
-    if (!Number.isFinite(size) || size <= 0) throw new CommunityDocumentError('Adjunta un documento.');
+    if (!Number.isFinite(size) || size <= 0) throw new CommunityDocumentError('Adjunta un documento.', 400, 'upload_failed');
     if (size > MAX_DOCUMENT_BYTES) throw new CommunityDocumentError('El máximo es 25 MB.', 413);
     const path = documentStoragePath(communityId, userId, fileName);
     const { data, error } = await getSupabaseAdmin().storage.from(DOCUMENTS_BUCKET).createSignedUploadUrl(path);
-    if (error || !data) throw new CommunityDocumentError('No pude preparar la subida.', 500);
+    if (error || !data) throw new CommunityDocumentError('No pude preparar la subida.', 500, 'upload_failed');
     return { path, token: data.token };
 }
 
 type PageText = { page: number; text: string; ocr: boolean };
-type OcrBudget = { communityId: string; userId: string };
+type OcrBudget = { communityId: string; userId: string; role?: string | null };
 
 function clean(text: string) {
     return text.replace(/\0/g, '').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
 }
 
 async function pdfPages(bytes: Buffer): Promise<PageText[]> {
-    if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new CommunityDocumentError('El archivo no es un PDF válido.');
+    if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new CommunityDocumentError('El archivo no es un PDF válido.', 400, 'unsupported_type');
     await import('pdf-parse/worker');
     const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: new Uint8Array(bytes) });
@@ -111,7 +124,7 @@ async function transcribeScannedPages(bytes: Buffer, pages: number[], budget: Oc
     if (!key) throw new CommunityDocumentError('Este documento tiene páginas escaneadas y la lectura de escaneos no está disponible ahora.', 503);
     if (bytes.length > MAX_OCR_BYTES) throw new CommunityDocumentError('El PDF escaneado pesa más de 14 MB: divídelo en partes.', 413);
     const model = 'gemini-2.5-flash';
-    const usage = { communityId: budget.communityId, userId: budget.userId, module: 'coco.documents.ocr', provider: 'gemini', model, actionType: 'extraction' as const };
+    const usage = { communityId: budget.communityId, userId: budget.userId, role: budget.role ?? null, module: 'coco.documents.ocr', provider: 'gemini', model, actionType: 'extraction' as const };
     await enforceAiBudget({ ...usage, estimatedPromptTokens: 260 * (pages.length + 10), estimatedCompletionTokens: 600 * pages.length });
     const prompt = [
         'Transcribe textualmente estas páginas de un documento legal chileno escaneado:',
@@ -220,13 +233,13 @@ async function extractPages(extension: NonNullable<ReturnType<typeof documentExt
 }
 
 /** Lee un documento ya subido al bucket y lo guarda, privado para quien lo subió. */
-export async function readUploadedDocument(input: { communityId: string; userId: string; storagePath: string; fileName: string }): Promise<CoCoDocumentRead> {
+export async function readUploadedDocument(input: { communityId: string; userId: string; role?: string | null; storagePath: string; fileName: string }): Promise<CoCoDocumentRead> {
     // La ruta la generamos nosotros: comunidad/usuario/uuid. Así nadie lee el archivo de otro.
     if (!input.storagePath.startsWith(`${input.communityId}/${input.userId}/`) || input.storagePath.includes('..')) {
         throw new CommunityDocumentError('Ese archivo no es tuyo.', 403);
     }
     const extension = documentExtension(input.storagePath);
-    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX, TXT, XLSX o CSV.');
+    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX, TXT, XLSX o CSV.', 400, 'unsupported_type');
     const admin = getSupabaseAdmin();
     let saved = false;
     try {
@@ -235,7 +248,7 @@ export async function readUploadedDocument(input: { communityId: string; userId:
         const bytes = Buffer.from(await blob.arrayBuffer());
         if (bytes.length > MAX_DOCUMENT_BYTES) throw new CommunityDocumentError('El máximo es 25 MB.', 413);
 
-        const { pages, paginated, visual } = await extractPages(extension, bytes, { communityId: input.communityId, userId: input.userId });
+        const { pages, paginated, visual } = await extractPages(extension, bytes, { communityId: input.communityId, userId: input.userId, role: input.role });
         if (visual) {
             // No se guarda con páginas en blanco: CoCo pasaría por alto justo el
             // artículo escaneado al buscar después. El archivo queda en el bucket
@@ -266,13 +279,13 @@ export async function readUploadedDocument(input: { communityId: string; userId:
             ocr_pages: pages.filter(page => page.ocr).length,
             paginated,
         }).select('id').single();
-        if (insertError || !document) throw new CommunityDocumentError('No pude guardar el documento.', 500);
+        if (insertError || !document) throw new CommunityDocumentError('No pude guardar el documento.', 500, 'upload_failed');
         const { error: pagesError } = await admin.from('community_document_pages').insert(
             pages.map(page => ({ document_id: document.id, page_number: page.page, text: page.text, ocr: page.ocr })),
         );
         if (pagesError) {
             await admin.from('community_documents').delete().eq('id', document.id);
-            throw new CommunityDocumentError('No pude guardar el texto del documento.', 500);
+            throw new CommunityDocumentError('No pude guardar el texto del documento.', 500, 'upload_failed');
         }
         saved = true;
         const turn = documentTurnText(pages, paginated);

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
-import { CommunityDocumentError, createDocumentUpload } from '@/lib/coco/communityDocuments';
+import { CommunityDocumentError, createDocumentUpload, documentFailureCode } from '@/lib/coco/communityDocuments';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     try {
         return NextResponse.json(await createDocumentUpload(profile.community_id, profile.id, body.fileName, body.size));
     } catch (error) {
-        if (error instanceof CommunityDocumentError) return NextResponse.json({ error: error.message }, { status: error.status });
+        if (error instanceof CommunityDocumentError) return NextResponse.json({ error: error.message, code: documentFailureCode(error) }, { status: error.status });
         console.error('[coco documents] upload url failed', error);
-        return NextResponse.json({ error: 'No pude preparar la subida.' }, { status: 500 });
+        return NextResponse.json({ error: 'No pude preparar la subida.', code: 'upload_failed' }, { status: 500 });
     }
 }

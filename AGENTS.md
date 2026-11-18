@@ -255,6 +255,16 @@ El agente CoCo tiene dos capas:
 - `/api/coco` acepta `images[]` y `legalDocuments[]` (y, por compatibilidad con el widget flotante, `imageBase64` y `legalDocument`). El texto de los documentos se reparte: hasta 90 mil caracteres por turno y 35 mil por documento; el resto CoCo lo busca con `search_community_documents`.
 - PDF escaneados: se transcriben con Gemini (`communityDocuments.ts`). Si esa transcripción falla o no está disponible, el documento **no** se guarda con páginas en blanco: el PDF (hasta 18 MB y 100 páginas) va al modelo como bloque `document` para que lo lea con visión en ese turno (`visualPdfPath`), y `/api/coco` lo borra del bucket al terminar. El PDF en base64 nunca queda en la sesión (`withoutHeavyBlocks`).
 - Colores del panel: tokens `--cc-*` (sigue el tema claro/oscuro); no vuelvas a fijar fondos oscuros como `#0E0B08`.
+- **Guardado del turno**: `/api/coco` guarda el mensaje de la persona (texto + "Adjunto: nombre", nunca base64) **apenas llega**, antes del modelo; la respuesta, al terminar. Si el turno falla (presupuesto, error del motor, error inesperado) queda el mensaje y un aviso "⚠️ …". Con acciones pendientes no se pre-guarda (el historial debe terminar en el `tool_use`). Aunque fallen todos los adjuntos, el chat igual envía el mensaje.
+- **Adjuntos fallidos** (`src/lib/coco/attachmentFailures.ts`, puro): llegan al modelo como `attachmentErrors: [{ file, status: 'failed', reason_code, reason_text }]` con `reason_code` de una lista cerrada (`budget_exceeded`, `ocr_failed`, `too_large`, `unsupported_type`, `upload_failed`). Las rutas de documentos devuelven `code` (`documentFailureCode`). Un 429 sin `code` no se supone presupuesto (también es el límite por minuto).
+- **No inventar**: `COCO_NO_INVENTION_RULE` (`src/lib/coco/honestyRules.ts`) va en el prompt del chat y en el del Agent Center (`agentLoop.ts`): citar la causa exacta de un fallo, no suponer otras, no pedir reintentar sin motivo, no inventar datos ni contenido no leído. La prueba `tests/unit/coco-honesty-and-budget.test.ts` revisa sus frases.
+
+**Presupuesto de IA** (`src/lib/ai/budget.ts`):
+- Cupo diario por persona: admin y superadmin tienen al menos `ADMIN_DAILY_TOKEN_FLOOR` (3 M, `AI_ADMIN_DAILY_TOKEN_LIMIT`), suficiente para 2–3 escrituras de ~50 páginas; conserjería usa `staff_daily_token_limit` y residentes `resident_daily_token_limit`. Los topes mensuales de la comunidad siguen igual. El día se cuenta desde medianoche de Chile (`chileDayStart`).
+- La caché leída de Anthropic cuenta al 10 % para el cupo diario (`dailyTokensOf`, lee `metadata.cacheReadTokens`).
+- Pasa siempre el `role` a `enforceAiBudget`: sin rol se aplica el cupo de residente (eso bloqueó la lectura de escaneos de un admin el 18-11-2026).
+- PDF con visión se estima por página (`PDF_TOKENS_PER_PAGE` = 2.300, `pdfPageCountFromBase64`), no por peso.
+- Mensajes (`budgetUserMessage`): sin jerga, con tildes y con qué hacer según el rol.
 
 El gateway IoT está en `coco-gateway.js` (Node.js standalone) para recibir datos de sensores.
 

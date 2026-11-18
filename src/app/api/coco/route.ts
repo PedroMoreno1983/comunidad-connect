@@ -6,12 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoTurnDocument } from '@/lib/coco/agent';
-import { MAX_CHAT_ATTACHMENTS, MAX_CHAT_IMAGES_TOTAL_CHARS, documentTextShare } from '@/lib/coco/chatAttachmentRules';
+import { MAX_CHAT_ATTACHMENTS, MAX_CHAT_IMAGES_TOTAL_CHARS, attachmentSummary, documentTextShare } from '@/lib/coco/chatAttachmentRules';
+import { parseAttachmentFailures } from '@/lib/coco/attachmentFailures';
 import { MAX_VISUAL_PDF_BYTES, discardVisualPdf, isOwnVisualPdfPath, loadVisualPdf } from '@/lib/coco/communityDocuments';
 import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
-import { getSession, saveDeliveredTurn, checkRateLimit } from '@/lib/coco/session-store';
+import { getSession, saveDeliveredTurn, checkRateLimit, type SessionData } from '@/lib/coco/session-store';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
@@ -647,6 +648,13 @@ export async function POST(req: NextRequest) {
     // PDF leídos con visión en este turno: se borran al terminar, pase lo que pase.
     let visualCleanup: string[] = [];
     let visualOwner: { communityId: string; userId: string } | null = null;
+    // El mensaje de la persona se guarda apenas llega (ver más abajo). Si el
+    // turno falla después, esto deja en la conversación el aviso de error.
+    let recordFailedTurn: ((reply: string) => Promise<void>) | null = null;
+    const failWith = async (reply: string, init: ResponseInit, extra: Record<string, unknown> = {}) => {
+        if (recordFailedTurn) await recordFailedTurn(reply).catch(() => undefined);
+        return NextResponse.json({ reply, ...extra }, init);
+    };
     try {
         const body = await req.json();
 
@@ -688,6 +696,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ reply: 'Las imágenes pesan demasiado juntas. Envíalas en dos mensajes.' }, { status: 413 });
         }
         const imageAttachment: CoCoImageAttachment | null = images[0] ?? null;
+        // Adjuntos que el navegador no pudo preparar o leer: van al modelo con su causa.
+        const attachmentFailures = resolutions ? [] : parseAttachmentFailures(body.attachmentErrors, MAX_CHAT_ATTACHMENTS);
+        const attachmentNames: string[] = Array.isArray(body.attachmentNames)
+            ? (body.attachmentNames as unknown[]).slice(0, MAX_CHAT_ATTACHMENTS).map(name => sanitize(name, 120)).filter(Boolean)
+            : [];
+        // En el historial quedan el mensaje y los nombres de los adjuntos, nunca su contenido.
+        const storedMessage = attachmentNames.length ? `${message}\n${attachmentSummary(attachmentNames)}`.trim() : message;
 
         if (!message && !resolutions && !legalDocument) {
             return NextResponse.json(
@@ -724,7 +739,7 @@ export async function POST(req: NextRequest) {
 
         // Una lista concreta no necesita el modelo para convertirse en una accion
         // real. Se conserva la misma confirmacion y ejecucion auditada de CoCo.
-        if (!resolutions && !imageAttachment && !legalDocument && !restorePendingActions(session).length
+        if (!resolutions && !imageAttachment && !legalDocument && !attachmentFailures.length && !restorePendingActions(session).length
             && isToolAllowedForRole('save_shopping_list', safeRole)
             // "Compara mi lista: arroz, pan" pide precios: lo resuelve el modelo con compare_shopping_list.
             && !SHOPPING_COMPARE_INTENT.test(message)) {
@@ -749,6 +764,28 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // ── 2b. Guardar el mensaje apenas llega ──────────────────────────────
+        // Antes la conversación solo se guardaba al final del turno: si el modelo
+        // fallaba, se agotaba el presupuesto o la función se cortaba leyendo un
+        // PDF, la persona volvía y su mensaje no estaba. Con acciones pendientes
+        // no se agrega nada (el historial debe seguir terminando en el tool_use).
+        if (!resolutions && storedMessage && !restorePendingActions(session).length) {
+            const baseConversation = session?.conversation || [];
+            const userTurn = { role: 'user' as const, content: storedMessage };
+            const pendingContext: SessionData['user_context'] = {
+                ...(session?.user_context || {}),
+                user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web',
+                title: session?.user_context.title && session.user_context.title !== 'Nueva conversación'
+                    ? session.user_context.title
+                    : message.slice(0, 56) || 'Nueva conversación',
+            };
+            await saveDeliveredTurn(selectedThreadKey, { conversation: [...baseConversation, userTurn], user_context: pendingContext }, false);
+            recordFailedTurn = reply => saveDeliveredTurn(selectedThreadKey, {
+                conversation: [...baseConversation, userTurn, { role: 'assistant', content: `⚠️ ${reply}` }],
+                user_context: pendingContext,
+            }, false);
+        }
+
         if (resolutions && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !restorePendingActions(session).length) {
             return NextResponse.json(
                 { reply: 'No pude confirmar la acción porque el motor principal no está disponible en este momento. Intenta de nuevo en unos segundos.' },
@@ -758,10 +795,7 @@ export async function POST(req: NextRequest) {
 
         if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !resolutions && !restorePendingActions(session).length) {
             if (imageAttachment || legalDocument) {
-                return NextResponse.json(
-                    { reply: 'El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.' },
-                    { status: 200 }
-                );
+                return failWith('El análisis de imágenes de CoCo requiere un motor de IA activo. Puedes describirme la imagen y te ayudo por texto.', { status: 200 });
             }
             const fallbackContext = {
                 name: userName, role: safeRole, currentPage, userId, communityId,
@@ -771,7 +805,7 @@ export async function POST(req: NextRequest) {
             const fallback = await runCoCoFallback(message, fallbackContext);
 
             await saveDeliveredTurn(selectedThreadKey, {
-                conversation: [...(session?.conversation || []), { role: 'user', content: message }, { role: 'assistant', content: fallback.reply }],
+                conversation: [...(session?.conversation || []), { role: 'user', content: storedMessage }, { role: 'assistant', content: fallback.reply }],
                 user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
             }, false);
 
@@ -845,6 +879,8 @@ export async function POST(req: NextRequest) {
                     ...(turnDocuments.length ? { legalDocuments: turnDocuments } : {}),
                     ...(resolutions ? { resolutions } : {}),
                     ...(turnContext ? { turnContext } : {}),
+                    ...(attachmentFailures.length ? { attachmentFailures } : {}),
+                    storedMessage,
                 }
             );
         } catch (agentError) {
@@ -852,20 +888,19 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ reply: agentError.message }, { status: 409 });
             }
             if (isAiBudgetExceededError(agentError)) {
-                return NextResponse.json(
-                    { reply: agentError.reason, action: 'AI_BUDGET_EXCEEDED' },
-                    { status: 429 }
-                );
+                return failWith(agentError.reason, { status: 429 }, { action: 'AI_BUDGET_EXCEEDED' });
             }
 
             console.error('[CoCo Anthropic Error]', agentError);
             if (resolutions) {
                 return NextResponse.json({ reply: 'No pude confirmar la acción porque el motor de CoCo no está disponible. La acción sigue pendiente; inténtalo más tarde.' }, { status: 503 });
             }
-            if (imageAttachment) {
-                return NextResponse.json(
-                    { reply: 'No pude analizar la imagen con el motor principal en este momento. Descríbeme lo que aparece y te ayudo por texto.' },
-                    { status: 200 }
+            if (imageAttachment || legalDocument) {
+                return failWith(
+                    imageAttachment
+                        ? 'No pude analizar la imagen con el motor principal en este momento. Descríbeme lo que aparece y te ayudo por texto.'
+                        : 'No pude analizar el documento con el motor principal en este momento.',
+                    { status: 200 },
                 );
             }
             const fallbackContext = {
@@ -876,7 +911,7 @@ export async function POST(req: NextRequest) {
             const fallback = await runCoCoFallback(message, fallbackContext);
 
             await saveDeliveredTurn(selectedThreadKey, {
-                conversation: [...(session?.conversation || []), { role: 'user', content: message }, { role: 'assistant', content: fallback.reply }],
+                conversation: [...(session?.conversation || []), { role: 'user', content: storedMessage }, { role: 'assistant', content: fallback.reply }],
                 user_context: session?.user_context || { user_id: userId, community_id: communityId, role: safeRole, name: userName, channel: 'web' },
             }, false);
 
@@ -959,33 +994,21 @@ export async function POST(req: NextRequest) {
 
     } catch (err) {
         if (isAiBudgetExceededError(err)) {
-            return NextResponse.json(
-                { reply: err.reason, action: 'AI_BUDGET_EXCEEDED' },
-                { status: 429 }
-            );
+            return failWith(err.reason, { status: 429 }, { action: 'AI_BUDGET_EXCEEDED' });
         }
 
         console.error('[CoCo API Error]', err);
         const message = err instanceof Error ? err.message : '';
 
         if (message.includes('All Gemini configs failed')) {
-            return NextResponse.json(
-                { reply: 'El motor de IA está con alta demanda o modelos no disponibles. Ya dejé configurado el fallback con Gemini 2.5; vuelve a intentar en unos segundos y revisa que GEMINI_API_KEY esté activa.' },
-                { status: 200 }
-            );
+            return failWith('El motor de IA está con alta demanda o modelos no disponibles. Ya dejé configurado el fallback con Gemini 2.5; vuelve a intentar en unos segundos y revisa que GEMINI_API_KEY esté activa.', { status: 200 });
         }
 
         if (message.includes('Missing GEMINI_API_KEY')) {
-            return NextResponse.json(
-                { reply: 'CoCo necesita OPENAI_API_KEY, ANTHROPIC_API_KEY o GEMINI_API_KEY configurada en Vercel para responder.' },
-                { status: 200 }
-            );
+            return failWith('CoCo necesita OPENAI_API_KEY, ANTHROPIC_API_KEY o GEMINI_API_KEY configurada en Vercel para responder.', { status: 200 });
         }
 
-        return NextResponse.json(
-            { reply: 'Tuve un problema al procesar tu mensaje. Inténtalo de nuevo. 😊' },
-            { status: 500 }
-        );
+        return failWith('Tuve un problema al procesar tu mensaje. Inténtalo de nuevo. 😊', { status: 500 });
     } finally {
         const owner = visualOwner;
         if (owner && visualCleanup.length) {
