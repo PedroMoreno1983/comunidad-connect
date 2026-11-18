@@ -40,6 +40,7 @@ import type {
   ParkingSpotInput,
   ParkingVehicleSize,
 } from "@/lib/types";
+import { useUnitNoun } from "@/hooks/useUnitNoun";
 
 interface ParkingOwnerDashboardProps {
   spots: ParkingSpot[];
@@ -66,6 +67,7 @@ export function ParkingOwnerDashboard({
   externalEnabled,
 }: ParkingOwnerDashboardProps) {
   const { toast } = useToast();
+  const unitNoun = useUnitNoun();
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -320,7 +322,7 @@ export function ParkingOwnerDashboard({
                         </Tag>
                       </div>
                       <p className="text-[12px] cc-text-secondary mt-0.5">
-                        {spot.unitLabel ? `Depto ${spot.unitLabel} · ` : ""}
+                        {spot.unitLabel ? `${unitNoun} ${spot.unitLabel} · ` : ""}
                         {VEHICLE_SIZE_LABELS[spot.vehicleSize]}
                       </p>
                     </div>

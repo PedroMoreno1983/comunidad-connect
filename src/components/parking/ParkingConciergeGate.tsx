@@ -21,6 +21,7 @@ import {
   parkingErrorMessage,
 } from "@/lib/parking";
 import type { ParkingAccessLookup, ParkingBooking } from "@/lib/types";
+import { useUnitNoun } from "@/hooks/useUnitNoun";
 
 interface ParkingConciergeGateProps {
   onLookup: (query: string) => Promise<ParkingAccessLookup[]>;
@@ -36,6 +37,7 @@ export function ParkingConciergeGate({
   loading,
 }: ParkingConciergeGateProps) {
   const { toast } = useToast();
+  const unitNoun = useUnitNoun();
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [lookupResults, setLookupResults] = useState<ParkingAccessLookup[] | null>(null);
@@ -187,7 +189,7 @@ export function ParkingConciergeGate({
                           {item.driverIsResident && <Tag tone="copper">Residente</Tag>}
                         </div>
                         <p className="text-[14px] font-semibold cc-text-primary mt-1.5">
-                          Estacionamiento {item.spotLabel} {item.unitLabel ? `(Depto ${item.unitLabel})` : ""}
+                          Estacionamiento {item.spotLabel} {item.unitLabel ? `(${unitNoun} ${item.unitLabel})` : ""}
                         </p>
                       </div>
 

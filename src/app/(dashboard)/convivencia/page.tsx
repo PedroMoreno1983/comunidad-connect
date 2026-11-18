@@ -83,6 +83,7 @@ function labelFromSlug(value: string) {
 
 export default function ConvivenciaPage() {
     const { user } = useAuth();
+    const unitNoun = user?.unitNoun ?? "Depto";
     const { toast } = useToast();
     const [activeLane, setActiveLane] = useState<ActiveLane>("mediation");
     const [mediations, setMediations] = useState<NeighborMediationCase[]>([]);
@@ -482,7 +483,7 @@ export default function ConvivenciaPage() {
                                         <Tag tone="sage">{labelFromSlug(offer.category)}</Tag>
                                         <Tag tone={offer.governanceStatus === "approved" ? "sage" : "neutral"}>{offer.governanceStatus === "approved" ? "Validado por Administracion" : "Pendiente de validacion"}</Tag>
                                         <h3 className="mt-3 text-lg font-semibold cc-text-primary">{offer.skill}</h3>
-                                        <p className="mt-1 text-xs font-medium cc-text-tertiary">Depto {offer.unitLabel} - {offer.neighborName}</p>
+                                        <p className="mt-1 text-xs font-medium cc-text-tertiary">{unitNoun} {offer.unitLabel} - {offer.neighborName}</p>
                                     </div>
                                     <div className="rounded-lg bg-brand-50 px-3 py-2 text-center text-brand-700">
                                         <p className="text-lg font-bold">{offer.credits}</p>

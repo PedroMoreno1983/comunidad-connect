@@ -50,6 +50,7 @@ const NEIGHBOR_FILTERS: Array<{ id: 'all' | 'admin' | 'resident' | 'concierge'; 
 
 export default function DirectoryPage() {
     const { user } = useAuth();
+    const unitNoun = user?.unitNoun ?? "Depto";
     const router = useRouter();
 
     const [viewMode, setViewMode] = useState<'neighbors' | 'services'>('neighbors');
@@ -287,7 +288,7 @@ export default function DirectoryPage() {
                                                             {neighbor.unitLabel && (
                                                                 <Tag tone="neutral">
                                                                     <MapPin className="mr-1 inline h-3 w-3" />
-                                                                    Depto {neighbor.unitLabel}
+                                                                    {unitNoun} {neighbor.unitLabel}
                                                                 </Tag>
                                                             )}
                                                             <Tag tone="neutral">Directorio interno</Tag>
