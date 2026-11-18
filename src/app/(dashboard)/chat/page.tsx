@@ -684,7 +684,7 @@ export default function CoCoChatPage() {
                         onSubmit={(e) => { e.preventDefault(); send(input); }}
                         className="relative flex items-center max-w-3xl w-full mx-auto"
                     >
-                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={event => {
+                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.xlsx,.csv,image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={event => {
                             const file = event.target.files?.[0];
                             if (!file) return;
                             if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type) && file.size <= 5 * 1024 * 1024) {
@@ -693,8 +693,8 @@ export default function CoCoChatPage() {
                                 reader.readAsDataURL(file);
                                 return;
                             }
-                            if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
-                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta un PDF, DOCX o TXT de hasta 25 MB, o una imagen JPG, PNG, GIF o WebP de hasta 5 MB.' }]);
+                            if (!/\.(pdf|docx|txt|xlsx|csv)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
+                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta un PDF, DOCX, TXT, Excel o CSV de hasta 25 MB, o una imagen JPG, PNG, GIF o WebP de hasta 5 MB.' }]);
                                 event.target.value = '';
                                 return;
                             }

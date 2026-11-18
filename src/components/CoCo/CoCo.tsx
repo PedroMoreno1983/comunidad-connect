@@ -191,8 +191,8 @@ export default function CoCo() {
     const handleLegalFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
-            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX o TXT de hasta 25 MB. Para planos en imagen, usa Adjuntar imagen.", variant: "destructive" });
+        if (!/\.(pdf|docx|txt|xlsx|csv)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
+            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX, TXT, Excel o CSV de hasta 25 MB. Para planos en imagen, usa Adjuntar imagen.", variant: "destructive" });
             return;
         }
         setSelectedLegalDocument(file);
@@ -627,7 +627,7 @@ export default function CoCo() {
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}
                                 />
-                                  <input type="file" accept=".pdf,.docx,.txt" className="hidden" ref={legalFileInputRef} onChange={handleLegalFileSelect} />
+                                  <input type="file" accept=".pdf,.docx,.txt,.xlsx,.csv" className="hidden" ref={legalFileInputRef} onChange={handleLegalFileSelect} />
                                 
                                 <button
                                     type="button"

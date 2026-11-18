@@ -17,6 +17,7 @@ import { deleteMyShoppingList, listMyMarketplaceConversations, messageMarketplac
 import { requestAgreementConversation } from '@/lib/finance/agreementRequest';
 import { createAmenityForAdmin, deleteDealQuote, deleteMarketplaceItem, deleteProviderPhoto, listProviderPhotos, setUnitOwner, updateCommunityDeal, updateProviderProfile } from './finalGapTools';
 import { publishCommunityDocument, searchCommunityDocuments } from './communityDocuments';
+import { applyResidentImport, previewResidentImport } from './residentImportTools';
 import { extendParkingBooking, listParkingAccessRequests, rateParkingBooking, reviewParkingAccess, setMySpotAvailability } from './parkingExtraTools';
 import { cancelPaymentAgreement, createPaymentAgreement, listMyMediations, listPaymentAgreements, payAgreementInstallment, updateMediationStatus } from './agreementTools';
 import { addChargeForAdmin, cancelChargeForAdmin, deleteExpenseForAdmin, deletePaymentForAdmin, getUnitAccount, listExpensesForAdmin } from './financeAdminTools';
@@ -895,6 +896,23 @@ export const TOOL_DEFINITIONS = [
                 kind: { type: 'string', enum: ['reglamento', 'acta', 'contrato', 'otro'] },
             },
             required: ['document_id', 'kind'],
+        },
+    },
+    {
+        name: 'preview_resident_import',
+        description: 'Lee la nómina de residentes de un archivo que la administración adjuntó al chat (Excel, CSV, PDF o Word; usa el document_id que viene con el archivo) y la deja en revisión: cuántos residentes, cuántos con correo, avisos y una muestra. No crea cuentas. SOLO administradores.',
+        input_schema: { type: 'object' as const, properties: { document_id: { type: 'string' } }, required: ['document_id'] },
+    },
+    {
+        name: 'apply_resident_import',
+        description: 'Carga los residentes de un lote revisado con preview_resident_import: une cada uno a su unidad y crea su acceso (si tiene correo). Requiere confirmación. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                batch_id: { type: 'string' },
+                summary: { type: 'string', description: 'Resumen para la confirmación, por ejemplo "79 residentes, 64 con correo".' },
+            },
+            required: ['batch_id'],
         },
     },
     {
@@ -1821,6 +1839,7 @@ export const TOOL_DEFINITIONS = [
 export const MUTATING_TOOLS = new Set<string>([
     'save_shopping_list',
     'save_community_document',
+    'apply_resident_import',
     'create_claim',
     'create_reservation',
     // Compromete dinero y un cupo del edificio: el residente confirma antes.
@@ -2001,6 +2020,7 @@ const ADMIN_TOOLS = new Set([
     'cancel_issued_billing', 'schedule_community_notice', 'list_pending_bookings', 'decide_booking',
     'remember_community_fact',
     'save_community_document',
+    'preview_resident_import', 'apply_resident_import',
     'draft_outbound_email',
     'register_external_provider', 'send_provider_portal_link',
     'list_provider_documents', 'review_provider_document',
@@ -2213,6 +2233,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Editar perfil de maestro', summary: `Cambia: ${Object.keys((typeof input.fields === 'object' && input.fields) || {}).join(', ') || 'nada'}.` };
         case 'delete_provider_photo':
             return { title: 'Borrar foto del perfil', summary: 'La foto deja de verse en el perfil del maestro.' };
+        case 'apply_resident_import':
+            return { title: 'Cargar residentes', summary: `${str('summary') || 'Los residentes del lote revisado'}. Se unen a sus unidades y quienes tienen correo reciben su acceso.` };
         case 'save_community_document':
             return { title: 'Publicar documento para la comunidad', summary: `${str('title') || 'El documento'} (${str('kind') || 'otro'}). Todos los vecinos podrán consultarlo con CoCo.` };
         case 'create_amenity':
@@ -3404,6 +3426,17 @@ export async function executeTool(
                     return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
                 }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'preview_resident_import':
+            case 'apply_resident_import': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar tu comunidad.');
+                if (!isAdmin(userCtx)) return { error: 'Solo la administración puede cargar residentes.' };
+                const actor = { id: userCtx.user_id, role: 'admin', communityId, name: userCtx.name ?? null };
+                return name === 'preview_resident_import'
+                    ? previewResidentImport(actor, input as Record<string, unknown>)
+                    : applyResidentImport(actor, input as Record<string, unknown>);
             }
 
             case 'search_community_documents':

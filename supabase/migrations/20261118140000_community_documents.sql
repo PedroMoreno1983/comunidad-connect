@@ -14,7 +14,7 @@ VALUES (
     'community-documents',
     false,
     26214400,
-    ARRAY['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+    ARRAY['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/vnd.ms-excel', 'application/octet-stream']
 )
 ON CONFLICT (id) DO UPDATE
 SET public = EXCLUDED.public,

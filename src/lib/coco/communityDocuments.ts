@@ -3,6 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import type { CommunityDocumentHit, CommunityDocumentKind, CommunityDocumentRead } from '@/lib/types';
 
 /**
@@ -35,13 +36,13 @@ export class CommunityDocumentError extends Error {
 
 export function documentExtension(fileName: string) {
     const extension = fileName.split('.').at(-1)?.toLowerCase() || '';
-    return ['pdf', 'docx', 'txt'].includes(extension) ? extension as 'pdf' | 'docx' | 'txt' : null;
+    return ['pdf', 'docx', 'txt', 'xlsx', 'csv'].includes(extension) ? extension as 'pdf' | 'docx' | 'txt' | 'xlsx' | 'csv' : null;
 }
 
 /** Ruta en el bucket: la comunidad y quien sube, más un id. Sin el nombre original (puede traer datos). */
 export function documentStoragePath(communityId: string, userId: string, fileName: string) {
     const extension = documentExtension(fileName);
-    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX o TXT.');
+    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX, TXT, XLSX o CSV.');
     return `${communityId}/${userId}/${randomUUID()}.${extension}`;
 }
 
@@ -145,6 +146,9 @@ export async function readUploadedDocument(input: { communityId: string; userId:
             const transcribed = await transcribeScannedPages(bytes, scanned);
             pages = pages.map(page => transcribed.has(page.page) ? { page: page.page, text: transcribed.get(page.page)!, ocr: true } : page);
         }
+    } else if (extension === 'xlsx') {
+        // Una nómina en Excel: CoCo la ve como tabla y puede cargarla con preview_resident_import.
+        pages = [{ page: 1, text: clean(await spreadsheetBufferToText(bytes, { maxRows: 5000 })), ocr: false }];
     } else if (extension === 'docx') {
         const mammoth = await import('mammoth');
         pages = [{ page: 1, text: clean((await mammoth.extractRawText({ buffer: bytes })).value), ocr: false }];
