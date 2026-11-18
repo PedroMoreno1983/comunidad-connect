@@ -75,9 +75,12 @@ export const AdminUsersService = {
             }
         }
 
+        // profiles y units se unen por dos claves (owner_id y resident_profile_id):
+        // sin nombrar la relación, PostgREST responde PGRST201 y la pantalla de
+        // Usuarios quedaba vacía en todas las comunidades (18-11-2026).
         let query = supabase
             .from("profiles")
-            .select("id, name, email, role, units(number)")
+            .select("id, name, email, role, resident_units:units!units_resident_profile_id_fkey(number), owned_units:units!units_owner_id_fkey(number)")
             .order("name");
 
         if (communityId) query = query.eq("community_id", communityId);
@@ -85,8 +88,14 @@ export const AdminUsersService = {
         const { data, error } = await query;
         if (error) throw error;
 
+        type Row = Omit<AdminProfile, "units"> & { resident_units?: { number: string }[] | null; owned_units?: { number: string }[] | null };
+        const users: AdminProfile[] = ((data || []) as Row[]).map(({ resident_units, owned_units, ...profile }) => ({
+            ...profile,
+            units: resident_units?.length ? resident_units : owned_units ?? [],
+        }));
+
         return {
-            users: (data || []) as AdminProfile[],
+            users,
             communityName,
             residentCode,
             conciergeCode,
