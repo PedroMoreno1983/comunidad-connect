@@ -30,30 +30,30 @@ export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCre
                 type="button"
                 onClick={onCreate}
                 disabled={disabled}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-500/50 px-3 py-2.5 text-sm font-semibold text-brand-300 hover:bg-brand-500/10 disabled:opacity-40"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--cc-copper)] px-3 py-2.5 text-sm font-semibold text-[var(--cc-copper-text)] hover:bg-[var(--cc-copper-tint)] disabled:opacity-40"
             >
                 <Plus className="h-4 w-4" /> Nueva conversación
             </button>
             <label className="relative block">
                 <span className="sr-only">Buscar conversaciones</span>
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--cc-ink-tertiary)]" />
                 <input
                     value={query}
                     onChange={event => setQuery(event.target.value)}
                     placeholder="Buscar"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-brand-500/50 focus:outline-none"
+                    className="w-full rounded-lg border border-[var(--cc-line-strong)] bg-[var(--cc-ivory)] py-2 pl-8 pr-3 text-xs text-[var(--cc-ink)] placeholder:text-[var(--cc-ink-tertiary)] focus:border-[var(--cc-copper)] focus:outline-none"
                 />
             </label>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
                 {groups.length === 0 && (
-                    <p className="px-2 py-6 text-center text-xs text-slate-500">
+                    <p className="px-2 py-6 text-center text-xs text-[var(--cc-ink-tertiary)]">
                         {query ? "Ninguna conversación coincide." : "Tus conversaciones aparecerán aquí."}
                     </p>
                 )}
                 {groups.map(group => (
                     <section key={group.label}>
-                        <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{group.label}</p>
+                        <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cc-ink-tertiary)]">{group.label}</p>
                         <ul className="space-y-0.5">
                             {group.threads.map(thread => {
                                 const active = thread.id === activeId;
@@ -62,7 +62,7 @@ export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCre
                                     return (
                                         <li key={thread.id}>
                                             <form
-                                                className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1"
+                                                className="flex items-center gap-1 rounded-lg bg-[var(--cc-ivory-soft)] px-2 py-1"
                                                 onSubmit={event => { event.preventDefault(); commitRename(); }}
                                             >
                                                 <input
@@ -72,10 +72,10 @@ export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCre
                                                     onChange={event => setDraft(event.target.value)}
                                                     onKeyDown={event => { if (event.key === "Escape") setEditingId(null); }}
                                                     aria-label="Nuevo nombre de la conversación"
-                                                    className="min-w-0 flex-1 bg-transparent text-xs text-white focus:outline-none"
+                                                    className="min-w-0 flex-1 bg-transparent text-xs text-[var(--cc-ink)] focus:outline-none"
                                                 />
-                                                <button type="submit" aria-label="Guardar nombre" className="rounded p-1 text-emerald-300 hover:bg-white/10"><Check className="h-3.5 w-3.5" /></button>
-                                                <button type="button" aria-label="Cancelar" onClick={() => setEditingId(null)} className="rounded p-1 text-slate-400 hover:bg-white/10"><X className="h-3.5 w-3.5" /></button>
+                                                <button type="submit" aria-label="Guardar nombre" className="rounded p-1 text-[var(--cc-sage-text)] hover:bg-[var(--cc-copper-tint)]"><Check className="h-3.5 w-3.5" /></button>
+                                                <button type="button" aria-label="Cancelar" onClick={() => setEditingId(null)} className="rounded p-1 text-[var(--cc-ink-muted)] hover:bg-[var(--cc-copper-tint)]"><X className="h-3.5 w-3.5" /></button>
                                             </form>
                                         </li>
                                     );
@@ -88,22 +88,22 @@ export function CoCoThreadSidebar({ threads, activeId, disabled, onSelect, onCre
                                             disabled={disabled}
                                             aria-current={active ? "page" : undefined}
                                             title={thread.title}
-                                            className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs disabled:opacity-40 ${active ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"} ${editable ? "pr-20" : ""}`}
+                                            className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs disabled:opacity-40 ${active ? "bg-[var(--cc-copper-tint)] font-semibold text-[var(--cc-ink)]" : "text-[var(--cc-ink-muted)] hover:bg-[var(--cc-ivory-soft)] hover:text-[var(--cc-ink)]"} ${editable ? "pr-20" : ""}`}
                                         >
                                             {thread.pinned
-                                                ? <Pin className="h-3.5 w-3.5 shrink-0 text-brand-400" />
-                                                : <MessageSquare className="h-3.5 w-3.5 shrink-0 text-slate-500" />}
+                                                ? <Pin className="h-3.5 w-3.5 shrink-0 text-[var(--cc-copper-text)]" />
+                                                : <MessageSquare className="h-3.5 w-3.5 shrink-0 text-[var(--cc-ink-tertiary)]" />}
                                             <span className="truncate">{thread.title}</span>
                                         </button>
                                         {editable && (
                                             <div className={`absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}>
-                                                <button type="button" disabled={disabled} onClick={() => onTogglePin(thread.id, !thread.pinned)} aria-label={thread.pinned ? "Desfijar conversación" : "Fijar conversación"} title={thread.pinned ? "Desfijar" : "Fijar"} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white">
+                                                <button type="button" disabled={disabled} onClick={() => onTogglePin(thread.id, !thread.pinned)} aria-label={thread.pinned ? "Desfijar conversación" : "Fijar conversación"} title={thread.pinned ? "Desfijar" : "Fijar"} className="rounded p-1 text-[var(--cc-ink-muted)] hover:bg-[var(--cc-copper-tint)] hover:text-[var(--cc-ink)]">
                                                     {thread.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                                                 </button>
-                                                <button type="button" disabled={disabled} onClick={() => startRename(thread)} aria-label="Renombrar conversación" title="Renombrar" className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white">
+                                                <button type="button" disabled={disabled} onClick={() => startRename(thread)} aria-label="Renombrar conversación" title="Renombrar" className="rounded p-1 text-[var(--cc-ink-muted)] hover:bg-[var(--cc-copper-tint)] hover:text-[var(--cc-ink)]">
                                                     <Pencil className="h-3.5 w-3.5" />
                                                 </button>
-                                                <button type="button" disabled={disabled} onClick={() => onDelete(thread.id)} aria-label="Borrar conversación" title="Borrar" className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-rose-300">
+                                                <button type="button" disabled={disabled} onClick={() => onDelete(thread.id)} aria-label="Borrar conversación" title="Borrar" className="rounded p-1 text-[var(--cc-ink-muted)] hover:bg-[var(--cc-rose-tint)] hover:text-[var(--cc-rose-text)]">
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
                                             </div>

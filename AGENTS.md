@@ -249,6 +249,13 @@ El agente CoCo tiene dos capas:
 
 2. **`/api/coco/`** — Agente conversacional principal: usa Anthropic Codex con tools para gestión del condominio (IoT, gastos, solicitudes, etc.).
 
+**Adjuntos del chat `/chat`** (`src/lib/coco/chatAttachmentRules.ts`, puro y compartido por cliente y servidor):
+- Hasta **5 archivos por mensaje** (imágenes y documentos mezclados), con el clip (`multiple`), arrastrando sobre el panel o pegando desde el portapapeles. Documentos (PDF, DOCX, TXT, XLSX, CSV) de hasta **25 MB** cada uno; imágenes (JPG, PNG, GIF, WebP) de hasta **20 MB** el original.
+- El cuerpo de `/api/coco` no puede pasar de 4,5 MB (Vercel): los documentos suben directo al bucket privado `community-documents` (`CommunityDocumentsService.readForCoCo`) y al API solo llega el texto leído; las imágenes se achican en el navegador (`prepareChatImage.ts`, lado mayor 1568 px, JPEG) para que todas juntas quepan en ~3,4 MB.
+- `/api/coco` acepta `images[]` y `legalDocuments[]` (y, por compatibilidad con el widget flotante, `imageBase64` y `legalDocument`). El texto de los documentos se reparte: hasta 90 mil caracteres por turno y 35 mil por documento; el resto CoCo lo busca con `search_community_documents`.
+- PDF escaneados: se transcriben con Gemini (`communityDocuments.ts`). Si esa transcripción falla o no está disponible, el documento **no** se guarda con páginas en blanco: el PDF (hasta 18 MB y 100 páginas) va al modelo como bloque `document` para que lo lea con visión en ese turno (`visualPdfPath`), y `/api/coco` lo borra del bucket al terminar. El PDF en base64 nunca queda en la sesión (`withoutHeavyBlocks`).
+- Colores del panel: tokens `--cc-*` (sigue el tema claro/oscuro); no vuelvas a fijar fondos oscuros como `#0E0B08`.
+
 El gateway IoT está en `coco-gateway.js` (Node.js standalone) para recibir datos de sensores.
 
 ---

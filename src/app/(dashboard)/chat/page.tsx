@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ClipboardEvent, type DragEvent } from "react";
 import Image from "next/image";
-import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus, PanelLeft, ShoppingCart, Wrench, Store } from "lucide-react";
+import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight, ShieldCheck, Check, XCircle, MessageCircle, Paperclip, X, Plus, PanelLeft, ShoppingCart, Wrench, Store, FileText, ImageIcon, Upload } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import confetti from "canvas-confetti";
@@ -16,18 +16,20 @@ import { CoCoThreadSidebar } from "@/components/CoCo/CoCoThreadSidebar";
 import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, CocoConsentState, PrivacyConsentsResponse, WhatsAppStartStatus } from "@/lib/types";
 import { CommunityDocumentsService } from "@/lib/api";
 import { COCO_PRIVACY_NOTICE, PRIVACY_POLICY_VERSION } from "@/lib/privacy";
+import { CHAT_FILE_ACCEPT, MAX_CHAT_ATTACHMENTS, MAX_CHAT_DOCUMENT_BYTES, MAX_CHAT_IMAGE_BYTES, addChatAttachments, attachmentSummary, formatBytes, imageDataUrlBudget, type ChatAttachmentDraft, type CoCoDocumentRead } from "@/lib/coco/chatAttachmentRules";
+import { prepareChatImage } from "@/lib/coco/prepareChatImage";
 
-function CoCoMarkdown({ text }: { text: string }) {
+function CoCoMarkdown({ text, onAccent = false }: { text: string; onAccent?: boolean }) {
     return (
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
                 p: ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
-                strong: ({ children }) => <strong className="font-extrabold text-white">{children}</strong>,
+                strong: ({ children }) => <strong className="font-extrabold">{children}</strong>,
                 ul: ({ children }) => <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed mb-2">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4 text-sm leading-relaxed mb-2">{children}</ol>,
                 a: ({ children, href }) => (
-                    <CoCoMarkdownLink href={href} className="font-bold underline text-brand-400 hover:text-brand-300 transition-colors">
+                    <CoCoMarkdownLink href={href} className={onAccent ? "font-bold underline" : "font-bold underline text-[var(--cc-copper-text)] hover:opacity-80 transition-opacity"}>
                         {children}
                     </CoCoMarkdownLink>
                 ),
@@ -84,8 +86,11 @@ export default function CoCoChatPage() {
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(true);
-    const [documentFile, setDocumentFile] = useState<File | null>(null);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    // Adjuntos del próximo mensaje: hasta MAX_CHAT_ATTACHMENTS, imágenes y documentos mezclados.
+    const [attachments, setAttachments] = useState<ChatAttachmentDraft[]>([]);
+    const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+    const [dragActive, setDragActive] = useState(false);
+    const dragDepth = useRef(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [whatsApp, setWhatsApp] = useState<WhatsAppStartStatus | null>(null);
     // Aviso de privacidad de CoCo: se muestra hasta que la persona lo lee y lo acepta.
@@ -135,8 +140,7 @@ export default function CoCoChatPage() {
         setThreadsOpen(false);
         setMsgs([WELCOME_MESSAGE]);
         setInput('');
-        setDocumentFile(null);
-        setSelectedImage(null);
+        clearAttachments();
         try {
             const response = await fetch(`/api/coco?threadId=${encodeURIComponent(id)}`, { cache: 'no-store' });
             if (!response.ok) throw new Error('No pude cargar esta conversación.');
@@ -209,8 +213,7 @@ export default function CoCoChatPage() {
             setThreadsOpen(false);
             setMsgs([WELCOME_MESSAGE]);
             setInput('');
-            setDocumentFile(null);
-            setSelectedImage(null);
+            clearAttachments();
         } catch (error) {
             setMsgs(current => [...current, { id: Date.now().toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude crear la conversación.' }]);
         } finally { setHistoryLoading(false); }
@@ -327,42 +330,113 @@ export default function CoCoChatPage() {
         }, 500);
     };
 
+    function clearAttachments() {
+        setAttachments([]);
+        setAttachmentNotice(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    function addFiles(files: File[]) {
+        if (!files.length) return;
+        const result = addChatAttachments(attachments, files, () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+        setAttachments(result.attachments);
+        setAttachmentNotice(result.rejected.length ? result.rejected.join(' ') : null);
+    }
+
+    function removeAttachment(id: string) {
+        setAttachments(current => current.filter(item => item.id !== id));
+        setAttachmentNotice(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    const acceptsFiles = !hasUnresolvedPending;
+    const hasDraggedFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types || []).includes('Files');
+    const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
+        if (!acceptsFiles || !hasDraggedFiles(event)) return;
+        event.preventDefault();
+        dragDepth.current += 1;
+        setDragActive(true);
+    };
+    const onDragOver = (event: DragEvent<HTMLDivElement>) => {
+        if (!acceptsFiles || !hasDraggedFiles(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+    };
+    const onDragLeave = (event: DragEvent<HTMLDivElement>) => {
+        if (!hasDraggedFiles(event)) return;
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDragActive(false);
+    };
+    const onDrop = (event: DragEvent<HTMLDivElement>) => {
+        if (!hasDraggedFiles(event)) return;
+        event.preventDefault();
+        dragDepth.current = 0;
+        setDragActive(false);
+        if (acceptsFiles) addFiles(Array.from(event.dataTransfer.files || []));
+    };
+    // Pegar una captura o un archivo copiado. Si hay texto, se pega normal.
+    const onPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+        if (!acceptsFiles) return;
+        const files = Array.from(event.clipboardData?.files || []);
+        // Celdas de Excel o texto de Word traen además una imagen: ahí manda el texto.
+        if (!files.length || event.clipboardData.getData('text/plain').trim()) return;
+        event.preventDefault();
+        addFiles(files.map((file, index) => file.name && file.name !== 'image.png'
+            ? file
+            : new File([file], `pegado-${Date.now()}-${index + 1}.${(file.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: file.type })));
+    };
+
     const send = async (text: string) => {
-        if ((!text.trim() && !documentFile && !selectedImage) || loading || historyLoading || !activeThreadId || hasUnresolvedPending) return;
+        if ((!text.trim() && !attachments.length) || loading || historyLoading || !activeThreadId || hasUnresolvedPending) return;
 
-        if (documentFile) {
-            const file = documentFile;
-            const question = text.trim() || 'Analiza este documento y dime qué establece, qué falta y qué debo revisar.';
-            setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'user', text: `${question}\nDocumento: ${file.name}` }]);
+        if (attachments.length) {
+            const files = attachments;
+            const documents = files.filter(item => item.kind === 'document');
+            const imageFiles = files.filter(item => item.kind === 'image');
+            const question = text.trim() || (documents.length
+                ? `Analiza ${files.length > 1 ? 'estos archivos' : 'este documento'} y dime qué establece${files.length > 1 ? 'n' : ''}, qué falta y qué debo revisar.`
+                : `Mira ${imageFiles.length > 1 ? 'estas imágenes' : 'esta imagen'} y dime qué observas y qué debería revisar.`);
+            const preview = imageFiles[0] ? await prepareChatImage(imageFiles[0].file, 400_000).catch(() => undefined) : undefined;
+            setMsgs(previous => [...previous, {
+                id: Date.now().toString(), role: 'user',
+                text: `${question}\n${attachmentSummary(files.map(item => item.file.name))}`,
+                ...(preview ? { imageBase64: preview } : {}),
+            }]);
             setInput('');
-            setDocumentFile(null);
-            if (fileInputRef.current) fileInputRef.current.value = '';
+            clearAttachments();
             setLoading(true);
             try {
-                // Sube directo al almacenamiento y CoCo lo lee completo, escaneos incluidos.
-                const document = await CommunityDocumentsService.readForCoCo(file);
-                appendAssistantReply(await postToCoCo({ message: question, legalDocument: {
-                    name: document.name, text: document.text, pageImages: [],
-                    pageCount: document.pageCount, truncated: document.truncated, documentId: document.documentId,
-                } }));
+                const budget = imageDataUrlBudget(imageFiles.length);
+                // Los documentos suben directo al almacenamiento y el servidor los
+                // lee completos (escaneos incluidos), en paralelo. Las imágenes se
+                // achican aquí para que varias quepan en el mismo mensaje.
+                const [documentResults, imageResults] = await Promise.all([
+                    Promise.allSettled(documents.map(item => CommunityDocumentsService.readForCoCo(item.file))),
+                    Promise.allSettled(imageFiles.map(item => prepareChatImage(item.file, budget))),
+                ]);
+                const failures = [
+                    ...documentResults.flatMap((result, index) => result.status === 'rejected' ? [`${documents[index].file.name}: ${result.reason instanceof Error ? result.reason.message : 'no pude leerlo.'}`] : []),
+                    ...imageResults.flatMap((result, index) => result.status === 'rejected' ? [`${imageFiles[index].file.name}: ${result.reason instanceof Error ? result.reason.message : 'no pude prepararla.'}`] : []),
+                ];
+                const legalDocuments = documentResults.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])
+                    .map((document: CoCoDocumentRead) => ({
+                        name: document.name, text: document.text, pageImages: [],
+                        pageCount: document.pageCount, truncated: document.truncated,
+                        documentId: document.documentId, visualPdfPath: document.visualPdfPath,
+                    }));
+                const images = imageResults.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+                if (failures.length) {
+                    setMsgs(previous => [...previous, { id: `${Date.now()}-fail`, role: 'assistant', text: `No pude usar ${failures.length === 1 ? 'un archivo' : `${failures.length} archivos`}:\n${failures.map(line => `- ${line}`).join('\n')}` }]);
+                }
+                if (!legalDocuments.length && !images.length) return;
+                const skipped = failures.length ? `\n(No pude leer: ${failures.map(line => line.split(':')[0]).join(', ')}.)` : '';
+                appendAssistantReply(await postToCoCo({
+                    message: `${question}${skipped}`.slice(0, 1000),
+                    ...(legalDocuments.length ? { legalDocuments } : {}),
+                    ...(images.length ? { images } : {}),
+                }));
             } catch (error) {
-                setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar el documento.' }]);
-            } finally { setLoading(false); }
-            return;
-        }
-
-        if (selectedImage) {
-            const image = selectedImage;
-            const question = text.trim() || 'Mira esta imagen y dime qué observas y qué debería revisar.';
-            setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'user', text: question, imageBase64: image }]);
-            setInput('');
-            setSelectedImage(null);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            setLoading(true);
-            try {
-                appendAssistantReply(await postToCoCo({ message: question, imageBase64: image }));
-            } catch (error) {
-                setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar la imagen.' }]);
+                setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar los archivos.' }]);
             } finally { setLoading(false); }
             return;
         }
@@ -442,12 +516,29 @@ export default function CoCoChatPage() {
     const neighborMode = user?.role === 'resident' && (user.communityManaged === false || user.residenceVerified === false);
     const chips = user?.role === 'admin' ? ADMIN_CHIPS : neighborMode ? NEIGHBOR_CHIPS : CHIPS;
 
+    // Colores: tokens --cc-* para seguir el tema de la app (claro u oscuro).
+    // Nunca bg-white con texto var(--cc-ink): en .dark ese texto es claro.
+    const muted = "text-[var(--cc-ink-muted)]";
+    const subtle = "text-[var(--cc-ink-tertiary)]";
+    const surface = "bg-[var(--cc-paper)] border border-[var(--cc-line-strong)]";
+
     return (
         <div
-            className="flex w-full min-h-[calc(100vh-4rem)]"
-            style={{ backgroundColor: "#0E0B08", color: "#f3efe8" }}
+            className="relative flex w-full min-h-[calc(100vh-4rem)] bg-[var(--cc-ivory)] text-[var(--cc-ink)]"
+            onDragEnter={onDragEnter}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onPaste={onPaste}
         >
-            <aside className="hidden w-72 shrink-0 border-r border-white/10 lg:block">
+            {dragActive && (
+                <div className="pointer-events-none absolute inset-3 z-40 flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-[var(--cc-copper)] bg-[var(--cc-paper)]/90 text-[var(--cc-ink)] backdrop-blur-sm" role="status" aria-live="polite">
+                    <Upload className="h-10 w-10 text-[var(--cc-copper-text)]" />
+                    <p className="text-lg font-semibold">Suelta los archivos aquí</p>
+                    <p className={`text-xs ${muted}`}>Hasta {MAX_CHAT_ATTACHMENTS} archivos: PDF, Word, Excel, CSV, TXT o imágenes</p>
+                </div>
+            )}
+            <aside className="hidden w-72 shrink-0 border-r border-[var(--cc-line-strong)] bg-[var(--cc-paper)] lg:block">
                 <div className="sticky top-0 h-[calc(100vh-4rem)]">
                     <CoCoThreadSidebar
                         threads={threads}
@@ -463,9 +554,9 @@ export default function CoCoChatPage() {
             </aside>
             {threadsOpen && (
                 <div className="fixed inset-0 z-50 flex lg:hidden" role="dialog" aria-modal="true" aria-label="Conversaciones">
-                    <div className="h-full w-80 max-w-[85vw] border-r border-white/10" style={{ backgroundColor: "#0E0B08" }}>
+                    <div className="h-full w-80 max-w-[85vw] border-r border-[var(--cc-line-strong)] bg-[var(--cc-paper)] text-[var(--cc-ink)]">
                         <div className="flex justify-end px-3 pt-3">
-                            <button type="button" onClick={() => setThreadsOpen(false)} aria-label="Cerrar conversaciones" className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
+                            <button type="button" onClick={() => setThreadsOpen(false)} aria-label="Cerrar conversaciones" className={`rounded-lg p-2 ${muted} hover:bg-[var(--cc-copper-tint)] hover:text-[var(--cc-ink)]`}><X className="h-4 w-4" /></button>
                         </div>
                         <div className="h-[calc(100%-3.5rem)]">
                             <CoCoThreadSidebar
@@ -480,18 +571,18 @@ export default function CoCoChatPage() {
                             />
                         </div>
                     </div>
-                    <button type="button" className="flex-1 bg-black/60" aria-label="Cerrar conversaciones" onClick={() => setThreadsOpen(false)} />
+                    <button type="button" className="flex-1 bg-black/50" aria-label="Cerrar conversaciones" onClick={() => setThreadsOpen(false)} />
                 </div>
             )}
             <div className="flex min-w-0 flex-1 flex-col justify-between">
-            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5 lg:hidden">
-                <button type="button" onClick={() => setThreadsOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10">
+            <div className="flex items-center gap-2 border-b border-[var(--cc-line-strong)] px-4 py-2.5 lg:hidden">
+                <button type="button" onClick={() => setThreadsOpen(true)} className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold ${muted} hover:bg-[var(--cc-copper-tint)]`}>
                     <PanelLeft className="h-4 w-4" /> Conversaciones
                 </button>
-                <span className="min-w-0 flex-1 truncate text-xs text-slate-500">
+                <span className={`min-w-0 flex-1 truncate text-xs ${subtle}`}>
                     {threads.find(thread => thread.id === activeThreadId)?.title || ''}
                 </span>
-                <button type="button" onClick={() => void createThread()} disabled={loading || historyLoading} aria-label="Nueva conversación" className="rounded-lg p-2 text-brand-300 hover:bg-white/10 disabled:opacity-40">
+                <button type="button" onClick={() => void createThread()} disabled={loading || historyLoading} aria-label="Nueva conversación" className="rounded-lg p-2 text-[var(--cc-copper-text)] hover:bg-[var(--cc-copper-tint)] disabled:opacity-40">
                     <Plus className="h-4 w-4" />
                 </button>
             </div>
@@ -501,17 +592,18 @@ export default function CoCoChatPage() {
                 {/* Hero Greeting when chat is empty or just welcome message */}
                 {msgs.length <= 1 ? (
                     <div className="py-12 text-center space-y-4 my-auto">
-                        <div className="inline-flex p-3 bg-white/5 rounded-2xl border border-white/10 text-brand-400 mb-2">
+                        <div className={`inline-flex p-3 rounded-2xl text-[var(--cc-copper-text)] mb-2 ${surface}`}>
                             <Bot className="h-10 w-10" />
                         </div>
-                        <DisplayHeading size={42} style={{ color: "#f3efe8" }}>
-                            ¿En qué te <em className="text-italic-serif text-brand-500">ayudo</em> hoy, {firstName}?
+                        <DisplayHeading size={42} style={{ color: "var(--cc-ink)" }}>
+                            ¿En qué te <em className="text-italic-serif text-[var(--cc-copper-text)]">ayudo</em> hoy, {firstName}?
                         </DisplayHeading>
-                        <p className="text-sm text-slate-400 max-w-md mx-auto">
+                        <p className={`text-sm max-w-md mx-auto ${muted}`}>
                             {user?.role === 'admin'
                                 ? `Conversemos sobre ${user.communityName || 'tu comunidad'}. Puedo revisar lo que falta, ayudarte a operar y pedirte aprobación antes de aplicar cambios.`
                                 : 'Puedes pedirme reportar una filtración, agendar un quincho, revisar tu cobro de gastos comunes o consultar reglamentos.'}
                         </p>
+                        <p className={`text-xs ${subtle}`}>Puedes arrastrar o pegar hasta {MAX_CHAT_ATTACHMENTS} archivos a la vez.</p>
                     </div>
                 ) : (
                     /* Messages Flow */
@@ -521,8 +613,8 @@ export default function CoCoChatPage() {
                             return (
                                 <div key={msg.id} className={`flex gap-4 ${isAssistant ? "justify-start" : "justify-end animate-fade-in"}`}>
                                     {isAssistant && (
-                                        <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-1">
-                                            <Bot className="h-5 w-5 text-brand-400" />
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 ${surface}`}>
+                                            <Bot className="h-5 w-5 text-[var(--cc-copper-text)]" />
                                         </div>
                                     )}
                                     <div className="flex flex-col gap-2 max-w-[80%] min-w-0">
@@ -530,33 +622,33 @@ export default function CoCoChatPage() {
                                         {msg.text && <div
                                             className={`px-4 py-3.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
                                                 isAssistant 
-                                                    ? "bg-white/5 border border-white/10 text-slate-200" 
-                                                    : "bg-brand-500 text-white shadow-lg"
+                                                    ? `${surface} text-[var(--cc-ink)] shadow-sm`
+                                                    : "bg-[var(--cc-copper)] text-white shadow-md"
                                             }`}
                                         >
-                                            <CoCoMarkdown text={msg.text} />
+                                            <CoCoMarkdown text={msg.text} onAccent={!isAssistant} />
                                         </div>}
                                         {isAssistant && msg.pendingActions?.map(pending => {
                                             const decision = msg.resolvedActions?.[pending.toolUseId];
                                             return (
-                                                <div key={pending.toolUseId} className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3.5">
+                                                <div key={pending.toolUseId} className="rounded-xl border border-[var(--cc-amber)] bg-[var(--cc-amber-tint)] p-3.5 text-[var(--cc-ink)]">
                                                     <div className="flex items-start gap-2.5">
-                                                        <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-300" />
+                                                        <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--cc-copper-text)]" />
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="text-xs font-black text-amber-100">{pending.title}</p>
-                                                            <p className="mt-1 text-xs leading-relaxed text-amber-100/80">{pending.summary}</p>
+                                                            <p className="text-xs font-black">{pending.title}</p>
+                                                            <p className={`mt-1 text-xs leading-relaxed ${muted}`}>{pending.summary}</p>
                                                             {pending.previewUrl && (
                                                                 // eslint-disable-next-line @next/next/no-img-element -- enlace firmado temporal de Storage
                                                                 <img src={pending.previewUrl} alt="Imagen que se va a guardar" className="mt-2 max-h-48 rounded-lg object-contain" />
                                                             )}
                                                             {Object.entries(pending.input).filter(([, value]) => value !== undefined && value !== null && value !== "").length > 0 && (
-                                                                <dl className="mt-2 space-y-0.5 rounded-lg bg-black/20 p-2">
+                                                                <dl className="mt-2 space-y-0.5 rounded-lg bg-[var(--cc-paper)] p-2">
                                                                     {Object.entries(pending.input)
                                                                         .filter(([, value]) => value !== undefined && value !== null && value !== "")
                                                                         .map(([key, value]) => (
                                                                             <div key={key} className="flex gap-1.5 text-[11px] leading-snug">
-                                                                                <dt className="shrink-0 font-mono uppercase tracking-wide text-amber-200/60">{key.replace(/_/g, " ")}:</dt>
-                                                                                <dd className="min-w-0 break-words font-mono text-amber-100/90">{typeof value === "string" || typeof value === "number" ? String(value) : JSON.stringify(value)}</dd>
+                                                                                <dt className={`shrink-0 font-mono uppercase tracking-wide ${subtle}`}>{key.replace(/_/g, " ")}:</dt>
+                                                                                <dd className="min-w-0 break-words font-mono text-[var(--cc-ink)]">{typeof value === "string" || typeof value === "number" ? String(value) : JSON.stringify(value)}</dd>
                                                                             </div>
                                                                         ))}
                                                                 </dl>
@@ -569,7 +661,7 @@ export default function CoCoChatPage() {
                                                                 type="button"
                                                                 onClick={() => resolveAction(msg.id, msg.pendingActions || [], pending.toolUseId, "approved")}
                                                                 disabled={loading}
-                                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-400 disabled:opacity-50"
+                                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--cc-ink)] px-3 py-2 text-xs font-bold text-[var(--cc-paper)] transition-opacity hover:opacity-90 disabled:opacity-50"
                                                             >
                                                                 <Check className="h-3.5 w-3.5" /> {(msg.pendingActions?.length || 0) > 1 ? "Aprobar solo esta" : "Aprobar"}
                                                             </button>
@@ -577,13 +669,13 @@ export default function CoCoChatPage() {
                                                                 type="button"
                                                                 onClick={() => resolveAction(msg.id, msg.pendingActions || [], pending.toolUseId, "rejected")}
                                                                 disabled={loading}
-                                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-300/50 px-3 py-2 text-xs font-bold text-amber-100 transition-colors hover:bg-white/10 disabled:opacity-50"
+                                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--cc-line-strong)] bg-[var(--cc-paper)] px-3 py-2 text-xs font-bold text-[var(--cc-ink)] transition-colors hover:bg-[var(--cc-ivory-soft)] disabled:opacity-50"
                                                             >
                                                                 <XCircle className="h-3.5 w-3.5" /> Rechazar
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <p className="mt-2.5 text-xs font-bold text-amber-200">
+                                                        <p className="mt-2.5 text-xs font-bold text-[var(--cc-copper-text)]">
                                                             {decision === "approved" ? "✓ Aprobado" : "✕ Rechazado"}
                                                         </p>
                                                     )}
@@ -594,7 +686,7 @@ export default function CoCoChatPage() {
                                             <div className="mt-1 flex justify-start">
                                                 <a 
                                                     href={msg.nav}
-                                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-400 hover:text-brand-300 transition-colors"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--cc-copper-text)] hover:opacity-80 transition-opacity"
                                                 >
                                                     Ir a {COCO_NAV_MAP[msg.nav] || 'la sección'} <ArrowRight className="h-3 w-3" />
                                                 </a>
@@ -602,7 +694,7 @@ export default function CoCoChatPage() {
                                         )}
                                     </div>
                                     {!isAssistant && (
-                                        <div className="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-1">
+                                        <div className="w-9 h-9 rounded-xl bg-[var(--cc-copper-tint)] text-[var(--cc-copper-text)] border border-[var(--cc-line-strong)] flex items-center justify-center font-bold text-xs flex-shrink-0 mt-1">
                                             {user?.name?.charAt(0).toUpperCase() || "U"}
                                         </div>
                                     )}
@@ -611,12 +703,12 @@ export default function CoCoChatPage() {
                         })}
                         {loading && (
                             <div className="flex gap-4 justify-start">
-                                <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                                    <Bot className="h-5 w-5 text-brand-400" />
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${surface}`}>
+                                    <Bot className="h-5 w-5 text-[var(--cc-copper-text)]" />
                                 </div>
-                                <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 flex gap-1.5 items-center">
+                                <div className={`rounded-2xl px-5 py-4 flex gap-1.5 items-center ${surface}`}>
                                     {[0, 150, 300].map(d => (
-                                        <span key={d} className="w-2 h-2 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                                        <span key={d} className="w-2 h-2 bg-[var(--cc-copper)] rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                                     ))}
                                 </div>
                             </div>
@@ -626,30 +718,30 @@ export default function CoCoChatPage() {
                 )}
 
                 {/* Suggestion Chips & Input bar */}
-                <div className="space-y-4 border-t border-white/5 pt-6 bg-[#0E0B08]">
+                <div className="space-y-4 border-t border-[var(--cc-line-strong)] pt-6 bg-[var(--cc-ivory)]">
                     {cocoConsent === "unknown" && (
-                        <section aria-label={COCO_PRIVACY_NOTICE.title} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-slate-300">
-                            <p className="flex items-center gap-2 font-semibold text-white"><ShieldCheck className="h-4 w-4 text-emerald-300" /> {COCO_PRIVACY_NOTICE.title}</p>
+                        <section aria-label={COCO_PRIVACY_NOTICE.title} className={`rounded-2xl px-5 py-4 text-sm ${surface} ${muted}`}>
+                            <p className="flex items-center gap-2 font-semibold text-[var(--cc-ink)]"><ShieldCheck className="h-4 w-4 text-[var(--cc-sage-text)]" /> {COCO_PRIVACY_NOTICE.title}</p>
                             <ul className="mt-2 list-disc space-y-1 pl-5 leading-6">
                                 {COCO_PRIVACY_NOTICE.points.map(point => <li key={point}>{point}</li>)}
                             </ul>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
-                                <button type="button" disabled={savingConsent} onClick={() => void decideCocoConsent(true)} className="min-h-11 rounded-full bg-emerald-500/20 px-4 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-60">{COCO_PRIVACY_NOTICE.accept}</button>
-                                <a href="/privacy" className="text-xs text-slate-400 underline">Política de privacidad, versión {PRIVACY_POLICY_VERSION}</a>
+                                <button type="button" disabled={savingConsent} onClick={() => void decideCocoConsent(true)} className="min-h-11 rounded-full bg-[var(--cc-ink)] px-4 text-sm font-semibold text-[var(--cc-paper)] hover:opacity-90 disabled:opacity-60">{COCO_PRIVACY_NOTICE.accept}</button>
+                                <a href="/privacy" className={`text-xs underline ${subtle}`}>Política de privacidad, versión {PRIVACY_POLICY_VERSION}</a>
                             </div>
                         </section>
                     )}
                     {whatsApp?.available && (
                         <div className="text-center">
-                            <a href={whatsApp.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-5 py-2.5 text-sm font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/25">
+                            <a href={whatsApp.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--cc-line-strong)] bg-[var(--cc-sage-tint)] px-5 py-2.5 text-sm font-semibold text-[var(--cc-sage-text)] transition-opacity hover:opacity-90">
                                 <MessageCircle className="h-4 w-4" /> Hablar con CoCo por WhatsApp
                             </a>
                         </div>
                     )}
                     {whatsApp && !whatsApp.available && whatsApp.reason !== 'unconfigured' && (
-                        <p className="text-center text-xs text-slate-400">
+                        <p className={`text-center text-xs ${muted}`}>
                             {whatsApp.reason === 'consent' ? 'Para usar WhatsApp, actívalo en el' : 'Para usar WhatsApp, agrega tu teléfono chileno en tu'}{' '}
-                            <a href={whatsApp.reason === 'consent' ? '/privacy-center' : '/profile'} className="font-semibold text-emerald-300 underline">
+                            <a href={whatsApp.reason === 'consent' ? '/privacy-center' : '/profile'} className="font-semibold text-[var(--cc-sage-text)] underline">
                                 {whatsApp.reason === 'consent' ? 'Centro de privacidad' : 'perfil'}
                             </a>.
                         </p>
@@ -663,9 +755,9 @@ export default function CoCoChatPage() {
                                     <button
                                         key={chip.label}
                                         onClick={() => send(chip.label)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold ${surface} ${muted} hover:text-[var(--cc-ink)] hover:border-[var(--cc-copper)] transition-colors`}
                                     >
-                                        <Icon className="h-3.5 w-3.5 text-brand-400" />
+                                        <Icon className="h-3.5 w-3.5 text-[var(--cc-copper-text)]" />
                                         {chip.label}
                                     </button>
                                 );
@@ -673,35 +765,36 @@ export default function CoCoChatPage() {
                         </div>
                     )}
 
-                    {(documentFile || selectedImage) && (
-                        <div className="mx-auto flex max-w-3xl items-center justify-between rounded-xl border border-white/15 px-4 py-2 text-xs text-slate-300">
-                            <span className="truncate">{documentFile ? `Documento: ${documentFile.name}` : 'Imagen lista para enviar'}</span>
-                            <button type="button" onClick={() => { setDocumentFile(null); setSelectedImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label="Quitar adjunto"><X className="h-4 w-4" /></button>
-                        </div>
+                    {attachments.length > 0 && (
+                        <ul aria-label="Archivos adjuntos" className="mx-auto flex max-w-3xl flex-wrap gap-2">
+                            {attachments.map(item => (
+                                <li key={item.id} className={`flex max-w-full items-center gap-2 rounded-xl py-1.5 pl-3 pr-1.5 text-xs ${surface}`}>
+                                    {item.kind === 'image'
+                                        ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-[var(--cc-copper-text)]" />
+                                        : <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--cc-copper-text)]" />}
+                                    <span className="max-w-[14rem] truncate font-medium text-[var(--cc-ink)]" title={item.file.name}>{item.file.name}</span>
+                                    <span className={`shrink-0 ${subtle}`}>{formatBytes(item.file.size)}</span>
+                                    <button type="button" onClick={() => removeAttachment(item.id)} aria-label={`Quitar ${item.file.name}`} className={`rounded-full p-1 ${muted} hover:bg-[var(--cc-copper-tint)] hover:text-[var(--cc-ink)]`}>
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </li>
+                            ))}
+                            <li className={`self-center text-[11px] ${subtle}`}>{attachments.length}/{MAX_CHAT_ATTACHMENTS}</li>
+                        </ul>
+                    )}
+                    {attachmentNotice && (
+                        <p role="alert" className="mx-auto max-w-3xl text-xs text-[var(--cc-rose-text)]">{attachmentNotice}</p>
                     )}
                     {/* Input Bar: rounded pill with send button in copper */}
                     <form 
                         onSubmit={(e) => { e.preventDefault(); send(input); }}
                         className="relative flex items-center max-w-3xl w-full mx-auto"
                     >
-                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.xlsx,.csv,image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={event => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type) && file.size <= 5 * 1024 * 1024) {
-                                const reader = new FileReader();
-                                reader.onload = () => { setSelectedImage(typeof reader.result === 'string' ? reader.result : null); setDocumentFile(null); };
-                                reader.readAsDataURL(file);
-                                return;
-                            }
-                            if (!/\.(pdf|docx|txt|xlsx|csv)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
-                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta un PDF, DOCX, TXT, Excel o CSV de hasta 25 MB, o una imagen JPG, PNG, GIF o WebP de hasta 5 MB.' }]);
-                                event.target.value = '';
-                                return;
-                            }
-                            setDocumentFile(file);
-                            setSelectedImage(null);
+                        <input ref={fileInputRef} type="file" multiple accept={CHAT_FILE_ACCEPT} className="hidden" onChange={event => {
+                            addFiles(Array.from(event.target.files || []));
+                            event.target.value = '';
                         }} />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading || historyLoading || hasUnresolvedPending} aria-label="Adjuntar archivo" title="Adjuntar documento o imagen" className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading || historyLoading || hasUnresolvedPending || attachments.length >= MAX_CHAT_ATTACHMENTS} aria-label="Adjuntar archivos" title={`Adjunta hasta ${MAX_CHAT_ATTACHMENTS} archivos: documentos de hasta ${formatBytes(MAX_CHAT_DOCUMENT_BYTES)} e imágenes de hasta ${formatBytes(MAX_CHAT_IMAGE_BYTES)}`} className={`absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full ${muted} hover:bg-[var(--cc-copper-tint)] hover:text-[var(--cc-ink)] disabled:opacity-40`}>
                             <Paperclip className="h-4 w-4" />
                         </button>
                         <input
@@ -710,12 +803,13 @@ export default function CoCoChatPage() {
                             onChange={(e) => setInput(e.target.value)}
                             placeholder={hasUnresolvedPending ? "Aprueba o rechaza la acción pendiente" : "Pregúntale a CoCo..."}
                             disabled={loading || historyLoading || hasUnresolvedPending}
-                            className="w-full h-14 pl-14 pr-16 rounded-full bg-white/5 border border-white/10 text-slate-200 placeholder:text-slate-500 text-sm font-medium outline-none transition-all focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                            className="w-full h-14 pl-14 pr-16 rounded-full bg-[var(--cc-paper)] border border-[var(--cc-line-strong)] text-[var(--cc-ink)] placeholder:text-[var(--cc-ink-tertiary)] text-sm font-medium outline-none shadow-sm transition-all focus:border-[var(--cc-copper)] focus:ring-1 focus:ring-[var(--cc-copper)]"
                         />
                         <button
                             type="submit"
-                            disabled={loading || historyLoading || hasUnresolvedPending || (!input.trim() && !documentFile && !selectedImage)}
-                            className="absolute right-2 h-10 w-10 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors disabled:opacity-40 shadow-md"
+                            aria-label="Enviar"
+                            disabled={loading || historyLoading || hasUnresolvedPending || (!input.trim() && !attachments.length)}
+                            className="absolute right-2 h-10 w-10 rounded-full bg-[var(--cc-copper)] text-white flex items-center justify-center hover:bg-[var(--cc-copper-deep)] transition-colors disabled:opacity-40 shadow-md"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                         </button>

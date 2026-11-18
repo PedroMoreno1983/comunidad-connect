@@ -1,6 +1,8 @@
 /**
  * Lectura de un documento con páginas escaneadas: no se guarda a medias, pasa
- * por el presupuesto de IA, y si algo falla el archivo no queda huérfano.
+ * por el presupuesto de IA, y si la transcripción falla el PDF se le pasa al
+ * modelo para que lo lea con visión en ese turno (sin guardarlo con páginas en
+ * blanco). Si tampoco se puede, el archivo no queda huérfano.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,12 +25,12 @@ const budget = vi.hoisted(() => ({ enforce: vi.fn(async () => undefined), record
 vi.mock('@/lib/ai/budget', () => ({ enforceAiBudget: budget.enforce, recordAiUsage: budget.record }));
 vi.mock('@/lib/operations/audit', () => ({ recordOperationEvent: vi.fn(async () => ({ ok: true })) }));
 
-const store = vi.hoisted(() => ({ removed: [] as string[][], inserts: [] as Array<{ table: string; row: unknown }> }));
+const store = vi.hoisted(() => ({ removed: [] as string[][], inserts: [] as Array<{ table: string; row: unknown }>, payload: null as Buffer | null }));
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({
     getSupabaseAdmin: () => ({
         storage: {
             from: () => ({
-                download: async () => ({ data: new Blob([Buffer.from('%PDF-1.4 escaneado')]), error: null }),
+                download: async () => ({ data: new Blob([new Uint8Array(store.payload ?? Buffer.from('%PDF-1.4 escaneado'))]), error: null }),
                 remove: async (paths: string[]) => { store.removed.push(paths); return { error: null }; },
             }),
         },
@@ -43,7 +45,7 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
     }),
 }));
 
-import { CommunityDocumentError, readUploadedDocument, splitSections } from '@/lib/coco/communityDocuments';
+import { CommunityDocumentError, MAX_VISUAL_PDF_BYTES, isOwnVisualPdfPath, readUploadedDocument, splitSections } from '@/lib/coco/communityDocuments';
 
 const INPUT = { communityId: 'palmas', userId: 'admin-1', storagePath: 'palmas/admin-1/abc.pdf', fileName: 'Reglamento 1998.pdf' };
 
@@ -60,6 +62,7 @@ function gemini(pages: Array<{ page: number; text: string }>) {
 beforeEach(() => {
     store.removed = [];
     store.inserts = [];
+    store.payload = null;
     budget.enforce.mockClear();
     budget.record.mockClear();
     vi.stubEnv('GEMINI_API_KEY', 'clave-de-prueba');
@@ -83,11 +86,16 @@ describe('páginas escaneadas', () => {
         expect(store.removed).toEqual([]);
     });
 
-    it('si falta una página, no guarda un documento a medias y borra el archivo', async () => {
+    it('si falta una página, no guarda un documento a medias: el modelo lee el PDF con visión', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => gemini([{ page: 2, text: 'ARTICULO QUINTO: …' }])));
-        await expect(readUploadedDocument(INPUT)).rejects.toThrow('la página 3');
+        const read = await readUploadedDocument(INPUT);
+        expect(read.visualPdfPath).toBe('palmas/admin-1/abc.pdf');
+        expect(read.documentId).toBeUndefined();
+        expect(read.text).toContain('[Página 1]');
+        expect(read.text).not.toContain('[Página 2');
         expect(store.inserts).toEqual([]);
-        expect(store.removed).toEqual([['palmas/admin-1/abc.pdf']]);
+        // El archivo queda para el turno: /api/coco lo borra después de usarlo.
+        expect(store.removed).toEqual([]);
     });
 
     it('una hoja en blanco que vuelve vacía cuenta como leída', async () => {
@@ -97,19 +105,48 @@ describe('páginas escaneadas', () => {
         ])));
         const read = await readUploadedDocument(INPUT);
         expect(read.pageCount).toBe(3);
+        expect(read.visualPdfPath).toBeUndefined();
         expect(store.removed).toEqual([]);
     });
 
-    it('si Gemini responde algo que no es JSON, tampoco', async () => {
+    it('si Gemini responde algo que no es JSON, tampoco guarda: lectura visual', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'no es json' }] } }] }) })));
-        await expect(readUploadedDocument(INPUT)).rejects.toBeInstanceOf(CommunityDocumentError);
+        const read = await readUploadedDocument(INPUT);
+        expect(read.visualPdfPath).toBe('palmas/admin-1/abc.pdf');
         expect(store.inserts).toEqual([]);
     });
 
-    it('sin clave de Gemini lo dice, en vez de guardar las páginas en blanco', async () => {
+    it('sin clave de Gemini no guarda las páginas en blanco: lectura visual', async () => {
         vi.stubEnv('GEMINI_API_KEY', '');
-        await expect(readUploadedDocument(INPUT)).rejects.toThrow('escaneos no está disponible');
+        const read = await readUploadedDocument(INPUT);
+        expect(read.visualPdfPath).toBe('palmas/admin-1/abc.pdf');
         expect(store.inserts).toEqual([]);
+    });
+
+    it('un escaneo que pasa del tope de lectura visual se rechaza y no queda huérfano', async () => {
+        vi.stubEnv('GEMINI_API_KEY', '');
+        store.payload = Buffer.concat([Buffer.from('%PDF-1.4 '), Buffer.alloc(MAX_VISUAL_PDF_BYTES + 1)]);
+        await expect(readUploadedDocument(INPUT)).rejects.toBeInstanceOf(CommunityDocumentError);
+        expect(store.inserts).toEqual([]);
+        expect(store.removed).toEqual([['palmas/admin-1/abc.pdf']]);
+    });
+
+    it('sin presupuesto de IA no cae a la lectura visual: el error sube', async () => {
+        budget.enforce.mockRejectedValueOnce(new Error('presupuesto agotado'));
+        await expect(readUploadedDocument(INPUT)).rejects.toThrow('presupuesto agotado');
+        expect(store.removed).toEqual([['palmas/admin-1/abc.pdf']]);
+    });
+});
+
+describe('ruta del PDF para lectura visual', () => {
+    const community = '11111111-1111-1111-1111-111111111111';
+    const user = '22222222-2222-2222-2222-222222222222';
+    const file = '33333333-3333-4333-8333-333333333333';
+    it('solo acepta un PDF propio, generado por el servidor', () => {
+        expect(isOwnVisualPdfPath(community, user, `${community}/${user}/${file}.pdf`)).toBe(true);
+        expect(isOwnVisualPdfPath(community, user, `${community}/otra-persona/${file}.pdf`)).toBe(false);
+        expect(isOwnVisualPdfPath(community, user, `${community}/${user}/../x/${file}.pdf`)).toBe(false);
+        expect(isOwnVisualPdfPath(community, user, `${community}/${user}/${file}.docx`)).toBe(false);
     });
 });
 

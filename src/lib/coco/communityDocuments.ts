@@ -5,7 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { enforceAiBudget, recordAiUsage } from '@/lib/ai/budget';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
-import type { CommunityDocumentHit, CommunityDocumentKind, CommunityDocumentRead } from '@/lib/types';
+import type { CommunityDocumentHit, CommunityDocumentKind } from '@/lib/types';
+import type { CoCoDocumentRead } from '@/lib/coco/chatAttachmentRules';
 
 /**
  * DOCUMENTOS DE LA COMUNIDAD QUE CoCo LEE COMPLETOS (18-11-2026).
@@ -33,6 +34,15 @@ const TURN_TEXT_CHARS = 35_000;
  * un pedido de hasta 20 MB: 14 MB de archivo es el máximo seguro.
  */
 const MAX_OCR_BYTES = 14 * 1024 * 1024;
+/**
+ * Si la transcripción de las páginas escaneadas falla (sin clave de Gemini,
+ * error o páginas que no vuelven), el PDF se le pasa al modelo del chat como
+ * documento PDF, que lo lee con visión, solo para ese turno y sin guardarlo a
+ * medias. Anthropic acepta pedidos de hasta 32 MB y 100 páginas de PDF; en
+ * base64 el archivo crece un tercio, así que el tope es 18 MB.
+ */
+export const MAX_VISUAL_PDF_BYTES = 18 * 1024 * 1024;
+export const MAX_VISUAL_PDF_PAGES = 100;
 /** Documentos sin páginas (Word, texto, planillas) se guardan en secciones de este largo. */
 const SECTION_CHARS = 3_500;
 
@@ -176,12 +186,22 @@ export function documentTurnText(pages: PageText[], paginated = true) {
     return { text: full.slice(0, TURN_TEXT_CHARS), truncated: full.length > TURN_TEXT_CHARS };
 }
 
-async function extractPages(extension: NonNullable<ReturnType<typeof documentExtension>>, bytes: Buffer, budget: OcrBudget) {
+async function extractPages(extension: NonNullable<ReturnType<typeof documentExtension>>, bytes: Buffer, budget: OcrBudget): Promise<{ pages: PageText[]; paginated: boolean; visual?: boolean }> {
     if (extension === 'pdf') {
         let pages = await pdfPages(bytes);
         const scanned = scannedPages(pages);
         if (scanned.length) {
-            const transcribed = await transcribeScannedPages(bytes, scanned, budget);
+            let transcribed: Map<number, string>;
+            try {
+                transcribed = await transcribeScannedPages(bytes, scanned, budget);
+            } catch (error) {
+                // Sin transcripción completa: el modelo lee el PDF con visión en
+                // este turno. El presupuesto agotado no es un fallo de lectura y sube.
+                if (error instanceof CommunityDocumentError && bytes.length <= MAX_VISUAL_PDF_BYTES && pages.length <= MAX_VISUAL_PDF_PAGES) {
+                    return { pages, paginated: true, visual: true };
+                }
+                throw error;
+            }
             pages = pages.map(page => transcribed.has(page.page) ? { page: page.page, text: transcribed.get(page.page)!, ocr: true } : page);
         }
         return { pages, paginated: true };
@@ -200,7 +220,7 @@ async function extractPages(extension: NonNullable<ReturnType<typeof documentExt
 }
 
 /** Lee un documento ya subido al bucket y lo guarda, privado para quien lo subió. */
-export async function readUploadedDocument(input: { communityId: string; userId: string; storagePath: string; fileName: string }): Promise<CommunityDocumentRead> {
+export async function readUploadedDocument(input: { communityId: string; userId: string; storagePath: string; fileName: string }): Promise<CoCoDocumentRead> {
     // La ruta la generamos nosotros: comunidad/usuario/uuid. Así nadie lee el archivo de otro.
     if (!input.storagePath.startsWith(`${input.communityId}/${input.userId}/`) || input.storagePath.includes('..')) {
         throw new CommunityDocumentError('Ese archivo no es tuyo.', 403);
@@ -215,7 +235,22 @@ export async function readUploadedDocument(input: { communityId: string; userId:
         const bytes = Buffer.from(await blob.arrayBuffer());
         if (bytes.length > MAX_DOCUMENT_BYTES) throw new CommunityDocumentError('El máximo es 25 MB.', 413);
 
-        const { pages, paginated } = await extractPages(extension, bytes, { communityId: input.communityId, userId: input.userId });
+        const { pages, paginated, visual } = await extractPages(extension, bytes, { communityId: input.communityId, userId: input.userId });
+        if (visual) {
+            // No se guarda con páginas en blanco: CoCo pasaría por alto justo el
+            // artículo escaneado al buscar después. El archivo queda en el bucket
+            // hasta que /api/coco lo use en el turno y lo borre.
+            saved = true;
+            const turn = documentTurnText(pages.filter(page => page.text), paginated);
+            return {
+                name: input.fileName.slice(0, 120),
+                text: turn.text,
+                pageCount: pages.length,
+                ocrPages: 0,
+                truncated: turn.truncated,
+                visualPdfPath: input.storagePath,
+            };
+        }
         if (!pages.some(page => page.text)) {
             throw new CommunityDocumentError('No pude leer el documento. Si es una foto o un escaneo muy borroso, prueba con una versión más nítida.', 422);
         }
@@ -253,6 +288,27 @@ export async function readUploadedDocument(input: { communityId: string; userId:
         // Si no se guardó, el archivo no queda huérfano en el bucket.
         if (!saved) await admin.storage.from(DOCUMENTS_BUCKET).remove([input.storagePath]).then(() => undefined, () => undefined);
     }
+}
+
+/** La ruta de un PDF para leer con visión es de esta persona (comunidad/usuario/uuid.pdf). */
+export function isOwnVisualPdfPath(communityId: string, userId: string, path: string) {
+    return path.startsWith(`${communityId}/${userId}/`) && !path.includes('..') && /^[^/]+\/[^/]+\/[0-9a-f-]{36}\.pdf$/i.test(path);
+}
+
+/** Baja el PDF que el modelo va a leer con visión en este turno, en base64. */
+export async function loadVisualPdf(communityId: string, userId: string, path: string): Promise<string | null> {
+    if (!isOwnVisualPdfPath(communityId, userId, path)) return null;
+    const { data: blob, error } = await getSupabaseAdmin().storage.from(DOCUMENTS_BUCKET).download(path);
+    if (error || !blob) return null;
+    const bytes = Buffer.from(await blob.arrayBuffer());
+    if (bytes.length > MAX_VISUAL_PDF_BYTES || bytes.subarray(0, 5).toString() !== '%PDF-') return null;
+    return bytes.toString('base64');
+}
+
+/** Borra el PDF leído con visión: no quedó guardado como documento de la comunidad. */
+export async function discardVisualPdf(communityId: string, userId: string, path: string) {
+    if (!isOwnVisualPdfPath(communityId, userId, path)) return;
+    await getSupabaseAdmin().storage.from(DOCUMENTS_BUCKET).remove([path]).then(() => undefined, () => undefined);
 }
 
 /** Un extracto alrededor de la primera palabra buscada que aparezca. */

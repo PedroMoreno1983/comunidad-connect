@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import type { CommunityDocumentRead } from '../types';
+import type { CoCoDocumentRead } from '../coco/chatAttachmentRules';
 
 const BUCKET = 'community-documents';
 
@@ -23,7 +23,7 @@ async function readError(response: Response, fallback: string) {
  * transcribe las páginas escaneadas y lo guarda, privado para quien lo subió.
  */
 export const CommunityDocumentsService = {
-    async readForCoCo(file: File): Promise<CommunityDocumentRead> {
+    async readForCoCo(file: File): Promise<CoCoDocumentRead> {
         const prepared = await fetch('/api/coco/documents/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -43,6 +43,6 @@ export const CommunityDocumentsService = {
             body: JSON.stringify({ storagePath: path, fileName: file.name }),
         });
         if (!read.ok) throw await readError(read, 'No pude leer el documento.');
-        return await read.json() as CommunityDocumentRead;
+        return await read.json() as CoCoDocumentRead;
     },
 };
