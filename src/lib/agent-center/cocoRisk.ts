@@ -124,6 +124,10 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     update_provider_profile: 'write_high',
     delete_provider_photo: 'write_high',
     create_amenity: 'write_high',
+    save_community_document: 'write_high',   // publica un documento para toda la comunidad
+    preview_resident_import: 'write_high',   // sube la nómina (datos personales) y la deja en revisión
+    apply_resident_import: 'write_high',     // crea perfiles y accesos de residentes
+    search_community_documents: 'read',      // busca en reglamento y actas
     set_unit_owner: 'write_high',
     list_my_mediations: 'read',
     // Convenios: dinero y compromisos de la unidad. Mediación: avisa a la administración al escalar.

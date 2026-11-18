@@ -635,6 +635,7 @@ export async function POST(req: NextRequest) {
                 truncated: rawLegalDocument.truncated === true,
                 pageCount: Number.isInteger(rawLegalDocument.pageCount) && rawLegalDocument.pageCount >= 0 && rawLegalDocument.pageCount <= 1000 ? rawLegalDocument.pageCount : 0,
                 pageImages: legalPageImages.map((value: string) => ({ mediaType: 'image/png' as const, data: value.slice('data:image/png;base64,'.length) })),
+                documentId: typeof rawLegalDocument.documentId === 'string' && /^[0-9a-f-]{36}$/i.test(rawLegalDocument.documentId) ? rawLegalDocument.documentId : undefined,
             }
             : undefined;
         if (legalDocument && (!legalDocument.name || (!legalDocument.text && !legalDocument.pageImages.length) || resolutions)) {

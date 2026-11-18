@@ -332,7 +332,7 @@ export async function askCoCo(
     userCtx: CoCoUserContext,
     options: {
         image?: CoCoImageAttachment;
-        legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number };
+        legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number; documentId?: string };
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
         /**
@@ -525,7 +525,7 @@ export async function askCoCo(
     } else {
         // 3b. Agregar mensaje del usuario al historial
         const documentText = options.legalDocument
-            ? `\n\nDocumento aportado: ${options.legalDocument.name}. ${options.legalDocument.truncated ? 'Extracto parcial; no es el documento completo.' : 'Texto extraído.'} ${options.legalDocument.pageCount ? `Páginas del PDF: ${options.legalDocument.pageCount}.` : ''} Las páginas visuales son solo una muestra; no certifiques deslindes, superficies, firmas ni vigencia sin cotejo oficial.\n<documento>\n${options.legalDocument.text}\n</documento>`
+            ? `\n\nDocumento aportado: ${options.legalDocument.name}. ${options.legalDocument.truncated ? 'Extracto parcial; el documento completo está guardado: búscalo con search_community_documents.' : 'Texto extraído.'} ${options.legalDocument.pageCount ? `Páginas del PDF: ${options.legalDocument.pageCount}.` : ''}${options.legalDocument.documentId ? ` Quedó guardado como documento ${options.legalDocument.documentId}, privado para quien lo subió. Cada página va marcada [Página N] (o [Sección N] si el archivo no tiene páginas): cítala así. Si la administración quiere que sirva para toda la comunidad (reglamento, acta, contrato), ofrécele publicarlo con save_community_document.` : ''} Las páginas transcritas vienen de un escaneo: no certifiques deslindes, superficies, firmas ni vigencia sin cotejo oficial.\n<documento>\n${options.legalDocument.text}\n</documento>`
             : '';
         const content = buildUserContent(`${message}${documentText}`, options.image);
         const pages = options.legalDocument?.pageImages || [];

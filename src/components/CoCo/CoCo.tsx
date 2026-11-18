@@ -15,6 +15,7 @@ import { findScreen } from "@/lib/coco/platformMap";
 import { CoCoMarkdownLink } from "./CoCoMarkdownLink";
 import { LEGAL_DRAFT_MARKER, canDraftLegalDocuments } from "@/lib/coco/legalDraftMarker";
 import type { BankTransactionInput, CoCoPendingAction, DepositSuggestion, ReconciliationData } from "@/lib/types";
+import { CommunityDocumentsService } from "@/lib/api";
 
 interface Message {
     id: string;
@@ -190,8 +191,8 @@ export default function CoCo() {
     const handleLegalFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
-            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX o TXT de hasta 5 MB. Para planos en imagen, usa Adjuntar imagen.", variant: "destructive" });
+        if (!/\.(pdf|docx|txt|xlsx|csv)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
+            toast({ title: "Documento no admitido", description: "Usa PDF, DOCX, TXT, Excel o CSV de hasta 25 MB. Para planos en imagen, usa Adjuntar imagen.", variant: "destructive" });
             return;
         }
         setSelectedLegalDocument(file);
@@ -288,12 +289,9 @@ export default function CoCo() {
             removeImage();
             setLoading(true);
             try {
-                const form = new FormData();
-                form.append("file", file);
-                const extraction = await fetch("/api/coco/legal-document", { method: "POST", body: form });
-                const document = await extraction.json() as { name?: string; text?: string; pageImages?: string[]; pageCount?: number; truncated?: boolean; error?: string };
-                if (!extraction.ok || !document.name || (!document.text && !document.pageImages?.length)) throw new Error(document.error || "No pude leer el documento.");
-                const reply = await postToCoCo({ message: question, legalDocument: { name: document.name, text: document.text || "", pageImages: document.pageImages || [], pageCount: document.pageCount || 0, truncated: document.truncated === true } });
+                // Sube directo al almacenamiento y CoCo lo lee completo, escaneos incluidos.
+                const document = await CommunityDocumentsService.readForCoCo(file);
+                const reply = await postToCoCo({ message: question, legalDocument: { name: document.name, text: document.text, pageImages: [], pageCount: document.pageCount, truncated: document.truncated, documentId: document.documentId } });
                 appendAssistantReply(reply);
             } catch (error) {
                 setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: "assistant", text: error instanceof Error ? error.message : "No pude analizar el documento." }]);
@@ -629,7 +627,7 @@ export default function CoCo() {
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}
                                 />
-                                  <input type="file" accept=".pdf,.docx,.txt" className="hidden" ref={legalFileInputRef} onChange={handleLegalFileSelect} />
+                                  <input type="file" accept=".pdf,.docx,.txt,.xlsx,.csv" className="hidden" ref={legalFileInputRef} onChange={handleLegalFileSelect} />
                                 
                                 <button
                                     type="button"
