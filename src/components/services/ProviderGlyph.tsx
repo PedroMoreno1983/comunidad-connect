@@ -142,7 +142,8 @@ export function ProviderDataLine({ provider }: { provider: ServiceProvider }) {
 export function ProfileLegend({ provider }: { provider: ServiceProvider }) {
     const marks = providerMarks(provider);
     const rows = [
-        { key: "ring", show: true, symbol: "anillo", text: "El anillo de color es el oficio. No agrega un dato nuevo." },
+        // Un anillo dibujado, no la palabra: la columna del símbolo mide 2rem y "anillo" se montaba sobre el texto.
+        { key: "ring", show: true, symbol: <span aria-label="anillo" className="inline-block h-3.5 w-3.5 rounded-full border-2 align-middle" style={{ borderColor: "var(--cc-copper)" }} />, text: "El anillo de color es el oficio. No agrega un dato nuevo." },
         { key: "initials", show: !realPhotoUrl(provider.photo), symbol: marks.initials, text: "Las iniciales reemplazan una foto que no fue subida." },
         { key: "years", show: marks.yearTotal > 0, symbol: "○", text: `Cada punto abierto es un año completo${marks.yearTotal > YEAR_MARK_CAP ? ` (se dibujan ${YEAR_MARK_CAP}; el número dice el total)` : ""}.` },
         { key: "jobs", show: marks.jobTotal > 0, symbol: "╱", text: `Cada trazo es un trabajo realizado${marks.jobTotal > JOB_MARK_CAP ? ` (se dibujan ${JOB_MARK_CAP}; el número dice el total)` : ""}.` },
