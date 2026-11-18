@@ -20,6 +20,9 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
             const builder = {
                 select: () => builder,
                 eq: (key: string, value: unknown) => { filters.push([key, value]); return builder; },
+                gte: () => builder,
+                order: () => builder,
+                limit: () => builder,
                 maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
                 then(resolve: (value: { data: unknown[]; error: null }) => void) { resolve({ data: rows(), error: null }); },
             };
@@ -38,7 +41,7 @@ beforeEach(() => {
     calls.sync.mockReset();
     db.tables = {
         community_documents: [{ id: 'doc-1', community_id: 'palmas', file_name: 'nomina.csv', storage_path: 'palmas/admin-1/x.csv', uploaded_by: 'admin-1' }],
-        onboarding_import_batches: [{ id: 'batch-1', community_id: 'palmas', status: 'review' }],
+        onboarding_import_batches: [{ id: 'batch-1', community_id: 'palmas', status: 'review', created_by: 'admin-1', source: 'agent_center' }],
         onboarding_import_rows: [
             { id: 'r1', batch_id: 'batch-1', community_id: 'palmas', status: 'staged', name: 'Ana', unit_number: '1', email: 'ana@example.com', phone: '', raw_data: {} },
             { id: 'r2', batch_id: 'batch-1', community_id: 'palmas', status: 'synced', name: 'Ya cargado', unit_number: '2', email: '', phone: '', raw_data: {} },
@@ -69,6 +72,12 @@ describe('revisar la nómina', () => {
         expect(calls.stage).not.toHaveBeenCalled();
     });
 
+    it('sin document_id usa el último archivo que esta administración adjuntó', async () => {
+        calls.stage.mockResolvedValue({ status: 200, payload: { batchId: 'batch-2', status: 'review', documents: [], rights: null, assessment: { validRows: 1, warnings: [] }, data: [{ id: 'r', name: 'Ana', unit_id: '1', email: '', phone: '', derechos_porcentaje: '' }] } });
+        const preview = await previewResidentImport(ADMIN, {});
+        expect(preview).toMatchObject({ batch_id: 'batch-2' });
+    });
+
     it('solo la administración', async () => {
         expect(await previewResidentImport({ ...ADMIN, role: 'resident' }, { document_id: 'doc-1' })).toHaveProperty('error');
         expect(await applyResidentImport({ ...ADMIN, role: 'resident' }, { batch_id: 'batch-1' })).toHaveProperty('error');
@@ -83,6 +92,20 @@ describe('aplicar la nómina', () => {
         expect(body.batchId).toBe('batch-1');
         expect(body.residents.map((row: { name: string }) => row.name)).toEqual(['Ana']);
         expect(result).toMatchObject({ success: true, con_acceso: 1 });
+    });
+
+    it('en el turno siguiente, sin batch_id, toma el último lote en revisión de esta administración', async () => {
+        calls.sync.mockResolvedValue({ status: 200, payload: { message: 'ok', processed: 1, success: 1, unitOnly: 0, errors: 0, destinations: [], rowResults: [] } });
+        await applyResidentImport(ADMIN, {});
+        expect(calls.sync.mock.calls[0][1].batchId).toBe('batch-1');
+    });
+
+    it('los derechos quedan provisorios si la administración no dio la fuente', async () => {
+        calls.sync.mockResolvedValue({ status: 200, payload: { message: 'ok', processed: 1, success: 1, unitOnly: 0, errors: 0, destinations: [], rowResults: [] } });
+        await applyResidentImport(ADMIN, { batch_id: 'batch-1' });
+        expect(calls.sync.mock.calls[0][1].rightsSourceNote).toBe('');
+        await applyResidentImport(ADMIN, { batch_id: 'batch-1', fuente: 'Reglamento 1998, art. 5' });
+        expect(calls.sync.mock.calls[1][1].rightsSourceNote).toBe('Reglamento 1998, art. 5');
     });
 
     it('un lote de otra comunidad no se aplica', async () => {

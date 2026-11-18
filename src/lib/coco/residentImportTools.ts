@@ -27,11 +27,17 @@ const MIME: Record<string, string> = {
 /** Lee el archivo adjunto y deja sus residentes en un lote en revisión. No crea cuentas. */
 export async function previewResidentImport(admin: Admin, input: Record<string, unknown>) {
     if (admin.role !== 'admin') return { error: 'Solo la administración puede cargar residentes.' };
-    const documentId = String(input.document_id || '');
     const supabase = getSupabaseAdmin();
-    const { data: document } = await supabase.from('community_documents')
+    // Sin document_id (el id no sobrevive entre turnos): el último archivo que esta
+    // administración adjuntó al chat en las últimas 24 horas.
+    const documentId = String(input.document_id || '');
+    const query = supabase.from('community_documents')
         .select('id, file_name, storage_path, uploaded_by')
-        .eq('id', documentId).eq('community_id', admin.communityId).maybeSingle();
+        .eq('community_id', admin.communityId);
+    const { data: document } = documentId
+        ? await query.eq('id', documentId).maybeSingle()
+        : await query.eq('uploaded_by', admin.id).gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (!document) return { error: 'No encontré ese archivo. Adjunta la nómina en el chat y vuelve a pedírmelo.' };
     const { data: blob, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(String(document.storage_path));
     if (error || !blob) return { error: 'No pude abrir el archivo adjunto.' };
@@ -60,18 +66,24 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
         con_derechos: rows.filter(row => row.derechos_porcentaje).length,
         avisos: (assessment.warnings || []).slice(0, 6),
         muestra: rows.slice(0, 6).map(row => ({ nombre: row.name, unidad: row.unit_id, correo: row.email ? 'sí' : 'no', telefono: row.phone ? 'sí' : 'no' })),
-        nota: 'Muéstrale esto a la administración. Si está de acuerdo, usa apply_resident_import con este batch_id. Quien no tiene correo queda con su unidad lista, sin acceso todavía.',
+        nota: 'Muéstrale esto a la administración. Si está de acuerdo, usa apply_resident_import (sin batch_id toma este lote, el último en revisión). Quien no tiene correo queda con su unidad lista, sin acceso todavía.',
     };
 }
 
 /** Aplica un lote revisado: unidades, perfiles de residentes y accesos. Con confirmación. */
 export async function applyResidentImport(admin: Admin, input: Record<string, unknown>) {
     if (admin.role !== 'admin') return { error: 'Solo la administración puede cargar residentes.' };
-    const batchId = String(input.batch_id || '');
     const supabase = getSupabaseAdmin();
-    const { data: batch } = await supabase.from('onboarding_import_batches')
-        .select('id, status').eq('id', batchId).eq('community_id', admin.communityId).maybeSingle();
-    if (!batch) return { error: 'No encontré ese lote en tu comunidad.' };
+    // Sin batch_id: el último lote en revisión que esta administración armó con CoCo (24 horas).
+    const requested = String(input.batch_id || '');
+    const batchQuery = supabase.from('onboarding_import_batches').select('id, status').eq('community_id', admin.communityId);
+    const { data: batch } = requested
+        ? await batchQuery.eq('id', requested).maybeSingle()
+        : await batchQuery.eq('created_by', admin.id).eq('source', 'agent_center').eq('status', 'review')
+            .gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!batch) return { error: requested ? 'No encontré ese lote en tu comunidad.' : 'No hay una nómina en revisión. Adjunta el archivo y pídeme revisarla primero.' };
+    const batchId = String(batch.id);
     const { data: rows, error } = await supabase.from('onboarding_import_rows')
         .select('id, name, unit_number, email, phone, raw_data')
         .eq('batch_id', batchId).eq('community_id', admin.communityId).eq('status', 'staged');
@@ -83,7 +95,9 @@ export async function applyResidentImport(admin: Admin, input: Record<string, un
     }));
     const result = await syncResidentRoster(
         { id: admin.id, role: admin.role, community_id: admin.communityId, name: admin.name ?? null },
-        { residents, batchId, rightsSourceNote: 'Nómina cargada conversando con CoCo.' },
+        // Los derechos que traiga la nómina quedan provisorios salvo que la administración
+        // indique la fuente (reglamento, escritura): esa nota los marca como verificados.
+        { residents, batchId, rightsSourceNote: typeof input.fuente === 'string' ? input.fuente.trim().slice(0, 1000) : '' },
     );
     if (result.status !== 200 || !('processed' in result.payload)) {
         return { error: 'error' in result.payload ? result.payload.error : 'No pude cargar la nómina.' };

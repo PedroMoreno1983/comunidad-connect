@@ -901,7 +901,7 @@ export const TOOL_DEFINITIONS = [
     {
         name: 'preview_resident_import',
         description: 'Lee la nómina de residentes de un archivo que la administración adjuntó al chat (Excel, CSV, PDF o Word; usa el document_id que viene con el archivo) y la deja en revisión: cuántos residentes, cuántos con correo, avisos y una muestra. No crea cuentas. SOLO administradores.',
-        input_schema: { type: 'object' as const, properties: { document_id: { type: 'string' } }, required: ['document_id'] },
+        input_schema: { type: 'object' as const, properties: { document_id: { type: 'string', description: 'Opcional: sin él, el último archivo que la administración adjuntó al chat.' } }, required: [] },
     },
     {
         name: 'apply_resident_import',
@@ -909,10 +909,11 @@ export const TOOL_DEFINITIONS = [
         input_schema: {
             type: 'object' as const,
             properties: {
-                batch_id: { type: 'string' },
+                batch_id: { type: 'string', description: 'Opcional: sin él, el último lote en revisión que armó esta administración.' },
                 summary: { type: 'string', description: 'Resumen para la confirmación, por ejemplo "79 residentes, 64 con correo".' },
+                fuente: { type: 'string', description: 'Solo si la administración indica de dónde salen los derechos (reglamento, escritura). Sin fuente quedan provisorios.' },
             },
-            required: ['batch_id'],
+            required: [],
         },
     },
     {
@@ -1839,7 +1840,7 @@ export const TOOL_DEFINITIONS = [
 export const MUTATING_TOOLS = new Set<string>([
     'save_shopping_list',
     'save_community_document',
-    'apply_resident_import',
+    'preview_resident_import', 'apply_resident_import',
     'create_claim',
     'create_reservation',
     // Compromete dinero y un cupo del edificio: el residente confirma antes.
@@ -2233,6 +2234,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Editar perfil de maestro', summary: `Cambia: ${Object.keys((typeof input.fields === 'object' && input.fields) || {}).join(', ') || 'nada'}.` };
         case 'delete_provider_photo':
             return { title: 'Borrar foto del perfil', summary: 'La foto deja de verse en el perfil del maestro.' };
+        case 'preview_resident_import':
+            return { title: 'Revisar nómina de residentes', summary: 'Leo el archivo adjunto y dejo los residentes en revisión, sin crear cuentas todavía.' };
         case 'apply_resident_import':
             return { title: 'Cargar residentes', summary: `${str('summary') || 'Los residentes del lote revisado'}. Se unen a sus unidades y quienes tienen correo reciben su acceso.` };
         case 'save_community_document':
