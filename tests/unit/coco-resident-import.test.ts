@@ -100,6 +100,16 @@ describe('aplicar la nómina', () => {
         expect(calls.sync.mock.calls[0][1].batchId).toBe('batch-1');
     });
 
+    it('con dos nóminas en revisión no adivina: pregunta cuál por su código', async () => {
+        db.tables.onboarding_import_batches.push({ id: 'batch-2-abcdef', community_id: 'palmas', status: 'review', created_by: 'admin-1', source: 'agent_center' });
+        const result = await applyResidentImport(ADMIN, {});
+        expect(result).toMatchObject({ error: expect.stringContaining('más de una nómina') });
+        expect(calls.sync).not.toHaveBeenCalled();
+        calls.sync.mockResolvedValue({ status: 200, payload: { message: 'ok', processed: 1, success: 1, unitOnly: 0, errors: 0, destinations: [], rowResults: [] } });
+        await applyResidentImport(ADMIN, { codigo: 'batch-1' });
+        expect(calls.sync.mock.calls[0][1].batchId).toBe('batch-1');
+    });
+
     it('los derechos quedan provisorios si la administración no dio la fuente', async () => {
         calls.sync.mockResolvedValue({ status: 200, payload: { message: 'ok', processed: 1, success: 1, unitOnly: 0, errors: 0, destinations: [], rowResults: [] } });
         await applyResidentImport(ADMIN, { batch_id: 'batch-1' });

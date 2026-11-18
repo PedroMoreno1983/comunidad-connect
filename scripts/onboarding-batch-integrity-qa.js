@@ -5,9 +5,10 @@ const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const migration = read('supabase/migrations/20260715133000_onboarding_document_batches.sql');
 const knowledgeMigration = read('supabase/migrations/20260715140000_onboarding_document_knowledge.sql');
-const batchRoute = read('src/app/api/onboarding/batches/route.ts');
+// La lógica de las rutas vive en src/lib/onboarding (la comparten la pantalla y CoCo): se revisa ruta + biblioteca.
+const batchRoute = read('src/app/api/onboarding/batches/route.ts') + read('src/lib/onboarding/batchStaging.ts');
 const detailRoute = read('src/app/api/onboarding/batches/[id]/route.ts');
-const syncRoute = read('src/app/api/onboarding/upsert/route.ts');
+const syncRoute = read('src/app/api/onboarding/upsert/route.ts') + read('src/lib/onboarding/rosterSync.ts');
 const adminPage = read('src/app/(dashboard)/admin/onboarding/page.tsx');
 const agentPage = read('src/app/(dashboard)/agent-center/page.tsx');
 const rightsImport = read('src/lib/onboarding/unitRightsImport.ts');

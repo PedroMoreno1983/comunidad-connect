@@ -90,6 +90,16 @@ describe('páginas escaneadas', () => {
         expect(store.removed).toEqual([['palmas/admin-1/abc.pdf']]);
     });
 
+    it('una hoja en blanco que vuelve vacía cuenta como leída', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => gemini([
+            { page: 2, text: 'ARTICULO QUINTO: los gastos comunes en iguales partes.' },
+            { page: 3, text: '' },
+        ])));
+        const read = await readUploadedDocument(INPUT);
+        expect(read.pageCount).toBe(3);
+        expect(store.removed).toEqual([]);
+    });
+
     it('si Gemini responde algo que no es JSON, tampoco', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'no es json' }] } }] }) })));
         await expect(readUploadedDocument(INPUT)).rejects.toBeInstanceOf(CommunityDocumentError);

@@ -909,7 +909,8 @@ export const TOOL_DEFINITIONS = [
         input_schema: {
             type: 'object' as const,
             properties: {
-                batch_id: { type: 'string', description: 'Opcional: sin él, el último lote en revisión que armó esta administración.' },
+                batch_id: { type: 'string', description: 'Opcional: el id del lote.' },
+                codigo: { type: 'string', description: 'El código corto que entregó preview_resident_import. Sin id ni código, solo funciona si hay un único lote en revisión.' },
                 summary: { type: 'string', description: 'Resumen para la confirmación, por ejemplo "79 residentes, 64 con correo".' },
                 fuente: { type: 'string', description: 'Solo si la administración indica de dónde salen los derechos (reglamento, escritura). Sin fuente quedan provisorios.' },
             },

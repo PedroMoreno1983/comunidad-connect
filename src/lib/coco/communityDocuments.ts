@@ -136,7 +136,8 @@ async function transcribeScannedPages(bytes: Buffer, pages: number[], budget: Oc
     const out = new Map<number, string>();
     for (const item of parsed.pages || []) {
         const page = Number(item.page);
-        if (wanted.has(page) && typeof item.text === 'string' && item.text.trim()) out.set(page, clean(item.text));
+        // Una página que vuelve con texto vacío está leída: puede ser una hoja en blanco o de firmas.
+        if (wanted.has(page) && typeof item.text === 'string') out.set(page, clean(item.text));
     }
     const missing = pages.filter(page => !out.has(page));
     if (missing.length) {
@@ -301,10 +302,12 @@ export async function publishCommunityDocument(input: { communityId: string; adm
     const update: Record<string, unknown> = { visibility: 'community', kind, published_at: new Date().toISOString(), published_by: input.adminId };
     if (input.title?.trim()) update.title = input.title.trim().slice(0, 140);
     const { data, error } = await admin.from('community_documents').update(update)
-        .eq('id', input.documentId).eq('community_id', input.communityId)
+        // Solo lo que subió esta misma administración: un documento privado de otra
+        // persona no se publica conociendo su id.
+        .eq('id', input.documentId).eq('community_id', input.communityId).eq('uploaded_by', input.adminId)
         .select('id, title, page_count').maybeSingle();
     if (error) return { error: 'No pude publicar el documento.' };
-    if (!data) return { error: 'No encontré ese documento en tu comunidad.' };
+    if (!data) return { error: 'No encontré ese documento entre los que subiste tú. Solo puedes publicar lo que adjuntaste en el chat.' };
     await recordOperationEvent({
         communityId: input.communityId, actorId: input.adminId, actorRole: 'admin', action: 'community_document.published',
         entityType: 'community_document', entityId: String(data.id), severity: 'success', status: 'success',

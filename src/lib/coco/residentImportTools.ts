@@ -33,10 +33,11 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
     const documentId = String(input.document_id || '');
     const query = supabase.from('community_documents')
         .select('id, file_name, storage_path, uploaded_by')
-        .eq('community_id', admin.communityId);
+        .eq('community_id', admin.communityId)
+        .eq('uploaded_by', admin.id);
     const { data: document } = documentId
         ? await query.eq('id', documentId).maybeSingle()
-        : await query.eq('uploaded_by', admin.id).gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
+        : await query.gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
             .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (!document) return { error: 'No encontré ese archivo. Adjunta la nómina en el chat y vuelve a pedírmelo.' };
     const { data: blob, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(String(document.storage_path));
@@ -59,6 +60,8 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
     if (!rows.length) return { error: 'No encontré residentes en ese archivo. Revisa que tenga nombre y número de casa o depto.' };
     return {
         batch_id: payload.batchId,
+        // El id completo no sobrevive entre turnos; este código corto sí, y apply_resident_import lo acepta.
+        codigo: String(payload.batchId).slice(0, 8),
         filas: rows.length,
         listas: assessment.validRows,
         con_correo: rows.filter(row => row.email).length,
@@ -66,7 +69,7 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
         con_derechos: rows.filter(row => row.derechos_porcentaje).length,
         avisos: (assessment.warnings || []).slice(0, 6),
         muestra: rows.slice(0, 6).map(row => ({ nombre: row.name, unidad: row.unit_id, correo: row.email ? 'sí' : 'no', telefono: row.phone ? 'sí' : 'no' })),
-        nota: 'Muéstrale esto a la administración. Si está de acuerdo, usa apply_resident_import (sin batch_id toma este lote, el último en revisión). Quien no tiene correo queda con su unidad lista, sin acceso todavía.',
+        nota: 'Muéstrale esto a la administración e incluye el código del lote en tu respuesta. Si está de acuerdo, usa apply_resident_import con ese código. Quien no tiene correo queda con su unidad lista, sin acceso todavía.',
     };
 }
 
@@ -74,16 +77,24 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
 export async function applyResidentImport(admin: Admin, input: Record<string, unknown>) {
     if (admin.role !== 'admin') return { error: 'Solo la administración puede cargar residentes.' };
     const supabase = getSupabaseAdmin();
-    // Sin batch_id: el último lote en revisión que esta administración armó con CoCo (24 horas).
-    const requested = String(input.batch_id || '');
-    const batchQuery = supabase.from('onboarding_import_batches').select('id, status').eq('community_id', admin.communityId);
-    const { data: batch } = requested
-        ? await batchQuery.eq('id', requested).maybeSingle()
-        : await batchQuery.eq('created_by', admin.id).eq('source', 'agent_center').eq('status', 'review')
-            .gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
-            .order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (!batch) return { error: requested ? 'No encontré ese lote en tu comunidad.' : 'No hay una nómina en revisión. Adjunta el archivo y pídeme revisarla primero.' };
-    const batchId = String(batch.id);
+    // El lote se elige por su id o por el código corto de la revisión. Sin ninguno,
+    // solo si esta administración tiene UN lote en revisión: con dos, se pregunta
+    // cuál, para no cargar una nómina distinta de la que se confirmó.
+    const requested = String(input.batch_id || input.codigo || '').trim().toLowerCase();
+    const { data: pending } = await supabase.from('onboarding_import_batches')
+        .select('id, status, row_count, created_at')
+        .eq('community_id', admin.communityId).eq('created_by', admin.id).eq('status', 'review')
+        .gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString())
+        .order('created_at', { ascending: false }).limit(20);
+    const candidates = (pending || []).filter(row => !requested || String(row.id).toLowerCase().startsWith(requested));
+    if (!candidates.length) return { error: requested ? 'No encontré un lote en revisión con ese código.' : 'No hay una nómina en revisión. Adjunta el archivo y pídeme revisarla primero.' };
+    if (candidates.length > 1) {
+        return {
+            error: 'Hay más de una nómina en revisión. Dime cuál cargar por su código.',
+            lotes: candidates.map(row => ({ codigo: String(row.id).slice(0, 8), filas: row.row_count, revisada: String(row.created_at).slice(0, 16).replace('T', ' ') })),
+        };
+    }
+    const batchId = String(candidates[0].id);
     const { data: rows, error } = await supabase.from('onboarding_import_rows')
         .select('id, name, unit_number, email, phone, raw_data')
         .eq('batch_id', batchId).eq('community_id', admin.communityId).eq('status', 'staged');
