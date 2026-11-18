@@ -23,6 +23,8 @@ interface AuthContextType {
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null; role?: User["role"] | null }>;
     signInWithPasskey: () => Promise<{ error: Error | null; role?: User["role"] | null }>;
+    /** Cambia datos de la sesión ya cargada (p. ej. la portada recién subida) sin volver a pedir el perfil. */
+    updateUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -332,6 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             signIn,
             signInWithPasskey,
+            updateUser: (patch: Partial<User>) => setUser(prev => prev ? { ...prev, ...patch } : prev),
         }}>
             {children}
         </AuthContext.Provider>

@@ -27,7 +27,7 @@ import { shoppingListFromConversation } from '@/lib/coco/shoppingConversation';
 import { inferNavigation, isGoIntent, recentAssistantTexts } from '@/lib/coco/navigationIntent';
 import { SHOPPING_COMPARE_INTENT, latestShoppingListLink, recentSavedListId, supermarketListLink } from '@/lib/coco/shoppingTools';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { attachmentNote, canAttachToProviders, chatAttachmentAvailable, currentChatAttachment, stashChatImage, withAttachmentPreviews } from '@/lib/coco/chatAttachments';
+import { attachmentNote, ATTACHMENT_TOOLS, canAttachToProviders, chatAttachmentAvailable, currentChatAttachment, stashChatImage, withAttachmentPreviews } from '@/lib/coco/chatAttachments';
 import { recordUsageSignal } from '@/lib/coco/usageSignals';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -827,7 +827,7 @@ export async function POST(req: NextRequest) {
         // mensaje: el historial muestra solo lo que la persona escribió.
         let chatAttachment = currentChatAttachment(session?.user_context.chat_attachment);
         const attachmentActions = resolutions
-            ? restorePendingActions(session).filter(action => action.name === 'save_provider_attachment')
+            ? restorePendingActions(session).filter(action => ATTACHMENT_TOOLS.has(action.name))
             : [];
         const resolvesAttachment = attachmentActions.length > 0;
         // Rechazada: la sesión deja de ofrecerla aunque Storage no la haya borrado

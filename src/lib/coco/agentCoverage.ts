@@ -169,6 +169,10 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'ProviderProfileService.update': { tool: 'update_provider_profile' },
     'PATCH /api/providers/[id]': { tool: 'update_provider_profile' },
     'ProviderMediaService.uploadPhoto': { tool: 'save_provider_attachment' },
+    'CommunityCoverService.upload': { tool: 'set_community_cover_photo' },
+    'POST /api/admin/community-cover': { tool: 'set_community_cover_photo' },
+    'CommunityCoverService.reset': { ui: 'Volver a la foto genérica: un botón en la portada del inicio.' },
+    'DELETE /api/admin/community-cover': { ui: 'Volver a la foto genérica: un botón en la portada del inicio.' },
     'ProviderMediaService.uploadDocument': { tool: 'save_provider_attachment' },
     'DELETE /api/providers/[id]/media': { tool: 'delete_provider_photo' },
 

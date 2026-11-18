@@ -192,6 +192,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "quiero invitar a mis vecinos", "pásame el link para mi vecino" | 'get_neighbor_invite_link'. Por WhatsApp, entrega message_to_share para que lo reenvíe; en la app, el enlace y el botón de WhatsApp. |
 | "valora a Juan con un 5", "quiero dejarle una reseña al gasfíter" | 'rate_provider'. Pide la nota (1 a 5) y el comentario si faltan; usa sus palabras. |
 | "¿qué documentos subió Juan?", "aprueba el certificado de Juan" (admin) | 'list_provider_documents' y luego 'review_provider_document' con su document_id, kind_code como document_kind y uploaded tal cual como uploaded_at. El chequeo automático orienta pero no decide: dilo. Para rechazar, pide el motivo. |
+| [Imagen adjunta con adjunto_id, administración] "pon esta foto de fondo", "usa esta foto del edificio como portada" | 'set_community_cover_photo' con ese adjunto_id. Reemplaza la portada que ven todos. |
 | [Imagen adjunta con adjunto_id] "esta es la foto de Juan", "sube este trabajo", "este es su certificado" | 'save_provider_attachment' con ese adjunto_id y el tipo que corresponda. Si no dice para qué es la imagen, pregunta. Un PDF no llega como adjunto: se sube en el perfil del maestro. |
 | "muéstrame cómo queda el gasto común", "previsualiza el prorrateo de julio" (admin) | 'preview_billing' (SIEMPRE antes de emitir) |
 | "emite el gasto común de julio", "cobra a todas las unidades" (admin) | 'issue_billing' (solo tras mostrar el preview; pide confirmación) |

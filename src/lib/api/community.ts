@@ -299,3 +299,23 @@ export const CommunityCollaborationService = {
         if (error) throw error;
     },
 };
+
+/** Foto de portada del condominio (inicio de administración y residentes). Solo administración. */
+export const CommunityCoverService = {
+    async upload(file: File): Promise<string> {
+        const form = new FormData();
+        form.append('file', file);
+        const response = await fetch('/api/admin/community-cover', { method: 'POST', body: form });
+        const data = await response.json().catch(() => null) as { url?: string; error?: string } | null;
+        if (!response.ok || !data?.url) throw new Error(data?.error || 'No se pudo subir la foto.');
+        return data.url;
+    },
+
+    async reset(): Promise<void> {
+        const response = await fetch('/api/admin/community-cover', { method: 'DELETE' });
+        if (!response.ok) {
+            const data = await response.json().catch(() => null) as { error?: string } | null;
+            throw new Error(data?.error || 'No se pudo quitar la foto.');
+        }
+    },
+};

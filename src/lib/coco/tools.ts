@@ -90,6 +90,7 @@ import { prepareLegalDraft } from './legalDrafts';
 import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalDraftMarker';
 import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 import { NEIGHBOR_MODE_BLOCKED_TOOLS } from '@/lib/neighborMode';
+import { setCommunityCoverFromChat } from './communityCoverTool';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -1769,6 +1770,17 @@ export const TOOL_DEFINITIONS = [
     },
 
     {
+        name: 'set_community_cover_photo',
+        description: 'Pone como foto de portada del condominio (el fondo del inicio que ven la administración y todos los residentes) la imagen que la administración adjuntó al chat (viene un adjunto_id en su mensaje). Solo administración. Reemplaza la portada actual. Si no dice para qué es la imagen, pregunta.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                attachment_id: { type: 'string', description: 'El adjunto_id que viene en el mensaje.' },
+            },
+            required: ['attachment_id'],
+        },
+    },
+    {
         name: 'list_supermarket_group_orders',
         description: 'Lista las compras grupales reales y sus aportes dentro de la comunidad autenticada.',
         input_schema: { type: 'object' as const, properties: {}, required: [] },
@@ -1927,6 +1939,7 @@ export const MUTATING_TOOLS = new Set<string>([
     'rate_provider',
     'review_provider_document',
     'save_provider_attachment',
+    'set_community_cover_photo',
     'create_supermarket_group_order',
     'join_supermarket_group_order',
     'lock_supermarket_group_order',
@@ -2001,6 +2014,8 @@ const CONCIERGE_TOOLS = new Set([
 
 const ADMIN_TOOLS = new Set([
     ...CONCIERGE_TOOLS,
+    // Portada del condominio: la ve toda la comunidad.
+    'set_community_cover_photo',
     // Borradores legales: solo la administración (ver legalDraftMarker.ts).
     'prepare_legal_draft',
     'add_community_deal_quote',
@@ -2054,7 +2069,7 @@ const NOT_FOR_CONCIERGE_TOOLS = new Set(['request_service']);
 /** Herramientas que se le ofrecen al modelo según rol y canal. */
 export function isToolOfferedFor(name: string, role?: string, channel?: string) {
     // save_provider_attachment necesita la imagen guardada aparte, y eso solo pasa en el chat web.
-    if (name === 'save_provider_attachment' && channel === 'whatsapp') return false;
+    if ((name === 'save_provider_attachment' || name === 'set_community_cover_photo') && channel === 'whatsapp') return false;
     return isToolAllowedForRole(name, role);
 }
 
@@ -2350,6 +2365,8 @@ export function describePendingAction(name: string, input: Record<string, unknow
             const caption = str('kind') === 'work_photo' && str('caption') ? ` Descripción pública: "${str('caption')}".` : '';
             return { title: 'Guardar imagen en el perfil del maestro', summary: `La imagen adjunta como ${label[str('kind')] || 'imagen'} de ${str('provider_name')}.${caption}` };
         }
+        case 'set_community_cover_photo':
+            return { title: 'Cambiar la portada del condominio', summary: 'La imagen adjunta pasa a ser la foto de portada que ven la administración y todos los residentes en su inicio.' };
         case 'create_supermarket_group_order':
             return { title: 'Crear compra grupal', summary: `${str('title')}. Lista: ${str('shopping_list')}.` };
         case 'save_shopping_list':
@@ -4057,6 +4074,14 @@ export async function executeTool(
                 const communityId = scopedCommunity(userCtx);
                 if (!communityId || !userCtx.user_id || !userCtx.role) return forbidden('No pude identificarte.');
                 return saveProviderAttachment({ id: userCtx.user_id, role: userCtx.role, communityId }, input as Record<string, unknown>);
+            }
+
+            case 'set_community_cover_photo': {
+                if (userCtx.channel === 'whatsapp') return { error: 'Por WhatsApp no puedo guardar imágenes: súbela desde el chat web o desde el inicio.' };
+                if (userCtx.role !== 'admin') return forbidden('Solo la administración cambia la portada del condominio.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude identificarte.');
+                return setCommunityCoverFromChat(communityId, userCtx.user_id, input as Record<string, unknown>);
             }
 
             case 'register_external_provider':
