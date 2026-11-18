@@ -47,6 +47,12 @@ const anthropic = new Anthropic({
 // herramientas que leen y escriben datos reales, así que no baja de nivel
 // aunque otras tareas del sistema sí lo hagan.
 const MODEL = anthropicModelFor('coco.chat');
+/**
+ * Tope de salida por ronda. Con 2048, analizar un reglamento largo se cortaba
+ * antes de escribir texto y el chat mostraba "No pude responder" (18-11-2026).
+ */
+const MAX_OUTPUT_TOKENS = 4096;
+const CUT_OFF_NOTE = '\n\n_(La respuesta quedó cortada por su largo. Pídeme que continúe o que me enfoque en una parte.)_';
 const OPENAI_MODEL = process.env.COCO_OPENAI_MODEL || 'gpt-5.4-mini';
 // Rondas de tool use por mensaje. La web y el número compartido de Norma (+56 9 9947 4056,
 // que procesa en segundo plano y espera hasta 90 s) aguantan tareas largas. Solo la vía
@@ -642,12 +648,21 @@ export async function askCoCo(
         usage: { input_tokens: number; output_tokens: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null };
     };
     let useOpenAi = Boolean(process.env.OPENAI_API_KEY);
+    // Si una ronda se corta por largo sin dejar texto (p. ej. a mitad de una
+    // herramienta), se repite una sola vez pidiendo responder en texto.
+    let lengthRetry = false;
+    let lengthRetried = false;
 
     do {
+        const forceText = lengthRetry;
+        lengthRetry = false;
+        const toolChoice = forceText && !useOpenAi
+            ? { tool_choice: { type: 'none' as const } }
+            : requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {};
         let provider = useOpenAi ? 'openai' : 'anthropic';
         let model = useOpenAi ? OPENAI_MODEL : MODEL;
         const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateHistoryTokens(history);
-        const estimatedCompletionTokens = 2048;
+        const estimatedCompletionTokens = MAX_OUTPUT_TOKENS;
 
         await enforceAiBudget({
             communityId: userCtx.community_id,
@@ -672,12 +687,12 @@ export async function askCoCo(
             requiredTool: rounds === 0 ? requiredTool : undefined,
         }) : await anthropic.messages.create({
             model: MODEL,
-            max_tokens: 2048,
+            max_tokens: MAX_OUTPUT_TOKENS,
             system: systemBlocks,
             messages: history,
             tools: TOOL_DEFINITIONS
                 .filter(tool => offeredTool(tool.name)) as unknown as Anthropic.Tool[],
-            ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
+            ...toolChoice,
         });
         } catch (error) {
             const status = error && typeof error === 'object' && 'status' in error ? error.status : null;
@@ -692,9 +707,9 @@ export async function askCoCo(
                     estimatedPromptTokens, estimatedCompletionTokens,
                 });
                 response = await anthropic.messages.create({
-                    model: MODEL, max_tokens: 2048, system: systemBlocks, messages: history,
+                    model: MODEL, max_tokens: MAX_OUTPUT_TOKENS, system: systemBlocks, messages: history,
                     tools: TOOL_DEFINITIONS.filter(tool => offeredTool(tool.name)) as unknown as Anthropic.Tool[],
-                    ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
+                    ...toolChoice,
                 });
             } else {
                 throw error;
@@ -793,10 +808,14 @@ export async function askCoCo(
 
             // Agregar resultados al historial para la siguiente ronda
             history.push({ role: 'user', content: toolResults });
+        } else if (response.stop_reason === 'max_tokens' && !lengthRetried && !useOpenAi && !textOf(response.content)) {
+            lengthRetry = true;
+            lengthRetried = true;
+            history.push({ role: 'user', content: 'Tu respuesta anterior se cortó por largo antes de llegar al texto. Responde ahora directamente en texto, sin herramientas y en no más de 500 palabras: lo esencial, lo que falta y lo que hay que revisar.' });
         }
 
         rounds++;
-    } while (response.stop_reason === 'tool_use' && rounds < maxToolRounds);
+    } while ((response.stop_reason === 'tool_use' || lengthRetry) && rounds < maxToolRounds);
 
     // Se agotaron las rondas de herramientas sin que el modelo produjera una
     // respuesta final: mejor un mensaje honesto que un reply vacio y silencioso.
@@ -811,10 +830,7 @@ export async function askCoCo(
     }
 
     // 5. Extraer texto final
-    const rawText = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-        .map(b => b.text)
-        .join('');
+    const rawText = textOf(response.content);
 
     // 6. Extraer comando de navegación y acción (UI)
     const navMatch = rawText.match(/NAVEGAR:(\/[a-zA-Z0-9/_-]+)/);
@@ -835,6 +851,12 @@ export async function askCoCo(
         .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, 'identificador interno protegido')
         .trim();
 
+    if (response.stop_reason === 'max_tokens') {
+        reply = reply
+            ? `${reply}${CUT_OFF_NOTE}`
+            : 'El documento me dio para una respuesta más larga de la que puedo escribir de una vez. Pídeme una parte concreta (por ejemplo, "qué dice sobre gastos comunes" o "qué falta") y te respondo.';
+    }
+
     if (requiredTool) {
         reply = 'No pude preparar la accion solicitada con datos verificables. No se realizaron cambios; intenta nuevamente.';
     }
@@ -852,4 +874,11 @@ export async function askCoCo(
     ];
 
     return { reply, navigate, action, updatedHistory };
+}
+
+function textOf(content: Anthropic.ContentBlock[]): string {
+    return content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map(b => b.text)
+        .join('');
 }
