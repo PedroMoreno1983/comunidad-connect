@@ -59,6 +59,7 @@ export default function UsersPage() {
     const [communityName, setCommunityName] = useState("Comunidad");
     const [residentCode, setResidentCode] = useState<string | null>(null);
     const [conciergeCode, setConciergeCode] = useState<string | null>(null);
+    const [adminCode, setAdminCode] = useState<string | null>(null);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
     const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
     const [query, setQuery] = useState("");
@@ -77,6 +78,7 @@ export default function UsersPage() {
                 setResidentCode(directory.residentCode);
                 setConciergeCode(directory.conciergeCode);
                 setUsers(directory.users);
+                if (user?.role === "admin") setAdminCode(await AdminUsersService.getAdminCode());
             } catch (err) {
                 console.error("Error fetching users:", err);
                 setUsers([]);
@@ -184,7 +186,7 @@ export default function UsersPage() {
 
             <PendingResidentsPanel />
 
-            {(residentCode || conciergeCode) && (
+            {(residentCode || conciergeCode || adminCode) && (
                 <section className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                         <div>
@@ -213,6 +215,16 @@ export default function UsersPage() {
                                 copied={copiedCode === "concierge"}
                                 onCopy={() => handleCopy(conciergeCode, "concierge")}
                                 icon={<HardHat className="h-4 w-4" />}
+                            />
+                        )}
+                        {adminCode && (
+                            <InviteCodeCard
+                                title="Administración"
+                                description="Para traspasar o compartir la administración. Quien lo use entra como administrador: compártelo solo con esa persona."
+                                code={adminCode}
+                                copied={copiedCode === "admin"}
+                                onCopy={() => handleCopy(adminCode, "admin")}
+                                icon={<Shield className="h-4 w-4" />}
                             />
                         )}
                     </div>

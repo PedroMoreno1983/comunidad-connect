@@ -35,6 +35,14 @@ function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, un
 // ==========================================
 
 export const AdminUsersService = {
+    /** Código para que otra persona se registre como administradora. Lo entrega el servidor solo a la administración. */
+    async getAdminCode(): Promise<string | null> {
+        const response = await fetch("/api/admin/admin-code", { cache: "no-store" });
+        if (!response.ok) return null;
+        const data = await response.json().catch(() => null) as { adminCode?: string | null } | null;
+        return data?.adminCode ?? null;
+    },
+
     async getDirectory(currentUserId?: string): Promise<AdminUsersDirectory> {
         let communityId: string | null = null;
         let communityName = "Comunidad";
