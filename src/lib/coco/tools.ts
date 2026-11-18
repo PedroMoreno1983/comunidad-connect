@@ -1552,7 +1552,7 @@ export const TOOL_DEFINITIONS = [
                 month: { type: 'string', description: 'Mes en formato AAAA-MM.' },
                 label: { type: 'string', description: 'Descripción del egreso, ej: Cuenta de luz espacios comunes.' },
                 amount: { type: 'string', description: 'Monto en pesos (entero, sin puntos).' },
-                category: { type: 'string', description: 'water | electricity | salaries | maintenance | security | other. Por defecto other.' },
+                category: { type: 'string', description: 'water | electricity | gas | salaries | maintenance | security | other. Por defecto other.' },
                 prorate_method: { type: 'string', description: 'share (por alícuota) o equal (partes iguales). Por defecto share.' },
             },
             required: ['month', 'label', 'amount'],

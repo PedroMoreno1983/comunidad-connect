@@ -88,6 +88,12 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'POST /api/resident/agreement-request': { tool: 'request_payment_agreement' },
     'POST /api/payments/create-haulmer-link': { gap: 'Link de pago en línea: espera las credenciales de Haulmer.' },
     'POST /api/payments/transbank/return': { system: 'Retorno del proveedor de pagos.' },
+    'UtilityAccountsService.create': { gap: 'Registrar una cuenta personal de luz, agua o gas (Mis servicios).' },
+    'POST /api/resident/utility-accounts': { gap: 'Registrar una cuenta personal de luz, agua o gas (Mis servicios).' },
+    'UtilityAccountsService.update': { gap: 'Marcar como pagada una cuenta de luz, agua o gas, o cambiar su vencimiento.' },
+    'PATCH /api/resident/utility-accounts': { gap: 'Marcar como pagada una cuenta de luz, agua o gas, o cambiar su vencimiento.' },
+    'UtilityAccountsService.remove': { ui: 'Quitar una cuenta de Mis servicios: se hace en la pantalla, con confirmación.' },
+    'DELETE /api/resident/utility-accounts': { ui: 'Quitar una cuenta de Mis servicios: se hace en la pantalla, con confirmación.' },
 
     // ── Residente: perfil y cuenta ──────────────────────────────────────────
     'ProfileService.saveProfile': { tool: 'update_my_name' },

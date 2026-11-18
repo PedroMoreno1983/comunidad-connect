@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { BillingError, addCommunityExpense } from '@/lib/finance/billingService';
 import { extractExpenseDocument } from '@/lib/finance/expenseDocumentExtractor';
+import { enrichUtilityDraft, rememberUtilityAccount, utilityFieldsFromForm } from '@/lib/utilities/communityBills';
 
 export const runtime = 'nodejs';
 const BUCKET = 'finance-documents';
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
         const action = String(form.get('action') || 'extract');
         if (action === 'extract') {
             const draft = await extractExpenseDocument(file, { userId: profile.id, communityId: profile.community_id });
-            return NextResponse.json({ draft });
+            return NextResponse.json({ draft: await enrichUtilityDraft(profile.community_id, draft) });
         }
         if (action !== 'save') throw new BillingError('bad_action', 'Acción no reconocida.');
         const bytes = Buffer.from(await file.arrayBuffer());
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
             contentType: MIME_BY_EXTENSION[extension], upsert: false,
         });
         if (uploadError) throw uploadError;
+        const utility = utilityFieldsFromForm(form);
+        const prorateMethod = form.get('prorateMethod') === 'equal' ? 'equal' : 'share';
         try {
             const expense = await addCommunityExpense(profile.community_id, profile.id, {
                 month: String(form.get('month') || ''), label: String(form.get('label') || ''),
@@ -60,9 +63,16 @@ export async function POST(req: NextRequest) {
                 provider: String(form.get('provider') || ''),
                 notes: [String(form.get('documentDate') || ''), String(form.get('documentNumber') || '')]
                     .filter(Boolean).join(' · ').slice(0, 500),
-                prorateMethod: form.get('prorateMethod') === 'equal' ? 'equal' : 'share',
-                documentPath: path, documentSha256: checksum,
+                prorateMethod,
+                documentPath: path, documentSha256: checksum, utility,
             });
+            if (utility) {
+                // Recordar la cuenta es una ayuda, no parte del egreso: si falla, el egreso ya quedó.
+                await rememberUtilityAccount(profile.community_id, profile.id, {
+                    utility, category: String(form.get('category') || ''), provider: String(form.get('provider') || ''),
+                    label: String(form.get('label') || ''), prorateMethod,
+                }).catch(() => undefined);
+            }
             return NextResponse.json({ expense }, { status: 201 });
         } catch (error) {
             await admin.storage.from(BUCKET).remove([path]);

@@ -33,6 +33,7 @@ import {
   MessageSquare,
   MessageCircle,
   Waves,
+  Zap,
   UserCircle,
   GraduationCap,
   Upload,
@@ -216,6 +217,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/expenses", label: "Mis Gastos", icon: DollarSign, roles: ["resident"] },
         { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"] },
+        { href: "/resident/servicios", label: "Mis Servicios", icon: Zap, roles: ["resident"] },
         { href: "/resident/packages", label: "Mis Encomiendas", icon: Package, roles: ["resident"] },
         { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident"] },
         { href: "/resident/cases", label: "Mis Casos CoCo", icon: Bot, roles: ["resident"], feature: "coco_ai" },

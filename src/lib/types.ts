@@ -3644,6 +3644,12 @@ export interface FinanceDocumentDraft {
     documentDate: string;
     documentNumber: string;
     warnings: string[];
+    /** Boleta de servicio básico: n° de cliente, período facturado (AAAA-MM), vencimiento y consumo. */
+    utility?: UtilityBillFields;
+    /** Mes de gastos comunes sugerido según el vencimiento de la boleta. */
+    suggestedMonth?: string;
+    /** Prorrateo recordado para ese n° de cliente. */
+    suggestedProrateMethod?: 'share' | 'equal';
 }
 export interface FinanceDocumentReview extends FinanceDocumentDraft {
     id: string;
@@ -4237,3 +4243,46 @@ export interface FirebaseFederatedAccount {
 export type FirebaseCredential =
   | { kind: 'key'; account: FirebaseServiceAccountKey }
   | { kind: 'federated'; account: FirebaseFederatedAccount };
+
+// ─── Servicios básicos: luz, agua y gas ─────────────────────────────────────
+
+export type UtilityService = 'electricity' | 'water' | 'gas';
+
+export interface UtilityProvider {
+    id: string;
+    name: string;
+    service: UtilityService;
+    /** Portal oficial donde el cliente paga con su n° de cliente. */
+    payUrl: string;
+    /** Cómo llama la empresa al número que pide (n° de cliente, n° de servicio…). */
+    customerNumberLabel: string;
+}
+
+export interface UtilityBillFields {
+    customerNumber: string;
+    servicePeriod: string;
+    dueDate: string;
+    consumptionValue: number | null;
+    consumptionUnit: string;
+}
+
+/** Cuenta personal del residente. Privada: solo la ve su dueño. */
+export interface ResidentUtilityAccount {
+    id: string;
+    service: UtilityService;
+    provider: string;
+    customerNumber: string;
+    alias: string;
+    dueDay: number | null;
+    remindersEnabled: boolean;
+    lastPaidPeriod: string | null;
+}
+
+export interface ResidentUtilityAccountInput {
+    service: UtilityService;
+    provider: string;
+    customerNumber: string;
+    alias?: string;
+    dueDay?: number | null;
+    remindersEnabled?: boolean;
+}

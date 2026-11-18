@@ -135,6 +135,7 @@ src/
 | `supermarket.ts` | `SupermarketCartService`, `SupermarketCatalogService`, `SupermarketGroupService` |
 | `parking.ts` | `ParkingService` |
 | `access.ts` | `IntercomService`, `AccessGateService` |
+| `utilities.ts` | `UtilityAccountsService` (Mis servicios: cuentas personales de luz, agua y gas, privadas del residente) |
 | `_shared.ts` | Helpers internos usados por más de un dominio (`readApi`, `financeWrite`, `isUuid`, `textValue`, `nullableText`, `mapCocoCase`, `DbRow`). No se re-exporta. |
 
 Dónde agregar código nuevo:

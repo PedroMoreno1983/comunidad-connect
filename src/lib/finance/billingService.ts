@@ -1,3 +1,4 @@
+import type { UtilityBillFields } from '@/lib/types';
 /**
  * billingService.ts — Lógica de negocio del gasto común (egresos + prorrateo + emisión).
  *
@@ -37,7 +38,7 @@ export class BillingError extends Error {
     }
 }
 
-export const EXPENSE_CATEGORIES = new Set(['water', 'electricity', 'salaries', 'maintenance', 'security', 'other']);
+export const EXPENSE_CATEGORIES = new Set(['water', 'electricity', 'gas', 'salaries', 'maintenance', 'security', 'other']);
 export const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -51,6 +52,8 @@ export interface CommunityExpenseInput {
     notes?: string | null;
     documentPath?: string | null;
     documentSha256?: string | null;
+    /** Boleta de luz, agua o gas: evita cargar dos veces el mismo n° de cliente y período. */
+    utility?: UtilityBillFields | null;
 }
 
 export interface BillingQuota {
@@ -253,10 +256,21 @@ export async function addCommunityExpense(
             created_by: createdBy,
             document_url: input.documentPath || null,
             document_sha256: input.documentSha256 || null,
+            utility_customer_number: input.utility?.customerNumber || null,
+            service_period: input.utility?.servicePeriod || null,
+            bill_due_date: input.utility?.dueDate || null,
+            consumption_value: input.utility?.consumptionValue ?? null,
+            consumption_unit: input.utility?.consumptionUnit || null,
         })
         .select('id, month, category, label, amount, provider, notes, prorate_method, document_url, created_at')
         .single();
-    if (error) throw error;
+    if (error) {
+        if (error.code === '23505' && input.utility?.customerNumber) {
+            throw new BillingError('duplicate_utility_bill',
+                `La boleta del n° de cliente ${input.utility.customerNumber} para ${input.utility.servicePeriod} ya está cargada.`, 409);
+        }
+        throw error;
+    }
     return data;
 }
 
