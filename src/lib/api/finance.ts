@@ -161,6 +161,7 @@ export const AdminFinanceService = {
         const categoryLabels: Record<string, string> = {
             water: 'Agua',
             electricity: 'Electricidad',
+            gas: 'Gas',
             salaries: 'Remuneraciones',
             maintenance: 'Mantencion',
             security: 'Seguridad',

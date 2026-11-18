@@ -38,6 +38,10 @@
     {
       "path": "/api/assemblies/eligibility-notice/cron",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/utilities/reminders/cron",
+      "schedule": "0 12 * * *"
     }
   ]
 }

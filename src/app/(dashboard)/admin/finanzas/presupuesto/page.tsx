@@ -11,6 +11,7 @@ import type { BudgetComparison, BudgetLine } from "@/lib/types";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
+    { value: "gas", label: "Gas" },
     { value: "water", label: "Agua" },
     { value: "salaries", label: "Remuneraciones" },
     { value: "maintenance", label: "Mantención" },

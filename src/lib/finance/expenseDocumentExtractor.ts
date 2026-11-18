@@ -1,10 +1,15 @@
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
-import type { FinanceDocumentDraft } from '@/lib/types';
+import type { FinanceDocumentDraft, UtilityBillFields } from '@/lib/types';
+import { normalizeCustomerNumber } from '@/lib/utilities/providers';
 
 const PROMPT = `Lee este respaldo de un gasto de comunidad en Chile. Devuelve JSON con
-{"label":"","amount":0,"provider":"","category":"other","documentDate":"","documentNumber":"","warnings":[]}.
-amount es el total a pagar en pesos chilenos, como entero. category es uno de water,electricity,salaries,maintenance,security,other.
+{"label":"","amount":0,"provider":"","category":"other","documentDate":"","documentNumber":"","customerNumber":"","servicePeriod":"","dueDate":"","consumptionValue":null,"consumptionUnit":"","warnings":[]}.
+amount es el total a pagar en pesos chilenos, como entero. category es uno de water,electricity,gas,salaries,maintenance,security,other.
+Si es una boleta de luz, agua o gas (Enel, CGE, Aguas Andinas, Essbio, Esval, Metrogas, Lipigas, Abastible u otra):
+customerNumber es el n° de cliente o de servicio tal como aparece; servicePeriod es el mes consumido en formato AAAA-MM
+(si el período cruza dos meses, el mes en que termina); dueDate es la fecha de vencimiento AAAA-MM-DD;
+consumptionValue el consumo del período como número y consumptionUnit su unidad (kWh, m3). Si no es una boleta de servicio, déjalos vacíos.
 No inventes datos. Si el monto no está claro usa 0. Usa warnings para dudas, ilegibilidad, varias boletas, montos contradictorios o falta de fecha. Nunca supongas que un documento es un pago efectuado.`;
 
 export async function extractExpenseDocument(file: File, context: { userId: string; communityId: string }): Promise<FinanceDocumentDraft> {
@@ -58,7 +63,7 @@ export async function extractExpenseDocument(file: File, context: { userId: stri
         throw new Error('La lectura automática no devolvió un formato utilizable. Registra el egreso manualmente.');
     }
     await recordAiUsage({ ...usage, status: 'success' });
-    const allowed = new Set(['water', 'electricity', 'salaries', 'maintenance', 'security', 'other']);
+    const allowed = new Set(['water', 'electricity', 'gas', 'salaries', 'maintenance', 'security', 'other']);
     const rawAmount = parsed.amount;
     const amount = typeof rawAmount === 'number' && Number.isSafeInteger(rawAmount) ? rawAmount
         : typeof rawAmount === 'string' && /^\d+$/.test(rawAmount.trim()) ? Number(rawAmount) : 0;
@@ -67,5 +72,24 @@ export async function extractExpenseDocument(file: File, context: { userId: stri
     return { fileName: file.name, label: String(parsed.label ?? '').slice(0, 160),
         amount: amount > 0 && Number.isFinite(amount) ? amount : 0,
         provider: String(parsed.provider ?? '').slice(0, 160), category: allowed.has(String(parsed.category)) ? String(parsed.category) : 'other',
-        documentDate: String(parsed.documentDate ?? '').slice(0, 20), documentNumber: String(parsed.documentNumber ?? '').slice(0, 80), warnings };
+        documentDate: String(parsed.documentDate ?? '').slice(0, 20), documentNumber: String(parsed.documentNumber ?? '').slice(0, 80), warnings,
+        utility: parseUtilityFields(parsed) };
+}
+
+/** Datos de boleta de servicio básico, o undefined si el documento no los trae. */
+export function parseUtilityFields(parsed: Record<string, unknown>): UtilityBillFields | undefined {
+    const customerNumber = normalizeCustomerNumber(parsed.customerNumber);
+    if (!customerNumber) return undefined;
+    const period = String(parsed.servicePeriod ?? '').trim();
+    const due = String(parsed.dueDate ?? '').trim();
+    const rawConsumption = parsed.consumptionValue;
+    const consumption = typeof rawConsumption === 'number' ? rawConsumption
+        : typeof rawConsumption === 'string' ? Number(rawConsumption.replace(/\./g, '').replace(',', '.')) : NaN;
+    return {
+        customerNumber,
+        servicePeriod: /^\d{4}-(0[1-9]|1[0-2])$/.test(period) ? period : '',
+        dueDate: /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(due) ? due : '',
+        consumptionValue: Number.isFinite(consumption) && consumption >= 0 ? consumption : null,
+        consumptionUnit: String(parsed.consumptionUnit ?? '').trim().slice(0, 12),
+    };
 }

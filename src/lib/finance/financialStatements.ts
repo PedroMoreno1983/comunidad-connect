@@ -25,6 +25,7 @@ import { todayInChile } from './chileDates';
 const CATEGORY_LABELS: Record<string, string> = {
     water: 'Agua',
     electricity: 'Electricidad',
+    gas: 'Gas',
     salaries: 'Remuneraciones',
     maintenance: 'Mantención',
     security: 'Seguridad',

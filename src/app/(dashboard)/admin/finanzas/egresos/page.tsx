@@ -12,12 +12,13 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import type { BillingPreview, CommunityExpense, FinanceDocumentReview, IssuedBillingRun } from "@/lib/types";
-import { currentMonthInChile, nextMonthFifthInChile } from "@/lib/finance/chileDates";
+import { currentMonthInChile, formatFinanceDate, nextMonthFifthInChile } from "@/lib/finance/chileDates";
 import { formatRightsPercent } from "@/lib/assemblies/unitRights";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
     { value: "water", label: "Agua" },
+    { value: "gas", label: "Gas" },
     { value: "salaries", label: "Remuneraciones" },
     { value: "maintenance", label: "Mantención" },
     { value: "security", label: "Seguridad" },
@@ -72,7 +73,14 @@ export default function EgresosPage() {
                 const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "No se pudo extraer.");
-                draft = { ...result.draft, id: crypto.randomUUID(), file, month: reviewMonth, prorateMethod: reviewProrateMethod, status: "pending" };
+                const extracted = result.draft as FinanceDocumentReview;
+                // Una boleta de servicio va al mes en que vence; se avisa si no es el mes en pantalla.
+                const draftMonth = extracted.suggestedMonth || reviewMonth;
+                const warnings = draftMonth !== reviewMonth
+                    ? [...extracted.warnings, `Por su vencimiento queda en ${draftMonth}. Cámbialo si corresponde a ${reviewMonth}.`]
+                    : extracted.warnings;
+                draft = { ...extracted, warnings, id: crypto.randomUUID(), file, month: draftMonth,
+                    prorateMethod: extracted.suggestedProrateMethod || reviewProrateMethod, status: "pending" };
             } catch (error) {
                 draft = { id: crypto.randomUUID(), file, month: reviewMonth, prorateMethod: reviewProrateMethod, fileName: file.name, label: file.name.replace(/\.[^.]+$/, ""), amount: 0,
                     category: "other", provider: "", documentDate: "", documentNumber: "", status: "pending",
@@ -107,6 +115,13 @@ export default function EgresosPage() {
             form.append("category", item.category); form.append("provider", item.provider);
             form.append("documentDate", item.documentDate); form.append("documentNumber", item.documentNumber);
             form.append("prorateMethod", item.prorateMethod);
+            if (item.utility) {
+                form.append("utilityCustomerNumber", item.utility.customerNumber);
+                form.append("utilityServicePeriod", item.utility.servicePeriod);
+                form.append("utilityDueDate", item.utility.dueDate);
+                if (item.utility.consumptionValue !== null) form.append("utilityConsumptionValue", String(item.utility.consumptionValue));
+                form.append("utilityConsumptionUnit", item.utility.consumptionUnit);
+            }
             const response = await fetch("/api/admin/finance-documents", { method: "POST", body: form });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || "No se pudo guardar el respaldo.");
@@ -458,13 +473,21 @@ export default function EgresosPage() {
                 {!issuedRun && (
                     <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <h2 className="font-semibold cc-text-primary">Cargar respaldos de egresos</h2>
-                        <p className="mt-1 text-sm cc-text-secondary">Sube hasta 10 boletas, facturas o planillas a la vez. CoCo propone los datos; comprueba cada monto y concepto antes de registrarlo.</p>
+                        <p className="mt-1 text-sm cc-text-secondary">Sube hasta 10 boletas, facturas o planillas a la vez. CoCo propone los datos; comprueba cada monto y concepto antes de registrarlo. En las boletas de luz, agua y gas de los medidores comunes recuerda el n° de cliente, detecta la boleta repetida y avisa si el monto cambia mucho.</p>
                         <input className="mt-3 block w-full text-sm" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.txt,.csv"
                             disabled={extracting || saving} onChange={event => { if (event.target.files) void inspectDocuments(event.target.files); event.target.value = ""; }} />
                         {extracting && <p className="mt-2 text-sm cc-text-secondary"><Loader2 className="mr-1 inline h-4 w-4 animate-spin" /> Leyendo documentos…</p>}
                         <div className="mt-4 space-y-3">{documents.map(item => <div key={item.id} className="rounded-xl border p-3" style={{ borderColor: "var(--cc-line)" }}>
                             <p className="mb-2 text-sm font-semibold cc-text-primary">{item.fileName} {item.status === "saved" ? "· Registrado" : "· Pendiente de revisión"}</p>
                             {item.warnings.map(warning => <p key={warning} className="text-xs text-warning-fg">{warning}</p>)}
+                            {item.utility && (
+                                <p className="mt-1 text-xs cc-text-secondary">
+                                    Boleta de servicio · N° de cliente {item.utility.customerNumber}
+                                    {item.utility.servicePeriod && ` · Consumo de ${item.utility.servicePeriod}`}
+                                    {item.utility.dueDate && ` · Vence ${formatFinanceDate(item.utility.dueDate)}`}
+                                    {item.utility.consumptionValue !== null && ` · ${item.utility.consumptionValue.toLocaleString("es-CL")} ${item.utility.consumptionUnit}`}
+                                </p>
+                            )}
                             <div className="mt-2 grid gap-2 sm:grid-cols-4">
                                 <input aria-label="Concepto" placeholder="Concepto" value={item.label} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { label: event.target.value })} className="rounded-lg border p-2 text-sm" />
                                 <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={item.amount || ""} disabled={item.status !== "pending"} onChange={event => editDocument(item.id, { amount: Number(event.target.value.replace(/[^\d]/g, "")) })} className="rounded-lg border p-2 text-sm" />

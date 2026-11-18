@@ -2246,7 +2246,7 @@ CREATE TABLE IF NOT EXISTS "public"."annual_budgets" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "annual_budgets_annual_amount_check" CHECK (("annual_amount" >= (0)::numeric)),
-    CONSTRAINT "annual_budgets_category_check" CHECK (("category" = ANY (ARRAY['water'::"text", 'electricity'::"text", 'salaries'::"text", 'maintenance'::"text", 'security'::"text", 'other'::"text"]))),
+    CONSTRAINT "annual_budgets_category_check" CHECK (("category" = ANY (ARRAY['water'::"text", 'electricity'::"text", 'gas'::"text", 'salaries'::"text", 'maintenance'::"text", 'security'::"text", 'other'::"text"]))),
     CONSTRAINT "annual_budgets_year_check" CHECK ((("year" >= 2020) AND ("year" <= 2100)))
 );
 
@@ -2430,8 +2430,13 @@ CREATE TABLE IF NOT EXISTS "public"."community_expenses" (
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "utility_customer_number" "text",
+    "service_period" "text",
+    "bill_due_date" "date",
+    "consumption_value" numeric(14,3),
+    "consumption_unit" "text",
     CONSTRAINT "community_expenses_amount_check" CHECK (("amount" >= (0)::numeric)),
-    CONSTRAINT "community_expenses_category_check" CHECK (("category" = ANY (ARRAY['water'::"text", 'electricity'::"text", 'salaries'::"text", 'maintenance'::"text", 'security'::"text", 'other'::"text"]))),
+    CONSTRAINT "community_expenses_category_check" CHECK (("category" = ANY (ARRAY['water'::"text", 'electricity'::"text", 'gas'::"text", 'salaries'::"text", 'maintenance'::"text", 'security'::"text", 'other'::"text"]))),
     CONSTRAINT "community_expenses_prorate_method_check" CHECK (("prorate_method" = ANY (ARRAY['share'::"text", 'equal'::"text"])))
 );
 
@@ -7486,3 +7491,64 @@ REVOKE INSERT, UPDATE, DELETE ON public.community_documents FROM anon, authentic
 REVOKE INSERT, UPDATE, DELETE ON public.community_document_pages FROM anon, authenticated;
 GRANT SELECT ON public.community_documents, public.community_document_pages TO authenticated;
 GRANT ALL ON public.community_documents, public.community_document_pages TO service_role;
+
+-- Servicios básicos (20261118180000_utility_bills): cuentas compartidas del
+-- condominio y cuentas personales privadas del residente.
+-- ── 2. Cuentas compartidas recordadas por condominio ────────────────────────
+CREATE TABLE IF NOT EXISTS public.community_utility_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+    service TEXT NOT NULL CHECK (service IN ('electricity', 'water', 'gas')),
+    provider TEXT NOT NULL DEFAULT '',
+    customer_number TEXT NOT NULL CHECK (length(customer_number) BETWEEN 1 AND 40),
+    label TEXT NOT NULL DEFAULT '',
+    prorate_method TEXT NOT NULL DEFAULT 'share' CHECK (prorate_method IN ('share', 'equal')),
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (community_id, customer_number)
+);
+
+ALTER TABLE public.community_utility_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "community_utility_accounts_admin_read" ON public.community_utility_accounts;
+CREATE POLICY "community_utility_accounts_admin_read" ON public.community_utility_accounts
+    FOR SELECT TO authenticated
+    USING (community_id = public.get_my_community_id() AND public.get_my_role() = 'admin');
+DROP POLICY IF EXISTS "community_utility_accounts_service_role" ON public.community_utility_accounts;
+CREATE POLICY "community_utility_accounts_service_role" ON public.community_utility_accounts
+    TO service_role USING (true) WITH CHECK (true);
+REVOKE INSERT, UPDATE, DELETE ON public.community_utility_accounts FROM anon, authenticated;
+GRANT SELECT ON public.community_utility_accounts TO authenticated;
+GRANT ALL ON public.community_utility_accounts TO service_role;
+
+-- ── 3. Cuentas personales del residente (privadas) ──────────────────────────
+CREATE TABLE IF NOT EXISTS public.resident_utility_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    service TEXT NOT NULL CHECK (service IN ('electricity', 'water', 'gas')),
+    provider TEXT NOT NULL CHECK (length(provider) BETWEEN 1 AND 40),
+    customer_number TEXT NOT NULL CHECK (length(customer_number) BETWEEN 1 AND 40),
+    alias TEXT NOT NULL DEFAULT '' CHECK (length(alias) <= 60),
+    -- Día del mes en que suele vencer. NULL: sin recordatorio de fecha.
+    due_day SMALLINT CHECK (due_day IS NULL OR due_day BETWEEN 1 AND 31),
+    reminders_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Último mes (AAAA-MM) que el residente marcó como pagado: apaga el aviso de ese mes.
+    last_paid_period TEXT CHECK (last_paid_period IS NULL OR last_paid_period ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, provider, customer_number)
+);
+CREATE INDEX IF NOT EXISTS resident_utility_accounts_reminder_idx
+    ON public.resident_utility_accounts (due_day) WHERE reminders_enabled AND due_day IS NOT NULL;
+
+ALTER TABLE public.resident_utility_accounts ENABLE ROW LEVEL SECURITY;
+-- Solo el dueño. A propósito no hay política para la administración.
+DROP POLICY IF EXISTS "resident_utility_accounts_owner" ON public.resident_utility_accounts;
+CREATE POLICY "resident_utility_accounts_owner" ON public.resident_utility_accounts
+    FOR ALL TO authenticated
+    USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "resident_utility_accounts_service_role" ON public.resident_utility_accounts;
+CREATE POLICY "resident_utility_accounts_service_role" ON public.resident_utility_accounts
+    TO service_role USING (true) WITH CHECK (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.resident_utility_accounts TO authenticated;
+GRANT ALL ON public.resident_utility_accounts TO service_role;

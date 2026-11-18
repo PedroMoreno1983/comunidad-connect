@@ -24,6 +24,7 @@ const COCO_NAV_LABELS: Record<string, string> = {
     "/votaciones/asambleas": "Asambleas",
     "/resident/finances": "Mis Gastos",
     "/resident/consumo": "Mi Consumo de Agua",
+    "/resident/servicios": "Mis Servicios",
     "/concierge/visitors": "Registro de Visitas",
     "/concierge/packages": "Encomiendas",
     "/staff/training": "Aula Virtual IA",
