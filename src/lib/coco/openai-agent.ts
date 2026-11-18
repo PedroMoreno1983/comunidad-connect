@@ -18,7 +18,7 @@ function toMessages(history: Anthropic.MessageParam[]): OpenAI.Chat.Completions.
             continue;
         }
         if (!Array.isArray(turn.content)) continue;
-        const blocks = turn.content as (Anthropic.ContentBlock | Anthropic.ToolResultBlockParam | Anthropic.ImageBlockParam)[];
+        const blocks = turn.content as (Anthropic.ContentBlock | Anthropic.ToolResultBlockParam | Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam)[];
         if (turn.role === 'assistant') {
             const text = blocks.filter((block): block is Anthropic.TextBlock => block.type === 'text').map(block => block.text).join('\n');
             const toolCalls = blocks.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use').map(block => ({
@@ -39,6 +39,10 @@ function toMessages(history: Anthropic.MessageParam[]): OpenAI.Chat.Completions.
             if (block.type === 'text') userContent.push({ type: 'text', text: block.text });
             if (block.type === 'image' && block.source.type === 'base64') {
                 userContent.push({ type: 'image_url', image_url: { url: `data:${block.source.media_type};base64,${block.source.data}` } });
+            }
+            // PDF escaneado sin transcribir: OpenAI también lee PDF en línea.
+            if (block.type === 'document' && block.source.type === 'base64' && block.source.media_type === 'application/pdf') {
+                userContent.push({ type: 'file', file: { filename: /\.pdf$/i.test(block.title || '') ? block.title! : `${block.title || 'documento'}.pdf`, file_data: `data:application/pdf;base64,${block.source.data}` } });
             }
         }
         if (userContent.length) messages.push({ role: 'user', content: userContent });

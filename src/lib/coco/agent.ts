@@ -260,20 +260,77 @@ async function executeAuditedTool(toolUse: Anthropic.ToolUseBlock, userCtx: CoCo
     return result;
 }
 
-function buildUserContent(message: string, image?: CoCoImageAttachment): Anthropic.MessageParam['content'] {
-    if (!image) return message;
+/** Un documento adjunto en el turno: su texto y, si sus escaneos no se transcribieron, el PDF para leer con visión. */
+export interface CoCoTurnDocument {
+    name: string;
+    text: string;
+    truncated: boolean;
+    pageImages?: CoCoImageAttachment[];
+    pageCount?: number;
+    documentId?: string;
+    /** PDF en base64 que el modelo lee con visión (páginas escaneadas sin transcribir). */
+    visualPdf?: string;
+}
+
+function buildUserContent(message: string, images: CoCoImageAttachment[] = []): Anthropic.MessageParam['content'] {
+    if (!images.length) return message;
 
     return [
         { type: 'text', text: message },
-        {
-            type: 'image',
+        ...images.map(image => ({
+            type: 'image' as const,
             source: {
-                type: 'base64',
+                type: 'base64' as const,
                 media_type: image.mediaType,
                 data: image.data,
             },
-        },
+        })),
     ];
+}
+
+/** Texto que acompaña a cada documento aportado en el turno. */
+export function documentTurnNote(document: CoCoTurnDocument, index: number, total: number) {
+    const label = total > 1 ? `Documento aportado ${index + 1} de ${total}` : 'Documento aportado';
+    const extract = document.visualPdf
+        ? `Sus páginas escaneadas no se pudieron transcribir: el PDF completo va adjunto en este mensaje, léelo directamente.${document.text ? ' Abajo va el texto de las páginas que sí lo tenían.' : ''} Este documento no quedó guardado: si la persona lo necesita en otra conversación, que lo vuelva a adjuntar.`
+        : document.truncated ? 'Extracto parcial; el documento completo está guardado: búscalo con search_community_documents.' : 'Texto extraído.';
+    const saved = document.documentId
+        ? ` Quedó guardado como documento ${document.documentId}, privado para quien lo subió. Cada página va marcada [Página N] (o [Sección N] si el archivo no tiene páginas): cítala así. Si la administración quiere que sirva para toda la comunidad (reglamento, acta, contrato), ofrécele publicarlo con save_community_document.`
+        : '';
+    return `\n\n${label}: ${document.name}. ${extract} ${document.pageCount ? `Páginas del PDF: ${document.pageCount}.` : ''}${saved} Las páginas transcritas o leídas de un escaneo pueden tener errores: no certifiques deslindes, superficies, firmas ni vigencia sin cotejo oficial.${document.text ? `\n<documento nombre="${document.name.replace(/"/g, "'")}">\n${document.text}\n</documento>` : ''}`;
+}
+
+/**
+ * Bloques pesados (PDF en base64) no se guardan en la sesión: una acción
+ * pendiente persiste el historial completo y un PDF de 8 MB lo inflaría. Se
+ * reemplazan por una nota; el texto extraído sigue en el mensaje.
+ */
+export function withoutHeavyBlocks(content: string | object[]): string | object[] {
+    if (!Array.isArray(content)) return content;
+    return content.map(block => {
+        const typed = block as { type?: string; title?: string };
+        return typed.type === 'document' ? { type: 'text', text: `[PDF adjunto leído en ese turno: ${typed.title || 'documento'}]` } : block;
+    });
+}
+
+/**
+ * Estimación de tokens para el presupuesto. JSON.stringify contaría cada
+ * imagen o PDF en base64 como texto (una foto de 1 MB serían ~350 mil tokens);
+ * el modelo los cobra por tamaño visual: ~1.600 tokens por imagen de hasta
+ * 1568 px y del orden de 2.000 por página de PDF (se estima por peso).
+ */
+export function estimateHistoryTokens(history: unknown) {
+    let media = 0;
+    const json = JSON.stringify(history ?? '', (_key, value: unknown) => {
+        if (value && typeof value === 'object' && (value as { type?: unknown }).type === 'base64') {
+            const source = value as { media_type?: string; data?: string };
+            const bytes = Math.floor((source.data?.length || 0) * 0.75);
+            media += source.media_type === 'application/pdf' ? Math.max(2_000, Math.ceil(bytes / 150_000) * 2_000) : 1_600;
+            return { type: 'base64', media_type: source.media_type };
+        }
+        return value;
+    });
+    return estimateTokensFromText(json) + media;
 }
 
 function needsLegalContext(message: string, session: SessionData | null) {
@@ -332,7 +389,11 @@ export async function askCoCo(
     userCtx: CoCoUserContext,
     options: {
         image?: CoCoImageAttachment;
-        legalDocument?: { name: string; text: string; truncated: boolean; pageImages?: CoCoImageAttachment[]; pageCount?: number; documentId?: string };
+        /** Varias imágenes en el mismo mensaje (se suman a `image`). */
+        images?: CoCoImageAttachment[];
+        legalDocument?: CoCoTurnDocument;
+        /** Varios documentos en el mismo mensaje (se suman a `legalDocument`). */
+        legalDocuments?: CoCoTurnDocument[];
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
         /**
@@ -524,15 +585,24 @@ export async function askCoCo(
         return { reply, storedReply, updatedHistory };
     } else {
         // 3b. Agregar mensaje del usuario al historial
-        const documentText = options.legalDocument
-            ? `\n\nDocumento aportado: ${options.legalDocument.name}. ${options.legalDocument.truncated ? 'Extracto parcial; el documento completo está guardado: búscalo con search_community_documents.' : 'Texto extraído.'} ${options.legalDocument.pageCount ? `Páginas del PDF: ${options.legalDocument.pageCount}.` : ''}${options.legalDocument.documentId ? ` Quedó guardado como documento ${options.legalDocument.documentId}, privado para quien lo subió. Cada página va marcada [Página N] (o [Sección N] si el archivo no tiene páginas): cítala así. Si la administración quiere que sirva para toda la comunidad (reglamento, acta, contrato), ofrécele publicarlo con save_community_document.` : ''} Las páginas transcritas vienen de un escaneo: no certifiques deslindes, superficies, firmas ni vigencia sin cotejo oficial.\n<documento>\n${options.legalDocument.text}\n</documento>`
-            : '';
-        const content = buildUserContent(`${message}${documentText}`, options.image);
-        const pages = options.legalDocument?.pageImages || [];
-        history.push({ role: 'user', content: pages.length ? [
-            ...(typeof content === 'string' ? [{ type: 'text' as const, text: content }] : content),
-            ...pages.map((page, index) => ({ type: 'text' as const, text: `Página visual ${index + 1} del documento aportado:` })),
+        const documents = [...(options.legalDocument ? [options.legalDocument] : []), ...(options.legalDocuments || [])];
+        const images = [...(options.image ? [options.image] : []), ...(options.images || [])];
+        const documentText = documents.map((document, index) => documentTurnNote(document, index, documents.length)).join('');
+        const content = buildUserContent(`${message}${documentText}`, images);
+        const pages = documents.flatMap(document => document.pageImages || []);
+        const pdfs = documents.filter(document => document.visualPdf);
+        const extraBlocks = [
+            ...pages.map((_, index) => ({ type: 'text' as const, text: `Página visual ${index + 1} del documento aportado:` })),
             ...pages.map(page => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: page.mediaType, data: page.data } })),
+            ...pdfs.map(document => ({
+                type: 'document' as const,
+                title: document.name,
+                source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: document.visualPdf! },
+            })),
+        ];
+        history.push({ role: 'user', content: extraBlocks.length ? [
+            ...(typeof content === 'string' ? [{ type: 'text' as const, text: content }] : content),
+            ...extraBlocks,
         ] : content });
     }
 
@@ -548,7 +618,7 @@ export async function askCoCo(
     do {
         let provider = useOpenAi ? 'openai' : 'anthropic';
         let model = useOpenAi ? OPENAI_MODEL : MODEL;
-        const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
+        const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateHistoryTokens(history);
         const estimatedCompletionTokens = 2048;
 
         await enforceAiBudget({
@@ -666,7 +736,7 @@ export async function askCoCo(
                 const updatedHistory: ConversationMessage[] = [
                     ...history.map(historyMessage => ({
                         role: historyMessage.role,
-                        content: historyMessage.content as string | object[],
+                        content: withoutHeavyBlocks(historyMessage.content as string | object[]),
                     })),
                     { role: 'assistant', content: response.content as unknown as object[] },
                 ];
@@ -705,7 +775,7 @@ export async function askCoCo(
             reply: 'Estoy procesando varias consultas para responderte bien y me tome mas tiempo del esperado. Intenta reformular tu pregunta de forma mas especifica.',
             updatedHistory: history.map(historyMessage => ({
                 role: historyMessage.role,
-                content: historyMessage.content as string | object[],
+                content: withoutHeavyBlocks(historyMessage.content as string | object[]),
             })),
         };
     }

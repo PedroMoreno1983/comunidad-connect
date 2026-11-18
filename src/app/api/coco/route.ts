@@ -5,7 +5,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
-import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
+import { askCoCo, CoCoPendingResolutionError, restorePendingActions, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoTurnDocument } from '@/lib/coco/agent';
+import { MAX_CHAT_ATTACHMENTS, MAX_CHAT_IMAGES_TOTAL_CHARS, documentTextShare } from '@/lib/coco/chatAttachmentRules';
+import { MAX_VISUAL_PDF_BYTES, discardVisualPdf, isOwnVisualPdfPath, loadVisualPdf } from '@/lib/coco/communityDocuments';
 import { isConversationClosing, learnFromClosing, linesFromConversation } from '@/lib/coco/learnFromChat';
 import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/types';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
@@ -28,6 +30,8 @@ import { attachmentNote, canAttachToProviders, chatAttachmentAvailable, currentC
 import { recordUsageSignal } from '@/lib/coco/usageSignals';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Un PDF escaneado que el modelo lee con visión (40 páginas) tarda más que un mensaje normal.
+export const maxDuration = 300;
 
 function threadKey(userId: string, threadId: unknown): string | null {
     if (threadId === undefined || threadId === null || threadId === 'legacy') return `web:${userId}`;
@@ -80,6 +84,39 @@ function parseResolutions(value: unknown): CoCoResolutions | null {
 
 const SUPPORTED_IMAGE_MEDIA_TYPES: CoCoImageMediaType[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_IMAGE_BASE64_CHARS = 7_000_000;
+
+type ParsedLegalDocument = Omit<CoCoTurnDocument, 'visualPdf'> & { pageImages: CoCoImageAttachment[]; visualPdfPath?: string };
+
+/** Un documento ya leído por /api/coco/legal-document. `invalid` si viene mal formado. */
+function parseLegalDocument(raw: unknown): ParsedLegalDocument | 'invalid' {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'invalid';
+    const value = raw as Record<string, unknown>;
+    const pageImages = Array.isArray(value.pageImages) ? value.pageImages : [];
+    if (pageImages.length > 2 || pageImages.some((item: unknown) => typeof item !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(item) || item.length > 2_500_000)) {
+        return 'invalid';
+    }
+    if (typeof value.name !== 'string' || typeof value.text !== 'string') return 'invalid';
+    const pageCount = Number(value.pageCount);
+    const document: ParsedLegalDocument = {
+        name: sanitize(value.name, 120),
+        text: sanitize(value.text, 35_000),
+        truncated: value.truncated === true,
+        pageCount: Number.isInteger(pageCount) && pageCount >= 0 && pageCount <= 1000 ? pageCount : 0,
+        pageImages: (pageImages as string[]).map(item => ({ mediaType: 'image/png' as const, data: item.slice('data:image/png;base64,'.length) })),
+        documentId: typeof value.documentId === 'string' && /^[0-9a-f-]{36}$/i.test(value.documentId) ? value.documentId : undefined,
+        visualPdfPath: typeof value.visualPdfPath === 'string' ? value.visualPdfPath : undefined,
+    };
+    if (!document.name || (!document.text && !document.pageImages.length && !document.visualPdfPath)) return 'invalid';
+    return document;
+}
+
+/** El texto de cada documento se reparte para que varios quepan en el turno. */
+function shareDocumentText(documents: ParsedLegalDocument[]): ParsedLegalDocument[] {
+    const share = documentTextShare(documents.length);
+    return documents.map(document => document.text.length > share
+        ? { ...document, text: document.text.slice(0, share), truncated: true }
+        : document);
+}
 
 function parseImageAttachment(value: unknown): CoCoImageAttachment | null {
     if (typeof value !== 'string' || !value.trim()) return null;
@@ -607,6 +644,9 @@ export async function POST(req: NextRequest) {
         );
     }
 
+    // PDF leídos con visión en este turno: se borran al terminar, pase lo que pase.
+    let visualCleanup: string[] = [];
+    let visualOwner: { communityId: string; userId: string } | null = null;
     try {
         const body = await req.json();
 
@@ -620,35 +660,34 @@ export async function POST(req: NextRequest) {
                 { status: 400 },
             );
         }
-        let imageAttachment: CoCoImageAttachment | null = null;
-        const rawLegalDocument = body.legalDocument;
-        const legalPageImages = rawLegalDocument && typeof rawLegalDocument === 'object' && !Array.isArray(rawLegalDocument)
-            && Array.isArray(rawLegalDocument.pageImages) ? rawLegalDocument.pageImages : [];
-        if (legalPageImages.length > 2 || legalPageImages.some((value: unknown) => typeof value !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value) || value.length > 2_500_000)) {
-            return NextResponse.json({ reply: 'Las páginas visuales del documento no son válidas.' }, { status: 400 });
+        // Adjuntos: varios por mensaje (`images`, `legalDocuments`) o, desde el
+        // widget flotante y clientes antiguos, uno solo (`imageBase64`, `legalDocument`).
+        const rawDocuments: unknown[] = Array.isArray(body.legalDocuments) ? body.legalDocuments
+            : body.legalDocument !== undefined && body.legalDocument !== null ? [body.legalDocument] : [];
+        const rawImages: unknown[] = Array.isArray(body.images) ? body.images
+            : typeof body.imageBase64 === 'string' && body.imageBase64.trim() ? [body.imageBase64] : [];
+        if (rawDocuments.length + rawImages.length > MAX_CHAT_ATTACHMENTS) {
+            return NextResponse.json({ reply: `Puedes adjuntar hasta ${MAX_CHAT_ATTACHMENTS} archivos por mensaje.` }, { status: 400 });
         }
-        const legalDocument = rawLegalDocument && typeof rawLegalDocument === 'object' && !Array.isArray(rawLegalDocument)
-            && typeof rawLegalDocument.name === 'string' && typeof rawLegalDocument.text === 'string'
-            ? {
-                name: sanitize(rawLegalDocument.name, 120),
-                text: sanitize(rawLegalDocument.text, 35_000),
-                truncated: rawLegalDocument.truncated === true,
-                pageCount: Number.isInteger(rawLegalDocument.pageCount) && rawLegalDocument.pageCount >= 0 && rawLegalDocument.pageCount <= 1000 ? rawLegalDocument.pageCount : 0,
-                pageImages: legalPageImages.map((value: string) => ({ mediaType: 'image/png' as const, data: value.slice('data:image/png;base64,'.length) })),
-                documentId: typeof rawLegalDocument.documentId === 'string' && /^[0-9a-f-]{36}$/i.test(rawLegalDocument.documentId) ? rawLegalDocument.documentId : undefined,
-            }
-            : undefined;
-        if (legalDocument && (!legalDocument.name || (!legalDocument.text && !legalDocument.pageImages.length) || resolutions)) {
+        const parsedDocuments = rawDocuments.map(parseLegalDocument);
+        if (parsedDocuments.some(document => document === 'invalid') || (parsedDocuments.length && resolutions)) {
             return NextResponse.json({ reply: 'El documento adjunto no es válido para esta solicitud.' }, { status: 400 });
         }
+        const legalDocuments = shareDocumentText(parsedDocuments as ParsedLegalDocument[]);
+        const legalDocument = legalDocuments.length > 0;
+        let images: CoCoImageAttachment[] = [];
         try {
-            imageAttachment = parseImageAttachment(body.imageBase64);
+            images = rawImages.map(parseImageAttachment).filter((image): image is CoCoImageAttachment => Boolean(image));
         } catch {
             return NextResponse.json(
                 { reply: 'La imagen no tiene un formato válido. Usa JPG, PNG, GIF o WebP de hasta 5MB.' },
                 { status: 400 }
             );
         }
+        if (images.reduce((total, image) => total + image.data.length, 0) > MAX_CHAT_IMAGES_TOTAL_CHARS) {
+            return NextResponse.json({ reply: 'Las imágenes pesan demasiado juntas. Envíalas en dos mensajes.' }, { status: 413 });
+        }
+        const imageAttachment: CoCoImageAttachment | null = images[0] ?? null;
 
         if (!message && !resolutions && !legalDocument) {
             return NextResponse.json(
@@ -670,6 +709,8 @@ export async function POST(req: NextRequest) {
         const userId = profile.id;
         const unitId = profile.unit_id || '';
         const communityId = profile.community_id || '';
+        visualOwner = { communityId, userId };
+        visualCleanup = legalDocuments.flatMap(document => document.visualPdfPath ? [document.visualPdfPath] : []);
         // Solo el tema del mensaje, para los datos agregados de la administración. Nunca el texto.
         if (message) void recordUsageSignal({ communityId, userId, role: safeRole, channel: 'web', message });
         const selectedThreadKey = threadKey(userId, body.threadId);
@@ -763,6 +804,26 @@ export async function POST(req: NextRequest) {
         }
         const turnContext = chatAttachment ? attachmentNote(chatAttachment).trim() : undefined;
 
+        // PDF escaneados que no se pudieron transcribir: el modelo los lee con
+        // visión en este turno, hasta MAX_VISUAL_PDF_BYTES entre todos. Después
+        // se borran: no quedaron guardados como documentos de la comunidad.
+        const visualPaths = legalDocuments.flatMap(document => document.visualPdfPath && isOwnVisualPdfPath(communityId, userId, document.visualPdfPath) ? [document.visualPdfPath] : []);
+        let visualBytes = 0;
+        const turnDocuments: CoCoTurnDocument[] = [];
+        for (const document of legalDocuments) {
+            const { visualPdfPath, ...rest } = document;
+            const pdf = visualPdfPath && visualPaths.includes(visualPdfPath) ? await loadVisualPdf(communityId, userId, visualPdfPath).catch(() => null) : null;
+            const bytes = pdf ? Math.floor(pdf.length * 0.75) : 0;
+            if (pdf && visualBytes + bytes <= MAX_VISUAL_PDF_BYTES) {
+                visualBytes += bytes;
+                turnDocuments.push({ ...rest, visualPdf: pdf });
+            } else if (visualPdfPath) {
+                turnDocuments.push({ ...rest, text: `${rest.text}\n[Las páginas escaneadas de este PDF no se pudieron leer en este mensaje${pdf ? ' porque, junto a los otros PDF, pasa del tamaño que puedo leer de una vez' : ''}. Pide a la persona que lo envíe solo, en otro mensaje.]`.trim() });
+            } else {
+                turnDocuments.push(rest);
+            }
+        }
+
         // ── 4. Llamar al agente ──────────────────────────────────────────────
         let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
 
@@ -780,8 +841,8 @@ export async function POST(req: NextRequest) {
                     channel:     'web',
                 },
                 {
-                    ...(imageAttachment ? { image: imageAttachment } : {}),
-                    ...(legalDocument ? { legalDocument } : {}),
+                    ...(images.length ? { images } : {}),
+                    ...(turnDocuments.length ? { legalDocuments: turnDocuments } : {}),
                     ...(resolutions ? { resolutions } : {}),
                     ...(turnContext ? { turnContext } : {}),
                 }
@@ -925,5 +986,10 @@ export async function POST(req: NextRequest) {
             { reply: 'Tuve un problema al procesar tu mensaje. Inténtalo de nuevo. 😊' },
             { status: 500 }
         );
+    } finally {
+        const owner = visualOwner;
+        if (owner && visualCleanup.length) {
+            await Promise.all(visualCleanup.map(path => discardVisualPdf(owner.communityId, owner.userId, path)));
+        }
     }
 }
