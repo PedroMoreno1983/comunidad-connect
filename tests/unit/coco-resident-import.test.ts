@@ -63,6 +63,7 @@ describe('revisar la nómina', () => {
             'agent_center',
         );
         expect(preview).toMatchObject({ batch_id: 'batch-1', filas: 1, con_correo: 1 });
+        expect(String((preview as { message?: string }).message)).toContain('código batch-1');
         expect(calls.sync).not.toHaveBeenCalled();
     });
 
@@ -98,6 +99,12 @@ describe('aplicar la nómina', () => {
         calls.sync.mockResolvedValue({ status: 200, payload: { message: 'ok', processed: 1, success: 1, unitOnly: 0, errors: 0, destinations: [], rowResults: [] } });
         await applyResidentImport(ADMIN, {});
         expect(calls.sync.mock.calls[0][1].batchId).toBe('batch-1');
+    });
+
+    it('un lote armado en Admin › Onboarding no se aplica desde el chat', async () => {
+        db.tables.onboarding_import_batches = [{ id: 'batch-9', community_id: 'palmas', status: 'review', created_by: 'admin-1', source: 'admin_onboarding' }];
+        expect(await applyResidentImport(ADMIN, {})).toHaveProperty('error');
+        expect(calls.sync).not.toHaveBeenCalled();
     });
 
     it('con dos nóminas en revisión no adivina: pregunta cuál por su código', async () => {

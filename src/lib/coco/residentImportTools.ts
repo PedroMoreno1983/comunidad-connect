@@ -58,7 +58,17 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
     const rows = payload.data || [];
     const assessment = payload.assessment || { validRows: 0, warnings: [] as string[] };
     if (!rows.length) return { error: 'No encontré residentes en ese archivo. Revisa que tenga nombre y número de casa o depto.' };
+    const code = String(payload.batchId).slice(0, 8);
+    const withEmail = rows.filter(row => row.email).length;
+    const warnings = (assessment.warnings || []).slice(0, 6);
     return {
+        // Lo que ve la administración al aprobar la revisión: el resumen y el código para cargarla.
+        message: [
+            `Revisé la nómina (código ${code}): ${rows.length} residentes, ${withEmail} con correo y ${rows.length - withEmail} sin correo (esos quedan con su lote listo, sin acceso todavía).`,
+            warnings.length ? `Avisos: ${warnings.join(' ')}` : '',
+            `Ejemplos: ${rows.slice(0, 4).map(row => `${row.name || '(sin nombre)'}, ${row.unit_id || 'sin lote'}`).join('; ')}.`,
+            `Si está bien, dime "carga la nómina ${code}". Nada se ha creado todavía.`,
+        ].filter(Boolean).join('\n'),
         batch_id: payload.batchId,
         // El id completo no sobrevive entre turnos; este código corto sí, y apply_resident_import lo acepta.
         codigo: String(payload.batchId).slice(0, 8),
@@ -83,7 +93,8 @@ export async function applyResidentImport(admin: Admin, input: Record<string, un
     const requested = String(input.batch_id || input.codigo || '').trim().toLowerCase();
     const { data: pending } = await supabase.from('onboarding_import_batches')
         .select('id, status, row_count, created_at')
-        .eq('community_id', admin.communityId).eq('created_by', admin.id).eq('status', 'review')
+        // Solo lotes que armó CoCo: uno de Admin › Onboarding se aplica desde esa pantalla.
+        .eq('community_id', admin.communityId).eq('created_by', admin.id).eq('status', 'review').eq('source', 'agent_center')
         .gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString())
         .order('created_at', { ascending: false }).limit(20);
     const candidates = (pending || []).filter(row => !requested || String(row.id).toLowerCase().startsWith(requested));

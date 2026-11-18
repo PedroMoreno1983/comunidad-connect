@@ -3,6 +3,7 @@ import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { extractPdfText } from '@/lib/coco/pdfText';
 import { CommunityDocumentError, readUploadedDocument } from '@/lib/coco/communityDocuments';
+import { isAiBudgetExceededError } from '@/lib/ai/budget';
 
 export const dynamic = 'force-dynamic';
 // Un reglamento escaneado de 40 páginas tarda en transcribirse.
@@ -28,6 +29,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ ...read, pageImages: [] }, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
             if (error instanceof CommunityDocumentError) return NextResponse.json({ error: error.message }, { status: error.status });
+            // Sin presupuesto de IA para leer los escaneos: no es un documento dañado.
+            if (isAiBudgetExceededError(error)) return NextResponse.json({ error: error.reason }, { status: 429 });
             console.error('[coco documents] read failed', error);
             return NextResponse.json({ error: 'No pude leer el documento. Revisa que no esté dañado o protegido.' }, { status: 422 });
         }
