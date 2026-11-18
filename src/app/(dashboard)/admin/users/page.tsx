@@ -78,13 +78,14 @@ export default function UsersPage() {
                 setResidentCode(directory.residentCode);
                 setConciergeCode(directory.conciergeCode);
                 setUsers(directory.users);
-                if (user?.role === "admin") setAdminCode(await AdminUsersService.getAdminCode());
             } catch (err) {
                 console.error("Error fetching users:", err);
                 setUsers([]);
             } finally {
                 setIsLoading(false);
             }
+            // Aparte: si falla el listado, el código de administración igual se muestra.
+            if (user?.role === "admin") setAdminCode(await AdminUsersService.getAdminCode().catch(() => null));
         };
 
         fetchData();
