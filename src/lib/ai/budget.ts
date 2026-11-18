@@ -73,15 +73,53 @@ export function estimateTokensFromMessages(value: unknown) {
     return estimateTokensFromText(JSON.stringify(value ?? ''));
 }
 
+/**
+ * Centavos de dólar por millón de tokens (entrada, salida) de Anthropic, precios al 2026-11-03.
+ * Lo más específico primero. Antes todo lo que no era Haiku ni Opus se cobraba como Sonnet 4.6
+ * (300/1500), un 50 % sobre Sonnet 5, y la caché leída se cobraba entera: con el prefijo de CoCo
+ * (~33k tokens de herramientas y sistema) el panel inflaba el gasto varias veces y el presupuesto
+ * podía bloquear a una comunidad mucho antes de tiempo (revisión del 18-11-2026).
+ */
+const ANTHROPIC_CENTS_PER_MTOK: Array<[RegExp, number, number]> = [
+    [/opus-5-5/, 400, 2000],
+    [/opus/, 500, 2500],
+    [/sonnet-5/, 200, 1000],
+    [/sonnet/, 300, 1500],
+    [/haiku-5-5/, 10, 50],
+    [/haiku/, 100, 500],
+];
+
+function anthropicCostCents(model: string, input: {
+    promptTokens?: number;
+    completionTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+    cacheWriteTtl?: '5m' | '1h';
+}) {
+    const [, inCents, outCents] = ANTHROPIC_CENTS_PER_MTOK.find(([re]) => re.test(model)) ?? [null, 300, 1500];
+    const read = Math.max(0, input.cacheReadTokens ?? 0);
+    const write = Math.max(0, input.cacheWriteTokens ?? 0);
+    const fresh = Math.max(0, (input.promptTokens ?? 0) - read - write);
+    const writeFactor = input.cacheWriteTtl === '1h' ? 2 : 1.25;
+    const equivalentInput = fresh + read * 0.1 + write * writeFactor;
+    return (equivalentInput / 1_000_000) * inCents + ((input.completionTokens ?? 0) / 1_000_000) * outCents;
+}
+
 export function estimateAiCostCents(input: {
     provider: string;
     model?: string | null;
     promptTokens?: number;
     completionTokens?: number;
     imageCount?: number;
+    /** Parte de promptTokens leída de la caché de Anthropic: se cobra al 10 %. */
+    cacheReadTokens?: number;
+    /** Parte de promptTokens escrita en la caché: 1,25× (5 min) o 2× si cacheWriteTtl es '1h'. */
+    cacheWriteTokens?: number;
+    cacheWriteTtl?: '5m' | '1h';
 }) {
     const provider = input.provider.toLowerCase();
     const model = (input.model || '').toLowerCase();
+    if (provider === 'anthropic') return anthropicCostCents(model, input);
     const prompt = input.promptTokens ?? 0;
     const completion = input.completionTokens ?? 0;
     const images = input.imageCount ?? 0;
@@ -99,9 +137,6 @@ export function estimateAiCostCents(input: {
     // DeepSeek cobra aún menos los tokens servidos desde su caché; sin ese dato
     // se cobra todo a precio lleno, que es el lado seguro para un presupuesto.
     if (provider === 'deepseek') return (prompt / 1_000_000) * 14 + (completion / 1_000_000) * 28;
-    if (provider === 'anthropic' && model.includes('haiku')) return (prompt / 1_000_000) * 100 + (completion / 1_000_000) * 500;
-    if (provider === 'anthropic' && model.includes('opus')) return (prompt / 1_000_000) * 500 + (completion / 1_000_000) * 2500;
-    if (provider === 'anthropic') return (prompt / 1_000_000) * 300 + (completion / 1_000_000) * 1500;
     return ((prompt + completion) / 1_000_000) * 100;
 }
 

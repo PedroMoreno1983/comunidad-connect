@@ -431,7 +431,10 @@ export async function askCoCo(
     // el orden de render es tools -> system -> messages, así que el breakpoint en
     // este primer bloque cachea las TOOL_DEFINITIONS y el prompt maestro juntos.
     const systemBlocks: Anthropic.TextBlockParam[] = [
-        { type: 'text', text: COCO_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+        // 1 h y no 5 min: con poco tráfico por comunidad la caché corta expiraba entre
+        // preguntas y cada una volvía a pagar el prefijo entero (escribir 1 h cuesta 2×, se
+        // recupera con la segunda lectura dentro de la hora).
+        { type: 'text', text: COCO_SYSTEM_PROMPT, cache_control: { type: 'ephemeral', ttl: '1h' } },
         ...volatileSystem.map(text => ({ type: 'text' as const, text })),
     ];
 
@@ -626,6 +629,9 @@ export async function askCoCo(
                 model,
                 promptTokens,
                 completionTokens,
+                cacheReadTokens,
+                cacheWriteTokens,
+                cacheWriteTtl: '1h',
             }),
             status: 'success',
             metadata: {
