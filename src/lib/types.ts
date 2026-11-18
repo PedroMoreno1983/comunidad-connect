@@ -1524,6 +1524,28 @@ export interface DebugStatsSnapshot {
 }
 
 export type PrivacyConsentType = 'terms' | 'privacy_notice' | 'whatsapp' | 'ai_processing' | 'sensitive_data';
+/** Documentos de la comunidad que CoCo lee completos (reglamentos, actas, contratos). */
+export type CommunityDocumentKind = 'reglamento' | 'acta' | 'contrato' | 'otro';
+
+/** Lo que devuelve la lectura de un documento subido desde el chat. */
+export interface CommunityDocumentRead {
+  documentId: string;
+  name: string;
+  text: string;
+  pageCount: number;
+  ocrPages: number;
+  truncated: boolean;
+}
+
+/** Un trozo de documento que responde a una búsqueda, con su página para citarla. */
+export interface CommunityDocumentHit {
+  documentId: string;
+  title: string;
+  kind: CommunityDocumentKind;
+  page: number;
+  excerpt: string;
+}
+
 /** Temas de las consultas a CoCo, para los datos agregados de la administración. */
 export type CocoTopicKey = 'gastos_comunes' | 'reservas' | 'mantencion' | 'convivencia' | 'seguridad_accesos' | 'estacionamientos_bodegas' | 'asambleas_votaciones' | 'reglamento_legal' | 'compras_marketplace' | 'otros';
 

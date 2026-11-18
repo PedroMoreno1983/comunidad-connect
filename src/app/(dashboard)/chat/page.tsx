@@ -14,6 +14,7 @@ import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
 import { CoCoThreadSidebar } from "@/components/CoCo/CoCoThreadSidebar";
 import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, CocoConsentState, PrivacyConsentsResponse, WhatsAppStartStatus } from "@/lib/types";
+import { CommunityDocumentsService } from "@/lib/api";
 import { COCO_PRIVACY_NOTICE, PRIVACY_POLICY_VERSION } from "@/lib/privacy";
 
 function CoCoMarkdown({ text }: { text: string }) {
@@ -338,14 +339,11 @@ export default function CoCoChatPage() {
             if (fileInputRef.current) fileInputRef.current.value = '';
             setLoading(true);
             try {
-                const form = new FormData();
-                form.append('file', file);
-                const response = await fetch('/api/coco/legal-document', { method: 'POST', body: form });
-                const document = await response.json() as { name?: string; text?: string; pageImages?: string[]; pageCount?: number; truncated?: boolean; error?: string };
-                if (!response.ok || !document.name || (!document.text && !document.pageImages?.length)) throw new Error(document.error || 'No pude leer el documento.');
+                // Sube directo al almacenamiento y CoCo lo lee completo, escaneos incluidos.
+                const document = await CommunityDocumentsService.readForCoCo(file);
                 appendAssistantReply(await postToCoCo({ message: question, legalDocument: {
-                    name: document.name, text: document.text || '', pageImages: document.pageImages || [],
-                    pageCount: document.pageCount || 0, truncated: document.truncated === true,
+                    name: document.name, text: document.text, pageImages: [],
+                    pageCount: document.pageCount, truncated: document.truncated, documentId: document.documentId,
                 } }));
             } catch (error) {
                 setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar el documento.' }]);
@@ -695,8 +693,8 @@ export default function CoCoChatPage() {
                                 reader.readAsDataURL(file);
                                 return;
                             }
-                            if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
-                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta PDF, DOCX, TXT o una imagen JPG, PNG, GIF o WebP de hasta 5 MB.' }]);
+                            if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
+                                setMsgs(previous => [...previous, { id: Date.now().toString(), role: 'assistant', text: 'Adjunta un PDF, DOCX o TXT de hasta 25 MB, o una imagen JPG, PNG, GIF o WebP de hasta 5 MB.' }]);
                                 event.target.value = '';
                                 return;
                             }
