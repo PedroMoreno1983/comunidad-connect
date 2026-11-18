@@ -37,6 +37,7 @@ import { publicRequestUrl, verifyTwilioSignatureForUrls } from '@/lib/security/t
 import { checkDistributedRateLimitBySubject } from '@/lib/security/rateLimit';
 import { parseTwilioMedia } from '@/lib/coco/inboundMedia';
 import { readWhatsAppAttachments } from '@/lib/coco/inboundMediaFetch';
+import { attachmentNote, currentChatAttachment, stashChatImage } from '@/lib/coco/chatAttachments';
 
 function xml(value: string) {
     return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -319,9 +320,18 @@ ${COCO_WHATSAPP_PRIVACY_LINE}` : text;
             if (!messageForAgent && !understood?.image && !understood?.document) {
                 return respond('Recibí el archivo, pero no pude leerlo. Prueba con una foto, un audio corto o un PDF con texto.');
             }
+            // La foto que manda la administración queda guardada aparte (adjunto_id),
+            // igual que en el chat web: así una boleta puede quedar como respaldo
+            // del egreso. Vigente un día; se conserva entre el mensaje y el "apruebo".
+            let chatAttachment = currentChatAttachment(session.user_context?.chat_attachment);
+            if (understood?.image && verifiedContext.role === 'admin') {
+                chatAttachment = { ...await stashChatImage(verifiedContext.user_id, understood.image), at: new Date().toISOString() };
+            }
+            const turnContext = chatAttachment && verifiedContext.role === 'admin' ? attachmentNote(chatAttachment).trim() : undefined;
             let agentResponse: Awaited<ReturnType<typeof askCoCo>>;
             try {
                 agentResponse = await askCoCo(messageForAgent, session, verifiedContext, {
+                    ...(turnContext ? { turnContext } : {}),
                     ...(relayedFromNorma ? {} : { maxToolRounds: SYNC_REPLY_MAX_TOOL_ROUNDS }),
                     ...(understood?.image ? { image: understood.image } : {}),
                     ...(understood?.document?.text ? { legalDocument: understood.document } : {}),
@@ -339,7 +349,7 @@ ${COCO_WHATSAPP_PRIVACY_LINE}` : text;
                 agentResponse = await askCoCoWhatsAppFallback(messageForAgent, session, verifiedContext);
             }
             const { reply, updatedHistory, pendingActions } = agentResponse;
-            await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext }, Boolean(pendingActions?.length));
+            await saveDeliveredTurn(sessionKey, { ...session, conversation: updatedHistory, user_context: { ...verifiedContext, ...(chatAttachment ? { chat_attachment: chatAttachment } : {}) } }, Boolean(pendingActions?.length));
             if (isConversationClosing(message)) {
                 void learnFromClosing({ communityId: verifiedContext.community_id, role: verifiedContext.role, lines: linesFromConversation(updatedHistory) }).catch(error => {
                     console.error('[coco] no se pudieron proponer recuerdos', error);
