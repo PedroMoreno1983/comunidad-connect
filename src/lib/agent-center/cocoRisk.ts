@@ -197,6 +197,7 @@ export const COCO_TOOL_RISK: Record<string, ToolRiskLevel> = {
     send_provider_portal_link: 'write_high',    // entrega acceso a solicitudes y revoca el anterior
     review_provider_document: 'write_high',     // marca antecedentes revisados ante todos los vecinos
     save_provider_attachment: 'write_high',     // cambia el perfil público o sube documentos sensibles
+    set_community_cover_photo: 'write_high',    // la portada la ve toda la comunidad
     list_provider_documents: 'read',
     // Solo devuelve el enlace personal (lo crea la primera vez, sin efecto para terceros).
     get_neighbor_invite_link: 'read',

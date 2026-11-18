@@ -1,19 +1,20 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
     AlertCircle,
     ArrowRight,
     Bell,
+    Camera,
     CheckSquare,
     Coins,
     Sparkles,
     Users,
     Wrench,
 } from "lucide-react";
-import { AdminDashboardService } from "@/lib/api";
+import { AdminDashboardService, CommunityCoverService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import type { AdminDashboardSummary } from "@/lib/types";
 import { Button } from "@/components/cc/Button";
@@ -35,7 +36,7 @@ function pct(numerator: number, denominator: number) {
 }
 
 export default function AdminDashboardPage() {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -63,6 +64,36 @@ export default function AdminDashboardPage() {
     const residentsFilled = data ? Math.min(data.residentsActive, 96) : 0;
     const hasRequests = Boolean(data?.activeRequests.length);
     const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-patio.jpg";
+    const customCover = Boolean(user?.communityCoverPhotoUrl && user.communityCoverPhotoUrl !== "/edificio-malaga-patio.jpg");
+    const coverInput = useRef<HTMLInputElement>(null);
+    const [coverBusy, setCoverBusy] = useState(false);
+    const [coverError, setCoverError] = useState<string | null>(null);
+
+    async function changeCover(file: File | undefined) {
+        if (!file) return;
+        setCoverBusy(true);
+        setCoverError(null);
+        try {
+            updateUser({ communityCoverPhotoUrl: await CommunityCoverService.upload(file) });
+        } catch (error) {
+            setCoverError(error instanceof Error ? error.message : "No se pudo subir la foto.");
+        } finally {
+            setCoverBusy(false);
+        }
+    }
+
+    async function resetCover() {
+        setCoverBusy(true);
+        setCoverError(null);
+        try {
+            await CommunityCoverService.reset();
+            updateUser({ communityCoverPhotoUrl: undefined });
+        } catch (error) {
+            setCoverError(error instanceof Error ? error.message : "No se pudo quitar la foto.");
+        } finally {
+            setCoverBusy(false);
+        }
+    }
     const showWelcome = !loading && data?.residentsActive === 0;
 
     useEffect(() => {
@@ -128,6 +159,26 @@ export default function AdminDashboardPage() {
                     <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
                         Operación, cobranza y actividad comunitaria en una vista ejecutiva conectada a datos reales.
                     </p>
+                </div>
+                {/* La portada la ven también los residentes en su inicio. */}
+                <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
+                    <div className="flex gap-2">
+                        {customCover && (
+                            <button type="button" onClick={() => void resetCover()} disabled={coverBusy}
+                                className="rounded-lg px-3 py-1.5 text-xs font-semibold backdrop-blur"
+                                style={{ background: "rgba(26,22,17,0.55)", color: "var(--cc-paper)" }}>
+                                Quitar foto
+                            </button>
+                        )}
+                        <button type="button" onClick={() => coverInput.current?.click()} disabled={coverBusy}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold backdrop-blur"
+                            style={{ background: "rgba(26,22,17,0.55)", color: "var(--cc-paper)" }}>
+                            <Camera size={14} /> {coverBusy ? "Subiendo…" : customCover ? "Cambiar foto" : "Poner foto del condominio"}
+                        </button>
+                    </div>
+                    {coverError && <p className="rounded-lg px-2 py-1 text-xs" style={{ background: "rgba(26,22,17,0.7)", color: "var(--cc-paper)" }}>{coverError}</p>}
+                    <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                        onChange={event => { void changeCover(event.target.files?.[0]); event.target.value = ""; }} />
                 </div>
             </div>
 

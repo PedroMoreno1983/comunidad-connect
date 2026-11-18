@@ -84,10 +84,13 @@ export async function releaseChatImage(claimedPath: string, originalPath: string
  * save_provider_attachment: quien aprueba ve qué imagen se va a guardar aunque
  * recargue la conversación.
  */
+/** Herramientas que consumen la imagen adjunta del chat (adjunto_id). */
+export const ATTACHMENT_TOOLS = new Set(['save_provider_attachment', 'set_community_cover_photo']);
+
 export async function withAttachmentPreviews<T extends { name: string; input: Record<string, unknown>; previewUrl?: string }>(userId: string, actions: T[]): Promise<T[]> {
     return Promise.all(actions.map(async action => {
         const attachmentId = action.input?.attachment_id;
-        if (action.name !== 'save_provider_attachment' || typeof attachmentId !== 'string') return action;
+        if (!ATTACHMENT_TOOLS.has(action.name) || typeof attachmentId !== 'string') return action;
         const found = await findAttachment(userId, attachmentId).catch(() => null);
         if (!found) return action;
         const { data } = await getSupabaseAdmin().storage.from(BUCKET).createSignedUrl(found.path, 600);
@@ -160,7 +163,7 @@ export function currentChatAttachment(state: ChatAttachmentState | undefined, no
 /** Contexto de sistema para que CoCo sepa si puede usar la imagen (no va en el mensaje). */
 export function attachmentNote(stash: ChatAttachmentStash) {
     if (stash.status === 'stored') {
-        return `\n\n[La última imagen que la persona adjuntó en esta conversación está disponible: adjunto_id=${stash.id}. Si la persona pide ponerla en el perfil de un maestro (foto, trabajo o documento), usa save_provider_attachment con este adjunto_id.]`;
+        return `\n\n[La última imagen que la persona adjuntó en esta conversación está disponible: adjunto_id=${stash.id}. Si la persona pide ponerla en el perfil de un maestro (foto, trabajo o documento), usa save_provider_attachment con este adjunto_id. Si la administración pide usarla como portada o fondo del condominio, usa set_community_cover_photo con este adjunto_id.]`;
     }
     if (stash.status === 'unsupported') {
         return '\n\n[La imagen adjunta es GIF: no se puede guardar en el perfil de un maestro. Si la persona lo pide, dile que la envíe como JPG, PNG o WEBP.]';

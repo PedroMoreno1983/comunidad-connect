@@ -22,7 +22,7 @@ import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
 import type { CoCoPendingAction, CoCoResolutions } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { discardChatAttachment } from './chatAttachments';
+import { ATTACHMENT_TOOLS, discardChatAttachment } from './chatAttachments';
 import { NEIGHBOR_MODE_BLOCKED_TOOLS, NEIGHBOR_MODE_PROMPT } from '@/lib/neighborMode';
 
 /**
@@ -561,7 +561,7 @@ export async function askCoCo(
                     await auditRejectedTool(tu, userCtx);
                     // La imagen del chat que iba al perfil de un maestro no se queda guardada.
                     const attachmentId = (tu.input as Record<string, unknown>)?.attachment_id;
-                    if (tu.name === 'save_provider_attachment' && userCtx.user_id && typeof attachmentId === 'string') {
+                    if (ATTACHMENT_TOOLS.has(tu.name) && userCtx.user_id && typeof attachmentId === 'string') {
                         await discardChatAttachment(userCtx.user_id, attachmentId).catch(() => undefined);
                     }
                     return {
