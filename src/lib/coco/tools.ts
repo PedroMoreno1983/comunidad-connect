@@ -91,6 +91,7 @@ import { LEGAL_DRAFT_ADMIN_ONLY_MESSAGE, canDraftLegalDocuments } from './legalD
 import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 import { NEIGHBOR_MODE_BLOCKED_TOOLS } from '@/lib/neighborMode';
 import { setCommunityCoverFromChat } from './communityCoverTool';
+import { addCommunityExpenseWithChatImage } from '@/lib/finance/expenseChatAttachment';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -1555,6 +1556,7 @@ export const TOOL_DEFINITIONS = [
                 amount: { type: 'string', description: 'Monto en pesos (entero, sin puntos).' },
                 category: { type: 'string', description: 'water | electricity | gas | salaries | maintenance | security | other. Por defecto other.' },
                 prorate_method: { type: 'string', description: 'share (por alícuota) o equal (partes iguales). Por defecto share.' },
+                attachment_id: { type: 'string', description: 'Si la boleta o factura llegó como foto (viene un adjunto_id en el mensaje), pásalo: la foto queda guardada como respaldo del egreso.' },
             },
             required: ['month', 'label', 'amount'],
         },
@@ -2320,7 +2322,7 @@ export function describePendingAction(name: string, input: Record<string, unknow
         case 'distribute_alicuotas_equally':
             return { title: 'Repartir alícuotas', summary: 'Dividir el 100 % en partes iguales entre todas las unidades. Sin fuente queda provisorio.' };
         case 'add_community_expense':
-            return { title: 'Cargar egreso', summary: `${str('label') || 'Egreso'} · $${str('amount')} · ${str('month')}.` };
+            return { title: 'Cargar egreso', summary: `${str('label') || 'Egreso'} · ${str('amount')} · ${str('month')}.${str('attachment_id') ? ' La foto queda como respaldo.' : ''}` };
         case 'record_payment':
             return { title: 'Registrar pago recibido', summary: `Unidad ${unit('unit_id')} · $${str('amount')} · ${str('paid_at')} · ${str('method')} · referencia ${str('reference')}. Confirma solo si verificaste el pago fuera de CoCo; esto actualiza el saldo de la unidad.` };
         case 'issue_billing':
@@ -3831,14 +3833,20 @@ export async function executeTool(
                 const communityId = scopedCommunity(userCtx);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
                 try {
-                    const expense = await addCommunityExpense(communityId, userCtx.user_id ?? null, {
+                    const expenseInput = {
                         month: (input.month || '').trim(),
                         label: (input.label || '').trim(),
                         amount: parsePesos(input.amount),
                         category: (input.category || '').trim() || undefined,
-                        prorateMethod: input.prorate_method === 'equal' ? 'equal' : 'share',
-                    });
-                    return { success: true, expense_id: expense.id, message: `Egreso "${expense.label}" por $${Number(expense.amount).toLocaleString('es-CL')} cargado a ${expense.month}.` };
+                        prorateMethod: input.prorate_method === 'equal' ? 'equal' as const : 'share' as const,
+                    };
+                    // Con foto (chat web o WhatsApp), la boleta queda como respaldo del egreso.
+                    const attachmentId = (input.attachment_id || '').trim();
+                    const expense = attachmentId && userCtx.user_id
+                        ? await addCommunityExpenseWithChatImage(communityId, userCtx.user_id, attachmentId, expenseInput)
+                        : await addCommunityExpense(communityId, userCtx.user_id ?? null, expenseInput);
+                    const backed = attachmentId && userCtx.user_id ? ' La foto quedó como respaldo.' : '';
+                    return { success: true, expense_id: expense.id, message: `Egreso "${expense.label}" por ${Number(expense.amount).toLocaleString('es-CL')} cargado a ${expense.month}.${backed}` };
                 } catch (billingError) {
                     if (billingError instanceof BillingError) return { error: billingError.message };
                     throw billingError;

@@ -85,7 +85,7 @@ export async function releaseChatImage(claimedPath: string, originalPath: string
  * recargue la conversación.
  */
 /** Herramientas que consumen la imagen adjunta del chat (adjunto_id). */
-export const ATTACHMENT_TOOLS = new Set(['save_provider_attachment', 'set_community_cover_photo']);
+export const ATTACHMENT_TOOLS = new Set(['save_provider_attachment', 'set_community_cover_photo', 'add_community_expense']);
 
 export async function withAttachmentPreviews<T extends { name: string; input: Record<string, unknown>; previewUrl?: string }>(userId: string, actions: T[]): Promise<T[]> {
     return Promise.all(actions.map(async action => {
@@ -163,7 +163,7 @@ export function currentChatAttachment(state: ChatAttachmentState | undefined, no
 /** Contexto de sistema para que CoCo sepa si puede usar la imagen (no va en el mensaje). */
 export function attachmentNote(stash: ChatAttachmentStash) {
     if (stash.status === 'stored') {
-        return `\n\n[La última imagen que la persona adjuntó en esta conversación está disponible: adjunto_id=${stash.id}. Si la persona pide ponerla en el perfil de un maestro (foto, trabajo o documento), usa save_provider_attachment con este adjunto_id. Si la administración pide usarla como portada o fondo del condominio, usa set_community_cover_photo con este adjunto_id.]`;
+        return `\n\n[La última imagen que la persona adjuntó en esta conversación está disponible: adjunto_id=${stash.id}. Si la persona pide ponerla en el perfil de un maestro (foto, trabajo o documento), usa save_provider_attachment con este adjunto_id. Si la administración pide usarla como portada o fondo del condominio, usa set_community_cover_photo con este adjunto_id. Si es una boleta o factura y la administración pide cargarla como egreso, lee de la imagen el monto, la fecha y el proveedor, y pasa este adjunto_id en add_community_expense para que la foto quede como respaldo; si no está claro para qué fue el gasto, pregunta antes.]`;
     }
     if (stash.status === 'unsupported') {
         return '\n\n[La imagen adjunta es GIF: no se puede guardar en el perfil de un maestro. Si la persona lo pide, dile que la envíe como JPG, PNG o WEBP.]';
