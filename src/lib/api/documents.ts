@@ -3,6 +3,15 @@ import type { CommunityDocumentRead } from '../types';
 
 const BUCKET = 'community-documents';
 
+/** El tipo sale de la extensión: el navegador a veces no lo informa, y el bucket solo acepta estos. */
+const MIME_BY_EXTENSION: Record<string, string> = {
+    pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    txt: 'text/plain',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    csv: 'text/csv',
+};
+
 async function readError(response: Response, fallback: string) {
     const data = await response.json().catch(() => ({})) as { error?: string };
     return new Error(data.error || fallback);
@@ -24,7 +33,7 @@ export const CommunityDocumentsService = {
         const { path, token } = await prepared.json() as { path: string; token: string };
 
         const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(path, token, file, {
-            contentType: file.type || 'application/octet-stream',
+            contentType: MIME_BY_EXTENSION[file.name.split('.').at(-1)?.toLowerCase() || ''] || 'application/octet-stream',
         });
         if (error) throw new Error('No pude subir el documento. Revisa tu conexión e inténtalo de nuevo.');
 

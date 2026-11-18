@@ -3,6 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { enforceAiBudget, recordAiUsage } from '@/lib/ai/budget';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import type { CommunityDocumentHit, CommunityDocumentKind, CommunityDocumentRead } from '@/lib/types';
 
@@ -27,8 +28,13 @@ export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const SCANNED_PAGE_CHARS = 120;
 /** Lo que se le pasa a CoCo en el mismo turno; el resto lo encuentra buscando. */
 const TURN_TEXT_CHARS = 35_000;
-/** Gemini recibe el PDF entero en línea hasta este tamaño. */
-const MAX_OCR_BYTES = 20 * 1024 * 1024;
+/**
+ * Gemini recibe el PDF en línea, codificado en base64 (un tercio más) dentro de
+ * un pedido de hasta 20 MB: 14 MB de archivo es el máximo seguro.
+ */
+const MAX_OCR_BYTES = 14 * 1024 * 1024;
+/** Documentos sin páginas (Word, texto, planillas) se guardan en secciones de este largo. */
+const SECTION_CHARS = 3_500;
 
 export class CommunityDocumentError extends Error {
     constructor(message: string, readonly status = 400) { super(message); }
@@ -57,6 +63,7 @@ export async function createDocumentUpload(communityId: string, userId: string, 
 }
 
 type PageText = { page: number; text: string; ocr: boolean };
+type OcrBudget = { communityId: string; userId: string };
 
 function clean(text: string) {
     return text.replace(/\0/g, '').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
@@ -84,18 +91,25 @@ export function scannedPages(pages: PageText[]) {
 /**
  * Transcribe con Gemini las páginas escaneadas. Gemini recibe el PDF completo
  * (lo lee como imágenes) y devuelve solo las páginas pedidas, textuales.
+ * Pasa por el presupuesto de IA de la comunidad, y si falta alguna página no
+ * devuelve un resultado parcial: un reglamento con páginas en blanco haría que
+ * CoCo pasara por alto justo el artículo que importa.
  */
-async function transcribeScannedPages(bytes: Buffer, pages: number[]): Promise<Map<number, string>> {
+async function transcribeScannedPages(bytes: Buffer, pages: number[], budget: OcrBudget): Promise<Map<number, string>> {
+    if (!pages.length) return new Map();
     const key = process.env.GEMINI_API_KEY?.trim();
-    if (!key || !pages.length) return new Map();
-    if (bytes.length > MAX_OCR_BYTES) throw new CommunityDocumentError('El PDF escaneado pesa más de 20 MB: divídelo en partes.', 413);
+    if (!key) throw new CommunityDocumentError('Este documento tiene páginas escaneadas y la lectura de escaneos no está disponible ahora.', 503);
+    if (bytes.length > MAX_OCR_BYTES) throw new CommunityDocumentError('El PDF escaneado pesa más de 14 MB: divídelo en partes.', 413);
+    const model = 'gemini-2.5-flash';
+    const usage = { communityId: budget.communityId, userId: budget.userId, module: 'coco.documents.ocr', provider: 'gemini', model, actionType: 'extraction' as const };
+    await enforceAiBudget({ ...usage, estimatedPromptTokens: 260 * (pages.length + 10), estimatedCompletionTokens: 600 * pages.length });
     const prompt = [
         'Transcribe textualmente estas páginas de un documento legal chileno escaneado:',
         pages.join(', '),
         'Respeta la ortografía del original, sin resumir ni corregir. Omite timbres y firmas ilegibles.',
         'Responde solo JSON: {"pages":[{"page":número,"text":"texto"}]}.',
     ].join(' ');
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -105,23 +119,83 @@ async function transcribeScannedPages(bytes: Buffer, pages: number[]): Promise<M
         signal: AbortSignal.timeout(240_000),
     });
     if (!response.ok) throw new CommunityDocumentError('No pude leer las páginas escaneadas ahora. Intenta de nuevo en unos minutos.', 502);
-    const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const payload = await response.json() as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number };
+    };
+    await recordAiUsage({
+        ...usage,
+        promptTokens: payload.usageMetadata?.promptTokenCount,
+        completionTokens: payload.usageMetadata?.candidatesTokenCount,
+        totalTokens: payload.usageMetadata?.totalTokenCount,
+    }).catch(() => undefined);
     const raw = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || '';
     let parsed: { pages?: Array<{ page?: unknown; text?: unknown }> } = {};
-    try { parsed = JSON.parse(raw); } catch { return new Map(); }
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
     const wanted = new Set(pages);
     const out = new Map<number, string>();
     for (const item of parsed.pages || []) {
         const page = Number(item.page);
         if (wanted.has(page) && typeof item.text === 'string' && item.text.trim()) out.set(page, clean(item.text));
     }
+    const missing = pages.filter(page => !out.has(page));
+    if (missing.length) {
+        throw new CommunityDocumentError(`No pude leer ${missing.length === 1 ? 'la página' : 'las páginas'} ${missing.join(', ')} del escaneo. Intenta de nuevo o sube una versión más nítida.`, 502);
+    }
     return out;
 }
 
-/** Texto para el turno de CoCo, con la página marcada para que la cite. */
-export function documentTurnText(pages: PageText[]) {
-    const full = pages.map(page => `[Página ${page.page}${page.ocr ? ', transcrita' : ''}]\n${page.text}`).join('\n\n');
+/**
+ * Un documento sin páginas (Word, texto, planilla) se guarda en secciones. Se
+ * citan como "sección", no como "página 1": inventar el número de página haría
+ * que todas las citas apuntaran al comienzo.
+ */
+export function splitSections(text: string): PageText[] {
+    const sections: PageText[] = [];
+    let current = '';
+    for (const paragraph of text.split(/\n{2,}|\n(?=\s*ART[IÍ]CULO)/i)) {
+        if (current && current.length + paragraph.length > SECTION_CHARS) {
+            sections.push({ page: sections.length + 1, text: current.trim(), ocr: false });
+            current = '';
+        }
+        current += `${paragraph}\n\n`;
+        while (current.length > SECTION_CHARS * 2) {
+            sections.push({ page: sections.length + 1, text: current.slice(0, SECTION_CHARS).trim(), ocr: false });
+            current = current.slice(SECTION_CHARS);
+        }
+    }
+    if (current.trim()) sections.push({ page: sections.length + 1, text: current.trim(), ocr: false });
+    return sections;
+}
+
+/** Texto para el turno de CoCo, con la página (o sección) marcada para que la cite. */
+export function documentTurnText(pages: PageText[], paginated = true) {
+    const label = paginated ? 'Página' : 'Sección';
+    const full = pages.map(page => `[${label} ${page.page}${page.ocr ? ', transcrita' : ''}]\n${page.text}`).join('\n\n');
     return { text: full.slice(0, TURN_TEXT_CHARS), truncated: full.length > TURN_TEXT_CHARS };
+}
+
+async function extractPages(extension: NonNullable<ReturnType<typeof documentExtension>>, bytes: Buffer, budget: OcrBudget) {
+    if (extension === 'pdf') {
+        let pages = await pdfPages(bytes);
+        const scanned = scannedPages(pages);
+        if (scanned.length) {
+            const transcribed = await transcribeScannedPages(bytes, scanned, budget);
+            pages = pages.map(page => transcribed.has(page.page) ? { page: page.page, text: transcribed.get(page.page)!, ocr: true } : page);
+        }
+        return { pages, paginated: true };
+    }
+    let text: string;
+    if (extension === 'xlsx') {
+        // Una nómina en Excel: CoCo la ve como tabla y puede cargarla con preview_resident_import.
+        text = await spreadsheetBufferToText(bytes, { maxRows: 5000 });
+    } else if (extension === 'docx') {
+        const mammoth = await import('mammoth');
+        text = (await mammoth.extractRawText({ buffer: bytes })).value;
+    } else {
+        text = bytes.toString('utf8');
+    }
+    return { pages: splitSections(text.replace(/\0/g, '').replace(/[ \t]+/g, ' ')), paginated: false };
 }
 
 /** Lee un documento ya subido al bucket y lo guarda, privado para quien lo subió. */
@@ -131,61 +205,53 @@ export async function readUploadedDocument(input: { communityId: string; userId:
         throw new CommunityDocumentError('Ese archivo no es tuyo.', 403);
     }
     const extension = documentExtension(input.storagePath);
-    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX o TXT.');
+    if (!extension) throw new CommunityDocumentError('Usa PDF, DOCX, TXT, XLSX o CSV.');
     const admin = getSupabaseAdmin();
-    const { data: blob, error } = await admin.storage.from(DOCUMENTS_BUCKET).download(input.storagePath);
-    if (error || !blob) throw new CommunityDocumentError('No encontré el archivo subido.', 404);
-    const bytes = Buffer.from(await blob.arrayBuffer());
-    if (bytes.length > MAX_DOCUMENT_BYTES) throw new CommunityDocumentError('El máximo es 25 MB.', 413);
+    let saved = false;
+    try {
+        const { data: blob, error } = await admin.storage.from(DOCUMENTS_BUCKET).download(input.storagePath);
+        if (error || !blob) throw new CommunityDocumentError('No encontré el archivo subido.', 404);
+        const bytes = Buffer.from(await blob.arrayBuffer());
+        if (bytes.length > MAX_DOCUMENT_BYTES) throw new CommunityDocumentError('El máximo es 25 MB.', 413);
 
-    let pages: PageText[];
-    if (extension === 'pdf') {
-        pages = await pdfPages(bytes);
-        const scanned = scannedPages(pages);
-        if (scanned.length) {
-            const transcribed = await transcribeScannedPages(bytes, scanned);
-            pages = pages.map(page => transcribed.has(page.page) ? { page: page.page, text: transcribed.get(page.page)!, ocr: true } : page);
+        const { pages, paginated } = await extractPages(extension, bytes, { communityId: input.communityId, userId: input.userId });
+        if (!pages.some(page => page.text)) {
+            throw new CommunityDocumentError('No pude leer el documento. Si es una foto o un escaneo muy borroso, prueba con una versión más nítida.', 422);
         }
-    } else if (extension === 'xlsx') {
-        // Una nómina en Excel: CoCo la ve como tabla y puede cargarla con preview_resident_import.
-        pages = [{ page: 1, text: clean(await spreadsheetBufferToText(bytes, { maxRows: 5000 })), ocr: false }];
-    } else if (extension === 'docx') {
-        const mammoth = await import('mammoth');
-        pages = [{ page: 1, text: clean((await mammoth.extractRawText({ buffer: bytes })).value), ocr: false }];
-    } else {
-        pages = [{ page: 1, text: clean(bytes.toString('utf8')), ocr: false }];
-    }
-    if (!pages.some(page => page.text)) {
-        throw new CommunityDocumentError('No pude leer el documento. Si es una foto o un escaneo muy borroso, prueba con una versión más nítida.', 422);
-    }
 
-    const title = input.fileName.replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').trim().slice(0, 140) || 'Documento';
-    const { data: document, error: insertError } = await admin.from('community_documents').insert({
-        community_id: input.communityId,
-        uploaded_by: input.userId,
-        title,
-        file_name: input.fileName.slice(0, 200),
-        storage_path: input.storagePath,
-        page_count: pages.length,
-        ocr_pages: pages.filter(page => page.ocr).length,
-    }).select('id').single();
-    if (insertError || !document) throw new CommunityDocumentError('No pude guardar el documento.', 500);
-    const { error: pagesError } = await admin.from('community_document_pages').insert(
-        pages.map(page => ({ document_id: document.id, page_number: page.page, text: page.text, ocr: page.ocr })),
-    );
-    if (pagesError) {
-        await admin.from('community_documents').delete().eq('id', document.id);
-        throw new CommunityDocumentError('No pude guardar el texto del documento.', 500);
+        const title = input.fileName.replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').trim().slice(0, 140) || 'Documento';
+        const { data: document, error: insertError } = await admin.from('community_documents').insert({
+            community_id: input.communityId,
+            uploaded_by: input.userId,
+            title,
+            file_name: input.fileName.slice(0, 200),
+            storage_path: input.storagePath,
+            page_count: pages.length,
+            ocr_pages: pages.filter(page => page.ocr).length,
+            paginated,
+        }).select('id').single();
+        if (insertError || !document) throw new CommunityDocumentError('No pude guardar el documento.', 500);
+        const { error: pagesError } = await admin.from('community_document_pages').insert(
+            pages.map(page => ({ document_id: document.id, page_number: page.page, text: page.text, ocr: page.ocr })),
+        );
+        if (pagesError) {
+            await admin.from('community_documents').delete().eq('id', document.id);
+            throw new CommunityDocumentError('No pude guardar el texto del documento.', 500);
+        }
+        saved = true;
+        const turn = documentTurnText(pages, paginated);
+        return {
+            documentId: String(document.id),
+            name: input.fileName.slice(0, 120),
+            text: turn.text,
+            pageCount: pages.length,
+            ocrPages: pages.filter(page => page.ocr).length,
+            truncated: turn.truncated,
+        };
+    } finally {
+        // Si no se guardó, el archivo no queda huérfano en el bucket.
+        if (!saved) await admin.storage.from(DOCUMENTS_BUCKET).remove([input.storagePath]).then(() => undefined, () => undefined);
     }
-    const turn = documentTurnText(pages);
-    return {
-        documentId: String(document.id),
-        name: input.fileName.slice(0, 120),
-        text: turn.text,
-        pageCount: pages.length,
-        ocrPages: pages.filter(page => page.ocr).length,
-        truncated: turn.truncated,
-    };
 }
 
 /** Un extracto alrededor de la primera palabra buscada que aparezca. */
@@ -203,7 +269,7 @@ export async function searchCommunityDocuments(communityId: string, userId: stri
     if (!q) return [];
     const admin = getSupabaseAdmin();
     const { data: documents } = await admin.from('community_documents')
-        .select('id, title, kind, visibility, uploaded_by')
+        .select('id, title, kind, visibility, uploaded_by, paginated')
         .eq('community_id', communityId)
         .or(`visibility.eq.community,uploaded_by.eq.${userId}`)
         .limit(200);
@@ -222,6 +288,7 @@ export async function searchCommunityDocuments(communityId: string, userId: stri
             title: String(document.title),
             kind: document.kind as CommunityDocumentKind,
             page: Number(page.page_number),
+            paginated: document.paginated !== false,
             excerpt: excerptAround(String(page.text || ''), q),
         };
     });

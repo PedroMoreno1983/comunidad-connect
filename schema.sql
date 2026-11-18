@@ -7419,7 +7419,20 @@ GRANT SELECT, INSERT, DELETE ON public.coco_usage_signals TO service_role;
 COMMENT ON TABLE public.coco_usage_signals IS
     'Tema (no texto) de cada mensaje de un residente a CoCo. Solo el servidor lo lee; la administración ve agregados con mínimo 3 personas por grupo.';
 
--- Documentos de la comunidad que CoCo lee completos (18-11-2026). Bucket privado community-documents en la migración.
+-- Documentos de la comunidad que CoCo lee completos (18-11-2026). Bucket privado: los archivos suben directo desde el navegador.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'community-documents',
+    'community-documents',
+    false,
+    26214400,
+    ARRAY['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/vnd.ms-excel', 'application/octet-stream']
+)
+ON CONFLICT (id) DO UPDATE
+SET public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
 CREATE TABLE IF NOT EXISTS public.community_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
@@ -7431,6 +7444,8 @@ CREATE TABLE IF NOT EXISTS public.community_documents (
     visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'community')),
     page_count INTEGER NOT NULL DEFAULT 0,
     ocr_pages INTEGER NOT NULL DEFAULT 0,
+    -- false: Word, texto o planilla, guardados por secciones (se citan como sección, no como página).
+    paginated BOOLEAN NOT NULL DEFAULT TRUE,
     published_at TIMESTAMPTZ,
     published_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS public.community_documents (
     visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'community')),
     page_count INTEGER NOT NULL DEFAULT 0,
     ocr_pages INTEGER NOT NULL DEFAULT 0,
+    -- false: Word, texto o planilla, guardados por secciones (se citan como sección, no como página).
+    paginated BOOLEAN NOT NULL DEFAULT TRUE,
     published_at TIMESTAMPTZ,
     published_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

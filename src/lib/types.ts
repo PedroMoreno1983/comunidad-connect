@@ -1542,7 +1542,9 @@ export interface CommunityDocumentHit {
   documentId: string;
   title: string;
   kind: CommunityDocumentKind;
+  /** Número de página, o de sección si el documento no tiene páginas (Word, texto). */
   page: number;
+  paginated: boolean;
   excerpt: string;
 }
 
