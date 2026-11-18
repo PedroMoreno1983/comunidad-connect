@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { predominantKind, residentUnitLabel } from '@/lib/units/unitLabel';
 
 function cleanText(value: unknown, max = 120) {
     return typeof value === 'string' || typeof value === 'number'
@@ -54,16 +55,15 @@ export async function POST() {
         if (currentUnitId) {
             const { data: currentUnit } = await admin
                 .from('units')
-                .select('id, number, tower')
+                .select('id, number, tower, type')
                 .eq('id', currentUnitId)
                 .maybeSingle();
             if (currentUnit) {
                 const unitNumber = cleanText(currentUnit.number, 40);
-                const tower = cleanText(currentUnit.tower, 20);
                 return NextResponse.json({
                     ok: true,
                     unitId: currentUnit.id,
-                    unitName: unitNumber ? `Depto ${tower && tower !== 'A' ? `${tower}-` : ''}${unitNumber}` : undefined,
+                    unitName: unitNumber ? residentUnitLabel({ type: currentUnit.type, tower: cleanText(currentUnit.tower, 20), number: unitNumber }) : undefined,
                 });
             }
         }
@@ -80,7 +80,7 @@ export async function POST() {
         const unitDetails = inferUnitDetails(unitLabel);
         const { data: existingUnit, error: existingUnitError } = await admin
             .from('units')
-            .select('id, number, tower, owner_id, resident_profile_id')
+            .select('id, number, tower, type, owner_id, resident_profile_id')
             .eq('community_id', communityId)
             .eq('number', unitDetails.number)
             .maybeSingle();
@@ -98,7 +98,11 @@ export async function POST() {
         }
 
         let unitId = cleanText(existingUnit?.id, 80);
+        let unitType = cleanText(existingUnit?.type, 20) || 'apartment';
         if (!unitId) {
+            // En un condominio de casas la unidad nueva también es casa.
+            const { data: siblings } = await admin.from('units').select('type').eq('community_id', communityId).limit(1000);
+            unitType = predominantKind((siblings ?? []) as { type: string | null }[]);
             const { data: createdUnit, error: createError } = await admin
                 .from('units')
                 .insert({
@@ -106,7 +110,7 @@ export async function POST() {
                     number: unitDetails.number,
                     tower: unitDetails.tower,
                     floor: unitDetails.floor,
-                    type: 'apartment',
+                    type: unitType,
                     owner_id: user.id,
                     resident_profile_id: user.id,
                 })
@@ -140,7 +144,7 @@ export async function POST() {
         return NextResponse.json({
             ok: true,
             unitId,
-            unitName: `Depto ${unitDetails.tower !== 'A' ? `${unitDetails.tower}-` : ''}${unitDetails.number}`,
+            unitName: residentUnitLabel({ type: unitType, tower: unitDetails.tower, number: unitDetails.number }),
         });
     } catch (error) {
         console.error('[profile] unit linkage failed', error);

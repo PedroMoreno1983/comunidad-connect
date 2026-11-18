@@ -34,11 +34,11 @@ function minutesAgo(value?: string | null) {
     return `Hace ${hours} ${hours === 1 ? "hora" : "horas"}`;
 }
 
-function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePackageRow[], cases: ConciergeCaseRow[]): ConciergeShiftEvent[] {
+function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePackageRow[], cases: ConciergeCaseRow[], unitNoun = "Depto"): ConciergeShiftEvent[] {
     const events: ConciergeShiftEvent[] = [];
 
     for (const visitor of visitors) {
-        const unit = visitor.units?.number ? `Depto ${visitor.units.number}` : "unidad sin asignar";
+        const unit = visitor.units?.number ? `${unitNoun} ${visitor.units.number}` : "unidad sin asignar";
         events.push({
             id: `visit-${visitor.id}`,
             timestamp: visitor.entry_time ? new Date(visitor.entry_time).getTime() : 0,
@@ -51,7 +51,7 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
     }
 
     for (const pkg of packages) {
-        const unit = pkg.units?.number ? `Depto ${pkg.units.number}` : "unidad sin asignar";
+        const unit = pkg.units?.number ? `${unitNoun} ${pkg.units.number}` : "unidad sin asignar";
         events.push({
             id: `pkg-${pkg.id}`,
             timestamp: pkg.received_at ? new Date(pkg.received_at).getTime() : 0,
@@ -81,6 +81,7 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
 
 export default function ConciergeDashboardPage() {
     const { user } = useAuth();
+    const unitNoun = user?.unitNoun ?? "Depto";
     const [loading, setLoading] = React.useState(true);
     const [visitors, setVisitors] = React.useState<ConciergeVisitorRow[]>([]);
     const [packages, setPackages] = React.useState<ConciergePackageRow[]>([]);
@@ -176,7 +177,7 @@ export default function ConciergeDashboardPage() {
     const activeVisitors = visitors.filter(v => !v.exit_time).length;
     const pendingPackages = packages.filter(p => p.status !== "picked-up");
     const criticalCases = cases.filter(c => c.urgency === "alta" || c.urgency === "emergencia");
-    const shiftLog = buildShiftLog(visitors, packages, cases);
+    const shiftLog = buildShiftLog(visitors, packages, cases, unitNoun);
     const dateToday = new Date().toLocaleDateString("es-CL", {
         weekday: "long",
         day: "numeric",
@@ -324,7 +325,7 @@ export default function ConciergeDashboardPage() {
                                     <div key={pkg.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                         <div>
                                             <p className="text-xs font-semibold text-[var(--cc-ink)]">
-                                                {pkg.units?.number ? `Depto ${pkg.units.number}` : "Unidad sin asignar"}
+                                                {pkg.units?.number ? `${unitNoun} ${pkg.units.number}` : "Unidad sin asignar"}
                                             </p>
                                             <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.description || "Encomienda"} · {minutesAgo(pkg.received_at)}</p>
                                         </div>

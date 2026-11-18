@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { WaterService } from "@/lib/api";
 import type { UnitProfileOption, UnitRow } from "@/lib/types";
 import { formatRightsPercent, RIGHTS_TOLERANCE_PERMILLE, RIGHTS_TOTAL_PERMILLE } from "@/lib/assemblies/unitRights";
+import { predominantKind, unitKind, unitLocation, unitName, type UnitKind } from "@/lib/units/unitLabel";
 
 function getResidentName(unit: UnitRow) {
     return unit.profiles?.name || unit.profiles?.email || "";
@@ -42,7 +43,7 @@ export default function UnitsPage() {
     const [query, setQuery] = useState("");
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [newUnit, setNewUnit] = useState({ tower: "", number: "", floor: "" });
+    const [newUnit, setNewUnit] = useState<{ type: UnitKind | null; tower: string; number: string; floor: string }>({ type: null, tower: "", number: "", floor: "" });
     const [creating, setCreating] = useState(false);
 
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -78,8 +79,10 @@ export default function UnitsPage() {
     const stats = useMemo(() => {
         const assigned = units.filter(unit => Boolean(getResidentName(unit))).length;
         const unassigned = Math.max(0, units.length - assigned);
-        const towers = new Set(units.map(unit => unit.tower).filter(Boolean)).size;
-        return { total: units.length, assigned, unassigned, towers };
+        const apartments = units.filter(unit => unitKind(unit.type) === "apartment");
+        const houses = units.length - apartments.length;
+        const towers = new Set(apartments.map(unit => unit.tower).filter(Boolean)).size;
+        return { total: units.length, assigned, unassigned, towers, houses, kind: predominantKind(units) };
     }, [units]);
 
     const alicuota = useMemo(() => {
@@ -96,6 +99,7 @@ export default function UnitsPage() {
         const normalized = query.trim().toLowerCase();
         return units.filter(unit => {
             const text = [
+                unitName(unit),
                 unit.number,
                 unit.tower,
                 unit.floor,
@@ -111,22 +115,18 @@ export default function UnitsPage() {
         event.preventDefault();
         setCreating(true);
         try {
-            const createdUnit = {
-                tower: newUnit.tower.trim(),
-                number: newUnit.number.trim(),
-                floor: parseInt(newUnit.floor, 10),
-            };
+            const type = newUnit.type ?? stats.kind;
+            // Una casa no tiene piso ni torre: la base los exige, así que van fijos.
+            const createdUnit = type === "house"
+                ? { type, tower: newUnit.tower.trim() || "Casas", number: newUnit.number.trim(), floor: 1 }
+                : { type, tower: newUnit.tower.trim(), number: newUnit.number.trim(), floor: parseInt(newUnit.floor, 10) };
 
-            await WaterService.createUnit({
-                tower: createdUnit.tower,
-                number: createdUnit.number,
-                floor: createdUnit.floor,
-            });
+            await WaterService.createUnit(createdUnit);
             await loadData();
 
-            toast({ title: "Unidad creada", description: `Depto ${createdUnit.number} quedo registrado.`, variant: "success" });
+            toast({ title: "Unidad creada", description: `${unitName(createdUnit)} quedó registrada.`, variant: "success" });
             setIsCreateOpen(false);
-            setNewUnit({ tower: "", number: "", floor: "" });
+            setNewUnit({ type: null, tower: "", number: "", floor: "" });
         } catch (error) {
             console.error("Error creating unit:", error);
             toast({ title: "No se pudo crear la unidad", description: "Revisa los datos e intenta nuevamente.", variant: "destructive" });
@@ -144,7 +144,7 @@ export default function UnitsPage() {
 
             toast({
                 title: selectedResident ? "Residente asignado" : "Unidad liberada",
-                description: selectedResident ? `Depto ${selectedUnit.number} actualizado.` : "La unidad quedo sin residente asignado.",
+                description: selectedResident ? `${unitName(selectedUnit)} actualizada.` : "La unidad quedo sin residente asignado.",
                 variant: "success",
             });
             setIsAssignOpen(false);
@@ -170,7 +170,7 @@ export default function UnitsPage() {
             <ModuleHeader
                 eyebrow="Administración"
                 title="Gestion de unidades"
-                description="Administra propiedades físicas, torres, alícuotas y su asignación. Las cuentas y permisos se gestionan en Usuarios; el listado de contacto está en Directorio."
+                description="Administra propiedades físicas (departamentos o casas), alícuotas y su asignación. Las cuentas y permisos se gestionan en Usuarios; el listado de contacto está en Directorio."
                 icon={<Building2 className="h-5 w-5" />}
                 meta={`${stats.total} unidades · ${stats.assigned} asignadas`}
                 actions={
@@ -185,10 +185,36 @@ export default function UnitsPage() {
                             <DialogHeader>
                                 <DialogTitle>Crear unidad</DialogTitle>
                                 <DialogDescription>
-                                    Registra departamento, piso y torre para habilitar gastos, agua y residentes.
+                                    Registra la casa o el departamento para habilitar gastos, agua y residentes.
                                 </DialogDescription>
                             </DialogHeader>
                             <form onSubmit={handleCreateUnit} className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold cc-text-secondary">Tipo</label>
+                                    <div className="flex gap-2" role="radiogroup" aria-label="Tipo de unidad">
+                                        {([["apartment", "Departamento"], ["house", "Casa"]] as const).map(([value, label]) => {
+                                            const active = (newUnit.type ?? stats.kind) === value;
+                                            return (
+                                                <button key={value} type="button" role="radio" aria-checked={active}
+                                                    onClick={() => setNewUnit({ ...newUnit, type: value })}
+                                                    className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                                                    style={{ borderColor: active ? "var(--cc-copper)" : "var(--cc-line)", background: active ? "var(--cc-paper-warm)" : undefined }}>
+                                                    {label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                {(newUnit.type ?? stats.kind) === "house" ? (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold cc-text-secondary">Sector o calle (opcional)</label>
+                                        <Input
+                                            placeholder="Ej: Los Pinos"
+                                            value={newUnit.tower}
+                                            onChange={event => setNewUnit({ ...newUnit, tower: event.target.value })}
+                                        />
+                                    </div>
+                                ) : (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold cc-text-secondary">Torre / bloque</label>
@@ -210,10 +236,11 @@ export default function UnitsPage() {
                                         />
                                     </div>
                                 </div>
+                                )}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold cc-text-secondary">Numero</label>
+                                    <label className="text-sm font-semibold cc-text-secondary">{(newUnit.type ?? stats.kind) === "house" ? "N° de casa o sitio" : "Número"}</label>
                                     <Input
-                                        placeholder="Ej: 1204"
+                                        placeholder={(newUnit.type ?? stats.kind) === "house" ? "Ej: 12" : "Ej: 1204"}
                                         value={newUnit.number}
                                         onChange={event => setNewUnit({ ...newUnit, number: event.target.value })}
                                         required
@@ -234,7 +261,9 @@ export default function UnitsPage() {
                 <ModuleStat label="Unidades" value={stats.total} icon={<Home className="h-4 w-4" />} />
                 <ModuleStat label="Asignadas" value={stats.assigned} icon={<Users className="h-4 w-4" />} />
                 <ModuleStat label="Sin asignar" value={stats.unassigned} icon={<UserPlus className="h-4 w-4" />} active={stats.unassigned > 0} />
-                <ModuleStat label="Torres" value={stats.towers} icon={<Building2 className="h-4 w-4" />} />
+                {stats.kind === "house"
+                    ? <ModuleStat label="Casas" value={stats.houses} icon={<Home className="h-4 w-4" />} />
+                    : <ModuleStat label="Torres" value={stats.towers} icon={<Building2 className="h-4 w-4" />} />}
             </section>
 
             {units.length > 0 && (
@@ -289,7 +318,7 @@ export default function UnitsPage() {
                         <input
                             value={query}
                             onChange={event => setQuery(event.target.value)}
-                            placeholder="Buscar por unidad, torre, piso o residente"
+                            placeholder={stats.kind === "house" ? "Buscar por casa, sector o residente" : "Buscar por unidad, torre, piso o residente"}
                             className="h-11 w-full rounded-xl border pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--cc-copper)]"
                             style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                         />
@@ -339,13 +368,12 @@ export default function UnitsPage() {
                                                         <Home className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold cc-text-primary">Depto {unit.number}</p>
-                                                        <p className="text-xs cc-text-secondary">ID {unit.id.slice(0, 12)}</p>
+                                                        <p className="font-semibold cc-text-primary">{unitName(unit)}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4 font-semibold cc-text-secondary">
-                                                Torre {unit.tower || "-"}, piso {unit.floor || "-"}
+                                                {unitLocation(unit)}
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className="font-semibold cc-text-secondary">
@@ -393,7 +421,7 @@ export default function UnitsPage() {
                     <DialogHeader>
                         <DialogTitle>Asignar residente</DialogTitle>
                         <DialogDescription>
-                            {selectedUnit ? `Selecciona quien vive en el depto ${selectedUnit.number}.` : "Selecciona una unidad."}
+                            {selectedUnit ? `Selecciona quién vive en ${unitKind(selectedUnit.type) === "house" ? "la casa" : "el depto"} ${selectedUnit.number}.` : "Selecciona una unidad."}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-4">

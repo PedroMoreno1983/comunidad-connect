@@ -5,6 +5,7 @@ import { User } from './types';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { forgetNativePushDevice } from '@/lib/native/pushBridge';
+import { predominantKind, unitName, unitNoun } from "@/lib/units/unitLabel";
 
 // ============================================
 // Unified Auth Context
@@ -167,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 // Fetch or repair unit if exists
                 fetchUnitForUser(sbUser.id, profileUnitId);
+                if (profile.community_id) fetchCommunityUnitNoun(profile.community_id);
                 if (profileRole === 'resident' && !profileUnitId) {
                     ensureResidentUnitForUser();
                 }
@@ -196,10 +198,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (unit && !error) {
                 const unitNumber = unit.number || unit.unit_number || unit.department_number;
-                setUser(prev => prev ? ({ ...prev, unitId: unit.id, unitName: unitNumber ? `Depto ${unitNumber}` : undefined }) : null);
+                setUser(prev => prev ? ({ ...prev, unitId: unit.id, unitName: unitNumber ? unitName({ type: unit.type, number: unitNumber }) : undefined }) : null);
             }
         } catch (err) {
             console.error("Could not fetch unit for user:", err);
+        }
+    };
+
+    // Un condominio de casas habla de "Casa 12", no de "Depto 12". Se deduce de
+    // sus unidades (units.type), que la vista de cada residente puede leer.
+    const fetchCommunityUnitNoun = async (communityId: string) => {
+        try {
+            const { data, error } = await supabase.from('units').select('type').eq('community_id', communityId).limit(1000);
+            if (error || !data?.length) return;
+            const noun = unitNoun(predominantKind(data as { type: string | null }[]));
+            setUser(prev => prev ? ({
+                ...prev,
+                unitNoun: noun,
+                unitName: prev.unitName?.replace(/^Depto /, `${noun} `),
+            }) : null);
+        } catch (err) {
+            console.error("Could not resolve the community unit type:", err);
         }
     };
 

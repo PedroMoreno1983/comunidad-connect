@@ -53,6 +53,7 @@ function getOperationalStatus(profile: AdminProfile) {
 
 export default function UsersPage() {
     const { user } = useAuth();
+    const unitNoun = user?.unitNoun ?? "Depto";
     const [users, setUsers] = useState<AdminProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [communityName, setCommunityName] = useState("Comunidad");
@@ -309,7 +310,7 @@ export default function UsersPage() {
                                                 <Badge variant={roleVariants[role] || "neutral"}>{roleLabels[role] || role}</Badge>
                                             </td>
                                             <td className="px-5 py-4 font-semibold cc-text-secondary">
-                                                {unitLabel === "-" ? "Sin asignar" : `Depto ${unitLabel}`}
+                                                {unitLabel === "-" ? "Sin asignar" : `${unitNoun} ${unitLabel}`}
                                             </td>
                                             <td className="px-5 py-4">
                                                 <Badge variant={status.variant}>{status.label}</Badge>
@@ -322,7 +323,7 @@ export default function UsersPage() {
                                                                 <input
                                                                     value={assignUnitNumber}
                                                                     onChange={event => setAssignUnitNumber(event.target.value)}
-                                                                    placeholder="Depto / unidad"
+                                                                    placeholder={`${unitNoun} / unidad`}
                                                                     className="w-28 rounded-lg border px-2 py-1.5 text-[13px]"
                                                                     style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}
                                                                 />

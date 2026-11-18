@@ -17,6 +17,8 @@ export interface User {
   photo?: string; // Alias for avatarUrl or external photo
   unitId?: string; // For residents/tenants
   unitName?: string; // User-friendly unit designator
+  /** "Casa" en un condominio de casas, "Depto" en un edificio. Sale de units.type de la comunidad. */
+  unitNoun?: string;
   communityId?: string; // Multi-tenant ID
   communityName?: string; // Display name of the active community
   communityCoverPhotoUrl?: string; // Optional real building photo, set per-community
@@ -32,6 +34,8 @@ export interface Unit {
   number: string;
   floor: number;
   tower: string;
+  /** 'house' en un condominio de casas; 'apartment' (por defecto) en un edificio. */
+  type?: string | null;
   ownerId?: string; // User ID
   tenantId?: string; // User ID
   sharePermille?: number | null; // Alícuota en tanto por mil (‰); la suma de la comunidad debería dar 1000

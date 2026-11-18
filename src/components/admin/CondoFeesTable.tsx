@@ -31,6 +31,7 @@ export function CondoFeesTable() {
     const [query, setQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | CondoFee["status"]>("all");
     const { user } = useAuth();
+    const unitNoun = user?.unitNoun ?? "Depto";
     const { toast } = useToast();
 
     const loadFees = useCallback(async () => {
@@ -179,7 +180,7 @@ export function CondoFeesTable() {
                                         </div>
                                         <div>
                                             <p className="font-semibold cc-text-primary">Torre {fee.units?.tower || 'A'}</p>
-                                            <p className="text-xs cc-text-tertiary font-medium">Depto {fee.units?.number}</p>
+                                            <p className="text-xs cc-text-tertiary font-medium">{unitNoun} {fee.units?.number}</p>
                                         </div>
                                     </div>
                                 </td>

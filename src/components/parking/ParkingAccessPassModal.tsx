@@ -32,6 +32,7 @@ import {
 } from "@/lib/parking";
 import { ParkingService } from "@/lib/api";
 import type { ParkingBooking } from "@/lib/types";
+import { useUnitNoun } from "@/hooks/useUnitNoun";
 
 interface ParkingAccessPassModalProps {
   booking: ParkingBooking;
@@ -51,6 +52,7 @@ export function ParkingAccessPassModal({
   buildingAddress = "",
 }: ParkingAccessPassModalProps) {
   const { toast } = useToast();
+  const unitNoun = useUnitNoun();
   const [copied, setCopied] = useState(false);
   const [extending, setExtending] = useState(false);
   const [currentBooking, setCurrentBooking] = useState<ParkingBooking>(booking);
@@ -181,7 +183,7 @@ export function ParkingAccessPassModal({
             Estacionamiento {currentBooking.spotLabel || "—"}
           </h2>
           <p className="text-[12px] text-white/70 mt-0.5">
-            {buildingName} {currentBooking.unitLabel ? `· Depto ${currentBooking.unitLabel}` : ""}
+            {buildingName} {currentBooking.unitLabel ? `· ${unitNoun} ${currentBooking.unitLabel}` : ""}
           </p>
 
           {/* Real-time Status Badge */}

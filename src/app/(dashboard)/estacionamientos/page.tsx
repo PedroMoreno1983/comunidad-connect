@@ -75,6 +75,7 @@ import type {
   ParkingSpot,
   ParkingSpotInput,
 } from "@/lib/types";
+import { useUnitNoun } from "@/hooks/useUnitNoun";
 
 type ParkingTab = "search" | "owner" | "bookings" | "storage" | "gate" | "admin";
 
@@ -212,6 +213,7 @@ function SpotCard({
   onRequestAccess: (spot: ParkingSearchResult) => void;
   requestingAccess: boolean;
 }) {
+  const unitNoun = useUnitNoun();
   const savings = calculateCommercialSavings(spot.quotedAmount);
   const canBook = accessState === "resident" || accessState === "approved";
 
@@ -231,7 +233,7 @@ function SpotCard({
           <p className="mt-1 flex items-center gap-1.5 text-[12px] cc-text-secondary">
             <MapPin size={12} className="text-[var(--cc-copper)]" />
             {spot.communityName}
-            {spot.unitLabel ? ` · Depto ${spot.unitLabel}` : ""} · {spot.ownerName}
+            {spot.unitLabel ? ` · ${unitNoun} ${spot.unitLabel}` : ""} · {spot.ownerName}
           </p>
           {spot.description && (
             <p className="mt-2 text-[13px] cc-text-secondary">{spot.description}</p>
