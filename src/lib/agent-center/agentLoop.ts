@@ -22,6 +22,7 @@
  * respaldo deterministico cuando la API falla.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { COCO_NO_INVENTION_RULE } from '@/lib/coco/honestyRules';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, recordAiUsage } from '@/lib/ai/budget';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
@@ -226,7 +227,9 @@ Como trabajar:
 5. No inventes nombres, ids, unidades, fechas, montos ni destinatarios. Usa los ids exactos que devuelven las lecturas. Si falta un dato imprescindible, pregunta solo por ese dato en tu respuesta final.
 6. Interpreta lenguaje chileno: dpto/depto/departamento/unidad son equivalentes; los montos usan punto de miles.
 7. Respuesta final: español claro, breve, con cifras y fechas concretas. No expongas ids internos ni tu razonamiento interno. Si una herramienta fallo, dilo y sugiere el siguiente paso.
-8. Trabajas solo con los datos de la comunidad del usuario; las herramientas ya estan acotadas a ella.`;
+8. Trabajas solo con los datos de la comunidad del usuario; las herramientas ya estan acotadas a ella.
+
+${COCO_NO_INVENTION_RULE}`;
 
 function buildUserPrompt(message: string, profile: AgentProfile, history: Array<{ role: 'user' | 'assistant'; content: string }>) {
     const recent = history.slice(-6);

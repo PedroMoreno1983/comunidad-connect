@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import type { CoCoDocumentRead } from '../coco/chatAttachmentRules';
+import { attachmentFailureCodeFromStatus, isAttachmentFailureCode, type AttachmentFailureCode } from '../coco/attachmentFailures';
 
 const BUCKET = 'community-documents';
 
@@ -12,9 +13,18 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     csv: 'text/csv',
 };
 
-async function readError(response: Response, fallback: string) {
-    const data = await response.json().catch(() => ({})) as { error?: string };
-    return new Error(data.error || fallback);
+/** Error de un adjunto con su causa para el modelo (attachmentFailures.ts). */
+export class ChatAttachmentError extends Error {
+    constructor(message: string, readonly code: AttachmentFailureCode) {
+        super(message);
+        this.name = 'ChatAttachmentError';
+    }
+}
+
+async function readError(response: Response, fallback: string, fallbackCode: AttachmentFailureCode) {
+    const data = await response.json().catch(() => ({})) as { error?: string; code?: unknown };
+    const code = isAttachmentFailureCode(data.code) ? data.code : attachmentFailureCodeFromStatus(response.status, fallbackCode);
+    return new ChatAttachmentError(data.error || fallback, code);
 }
 
 /**
@@ -29,20 +39,20 @@ export const CommunityDocumentsService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName: file.name, size: file.size }),
         });
-        if (!prepared.ok) throw await readError(prepared, 'No pude preparar la subida.');
+        if (!prepared.ok) throw await readError(prepared, 'No pude preparar la subida.', 'upload_failed');
         const { path, token } = await prepared.json() as { path: string; token: string };
 
         const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(path, token, file, {
             contentType: MIME_BY_EXTENSION[file.name.split('.').at(-1)?.toLowerCase() || ''] || 'application/octet-stream',
         });
-        if (error) throw new Error('No pude subir el documento. Revisa tu conexión e inténtalo de nuevo.');
+        if (error) throw new ChatAttachmentError('No pude subir el documento. Revisa tu conexión e inténtalo de nuevo.', 'upload_failed');
 
         const read = await fetch('/api/coco/legal-document', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ storagePath: path, fileName: file.name }),
         });
-        if (!read.ok) throw await readError(read, 'No pude leer el documento.');
+        if (!read.ok) throw await readError(read, 'No pude leer el documento.', 'ocr_failed');
         return await read.json() as CoCoDocumentRead;
     },
 };

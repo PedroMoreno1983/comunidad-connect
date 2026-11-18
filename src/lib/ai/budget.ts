@@ -50,12 +50,25 @@ type AiUsageEvent = {
     action_type: AiActionType | null;
     status: AiUsageStatus | null;
     created_at: string;
+    metadata?: Record<string, unknown> | null;
 };
+
+/**
+ * Tokens que cuentan para el cupo diario de una persona. La caché leída de
+ * Anthropic (el prefijo de herramientas y sistema que se repite en cada ronda)
+ * cuenta al 10 %, como se cobra; antes cada ronda contaba ~33 mil tokens enteros.
+ */
+export function dailyTokensOf(event: Pick<AiUsageEvent, 'total_tokens' | 'metadata'>) {
+    const total = Math.max(0, event.total_tokens ?? 0);
+    const cached = Number(event.metadata?.cacheReadTokens ?? 0);
+    const read = Number.isFinite(cached) ? Math.min(total, Math.max(0, cached)) : 0;
+    return Math.round(total - read * 0.9);
+}
 
 export class AiBudgetExceededError extends Error {
     status = 429;
 
-    constructor(public reason: string) {
+    constructor(public reason: string, public code: string = 'budget_exceeded') {
         super(reason);
         this.name = 'AiBudgetExceededError';
     }
@@ -145,9 +158,22 @@ function monthStart() {
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
+/**
+ * Inicio del día en Chile, en UTC. El cupo diario se renueva a medianoche de
+ * Chile (antes, a medianoche UTC: las 21:00 o 20:00 en Chile).
+ */
+export function chileDayStart(now = new Date()) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    }).formatToParts(now).map(part => [part.type, part.value]));
+    const asUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+    const offsetMs = asUtc - Math.floor(now.getTime() / 1000) * 1000;
+    return new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) - offsetMs).toISOString();
+}
+
 function dayStart() {
-    const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+    return chileDayStart();
 }
 
 function defaultBudget(): AiBudget {
@@ -166,8 +192,24 @@ function isUuid(value?: string | null) {
     return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
-function dailyLimitForRole(budget: AiBudget, role?: string | null) {
-    return role === 'admin' || role === 'concierge'
+/**
+ * Piso diario por persona para la administración. Leer una escritura o un
+ * reglamento escaneado de ~50 páginas cuesta del orden de 100–150 mil tokens
+ * por lectura, y cada ronda de herramientas del turno vuelve a enviar el PDF:
+ * con los 300 mil del cupo de staff, un admin quedaba bloqueado (hasta para un
+ * "confirmo") después de uno o dos PDF (18-11-2026). 3 millones alcanzan para
+ * 2–3 escrituras de unas 50 páginas al día con su conversación. El tope mensual
+ * de la comunidad (tokens y costo) sigue aplicando igual.
+ */
+export const ADMIN_DAILY_TOKEN_FLOOR = Number(process.env.AI_ADMIN_DAILY_TOKEN_LIMIT || 3_000_000);
+
+export function isAdminRole(role?: string | null) {
+    return role === 'admin' || role === 'superadmin';
+}
+
+export function dailyLimitForRole(budget: Pick<AiBudget, 'staff_daily_token_limit' | 'resident_daily_token_limit'>, role?: string | null) {
+    if (isAdminRole(role)) return Math.max(budget.staff_daily_token_limit, ADMIN_DAILY_TOKEN_FLOOR);
+    return role === 'concierge'
         ? budget.staff_daily_token_limit
         : budget.resident_daily_token_limit;
 }
@@ -176,14 +218,21 @@ function isHeavyAction(actionType?: AiActionType) {
     return actionType === 'image' || actionType === 'course' || actionType === 'extraction';
 }
 
-function userMessage(reason: string) {
-    if (reason === 'community_ai_disabled') return 'La IA esta desactivada para esta comunidad.';
-    if (reason === 'monthly_token_limit') return 'La comunidad alcanzo su bolsa mensual de IA. Un administrador puede ampliar el plan o esperar el proximo ciclo.';
-    if (reason === 'daily_role_token_limit') return 'Alcanzaste el limite diario de IA para tu rol. Intenta nuevamente manana o solicita ampliacion a administracion.';
-    if (reason === 'monthly_image_limit') return 'La comunidad alcanzo el limite mensual de imagenes generadas con IA.';
-    if (reason === 'monthly_cost_limit') return 'La comunidad alcanzo el presupuesto mensual de IA.';
-    if (reason === 'daily_heavy_action_limit') return 'La comunidad alcanzo el limite diario de acciones pesadas de IA.';
-    return 'No queda presupuesto disponible para esta accion de IA.';
+/** Mensaje para la persona: sin jerga, con tildes y con qué puede hacer. */
+export function budgetUserMessage(reason: string, role?: string | null) {
+    const admin = isAdminRole(role);
+    if (reason === 'community_ai_disabled') return admin
+        ? 'La IA de CoCo está apagada para esta comunidad. Para activarla, pídeselo a Convive Connect.'
+        : 'La IA de CoCo está apagada para esta comunidad. Si la necesitas, coméntalo a la administración.';
+    if (reason === 'monthly_token_limit' || reason === 'monthly_cost_limit') return admin
+        ? 'Se agotó el presupuesto de IA de la comunidad para este mes. Se renueva el próximo mes; si lo necesitas antes, pide a Convive Connect que amplíe el plan.'
+        : 'Se agotó el presupuesto de IA de la comunidad para este mes. Se renueva el próximo mes; si es urgente, coméntalo a la administración.';
+    if (reason === 'daily_role_token_limit') return admin
+        ? 'Hoy usaste todo el presupuesto de IA de tu cuenta (leer documentos largos lo consume rápido). Se renueva a medianoche. Si necesitas seguir hoy, pide a Convive Connect que amplíe el presupuesto de la comunidad.'
+        : 'Hoy usaste todo el presupuesto de IA de tu cuenta. Se renueva a medianoche; si lo necesitas antes, coméntalo a la administración.';
+    if (reason === 'monthly_image_limit') return 'Se agotaron las imágenes con IA de la comunidad para este mes. Se renuevan el próximo mes.';
+    if (reason === 'daily_heavy_action_limit') return 'Hoy la comunidad ya usó todas las lecturas de documentos e imágenes con IA del día. Se renuevan a medianoche.';
+    return 'No queda presupuesto de IA para esta acción ahora.';
 }
 
 async function fetchBudget(communityId?: string | null): Promise<AiBudget> {
@@ -221,7 +270,7 @@ async function fetchUsage(communityId: string | null | undefined, userId: string
 
     const { data, error } = await getSupabaseAdmin()
         .from('ai_usage_events')
-        .select('user_id, total_tokens, image_count, estimated_cost_cents, action_type, status, created_at')
+        .select('user_id, total_tokens, image_count, estimated_cost_cents, action_type, status, created_at, metadata')
         .eq('community_id', communityId)
         .gte('created_at', monthStart());
 
@@ -248,7 +297,7 @@ async function fetchUsage(communityId: string | null | undefined, userId: string
             ? successful
                 .filter(event => event.created_at >= day)
                 .filter(event => event.user_id === userId)
-                .reduce((sum, event) => sum + (event.total_tokens ?? 0), 0)
+                .reduce((sum, event) => sum + dailyTokensOf(event), 0)
             : 0,
         dailyHeavyActions: successful
             .filter(event => event.created_at >= day && isHeavyAction(event.action_type ?? undefined))
@@ -333,5 +382,5 @@ export async function enforceAiBudget(input: AiBudgetCheck) {
         blockedReason: reason,
     });
 
-    throw new AiBudgetExceededError(userMessage(reason));
+    throw new AiBudgetExceededError(budgetUserMessage(reason, input.role), reason);
 }

@@ -18,6 +18,7 @@ import { CommunityDocumentsService } from "@/lib/api";
 import { COCO_PRIVACY_NOTICE, PRIVACY_POLICY_VERSION } from "@/lib/privacy";
 import { CHAT_FILE_ACCEPT, MAX_CHAT_ATTACHMENTS, MAX_CHAT_DOCUMENT_BYTES, MAX_CHAT_IMAGE_BYTES, addChatAttachments, attachmentSummary, formatBytes, imageDataUrlBudget, type ChatAttachmentDraft, type CoCoDocumentRead } from "@/lib/coco/chatAttachmentRules";
 import { prepareChatImage } from "@/lib/coco/prepareChatImage";
+import { attachmentFailureFromError, type AttachmentFailure } from "@/lib/coco/attachmentFailures";
 
 function CoCoMarkdown({ text, onAccent = false }: { text: string; onAccent?: boolean }) {
     return (
@@ -264,6 +265,15 @@ export default function CoCoChatPage() {
         return data;
     };
 
+    // La barra lateral se relee tras cada envío, también si falló: el servidor
+    // ya guardó el mensaje y la conversación tiene título.
+    const refreshThreads = () => {
+        void fetch('/api/coco/threads', { cache: 'no-store' })
+            .then(response => response.ok ? response.json() as Promise<{ threads: CoCoThread[] }> : null)
+            .then(result => { if (result) setThreads(result.threads); })
+            .catch(() => {});
+    };
+
     const appendAssistantReply = (data: CoCoApiResponse) => {
         const safeNavigate = getSafeCoCoNavigation(data.navigate);
         setMsgs(previous => [...previous, {
@@ -285,10 +295,7 @@ export default function CoCoChatPage() {
             }, 900);
         }
 
-        void fetch('/api/coco/threads', { cache: 'no-store' })
-            .then(response => response.ok ? response.json() as Promise<{ threads: CoCoThread[] }> : null)
-            .then(result => { if (result) setThreads(result.threads); })
-            .catch(() => {});
+        refreshThreads();
 
         if (!data.action) return;
         setTimeout(() => {
@@ -414,9 +421,13 @@ export default function CoCoChatPage() {
                     Promise.allSettled(documents.map(item => CommunityDocumentsService.readForCoCo(item.file))),
                     Promise.allSettled(imageFiles.map(item => prepareChatImage(item.file, budget))),
                 ]);
-                const failures = [
-                    ...documentResults.flatMap((result, index) => result.status === 'rejected' ? [`${documents[index].file.name}: ${result.reason instanceof Error ? result.reason.message : 'no pude leerlo.'}`] : []),
-                    ...imageResults.flatMap((result, index) => result.status === 'rejected' ? [`${imageFiles[index].file.name}: ${result.reason instanceof Error ? result.reason.message : 'no pude prepararla.'}`] : []),
+                // Cada adjunto que falló llega al modelo con su causa (reason_code de
+                // una lista cerrada y el texto literal), para que no suponga otra.
+                const attachmentErrors: AttachmentFailure[] = [
+                    ...documentResults.flatMap((result, index) => result.status === 'rejected' ? [attachmentFailureFromError(documents[index].file.name, result.reason, 'upload_failed')] : []),
+                    ...imageResults.flatMap((result, index) => result.status === 'rejected'
+                        ? [attachmentFailureFromError(imageFiles[index].file.name, result.reason, /pesad|grande/i.test(String((result.reason as Error | undefined)?.message || '')) ? 'too_large' : 'unsupported_type')]
+                        : []),
                 ];
                 const legalDocuments = documentResults.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])
                     .map((document: CoCoDocumentRead) => ({
@@ -425,18 +436,21 @@ export default function CoCoChatPage() {
                         documentId: document.documentId, visualPdfPath: document.visualPdfPath,
                     }));
                 const images = imageResults.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
-                if (failures.length) {
-                    setMsgs(previous => [...previous, { id: `${Date.now()}-fail`, role: 'assistant', text: `No pude usar ${failures.length === 1 ? 'un archivo' : `${failures.length} archivos`}:\n${failures.map(line => `- ${line}`).join('\n')}` }]);
+                if (attachmentErrors.length) {
+                    setMsgs(previous => [...previous, { id: `${Date.now()}-fail`, role: 'assistant', text: `No pude usar ${attachmentErrors.length === 1 ? 'un archivo' : `${attachmentErrors.length} archivos`}:\n${attachmentErrors.map(item => `- ${item.file}: ${item.reason_text}`).join('\n')}` }]);
                 }
-                if (!legalDocuments.length && !images.length) return;
-                const skipped = failures.length ? `\n(No pude leer: ${failures.map(line => line.split(':')[0]).join(', ')}.)` : '';
+                // Aunque fallen todos, el mensaje se envía: así queda guardado en la
+                // conversación y CoCo explica la causa real de cada archivo.
                 appendAssistantReply(await postToCoCo({
-                    message: `${question}${skipped}`.slice(0, 1000),
+                    message: question.slice(0, 1000),
+                    attachmentNames: files.map(item => item.file.name),
                     ...(legalDocuments.length ? { legalDocuments } : {}),
                     ...(images.length ? { images } : {}),
+                    ...(attachmentErrors.length ? { attachmentErrors } : {}),
                 }));
             } catch (error) {
                 setMsgs(previous => [...previous, { id: (Date.now() + 1).toString(), role: 'assistant', text: error instanceof Error ? error.message : 'No pude analizar los archivos.' }]);
+                refreshThreads();
             } finally { setLoading(false); }
             return;
         }
@@ -455,6 +469,7 @@ export default function CoCoChatPage() {
                 role: "assistant",
                 text: `${error} Inténtalo de nuevo.`
             }]);
+            refreshThreads();
         } finally {
             setLoading(false);
         }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { extractPdfText } from '@/lib/coco/pdfText';
-import { CommunityDocumentError, readUploadedDocument } from '@/lib/coco/communityDocuments';
+import { CommunityDocumentError, documentFailureCode, readUploadedDocument } from '@/lib/coco/communityDocuments';
 import { isAiBudgetExceededError } from '@/lib/ai/budget';
 
 export const dynamic = 'force-dynamic';
@@ -25,14 +25,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Adjunta un documento.' }, { status: 400 });
         }
         try {
-            const read = await readUploadedDocument({ communityId: profile.community_id, userId: profile.id, storagePath: body.storagePath, fileName: body.fileName });
+            const read = await readUploadedDocument({ communityId: profile.community_id, userId: profile.id, role: profile.role, storagePath: body.storagePath, fileName: body.fileName });
             return NextResponse.json({ ...read, pageImages: [] }, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
-            if (error instanceof CommunityDocumentError) return NextResponse.json({ error: error.message }, { status: error.status });
+            // `code` viaja hasta el modelo (attachmentFailures.ts) para que cite la causa real.
+            if (error instanceof CommunityDocumentError) return NextResponse.json({ error: error.message, code: documentFailureCode(error) }, { status: error.status });
             // Sin presupuesto de IA para leer los escaneos: no es un documento dañado.
-            if (isAiBudgetExceededError(error)) return NextResponse.json({ error: error.reason }, { status: 429 });
+            if (isAiBudgetExceededError(error)) return NextResponse.json({ error: error.reason, code: 'budget_exceeded' }, { status: 429 });
             console.error('[coco documents] read failed', error);
-            return NextResponse.json({ error: 'No pude leer el documento. Revisa que no esté dañado o protegido.' }, { status: 422 });
+            return NextResponse.json({ error: 'No pude leer el documento. Revisa que no esté dañado o protegido.', code: 'ocr_failed' }, { status: 422 });
         }
     }
 
