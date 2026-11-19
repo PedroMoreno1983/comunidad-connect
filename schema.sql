@@ -7598,3 +7598,15 @@ CREATE TABLE IF NOT EXISTS public.inbound_bill_documents (
     UNIQUE (email_id, attachment_id)
 );
 
+
+-- Reporte de actividad de la plataforma, mañana y tarde (19-11-2026). Solo servidor.
+CREATE TABLE IF NOT EXISTS public.platform_activity_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_key TEXT NOT NULL UNIQUE,
+    window_start TIMESTAMPTZ NOT NULL,
+    window_end TIMESTAMPTZ NOT NULL,
+    recipients TEXT[] NOT NULL DEFAULT '{}',
+    summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+    session_offsets JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -42,6 +42,14 @@
     {
       "path": "/api/utilities/reminders/cron",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/platform/activity-report/cron",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/platform/activity-report/cron",
+      "schedule": "0 21 * * *"
     }
   ]
 }
