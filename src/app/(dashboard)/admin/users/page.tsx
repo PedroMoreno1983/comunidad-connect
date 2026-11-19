@@ -75,8 +75,6 @@ export default function UsersPage() {
             try {
                 const directory = await AdminUsersService.getDirectory(user?.id);
                 setCommunityName(directory.communityName);
-                setResidentCode(directory.residentCode);
-                setConciergeCode(directory.conciergeCode);
                 setUsers(directory.users);
             } catch (err) {
                 console.error("Error fetching users:", err);
@@ -85,7 +83,12 @@ export default function UsersPage() {
                 setIsLoading(false);
             }
             // Aparte: si falla el listado, el código de administración igual se muestra.
-            if (user?.role === "admin") setAdminCode(await AdminUsersService.getAdminCode().catch(() => null));
+            if (user?.role === "admin") {
+                const codes = await AdminUsersService.getInviteCodes().catch(() => null);
+                setResidentCode(codes?.residentCode ?? null);
+                setConciergeCode(codes?.conciergeCode ?? null);
+                setAdminCode(codes?.adminCode ?? null);
+            }
         };
 
         fetchData();
@@ -147,8 +150,6 @@ export default function UsersPage() {
             // reload directory
             const directory = await AdminUsersService.getDirectory(user?.id);
             setCommunityName(directory.communityName);
-            setResidentCode(directory.residentCode);
-            setConciergeCode(directory.conciergeCode);
             setUsers(directory.users);
         } catch (error) {
             setAssignError(error instanceof Error ? error.message : "No se pudo asignar la unidad.");

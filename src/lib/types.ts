@@ -1174,8 +1174,13 @@ export interface AdminProfile {
 export interface AdminUsersDirectory {
   users: AdminProfile[];
   communityName: string;
+}
+
+/** Códigos de invitación: solo los entrega el servidor a la administración. */
+export interface AdminInviteCodes {
   residentCode: string | null;
   conciergeCode: string | null;
+  adminCode: string | null;
 }
 
 export interface ServiceRequestQueueItem {

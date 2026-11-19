@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import { formatWhatsAppPhone } from '../whatsapp';
 import {
     AdminProfile,
-    AdminUsersDirectory,
+    AdminInviteCodes, AdminUsersDirectory,
     DirectoryNeighbor,
     ProfileSettings,
     User,
@@ -35,19 +35,22 @@ function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, un
 // ==========================================
 
 export const AdminUsersService = {
-    /** Código para que otra persona se registre como administradora. Lo entrega el servidor solo a la administración. */
-    async getAdminCode(): Promise<string | null> {
-        const response = await fetch("/api/admin/admin-code", { cache: "no-store" });
-        if (!response.ok) return null;
-        const data = await response.json().catch(() => null) as { adminCode?: string | null } | null;
-        return data?.adminCode ?? null;
+    /**
+     * Códigos de invitación (residentes, conserjería, administración). El
+     * navegador no puede leerlos de communities: los entrega el servidor solo a
+     * la administración de la comunidad.
+     */
+    async getInviteCodes(): Promise<AdminInviteCodes> {
+        const empty: AdminInviteCodes = { residentCode: null, conciergeCode: null, adminCode: null };
+        const response = await fetch("/api/admin/invite-codes", { cache: "no-store" });
+        if (!response.ok) return empty;
+        const data = await response.json().catch(() => null) as Partial<AdminInviteCodes> | null;
+        return { residentCode: data?.residentCode ?? null, conciergeCode: data?.conciergeCode ?? null, adminCode: data?.adminCode ?? null };
     },
 
     async getDirectory(currentUserId?: string): Promise<AdminUsersDirectory> {
         let communityId: string | null = null;
         let communityName = "Comunidad";
-        let residentCode: string | null = null;
-        let conciergeCode: string | null = null;
 
         if (currentUserId) {
             const { data: profile, error: profileError } = await supabase
@@ -62,15 +65,13 @@ export const AdminUsersService = {
             if (communityId) {
                 const { data: community, error: communityError } = await supabase
                     .from("communities")
-                    .select("name, resident_code, concierge_code")
+                    .select("name")
                     .eq("id", communityId)
                     .maybeSingle();
 
                 if (communityError) throw communityError;
                 if (community) {
                     communityName = String(community.name || "Comunidad");
-                    residentCode = typeof community.resident_code === "string" ? community.resident_code : null;
-                    conciergeCode = typeof community.concierge_code === "string" ? community.concierge_code : null;
                 }
             }
         }
@@ -97,8 +98,6 @@ export const AdminUsersService = {
         return {
             users,
             communityName,
-            residentCode,
-            conciergeCode,
         };
     },
 };
