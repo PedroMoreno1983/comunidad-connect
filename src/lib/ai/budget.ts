@@ -40,6 +40,11 @@ type AiBudget = {
     resident_daily_token_limit: number;
     staff_daily_token_limit: number;
     heavy_action_daily_limit: number;
+    /** Tope de costo por persona, en centavos de dólar. 0 = sin tope. */
+    staff_daily_cost_cents: number;
+    staff_weekly_cost_cents: number;
+    resident_daily_cost_cents: number;
+    resident_weekly_cost_cents: number;
 };
 
 type AiUsageEvent = {
@@ -176,16 +181,38 @@ function dayStart() {
     return chileDayStart();
 }
 
+/** Lunes 00:00 de Chile de la semana en curso, en UTC: el cupo semanal se renueva ahí. */
+export function chileWeekStart(now = new Date()) {
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Santiago', weekday: 'short' }).format(now);
+    const daysSinceMonday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(weekday);
+    return chileDayStart(new Date(now.getTime() - Math.max(0, daysSinceMonday) * 86_400_000));
+}
+
 function defaultBudget(): AiBudget {
     return {
         is_enabled: true,
         monthly_token_limit: Number(process.env.AI_DEFAULT_MONTHLY_TOKEN_LIMIT || 10_000_000),
         monthly_image_limit: Number(process.env.AI_DEFAULT_MONTHLY_IMAGE_LIMIT || 30),
-        monthly_cost_limit_cents: Number(process.env.AI_DEFAULT_MONTHLY_COST_LIMIT_CENTS || 10_000),
+        monthly_cost_limit_cents: Number(process.env.AI_DEFAULT_MONTHLY_COST_LIMIT_CENTS || 1_000),
         resident_daily_token_limit: Number(process.env.AI_RESIDENT_DAILY_TOKEN_LIMIT || 100_000),
         staff_daily_token_limit: Number(process.env.AI_STAFF_DAILY_TOKEN_LIMIT || 300_000),
         heavy_action_daily_limit: Number(process.env.AI_HEAVY_DAILY_LIMIT || 20),
+        staff_daily_cost_cents: Number(process.env.AI_STAFF_DAILY_COST_CENTS || 100),
+        staff_weekly_cost_cents: Number(process.env.AI_STAFF_WEEKLY_COST_CENTS || 400),
+        resident_daily_cost_cents: Number(process.env.AI_RESIDENT_DAILY_COST_CENTS || 15),
+        resident_weekly_cost_cents: Number(process.env.AI_RESIDENT_WEEKLY_COST_CENTS || 50),
     };
+}
+
+/**
+ * Tope de costo de una persona según su rol. Administración y conserjería
+ * trabajan con CoCo todo el día; los residentes conversan menos.
+ */
+export function personCostLimits(budget: Pick<AiBudget, 'staff_daily_cost_cents' | 'staff_weekly_cost_cents' | 'resident_daily_cost_cents' | 'resident_weekly_cost_cents'>, role?: string | null) {
+    const staff = isAdminRole(role) || role === 'concierge';
+    return staff
+        ? { daily: budget.staff_daily_cost_cents, weekly: budget.staff_weekly_cost_cents }
+        : { daily: budget.resident_daily_cost_cents, weekly: budget.resident_weekly_cost_cents };
 }
 
 function isUuid(value?: string | null) {
@@ -230,6 +257,12 @@ export function budgetUserMessage(reason: string, role?: string | null) {
     if (reason === 'daily_role_token_limit') return admin
         ? 'Hoy usaste todo el presupuesto de IA de tu cuenta (leer documentos largos lo consume rápido). Se renueva a medianoche. Si necesitas seguir hoy, pide a Convive Connect que amplíe el presupuesto de la comunidad.'
         : 'Hoy usaste todo el presupuesto de IA de tu cuenta. Se renueva a medianoche; si lo necesitas antes, coméntalo a la administración.';
+    if (reason === 'daily_person_cost_limit') return admin
+        ? 'Hoy llegaste al cupo diario de CoCo de tu cuenta (leer documentos largos lo consume rápido). Se renueva a medianoche.'
+        : 'Hoy llegaste al cupo diario de CoCo. Se renueva a medianoche.';
+    if (reason === 'weekly_person_cost_limit') return admin
+        ? 'Esta semana llegaste al cupo de CoCo de tu cuenta. Se renueva el lunes; si lo necesitas antes, pide a Convive Connect que amplíe el plan.'
+        : 'Esta semana llegaste al cupo de CoCo. Se renueva el lunes.';
     if (reason === 'monthly_image_limit') return 'Se agotaron las imágenes con IA de la comunidad para este mes. Se renuevan el próximo mes.';
     if (reason === 'daily_heavy_action_limit') return 'Hoy la comunidad ya usó todas las lecturas de documentos e imágenes con IA del día. Se renuevan a medianoche.';
     return 'No queda presupuesto de IA para esta acción ahora.';
@@ -241,7 +274,7 @@ async function fetchBudget(communityId?: string | null): Promise<AiBudget> {
     try {
         const { data, error } = await getSupabaseAdmin()
             .from('ai_budgets')
-            .select('is_enabled, monthly_token_limit, monthly_image_limit, monthly_cost_limit_cents, resident_daily_token_limit, staff_daily_token_limit, heavy_action_daily_limit')
+            .select('is_enabled, monthly_token_limit, monthly_image_limit, monthly_cost_limit_cents, resident_daily_token_limit, staff_daily_token_limit, heavy_action_daily_limit, staff_daily_cost_cents, staff_weekly_cost_cents, resident_daily_cost_cents, resident_weekly_cost_cents')
             .eq('community_id', communityId)
             .maybeSingle();
 
@@ -265,6 +298,8 @@ async function fetchUsage(communityId: string | null | undefined, userId: string
             monthlyCostCents: 0,
             dailyUserTokens: 0,
             dailyHeavyActions: 0,
+            dailyUserCostCents: 0,
+            weeklyUserCostCents: 0,
         };
     }
 
@@ -272,7 +307,8 @@ async function fetchUsage(communityId: string | null | undefined, userId: string
         .from('ai_usage_events')
         .select('user_id, total_tokens, image_count, estimated_cost_cents, action_type, status, created_at, metadata')
         .eq('community_id', communityId)
-        .gte('created_at', monthStart());
+        // La semana puede empezar el mes anterior.
+        .gte('created_at', [monthStart(), chileWeekStart()].sort()[0]);
 
     if (error) {
         console.warn('[AI Budget] Could not read ai_usage_events:', error.message);
@@ -282,17 +318,26 @@ async function fetchUsage(communityId: string | null | undefined, userId: string
             monthlyCostCents: 0,
             dailyUserTokens: 0,
             dailyHeavyActions: 0,
+            dailyUserCostCents: 0,
+            weeklyUserCostCents: 0,
         };
     }
 
     const events = (data ?? []) as AiUsageEvent[];
     const day = dayStart();
+    const week = chileWeekStart();
+    const month = monthStart();
     const successful = events.filter(event => event.status !== 'blocked');
+    const thisMonth = successful.filter(event => event.created_at >= month);
+    const mine = isUuid(userId) ? successful.filter(event => event.user_id === userId) : [];
+    const costOf = (list: AiUsageEvent[]) => list.reduce((sum, event) => sum + Number(event.estimated_cost_cents ?? 0), 0);
 
     return {
-        monthlyTokens: successful.reduce((sum, event) => sum + (event.total_tokens ?? 0), 0),
-        monthlyImages: successful.reduce((sum, event) => sum + (event.image_count ?? 0), 0),
-        monthlyCostCents: successful.reduce((sum, event) => sum + Number(event.estimated_cost_cents ?? 0), 0),
+        monthlyTokens: thisMonth.reduce((sum, event) => sum + (event.total_tokens ?? 0), 0),
+        monthlyImages: thisMonth.reduce((sum, event) => sum + (event.image_count ?? 0), 0),
+        monthlyCostCents: costOf(thisMonth),
+        dailyUserCostCents: costOf(mine.filter(event => event.created_at >= day)),
+        weeklyUserCostCents: costOf(mine.filter(event => event.created_at >= week)),
         dailyUserTokens: isUuid(userId)
             ? successful
                 .filter(event => event.created_at >= day)
@@ -367,6 +412,8 @@ export async function enforceAiBudget(input: AiBudgetCheck) {
     else if (budget.monthly_image_limit > 0 && usage.monthlyImages + estimatedImages > budget.monthly_image_limit) reason = 'monthly_image_limit';
     else if (budget.monthly_cost_limit_cents > 0 && usage.monthlyCostCents + estimatedCost > budget.monthly_cost_limit_cents) reason = 'monthly_cost_limit';
     else if (dailyLimitForRole(budget, input.role) > 0 && usage.dailyUserTokens + estimatedTotal > dailyLimitForRole(budget, input.role)) reason = 'daily_role_token_limit';
+    else if (personCostLimits(budget, input.role).daily > 0 && usage.dailyUserCostCents + estimatedCost > personCostLimits(budget, input.role).daily) reason = 'daily_person_cost_limit';
+    else if (personCostLimits(budget, input.role).weekly > 0 && usage.weeklyUserCostCents + estimatedCost > personCostLimits(budget, input.role).weekly) reason = 'weekly_person_cost_limit';
     else if (isHeavyAction(input.actionType) && budget.heavy_action_daily_limit > 0 && usage.dailyHeavyActions + 1 > budget.heavy_action_daily_limit) reason = 'daily_heavy_action_limit';
 
     if (!reason) return;
