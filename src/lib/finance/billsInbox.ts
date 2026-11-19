@@ -3,12 +3,18 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { BillingError, addCommunityExpense } from '@/lib/finance/billingService';
 import { extractExpenseDocument } from '@/lib/finance/expenseDocumentExtractor';
 import { enrichUtilityDraft, rememberUtilityAccount } from '@/lib/utilities/communityBills';
+import { isUtilityService } from '@/lib/utilities/providers';
 import type { FinanceDocumentDraft, InboundBillDocument } from '@/lib/types';
 
 /**
  * Boletas que llegan solas por correo. Cada comunidad tiene una dirección
  * propia; Resend recibe el correo y avisa a /api/inbound/bills; aquí se bajan
- * los adjuntos, la IA los lee y quedan en la bandeja para registrarlos en un clic.
+ * los adjuntos y la IA los lee.
+ *
+ * Desde el 19-11-2026 la boleta entra sola como egreso del mes cuando su n° de
+ * cliente ya lo registró la administración una vez (así se sabe qué es, cómo se
+ * llama y cómo se prorratea) y la lectura salió limpia: monto, vencimiento, sin
+ * boleta repetida ni salto de monto. Lo demás queda en la bandeja para un clic.
  */
 
 const BUCKET = 'finance-documents';
@@ -109,16 +115,62 @@ export function resendDownloadAllowed(url: string) {
     }
 }
 
-async function notifyAdmins(communityId: string, count: number) {
+/** La boleta puede registrarse sola: cuenta conocida y lectura sin dudas. */
+export function canAutoRegister(draft: FinanceDocumentDraft) {
+    return Boolean(draft.knownUtilityAccount && draft.utility?.customerNumber && isUtilityService(draft.category)
+        && draft.amount > 0 && draft.label && /^\d{4}-(0[1-9]|1[0-2])$/.test(draft.suggestedMonth || '')
+        && draft.warnings.length === 0);
+}
+
+const clp = (amount: number) => `${Math.round(amount).toLocaleString('es-CL')}`;
+
+type AutoRegistered = { label: string; amount: number; month: string };
+
+async function notifyAdmins(communityId: string, pending: number, registered: AutoRegistered[]) {
     const admin = getSupabaseAdmin();
     const { data: admins } = await admin.from('profiles').select('id').eq('community_id', communityId).eq('role', 'admin');
     if (!admins?.length) return;
-    await admin.from('notifications').insert(admins.map(profile => ({
-        user_id: profile.id, community_id: communityId, type: 'info', category: 'bills_inbox',
-        title: count === 1 ? 'Llegó una boleta por correo' : `Llegaron ${count} boletas por correo`,
-        body: 'CoCo ya la leyó. Revísala y regístrala como egreso en un clic.',
-        link: '/admin/finanzas/egresos#bandeja',
-    })));
+    const rows: Array<Record<string, unknown>> = [];
+    for (const profile of admins) {
+        for (const bill of registered) {
+            rows.push({
+                user_id: profile.id, community_id: communityId, type: 'success', category: 'bills_inbox',
+                title: `Boleta registrada: ${bill.label}`,
+                body: `CoCo la sumó a los egresos de ${bill.month} por ${clp(bill.amount)}, con la boleta como respaldo. Si algo no cuadra, bórrala en Egresos antes de emitir.`,
+                link: '/admin/finanzas/egresos',
+            });
+        }
+        if (pending) {
+            rows.push({
+                user_id: profile.id, community_id: communityId, type: 'info', category: 'bills_inbox',
+                title: pending === 1 ? 'Llegó una boleta por revisar' : `Llegaron ${pending} boletas por revisar`,
+                body: 'CoCo ya la leyó, pero necesita que confirmes los datos. Regístrala en un clic; las siguientes de esa cuenta entran solas.',
+                link: '/admin/finanzas/egresos#bandeja',
+            });
+        }
+    }
+    if (rows.length) await admin.from('notifications').insert(rows);
+}
+
+/** Registra sola una boleta de cuenta conocida. Si no se puede (mes ya emitido, etc.), queda en la bandeja con la razón. */
+async function autoRegister(communityId: string, id: string, draft: FinanceDocumentDraft): Promise<AutoRegistered | null> {
+    const admin = getSupabaseAdmin();
+    const { data: account } = await admin.from('community_utility_accounts').select('created_by')
+        .eq('community_id', communityId).eq('customer_number', draft.utility?.customerNumber || '').maybeSingle();
+    const month = String(draft.suggestedMonth);
+    try {
+        await registerInboundBill(communityId, account?.created_by ? String(account.created_by) : null, id, {
+            month, label: draft.label, amount: draft.amount, category: draft.category, provider: draft.provider,
+            prorateMethod: draft.suggestedProrateMethod === 'equal' ? 'equal' : 'share',
+        });
+        return { label: draft.label, amount: draft.amount, month };
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : 'error al registrar';
+        await admin.from('inbound_bill_documents')
+            .update({ draft: { ...draft, warnings: [`No entró sola: ${reason}`] } })
+            .eq('id', id).eq('status', 'pending');
+        return null;
+    }
 }
 
 /** Procesa un correo recibido. Idempotente por (email_id, adjunto). */
@@ -135,7 +187,8 @@ export async function handleInboundEmail(event: ReceivedEvent) {
 
     const attachments = (await resendListAttachments(emailId))
         .filter(item => ACCEPTED.has(String(item.content_type || '').toLowerCase()) && (item.size ?? 0) <= MAX_BYTES);
-    let stored = 0;
+    let pending = 0;
+    const registered: AutoRegistered[] = [];
     for (const attachment of attachments) {
         const { data: existing } = await admin.from('inbound_bill_documents').select('id')
             .eq('email_id', emailId).eq('attachment_id', attachment.id).maybeSingle();
@@ -168,14 +221,17 @@ export async function handleInboundEmail(event: ReceivedEvent) {
             const { data: duplicate } = await admin.from('community_expenses').select('month, label')
                 .eq('community_id', communityId).eq('document_sha256', checksum).limit(1).maybeSingle();
             if (duplicate) draft.warnings = [`Este mismo archivo ya es el respaldo de "${duplicate.label}" (${duplicate.month}).`, ...draft.warnings];
-            await admin.from('inbound_bill_documents').insert({ ...base, storage_path: path, document_sha256: checksum, draft, status: 'pending' });
-            stored++;
+            const { data: inserted, error: insertError } = await admin.from('inbound_bill_documents')
+                .insert({ ...base, storage_path: path, document_sha256: checksum, draft, status: 'pending' }).select('id').single();
+            if (insertError) throw insertError;
+            const done = canAutoRegister(draft) ? await autoRegister(communityId, String(inserted.id), draft) : null;
+            if (done) registered.push(done); else pending++;
         } catch (error) {
             await admin.from('inbound_bill_documents').insert({ ...base, status: 'failed', error: error instanceof Error ? error.message.slice(0, 300) : 'Error al procesar.' });
         }
     }
-    if (stored) await notifyAdmins(communityId, stored).catch(() => undefined);
-    return { communityId, stored, attachments: attachments.length };
+    if (pending || registered.length) await notifyAdmins(communityId, pending, registered).catch(() => undefined);
+    return { communityId, stored: pending + registered.length, registered: registered.length, attachments: attachments.length };
 }
 
 // ── Bandeja de la administración ────────────────────────────────────────────
@@ -210,7 +266,7 @@ export async function discardInboundBill(communityId: string, userId: string, id
     if (data.storage_path) await admin.storage.from(BUCKET).remove([data.storage_path]).catch(() => undefined);
 }
 
-export async function registerInboundBill(communityId: string, userId: string, id: string, input: {
+export async function registerInboundBill(communityId: string, userId: string | null, id: string, input: {
     month: string; label: string; amount: number; category: string; provider: string; prorateMethod: 'share' | 'equal';
 }) {
     const admin = getSupabaseAdmin();
@@ -226,7 +282,7 @@ export async function registerInboundBill(communityId: string, userId: string, i
             prorateMethod: input.prorateMethod, notes: [draft.documentDate, draft.documentNumber].filter(Boolean).join(' · ').slice(0, 500),
             documentPath: row.storage_path, documentSha256: row.document_sha256, utility,
         });
-        if (utility) {
+        if (utility && userId) {
             await rememberUtilityAccount(communityId, userId, { utility, category: input.category, provider: input.provider, label: input.label, prorateMethod: input.prorateMethod })
                 .catch(() => undefined);
         }

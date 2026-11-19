@@ -3672,6 +3672,8 @@ export interface FinanceDocumentDraft {
     suggestedMonth?: string;
     /** Prorrateo recordado para ese n° de cliente. */
     suggestedProrateMethod?: 'share' | 'equal';
+    /** El n° de cliente ya lo registró la administración antes: la boleta puede entrar sola. */
+    knownUtilityAccount?: boolean;
 }
 export interface FinanceDocumentReview extends FinanceDocumentDraft {
     id: string;
