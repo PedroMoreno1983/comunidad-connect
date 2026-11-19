@@ -93,7 +93,7 @@ export function BillsInboxPanel({ month, categories, onRegistered }: {
                 <div>
                     <h2 className="font-semibold cc-text-primary">Boletas que llegan solas por correo</h2>
                     <p className="mt-1 text-sm cc-text-secondary">
-                        Inscribe esta dirección como correo de la boleta electrónica de cada cuenta común (Enel, CGE, Aguas Andinas, Metrogas…), o reenvía ahí las boletas automáticamente desde tu correo. CoCo las lee y quedan aquí para registrarlas en un clic.
+                        Inscribe esta dirección como correo de la boleta electrónica de cada cuenta común (Enel, CGE, Aguas Andinas, Metrogas…), o reenvía ahí las boletas automáticamente desde tu correo. CoCo las lee: la primera boleta de cada cuenta la confirmas aquí en un clic; desde la segunda, entra sola a los egresos del mes y te avisa. Si el monto salta mucho o la boleta viene repetida, vuelve a pasar por aquí.
                     </p>
                 </div>
             </div>

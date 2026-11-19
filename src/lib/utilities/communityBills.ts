@@ -33,6 +33,7 @@ export async function enrichUtilityDraft(communityId: string, draft: FinanceDocu
         next.category = String(account.service);
         if (account.label) next.label = String(account.label);
         next.suggestedProrateMethod = account.prorate_method === 'equal' ? 'equal' : 'share';
+        next.knownUtilityAccount = true;
     }
 
     if (utility.servicePeriod) {

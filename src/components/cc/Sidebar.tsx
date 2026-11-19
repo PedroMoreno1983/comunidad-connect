@@ -265,7 +265,6 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "ADMINISTRACIÓN",
       links: [
         { href: "/admin/finanzas", label: "Control Finanzas", icon: PieChart, roles: ["admin"] },
-        { href: "/admin/finanzas/egresos#bandeja", label: "Boletas luz, agua y gas", icon: Zap, roles: ["admin"] },
         { href: "/admin/units", label: "Unidades", icon: Home, roles: ["admin"] },
         { href: "/admin/asambleas", label: "Asambleas", icon: Landmark, roles: ["admin"] },
         { href: "/estacionamientos?tab=admin", label: "Estacionamientos", icon: Car, roles: ["admin"], feature: "parking" },
