@@ -245,15 +245,17 @@ export const AdminDashboardService = {
                 .select("id, status, date")
                 .order("date", { ascending: false })
                 .limit(120);
+            let amenitiesQuery = supabase.from("amenities").select("id", { count: "exact", head: true });
 
             if (isUuid(user.communityId)) {
+                amenitiesQuery = amenitiesQuery.eq("community_id", user.communityId);
                 profilesQuery = profilesQuery.eq("community_id", user.communityId);
                 unitsQuery = unitsQuery.eq("community_id", user.communityId);
                 expensesQuery = expensesQuery.eq("community_id", user.communityId);
                 bookingsQuery = bookingsQuery.eq("community_id", user.communityId);
             }
 
-            const [profilesRes, unitsRes, expensesRes, bookingsRes, maintenance] = await Promise.all([
+            const [profilesRes, unitsRes, expensesRes, bookingsRes, maintenance, amenitiesRes] = await Promise.all([
                 profilesQuery,
                 unitsQuery,
                 expensesQuery,
@@ -262,6 +264,7 @@ export const AdminDashboardService = {
                     console.warn("[AdminDashboardService] maintenance summary unavailable:", error);
                     return null;
                 }),
+                Promise.resolve(amenitiesQuery).catch(() => null),
             ]);
 
             const profiles = profilesRes.error ? [] : ((profilesRes.data || []) as AdminProfileRow[]);
@@ -325,11 +328,15 @@ export const AdminDashboardService = {
                 tone: request.status === "pending" ? "amber" as const : "sage" as const,
             }));
 
-            const activeBookings = bookings.filter(booking => booking.status !== "cancelled").length;
-            const amenityUsage = [
-                { label: "Reservas", collected: activeBookings, target: Math.max(activeBookings + 6, 10) },
-                { label: "Uso semanal", collected: Math.min(activeBookings * 2, 24), target: 24 },
-                { label: "Capacidad", collected: Math.min(unitsTotal, 100), target: Math.max(unitsTotal, 100) },
+            // Solo datos reales. "Capacidad" era unidades/100 (79 casas daban 79 %)
+            // y "Uso semanal" era el doble de las reservas: inventados (18-11-2026).
+            const amenitiesTotal = amenitiesRes?.count ?? 0;
+            const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+            const liveBookings = bookings.filter(booking => booking.status !== "cancelled");
+            const amenityUsage = amenitiesTotal === 0 ? [] : [
+                { label: "Espacios comunes", collected: amenitiesTotal, target: amenitiesTotal },
+                { label: "Reservas vigentes", collected: liveBookings.length, target: Math.max(liveBookings.length, 1) },
+                { label: "Reservas últimos 7 días", collected: liveBookings.filter(booking => String(booking.date || "") >= weekAgo).length, target: Math.max(liveBookings.length, 1) },
             ];
 
             return {

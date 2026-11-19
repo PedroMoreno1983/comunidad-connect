@@ -362,7 +362,7 @@ export default function AdminOnboardingPage() {
                     <Eyebrow>Activación inteligente</Eyebrow>
                     <DisplayHeading size={32} className="mt-2 flex items-center gap-3">
                         <Bot className="h-7 w-7" style={{ color: "var(--cc-copper)" }} />
-                        CoCo prepara tu edificio
+                        CoCo prepara tu comunidad
                     </DisplayHeading>
                     <p className="mt-3 max-w-3xl text-sm leading-6 font-medium cc-text-secondary">
                         Sube nominas antiguas, revisa la extraccion y sincroniza residentes con sus unidades solo cuando el lote este claro. Este es el primer paso para dejar pagos, comunicaciones y CoCo listos.

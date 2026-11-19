@@ -73,7 +73,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
                 <div className="space-y-2">
                     <h3 className="text-xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Mapa de lecturas de la comunidad</h3>
-                    <p className="text-sm cc-text-secondary">Visualización de cobertura del edificio por unidad habitacional.</p>
+                    <p className="text-sm cc-text-secondary">Visualización de cobertura de la comunidad por unidad habitacional.</p>
                 </div>
 
                 <div className="flex items-center gap-6">

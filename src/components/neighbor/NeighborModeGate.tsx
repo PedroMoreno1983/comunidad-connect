@@ -11,8 +11,8 @@ import type { NeighborModeGateProps } from "@/lib/types";
  * vacío, para qué sirve y cómo invitar a la administración.
  */
 export function NeighborModeGateScreen({ gate, buildingName, pendingValidation = false }: NeighborModeGateProps) {
-    const message = adminInviteMessage(buildingName || "mi edificio", PUBLIC_SITE_URL);
-    const subject = `Convive Connect para ${buildingName || "nuestro edificio"}`;
+    const message = adminInviteMessage(buildingName || "mi comunidad", PUBLIC_SITE_URL);
+    const subject = `Convive Connect para ${buildingName || "nuestra comunidad"}`;
 
     return (
         <section className="mx-auto max-w-xl space-y-5 rounded-2xl border p-6 sm:p-8" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
@@ -28,12 +28,12 @@ export function NeighborModeGateScreen({ gate, buildingName, pendingValidation =
             <p className="text-sm leading-relaxed cc-text-secondary">{gate.description}</p>
             {pendingValidation ? (
                 <p className="text-sm leading-relaxed cc-text-secondary">
-                    Tu administración ya está en Convive y tiene que confirmar que vives en el edificio. Cuando lo haga, esto se activa para ti.
+                    Tu administración ya está en Convive y tiene que confirmar que vives en la comunidad. Cuando lo haga, esto se activa para ti.
                 </p>
             ) : (
             <>
             <p className="text-sm leading-relaxed cc-text-secondary">
-                Tu edificio está en Convive gracias a sus vecinos, pero la administración todavía no. Cuando se sume, esto se activa para todos.
+                Tu comunidad está en Convive gracias a sus vecinos, pero la administración todavía no. Cuando se sume, esto se activa para todos.
             </p>
             <div className="flex flex-wrap gap-2">
                 <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"

@@ -330,7 +330,7 @@ export default function ConvivenciaPage() {
                 <div className="space-y-5">
                     <Eyebrow>Convivencia activa</Eyebrow>
                     <DisplayHeading size={44}>
-                        Tu edificio como <em className="text-italic-serif text-brand-600">red de apoyo</em>.
+                        Tu comunidad como <em className="text-italic-serif text-brand-600">red de apoyo</em>.
                     </DisplayHeading>
                     <p className="max-w-3xl text-sm leading-7 cc-text-secondary">
                         Convive transforma conflictos, habilidades, compras, apoyo solidario y proyectos en coordinacion concreta:

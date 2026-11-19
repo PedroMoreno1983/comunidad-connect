@@ -46,8 +46,8 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                             </h2>
                             <p className="text-sm font-medium cc-text-secondary">
                                 {isEfficient
-                                    ? `Estás consumiendo un ${diffPercentage}% menos que el promedio del edificio.`
-                                    : `Estás consumiendo un ${diffPercentage}% más que el promedio del edificio.`}
+                                    ? `Estás consumiendo un ${diffPercentage}% menos que el promedio de la comunidad.`
+                                    : `Estás consumiendo un ${diffPercentage}% más que el promedio de la comunidad.`}
                             </p>
                         </div>
                     </div>

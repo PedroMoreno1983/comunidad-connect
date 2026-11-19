@@ -18,7 +18,7 @@ export function ProductFilters({ searchTerm, setSearchTerm, selectedCategory, se
                 <Search className="absolute left-0 top-0.5 h-5 w-5 cc-text-tertiary" strokeWidth={1.5} />
                 <input
                     type="text"
-                    placeholder="Busca en tu edificio…"
+                    placeholder="Busca en tu comunidad…"
                     className="w-full bg-transparent pl-8 pr-10 text-base outline-none placeholder:cc-text-tertiary cc-text-primary sm:text-lg"
                     value={searchTerm}
                     onChange={event => setSearchTerm(event.target.value)}

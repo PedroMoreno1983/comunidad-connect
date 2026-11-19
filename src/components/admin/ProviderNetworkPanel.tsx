@@ -90,7 +90,7 @@ export default function ProviderNetworkPanel() {
         }
     };
 
-    const inviteText = invite ? `Hola ${invite.providerName.split(" ")[0]}, este es tu enlace de la Red Convive para gestionar tu perfil y responder las solicitudes de los edificios: ${invite.url}` : "";
+    const inviteText = invite ? `Hola ${invite.providerName.split(" ")[0]}, este es tu enlace de la Red Convive para gestionar tu perfil y responder las solicitudes de las comunidades: ${invite.url}` : "";
     const inviteDigits = invite ? invite.phone.replace(/\D/g, "") : "";
     const waDigits = inviteDigits.length === 9 && inviteDigits.startsWith("9") ? `56${inviteDigits}` : inviteDigits.length === 8 ? `569${inviteDigits}` : inviteDigits;
 
@@ -103,7 +103,7 @@ export default function ProviderNetworkPanel() {
                         Red Convive de maestros
                     </h2>
                     <p className="mt-1 text-sm cc-text-secondary">
-                        Los maestros de la red aparecen en Servicios de todas las comunidades. Los de cada comunidad solo los ve su edificio.
+                        Los maestros de la red aparecen en Servicios de todas las comunidades. Los de cada comunidad solo los ve su comunidad.
                     </p>
                 </div>
                 <div className="flex gap-2">

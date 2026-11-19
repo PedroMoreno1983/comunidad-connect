@@ -174,7 +174,7 @@ export function CommunityDealsPanel() {
             </p>
             <h2 className="mt-1 text-[20px] font-semibold cc-text-primary">Juntos conseguimos mejor precio</h2>
             <p className="mt-1 max-w-2xl text-[13px] cc-text-secondary">
-              Una feria que vende en el edificio a cambio del espacio, internet para todos los departamentos, un espacio común
+              Una feria que vende en la comunidad a cambio del espacio, internet para todos los departamentos, un espacio común
               que genera ingresos. Propón una idea, súmate a las abiertas y la administración cotiza y la activa.
             </p>
           </div>

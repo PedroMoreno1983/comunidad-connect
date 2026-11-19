@@ -109,7 +109,7 @@ function DashboardShell({
         const currentTitle = routeTitles[pathname] || '';
         document.title = currentTitle 
             ? `${currentTitle} | Convive Connect` 
-            : 'Convive Connect - Tu edificio, más humano que nunca';
+            : 'Convive Connect - Tu comunidad, más humano que nunca';
     }, [pathname]);
 
     if (loading || !user) return null;
@@ -151,7 +151,7 @@ function DashboardShell({
                         {user.communityManaged === false && !neighborGate && pathname ? (
                             <NeighborModeBanner pathname={pathname} buildingName={user.communityName} />
                         ) : null}
-                        {/* Edificio administrado: los residentes también invitan vecinos desde Inicio. */}
+                        {/* Comunidad administrada: los residentes también invitan vecinos desde Inicio. */}
                         {user.communityManaged !== false && user.role === "resident" && pathname === "/home" ? (
                             <div className="mb-4 flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                 <p className="text-sm cc-text-secondary"><strong className="cc-text-primary">¿Tus vecinos todavía no están?</strong> Invítalos: la administración confirma que viven aquí.</p>

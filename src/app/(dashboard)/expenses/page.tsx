@@ -466,7 +466,7 @@ export default function ExpensesPage() {
                                     </span>
                                 </div>
                                 <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--cc-ink-soft)" }}>
-                                    Apoya a familias del edificio con dificultades para cubrir su gasto común debido a cesantía o jubilación. 100% regulado y anónimo.
+                                    Apoya a familias de la comunidad con dificultades para cubrir su gasto común debido a cesantía o jubilación. 100% regulado y anónimo.
                                 </p>
                                 
                                 <div className="grid grid-cols-2 gap-2 mb-3">

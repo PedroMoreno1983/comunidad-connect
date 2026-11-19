@@ -27,7 +27,7 @@ export function PendingResidentsPanel() {
     useEffect(() => { void load(); }, [load]);
 
     const decide = async (resident: PendingResident, approve: boolean) => {
-        if (!approve && !window.confirm(`¿Quitar a ${resident.name} de la comunidad? Pierde el acceso al edificio en Convive.`)) return;
+        if (!approve && !window.confirm(`¿Quitar a ${resident.name} de la comunidad? Pierde el acceso a la comunidad en Convive.`)) return;
         setBusy(resident.id);
         try {
             await PendingResidentsService.decide(resident.id, approve);
@@ -45,7 +45,7 @@ export function PendingResidentsPanel() {
         <section className="rounded-xl border p-5" style={{ borderColor: "var(--cc-copper)", background: "var(--cc-paper)" }}>
             <h2 className="text-lg font-semibold cc-text-primary">Vecinos por validar ({residents.length})</h2>
             <p className="mt-1 text-sm cc-text-secondary">
-                Entraron a Convive con la dirección del edificio, antes de que la administración se sumara. Confirma que viven aquí.
+                Entraron a Convive con la dirección de la comunidad, antes de que la administración se sumara. Confirma que viven aquí.
             </p>
             <ul className="mt-4 space-y-2">
                 {residents.map(resident => (

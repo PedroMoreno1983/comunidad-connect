@@ -120,7 +120,7 @@ export default function DirectoryPage() {
                     title="Directorio"
                     description={
                         viewMode === 'neighbors'
-                            ? "Encuentra residentes, administración y conserjería de tu edificio."
+                            ? "Encuentra residentes, administración y conserjería de tu comunidad."
                             : "Busca proveedores verificados por la comunidad para solucionar incidencias."
                     }
                     icon={<Users className="h-5 w-5" />}
