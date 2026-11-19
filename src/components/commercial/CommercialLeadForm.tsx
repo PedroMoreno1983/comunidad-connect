@@ -89,7 +89,7 @@ export function CommercialLeadForm({ source }: CommercialLeadFormProps) {
 
             <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--cc-ink-tertiary)" }}>
                 Comunidad
-                <input value={condoName} onChange={(event) => setCondoName(event.target.value)} required maxLength={160} autoComplete="organization" placeholder="Edificio o condominio" className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-medium normal-case tracking-normal outline-none focus:ring-2" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }} />
+                <input value={condoName} onChange={(event) => setCondoName(event.target.value)} required maxLength={160} autoComplete="organization" placeholder="Comunidad o condominio" className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-medium normal-case tracking-normal outline-none focus:ring-2" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }} />
             </label>
 
             <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--cc-ink-tertiary)" }}>

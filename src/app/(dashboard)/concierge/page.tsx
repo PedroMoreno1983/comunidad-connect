@@ -45,7 +45,7 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
             time: timeLabel(visitor.entry_time),
             type: "Visita",
             desc: `${visitor.visitor_name || "Visitante"} ingresó a ${unit}`,
-            status: visitor.exit_time ? "Retirado" : "En edificio",
+            status: visitor.exit_time ? "Retirado" : "Adentro",
             tone: visitor.exit_time ? "sage" : "copper",
         });
     }
@@ -191,7 +191,7 @@ export default function ConciergeDashboardPage() {
             <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-carbon)" }}>
                 <Image
                     src={buildingCoverSrc}
-                    alt="Foto de tu edificio"
+                    alt="Foto de tu comunidad"
                     fill
                     priority
                     sizes="(min-width: 1280px) 1216px, 100vw"
@@ -211,7 +211,7 @@ export default function ConciergeDashboardPage() {
                     </div>
 
                     <div className="max-w-2xl">
-                        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--cc-copper-soft)" }}>Control del edificio</p>
+                        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--cc-copper-soft)" }}>Control de la comunidad</p>
                         <h1 className="text-[44px] leading-[0.96] tracking-[-0.03em] sm:text-[62px]" style={{ fontFamily: "var(--cc-font-display)" }}>
                             Turno <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>activo.</em>
                         </h1>
@@ -253,7 +253,7 @@ export default function ConciergeDashboardPage() {
                 <KpiCard eyebrow="Visitas hoy" value={loading ? "--" : String(visitsToday)} sub="ingresos registrados" icon={<Users size={15} />} tone="amber" />
                 <KpiCard eyebrow="Encomiendas pendientes" value={loading ? "--" : String(pendingPackages.length)} sub="por retirar" icon={<ShoppingBag size={15} />} tone="copper" />
                 <KpiCard eyebrow="Incidencias abiertas" value={loading ? "--" : String(cases.length)} sub={`${criticalCases.length} crítica${criticalCases.length === 1 ? "" : "s"}`} icon={<AlertTriangle size={15} />} tone="rose" />
-                <KpiCard eyebrow="Visitas en el edificio" value={loading ? "--" : String(activeVisitors)} sub="sin registrar salida" icon={<Key size={15} />} tone="sage" />
+                <KpiCard eyebrow="Visitas en la comunidad" value={loading ? "--" : String(activeVisitors)} sub="sin registrar salida" icon={<Key size={15} />} tone="sage" />
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -346,7 +346,7 @@ export default function ConciergeDashboardPage() {
             <section id="incidencias" className="scroll-mt-24 rounded-2xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm sm:p-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <Eyebrow>Incidencias del edificio</Eyebrow>
+                        <Eyebrow>Incidencias de la comunidad</Eyebrow>
                         <h2 className="mt-2 text-3xl font-normal text-[var(--cc-ink)]" style={{ fontFamily: "var(--cc-font-display)" }}>
                             Casos que requieren seguimiento.
                         </h2>

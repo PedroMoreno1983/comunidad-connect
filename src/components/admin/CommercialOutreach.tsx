@@ -109,7 +109,7 @@ export default function CommercialOutreach() {
                             Nombre del condominio
                         </label>
                         <Input
-                            placeholder="Ej. Edificio Costa del Sol"
+                            placeholder="Ej. Comunidad Costa del Sol"
                             value={formData.condoName}
                             onChange={(event) => setFormData({ ...formData, condoName: event.target.value })}
                         />

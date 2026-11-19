@@ -59,7 +59,7 @@ const AREA_LABELS: Record<AgentKey, string> = {
 };
 
 const REVIEW_STEPS = [
-  { number: "1", title: "CoCo prepara", description: "Revisa el edificio y arma una propuesta." },
+  { number: "1", title: "CoCo prepara", description: "Revisa la comunidad y arma una propuesta." },
   { number: "2", title: "Tú revisas", description: "Ves qué hará, explicado en lenguaje simple." },
   { number: "3", title: "Se ejecuta", description: "Apruebas y el resultado queda en la bitácora." },
 ] as const;
@@ -439,7 +439,7 @@ export default function AgentCenterPage() {
         CoCo prepara. <em style={{ color: "var(--cc-ink)", fontStyle: "italic" }}>Tú decides.</em>
       </DisplayHeading>
       <p className="mt-3.5 max-w-xl text-[15px] leading-relaxed cc-text-secondary">
-        CoCo revisa los datos autorizados del edificio y deja acciones listas para ti. Nada se envía ni se ejecuta
+        CoCo revisa los datos autorizados de la comunidad y deja acciones listas para ti. Nada se envía ni se ejecuta
         hasta que tú lo apruebes.
       </p>
 

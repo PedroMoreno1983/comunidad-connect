@@ -480,7 +480,7 @@ export function ParkingOwnerDashboard({
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
-                    Nivel del Edificio
+                    Nivel de la Comunidad
                   </label>
                   <select
                     className={field}
@@ -496,7 +496,7 @@ export function ParkingOwnerDashboard({
                     ))}
                   </select>
                   <span className="text-[11px] cc-text-secondary mt-1 block">
-                    Define en qué piso se dibuja tu puesto en el plano del edificio.
+                    Define en qué piso se dibuja tu puesto en el plano de la comunidad.
                   </span>
                 </div>
                 <div className="col-span-2">

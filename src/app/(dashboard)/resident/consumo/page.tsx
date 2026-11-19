@@ -188,7 +188,7 @@ export default function WaterConsumptionPage() {
                         {isElevated ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
                     </div>
                     <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{isElevated ? "Alto" : "Normal"}</p>
-                    <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Contra promedio edificio</p>
+                    <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Contra promedio comunidad</p>
                 </div>
 
                 <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>

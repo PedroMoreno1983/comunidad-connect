@@ -32,7 +32,7 @@ export function NeighborModeBanner({ pathname, buildingName }: NeighborModeBanne
             <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }}>
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-copper)" }} />
                 <p className="cc-text-primary">
-                    <strong>Vecinos no verificados.</strong> Tu edificio todavía no tiene administración en Convive, así que nadie validó que cada persona viva aquí.
+                    <strong>Vecinos no verificados.</strong> Tu comunidad todavía no tiene administración en Convive, así que nadie validó que cada persona viva aquí.
                     Entrega y recibe en persona, y no pagues por adelantado.
                 </p>
             </div>
@@ -40,7 +40,7 @@ export function NeighborModeBanner({ pathname, buildingName }: NeighborModeBanne
     }
 
     if (!onHome || !summary) return null;
-    const message = adminInviteMessage(summary.buildingName || buildingName || "mi edificio", PUBLIC_SITE_URL);
+    const message = adminInviteMessage(summary.buildingName || buildingName || "mi comunidad", PUBLIC_SITE_URL);
     return (
         <div className="mb-4 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between"
             style={summary.highlightInvite

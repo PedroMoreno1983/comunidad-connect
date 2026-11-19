@@ -227,7 +227,7 @@ export default function MantenimientoAdminPage() {
                             <Gauge className="h-5 w-5" />
                         </span>
                         <div>
-                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)", fontSize: 19 }}>Pulso del edificio</h2>
+                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)", fontSize: 19 }}>Pulso de la comunidad</h2>
                             <p className="text-sm font-medium cc-text-secondary">Salud global de activos y cola operativa.</p>
                         </div>
                     </div>

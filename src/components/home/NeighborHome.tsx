@@ -22,7 +22,7 @@ import type { NeighborHomeProps, ResidentHomeQuickActionProps } from "@/lib/type
 
 const STARTERS = [
     "Compara precios de mi lista del súper: leche, pan, huevos, arroz y café",
-    "Necesito un gasfiter de confianza cerca de mi edificio",
+    "Necesito un gasfiter de confianza cerca de mi comunidad",
     "Quiero vender un mueble a mis vecinos, ¿cómo lo publico?",
 ];
 

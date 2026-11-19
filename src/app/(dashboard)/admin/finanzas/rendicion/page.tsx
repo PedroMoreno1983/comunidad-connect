@@ -149,7 +149,7 @@ export default function RendicionPage() {
                             {[
                                 { label: "Cobrado", value: money(report.charged.total), hint: `Gasto común + cargos` },
                                 { label: "Recaudado", value: money(report.collected.total), hint: `${report.collectionRate}% de lo cobrado` },
-                                { label: "Egresos", value: money(report.expenses.total), hint: "del edificio" },
+                                { label: "Egresos", value: money(report.expenses.total), hint: "de la comunidad" },
                                 {
                                     label: "Resultado",
                                     value: money(report.result),

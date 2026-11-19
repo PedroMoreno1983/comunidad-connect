@@ -281,7 +281,7 @@ export default function AdminDashboardPage() {
                         <section className="rounded-xl border bg-paper p-5 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
                             <Eyebrow className="mb-2">Estado operativo</Eyebrow>
                             <h2 className="mb-5 text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
-                                Salud del edificio
+                                Salud de la comunidad
                             </h2>
                             <BigDonut
                                 value={`${data?.assetsOptimalPct || 0}%`}
@@ -396,12 +396,18 @@ export default function AdminDashboardPage() {
                                 Gestionar espacios <ArrowRight size={13} />
                             </Link>
                         </div>
+                        {!data?.amenityUsage?.length ? (
+                            <EmptyDashboardState
+                                title="Aún no hay espacios comunes"
+                                detail="Crea los espacios de la comunidad (quincho, piscina, muelle, sede) en Gestionar espacios para que los residentes puedan reservarlos."
+                            />
+                        ) : (
                         <div className="grid gap-3 md:grid-cols-3">
                             {(data?.amenityUsage || []).map((item, index) => (
                                 <div key={item.label} className="rounded-lg bg-paper-warm p-4" style={{ border: "1px solid var(--cc-line)" }}>
                                     <div className="mb-3 flex items-center justify-between">
                                         <span className="text-sm font-semibold cc-text-primary">{item.label}</span>
-                                        <span className="font-mono text-xs cc-text-secondary">{pct(item.collected, item.target)}%</span>
+                                        <span className="font-mono text-xs cc-text-secondary">{item.collected}</span>
                                     </div>
                                     <FoldedBar
                                         pct={pct(item.collected, item.target)}
@@ -413,6 +419,7 @@ export default function AdminDashboardPage() {
                                 </div>
                             ))}
                         </div>
+                        )}
                     </section>
                 </>
             )}

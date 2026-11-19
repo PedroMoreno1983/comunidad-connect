@@ -55,7 +55,7 @@ export function AccessGateCard() {
             <form onSubmit={event => void save(event, url.trim() || null)} className="flex flex-wrap items-end gap-3">
                 <label className="min-w-0 flex-1 text-sm cc-text-secondary">
                     Dirección del controlador
-                    <input className={`${fieldClass} mt-1`} style={fieldStyle} value={url} onChange={event => setUrl(event.target.value)} placeholder="https://porton.mi-edificio.cl/abrir" />
+                    <input className={`${fieldClass} mt-1`} style={fieldStyle} value={url} onChange={event => setUrl(event.target.value)} placeholder="https://porton.mi-comunidad.cl/abrir" />
                 </label>
                 <button type="submit" disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-60" style={{ background: "var(--cc-ink)" }}>
                     {saved ? "Guardar y generar clave nueva" : "Conectar"}

@@ -22,14 +22,14 @@ export default function NeighborBuildingsPanel() {
         try {
             setBuildings(await NeighborBuildingsService.list());
         } catch (error) {
-            toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudieron cargar los edificios.", variant: "destructive" });
+            toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudieron cargar las comunidades.", variant: "destructive" });
         }
     }, [toast]);
 
     useEffect(() => { void load(); }, [load]);
 
     const activate = async (row: NeighborBuildingRow) => {
-        if (!window.confirm(`¿Entregar ${row.name} a su administración? Pasa a ser un edificio administrado y sus ${row.residents} vecinos quedan por validar.`)) return;
+        if (!window.confirm(`¿Entregar ${row.name} a su administración? Pasa a ser una comunidad administrada y sus ${row.residents} vecinos quedan por validar.`)) return;
         setBusy(row.id);
         try {
             setHandover(await NeighborBuildingsService.activate(row.id));
@@ -46,7 +46,7 @@ export default function NeighborBuildingsPanel() {
             <div className="border-b p-6" style={{ borderColor: "var(--cc-line)" }}>
                 <h2 className="flex items-center gap-2 text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                     <Building2 className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                    Edificios por conquistar
+                    Comunidades por conquistar
                 </h2>
                 <p className="mt-1 text-sm cc-text-secondary">
                     Los crearon sus vecinos sin la administración. Desde 5 vecinos están listos para contactar a la administración.
@@ -71,7 +71,7 @@ export default function NeighborBuildingsPanel() {
 
             <div className="p-6">
                 {!buildings ? <p className="text-sm cc-text-secondary">Cargando…</p> : buildings.length === 0 ? (
-                    <p className="text-sm cc-text-secondary">Todavía no hay edificios creados por vecinos.</p>
+                    <p className="text-sm cc-text-secondary">Todavía no hay comunidades creadas por vecinos.</p>
                 ) : (
                     <ul className="space-y-2">
                         {buildings.map(row => (

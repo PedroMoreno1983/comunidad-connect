@@ -360,7 +360,7 @@ export default function EgresosPage() {
                         <Eyebrow className="mb-2">Gasto común</Eyebrow>
                         <DisplayHeading size={32}>Egresos y emisión del mes</DisplayHeading>
                         <p className="mt-2 text-sm leading-6 cc-text-secondary">
-                            Carga los gastos del edificio, revisa cómo se reparten entre las
+                            Carga los gastos de la comunidad, revisa cómo se reparten entre las
                             unidades y emite el cobro de todas de una vez. Si hay lecturas de agua
                             consecutivas, el egreso de agua se reparte por m³ y no por alícuota.
                         </p>
@@ -472,7 +472,7 @@ export default function EgresosPage() {
 
                 {!issuedRun && (
                     <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                        <h2 className="font-semibold cc-text-primary">Cargar respaldos de egresos</h2>
+                        <h2 id="boletas" className="scroll-mt-24 font-semibold cc-text-primary">Boletas de luz, agua y gas, y otros respaldos</h2>
                         <p className="mt-1 text-sm cc-text-secondary">Sube hasta 10 boletas, facturas o planillas a la vez. CoCo propone los datos; comprueba cada monto y concepto antes de registrarlo. En las boletas de luz, agua y gas de los medidores comunes recuerda el n° de cliente, detecta la boleta repetida y avisa si el monto cambia mucho.</p>
                         <input className="mt-3 block w-full text-sm" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.txt,.csv"
                             disabled={extracting || saving} onChange={event => { if (event.target.files) void inspectDocuments(event.target.files); event.target.value = ""; }} />

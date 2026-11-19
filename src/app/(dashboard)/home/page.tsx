@@ -74,7 +74,7 @@ export default function HomePage() {
             <ErrorBoundary name="Inicio modo vecino">
                 <NeighborHome
                     firstName={name ? name.split(" ")[0] : "vecino"}
-                    buildingName={user.communityName || "tu edificio"}
+                    buildingName={user.communityName || "tu comunidad"}
                     pendingValidation={pendingValidation}
                     initials={name ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "U"}
                 />
@@ -139,7 +139,7 @@ export default function HomePage() {
                 <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-carbon)" }}>
                     <Image
                         src={buildingCoverSrc}
-                        alt="Foto de tu edificio"
+                        alt="Foto de tu comunidad"
                         fill
                         priority
                         sizes="(min-width: 1280px) 1216px, 100vw"
@@ -166,7 +166,7 @@ export default function HomePage() {
                                 Hola, <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>{firstName}.</em>
                             </h1>
                             <p className="mt-4 max-w-xl text-[14px] leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
-                                Revisa lo urgente, resuelve lo cotidiano y sigue conectado con tu edificio.
+                                Revisa lo urgente, resuelve lo cotidiano y sigue conectado con tu comunidad.
                             </p>
                             <div className="mt-6 flex flex-wrap gap-2">
                                 <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: "rgba(244,239,230,0.14)" }}>

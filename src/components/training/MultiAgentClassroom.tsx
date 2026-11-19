@@ -404,7 +404,7 @@ export function MultiAgentClassroom({
                             {!messages.length && (
                                 <div className="mt-6 text-center">
                                     <MessageCircleQuestion className="mx-auto h-8 w-8 cc-text-tertiary" />
-                                    <p className="mt-3 text-sm font-medium cc-text-primary">¿Algo no te calza con tu edificio?</p>
+                                    <p className="mt-3 text-sm font-medium cc-text-primary">¿Algo no te calza con tu comunidad?</p>
                                     <p className="mt-1 text-xs leading-5 cc-text-secondary">Pregunta cómo aplicar esta sección en tu turno. CoCo responde con el contenido del curso.</p>
                                 </div>
                             )}

@@ -856,7 +856,7 @@ function EstacionamientosContent() {
               }`}
             >
               <Settings size={15} className="text-zinc-600" />
-              Ajustes Edificio
+              Ajustes Comunidad
             </button>
           )}
         </div>
@@ -1034,7 +1034,7 @@ function EstacionamientosContent() {
             <EmptyState
               icon={<Car size={22} />}
               title="Sin estacionamientos disponibles"
-              description="Ningún vecino tiene su estacionamiento libre en ese horario. Prueba con otro rango de horas o revisa el mapa del edificio."
+              description="Ningún vecino tiene su estacionamiento libre en ese horario. Prueba con otro rango de horas o revisa el mapa de la comunidad."
               tone="neutral"
             />
           )}
@@ -1085,7 +1085,7 @@ function EstacionamientosContent() {
                 Mis Reservas Vehiculares ({myBookings.length})
               </h2>
               <p className="text-[12px] cc-text-secondary">
-                Accede a tu código de acceso digital y muéstralo en la portería del edificio.
+                Accede a tu código de acceso digital y muéstralo en la portería de la comunidad.
               </p>
             </div>
           </div>
@@ -1152,7 +1152,7 @@ function EstacionamientosContent() {
                   Permitir arriendos a visitas externas verificadas
                 </span>
                 <span className="text-[12px] cc-text-secondary">
-                  Si se desactiva, solo los copropietarios y residentes del edificio podrán reservar cupos.
+                  Si se desactiva, solo los copropietarios y residentes de la comunidad podrán reservar cupos.
                 </span>
               </div>
             </label>

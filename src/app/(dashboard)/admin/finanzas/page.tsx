@@ -141,7 +141,7 @@ export default function AdminFinanzasPage() {
                             Armar el gasto común del mes
                         </h2>
                         <p className="mt-1 text-sm leading-6 cc-text-secondary">
-                            Carga los egresos del edificio, revisa el prorrateo entre unidades y emite el cobro de todas de una vez.
+                            Carga los egresos de la comunidad, revisa el prorrateo entre unidades y emite el cobro de todas de una vez.
                         </p>
                     </div>
                     <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />

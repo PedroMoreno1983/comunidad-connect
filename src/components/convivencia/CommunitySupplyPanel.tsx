@@ -251,7 +251,7 @@ export function CommunitySupplyPanel() {
         await navigator.clipboard.writeText(text);
         toast({
           title: 'Enlace copiado',
-          description: 'Pégalo en el chat del edificio o envíalo por WhatsApp.',
+          description: 'Pégalo en el chat de la comunidad o envíalo por WhatsApp.',
           variant: 'success',
         });
       }

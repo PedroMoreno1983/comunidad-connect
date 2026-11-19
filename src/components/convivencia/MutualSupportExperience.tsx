@@ -366,7 +366,7 @@ export function MutualSupportExperience() {
           <div className="flex gap-4">
             <Heart className="mt-0.5 h-6 w-6 shrink-0 text-[#5F7A46]" />
             <div className="text-sm leading-7" style={{ color: "var(--cc-ink-soft)" }}>
-              <strong className="text-ink">Fondo de Apoyo Mutuo:</strong> Nos organizamos en comunidad para ayudarnos en momentos difíciles. Cuando un residente no puede cubrir su gasto común debido a cesantía o jubilación, el fondo solidario lo apoya de forma confidencial. A cambio, el residente retribuye colaborando con tareas útiles para la convivencia en el edificio.
+              <strong className="text-ink">Fondo de Apoyo Mutuo:</strong> Nos organizamos en comunidad para ayudarnos en momentos difíciles. Cuando un residente no puede cubrir su gasto común debido a cesantía o jubilación, el fondo solidario lo apoya de forma confidencial. A cambio, el residente retribuye colaborando con tareas útiles para la convivencia en la comunidad.
             </div>
           </div>
         </div>
@@ -811,7 +811,7 @@ export function MutualSupportExperience() {
                 Banco de Retribución Vecinal
               </h3>
               <p className="text-sm leading-7" style={{ color: "var(--cc-ink-muted)" }}>
-                Para cuidar que el fondo no sea abusado y promover el apoyo mutuo, quienes reciben subsidios devuelven horas comunitarias al edificio en tareas de mantención, punto verde o asistencia digital.
+                Para cuidar que el fondo no sea abusado y promover el apoyo mutuo, quienes reciben subsidios devuelven horas comunitarias a la comunidad en tareas de mantención, punto verde o asistencia digital.
               </p>
             </div>
 
