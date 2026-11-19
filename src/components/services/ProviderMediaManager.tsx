@@ -148,8 +148,10 @@ export function ProviderMediaManager({ target, photo, workPhotos, documents, onC
                     onChange={() => {
                         const file = pick(documentInput.current);
                         if (file) void run(`doc-${documentKind}`, async () => {
-                            await ProviderMediaService.uploadDocument(target, documentKind, file);
-                            return "Documento recibido. Lo revisamos y te avisamos el resultado aquí.";
+                            const result = await ProviderMediaService.uploadDocument(target, documentKind, file);
+                            return result.status === "approved"
+                                ? "Documento revisado y aprobado. Ya aparece verificado en tu perfil."
+                                : "Documento recibido. Lo revisamos y te avisamos el resultado aquí.";
                         });
                     }} />
                 {documents && documents.length > 0 && (

@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { chileDayStart, personCostLimits } from '@/lib/ai/budget';
+import { recheckUnreadProviderDocuments } from '@/lib/services/providerMedia';
 import { BRAND, emailWrapper, escapeEmailHtml, FROM_EMAIL, resend, SUPERADMIN_EMAIL } from '@/lib/email';
 
 export type ReportPeriod = 'am' | 'pm';
@@ -154,7 +155,7 @@ export function buildProviderSection(data: ReportProviderData, inWindow: (iso: s
         verified: data.providers.filter(p => p.verified).length,
         openedNow: [...new Set(live.filter(link => inWindow(link.last_used_at)).map(link => who(link.provider_id)))],
         uploaded: data.documents.filter(doc => inWindow(doc.created_at))
-            .map(doc => ({ name: who(doc.provider_id), kind: DOCUMENT_LABEL[doc.kind] || doc.kind, verdict: verdict(doc) })),
+            .map(doc => ({ name: who(doc.provider_id), kind: DOCUMENT_LABEL[doc.kind] || doc.kind, verdict: doc.status === 'approved' ? 'aprobado' : doc.status === 'rejected' ? 'rechazado' : verdict(doc) })),
         photos: [...photoCount.entries()].map(([id, count]) => ({ name: who(id), count })),
         pendingReview: data.documents.filter(doc => doc.status === 'pending')
             .map(doc => ({ name: who(doc.provider_id), kind: DOCUMENT_LABEL[doc.kind] || doc.kind, since: doc.created_at.slice(0, 10), verdict: verdict(doc) })),
@@ -372,7 +373,7 @@ export function renderActivityReportHtml(report: ActivityReport, windowLabel: st
             ...p.photos.map(ph => `${escapeEmailHtml(ph.name)} subió ${ph.count} foto${ph.count === 1 ? '' : 's'} de trabajos`),
         ];
         let body = para(lines.join('<br/>'));
-        if (p.uploaded.length) body += table(['Técnico', 'Documento nuevo', 'Chequeo automático'], p.uploaded.map(u => [u.name, u.kind, u.verdict]));
+        if (p.uploaded.length) body += table(['Técnico', 'Documento nuevo', 'Estado'], p.uploaded.map(u => [u.name, u.kind, u.verdict]));
         if (p.pendingReview.length) body += para(`<strong>Por revisar (${p.pendingReview.length}):</strong> ${escapeEmailHtml(p.pendingReview.map(d => `${d.name}, ${d.kind} del ${d.since} (${d.verdict})`).join('; '))}. Se revisan en Superadmin › Proveedores.`);
         parts.push(section('Técnicos', body));
     }
@@ -483,6 +484,8 @@ export async function runActivityReport(now = new Date(), options: { dryRun?: bo
         listAllAuthUsers(),
     ]);
     for (const res of [communitiesRes, profilesRes, usageRes, todayRes, sessionsRes, billsRes]) if (res.error) throw res.error;
+    // Antes de contar, CoCo vuelve a leer los documentos que no pudo leer la primera vez.
+    if (!options.dryRun) await recheckUnreadProviderDocuments().catch(() => 0);
     const providerData = await loadProviderData().catch(error => {
         console.warn('[activity-report] sin datos de técnicos', error instanceof Error ? error.message : error);
         return undefined;

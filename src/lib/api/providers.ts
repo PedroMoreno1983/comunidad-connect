@@ -118,11 +118,11 @@ export const ProviderMediaService = {
         await readJson(await fetch(`${mediaBase(target)}/media?photoId=${encodeURIComponent(photoId)}`, { method: 'DELETE' }));
     },
 
-    async uploadDocument(target: ProviderMediaTarget, kind: ProviderDocumentKind, file: File): Promise<{ id: string; verdict: string }> {
+    async uploadDocument(target: ProviderMediaTarget, kind: ProviderDocumentKind, file: File): Promise<{ id: string; verdict: string; status?: 'approved' | 'pending' }> {
         const form = new FormData();
         form.set('kind', kind);
         form.set('file', file);
-        return readJson<{ id: string; verdict: string }>(await fetch(`${mediaBase(target)}/documents`, { method: 'POST', body: form }));
+        return readJson<{ id: string; verdict: string; status?: 'approved' | 'pending' }>(await fetch(`${mediaBase(target)}/documents`, { method: 'POST', body: form }));
     },
 
     /** Con sesión. La administración recibe además el chequeo y el enlace temporal. */
