@@ -56,6 +56,25 @@ export interface ReportBill {
     received_at: string;
 }
 
+/** Técnicos de la red: invitaciones al portal, documentos y fotos (19-11-2026). */
+export interface ReportProviderData {
+    providers: Array<{ id: string; name: string; verified: boolean }>;
+    links: Array<{ provider_id: string; last_used_at: string | null; use_count: number; revoked_at: string | null }>;
+    documents: Array<{ provider_id: string; kind: string; status: string; created_at: string; auto_check: { verdict?: string } | null }>;
+    photos: Array<{ provider_id: string; created_at: string }>;
+}
+
+export interface ReportProviders {
+    total: number;
+    invited: number;
+    openedEver: number;
+    verified: number;
+    openedNow: string[];
+    uploaded: Array<{ name: string; kind: string; verdict: string }>;
+    photos: Array<{ name: string; count: number }>;
+    pendingReview: Array<{ name: string; kind: string; since: string; verdict: string }>;
+}
+
 export interface ReportInput {
     period: ReportPeriod;
     windowStart: string;
@@ -67,6 +86,8 @@ export interface ReportInput {
     todayCostByUser: Record<string, number>;
     sessions: ReportSession[];
     bills: ReportBill[];
+    /** Opcional: sin datos de técnicos, el reporte sale sin esa sección. */
+    providers?: ReportProviderData;
 }
 
 export interface ReportProblem {
@@ -97,6 +118,7 @@ export interface ActivityReport {
     pendingBills: Array<{ community: string; count: number }>;
     failedBills: Array<{ community: string; file: string; error: string }>;
     byCommunity: Array<{ community: string; active: number; turns: number; costCents: number }>;
+    providers: ReportProviders | null;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -114,6 +136,30 @@ const BLOCK_LABEL: Record<string, string> = {
     community_ai_disabled: 'IA apagada en la comunidad',
     daily_heavy_action_limit: 'tope de acciones pesadas',
 };
+
+const DOCUMENT_LABEL: Record<string, string> = { background_certificate: 'certificado de antecedentes', identity: 'cédula' };
+const VERDICT_LABEL: Record<string, string> = { looks_ok: 'se ve bien', needs_review: 'revisar a mano', problem: 'con problemas' };
+
+export function buildProviderSection(data: ReportProviderData, inWindow: (iso: string | null | undefined) => boolean): ReportProviders {
+    const name = new Map(data.providers.map(p => [p.id, p.name]));
+    const who = (id: string) => name.get(id) || 'Técnico';
+    const live = data.links.filter(link => !link.revoked_at);
+    const photoCount = new Map<string, number>();
+    for (const photo of data.photos) if (inWindow(photo.created_at)) photoCount.set(photo.provider_id, (photoCount.get(photo.provider_id) ?? 0) + 1);
+    const verdict = (doc: ReportProviderData['documents'][number]) => VERDICT_LABEL[doc.auto_check?.verdict || ''] || 'sin chequeo';
+    return {
+        total: data.providers.length,
+        invited: new Set(live.map(link => link.provider_id)).size,
+        openedEver: new Set(live.filter(link => link.use_count > 0).map(link => link.provider_id)).size,
+        verified: data.providers.filter(p => p.verified).length,
+        openedNow: [...new Set(live.filter(link => inWindow(link.last_used_at)).map(link => who(link.provider_id)))],
+        uploaded: data.documents.filter(doc => inWindow(doc.created_at))
+            .map(doc => ({ name: who(doc.provider_id), kind: DOCUMENT_LABEL[doc.kind] || doc.kind, verdict: verdict(doc) })),
+        photos: [...photoCount.entries()].map(([id, count]) => ({ name: who(id), count })),
+        pendingReview: data.documents.filter(doc => doc.status === 'pending')
+            .map(doc => ({ name: who(doc.provider_id), kind: DOCUMENT_LABEL[doc.kind] || doc.kind, since: doc.created_at.slice(0, 10), verdict: verdict(doc) })),
+    };
+}
 
 /** Respuestas de CoCo que indican que la persona no consiguió lo que pidió. */
 const PROBLEM_PATTERNS = [
@@ -142,7 +188,7 @@ const NO_COMMUNITY = 'Sin condominio';
 export function buildActivityReport(input: ReportInput): ActivityReport {
     const communityName = (id: string | null | undefined) => (id && input.communities[id]) || NO_COMMUNITY;
     const peopleById = new Map(input.people.map(person => [person.id, person]));
-    const inWindow = (iso: string | null) => Boolean(iso && iso >= input.windowStart && iso < input.windowEnd);
+    const inWindow = (iso: string | null | undefined) => Boolean(iso && iso >= input.windowStart && iso < input.windowEnd);
 
     // Actividad: quien entró en la ventana o usó CoCo en ella.
     const used = new Map<string, { turns: number; costCents: number }>();
@@ -256,6 +302,7 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
         pendingBills: [...pendingByCommunity.entries()].map(([id, count]) => ({ community: communityName(id), count })),
         failedBills,
         byCommunity: [...communityStats.values()].sort((a, b) => b.turns - a.turns),
+        providers: input.providers ? buildProviderSection(input.providers, inWindow) : null,
     };
 }
 
@@ -317,6 +364,18 @@ export function renderActivityReportHtml(report: ActivityReport, windowLabel: st
     if (report.byCommunity.length) {
         parts.push(section('Por comunidad', table(['Comunidad', 'Activas', 'Mensajes a CoCo', 'Costo'], report.byCommunity.map(c => [c.community, String(c.active), String(c.turns), usd(c.costCents)]))));
     }
+    if (report.providers) {
+        const p = report.providers;
+        const lines = [
+            `<strong>${p.total}</strong> técnicos en la red · <strong>${p.invited}</strong> con enlace al portal · <strong>${p.openedEver}</strong> lo han abierto · <strong>${p.verified}</strong> verificados`,
+            p.openedNow.length ? `Entraron al portal en este turno: ${escapeEmailHtml(p.openedNow.join(', '))}` : 'Nadie entró al portal en este turno.',
+            ...p.photos.map(ph => `${escapeEmailHtml(ph.name)} subió ${ph.count} foto${ph.count === 1 ? '' : 's'} de trabajos`),
+        ];
+        let body = para(lines.join('<br/>'));
+        if (p.uploaded.length) body += table(['Técnico', 'Documento nuevo', 'Chequeo automático'], p.uploaded.map(u => [u.name, u.kind, u.verdict]));
+        if (p.pendingReview.length) body += para(`<strong>Por revisar (${p.pendingReview.length}):</strong> ${escapeEmailHtml(p.pendingReview.map(d => `${d.name}, ${d.kind} del ${d.since} (${d.verdict})`).join('; '))}. Se revisan en Superadmin › Proveedores.`);
+        parts.push(section('Técnicos', body));
+    }
     if (report.pendingBills.length) {
         parts.push(section('Pendiente', para(report.pendingBills.map(b => `${escapeEmailHtml(b.community)}: ${b.count} boleta${b.count === 1 ? '' : 's'} por registrar en la bandeja`).join('<br/>'))));
     }
@@ -326,7 +385,8 @@ export function renderActivityReportHtml(report: ActivityReport, windowLabel: st
 /** 3 a 5 frases con lo que conviene mirar. Sin IA o si falla, el reporte sale igual. */
 async function summarize(report: ActivityReport): Promise<string[]> {
     if (!process.env.ANTHROPIC_API_KEY) return [];
-    if (!report.totals.activePeople && !report.totals.problems) return [];
+    const providerNews = Boolean(report.providers && (report.providers.uploaded.length || report.providers.openedNow.length));
+    if (!report.totals.activePeople && !report.totals.problems && !providerNews) return [];
     try {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 20_000, maxRetries: 1 });
         const response = await client.messages.create({
@@ -363,6 +423,23 @@ async function listAllAuthUsers() {
         if (data.users.length < 1000) break;
     }
     return users;
+}
+
+async function loadProviderData(): Promise<ReportProviderData> {
+    const admin = getSupabaseAdmin();
+    const [providers, links, documents, photos] = await Promise.all([
+        admin.from('service_providers').select('id, name, verified'),
+        admin.from('service_provider_links').select('provider_id, last_used_at, use_count, revoked_at'),
+        admin.from('service_provider_documents').select('provider_id, kind, status, created_at, auto_check'),
+        admin.from('service_provider_photos').select('provider_id, created_at'),
+    ]);
+    for (const res of [providers, links, documents, photos]) if (res.error) throw res.error;
+    return {
+        providers: (providers.data ?? []).map(row => ({ id: String(row.id), name: String(row.name || 'Técnico'), verified: Boolean(row.verified) })),
+        links: (links.data ?? []) as ReportProviderData['links'],
+        documents: (documents.data ?? []) as ReportProviderData['documents'],
+        photos: (photos.data ?? []) as ReportProviderData['photos'],
+    };
 }
 
 export interface RunActivityReportResult {
@@ -406,6 +483,10 @@ export async function runActivityReport(now = new Date(), options: { dryRun?: bo
         listAllAuthUsers(),
     ]);
     for (const res of [communitiesRes, profilesRes, usageRes, todayRes, sessionsRes, billsRes]) if (res.error) throw res.error;
+    const providerData = await loadProviderData().catch(error => {
+        console.warn('[activity-report] sin datos de técnicos', error instanceof Error ? error.message : error);
+        return undefined;
+    });
 
     const lastSignIn = new Map(authUsers.map(user => [user.id, user.last_sign_in_at ?? null]));
     const people: ReportPerson[] = (profilesRes.data ?? []).map(row => ({
@@ -450,6 +531,7 @@ export async function runActivityReport(now = new Date(), options: { dryRun?: bo
         todayCostByUser,
         sessions,
         bills: (billsRes.data ?? []) as ReportBill[],
+        providers: providerData,
     });
     const highlights = await summarize(report);
     const html = renderActivityReportHtml(report, windowLabel(start, end), highlights);

@@ -78,3 +78,30 @@ describe('reporte de actividad', () => {
         expect(reportWindow(now, null).start).toBe('2026-11-19T09:00:00.000Z');
     });
 });
+
+describe('técnicos en el reporte (19-11-2026)', () => {
+    const providers = {
+        providers: [{ id: 'p1', name: 'Juan', verified: false }, { id: 'p2', name: 'David', verified: false }, { id: 'p3', name: 'Leo', verified: true }],
+        links: [
+            { provider_id: 'p1', last_used_at: '2026-11-19T10:00:00Z', use_count: 2, revoked_at: null },
+            { provider_id: 'p2', last_used_at: '2026-11-18T15:00:00Z', use_count: 19, revoked_at: null },
+            { provider_id: 'p3', last_used_at: null, use_count: 0, revoked_at: null },
+        ],
+        documents: [{ provider_id: 'p1', kind: 'background_certificate', status: 'pending', created_at: '2026-11-19T10:05:00Z', auto_check: { verdict: 'needs_review' } }],
+        photos: [{ provider_id: 'p2', created_at: '2026-11-18T15:45:00Z' }],
+    };
+
+    it('cuenta invitados, quién entró, qué subió y qué falta revisar', () => {
+        const p = buildActivityReport({ ...base, providers }).providers!;
+        expect(p).toMatchObject({ total: 3, invited: 3, openedEver: 2, verified: 1, openedNow: ['Juan'], photos: [] });
+        expect(p.uploaded).toEqual([{ name: 'Juan', kind: 'certificado de antecedentes', verdict: 'revisar a mano' }]);
+        expect(p.pendingReview).toEqual([{ name: 'Juan', kind: 'certificado de antecedentes', since: '2026-11-19', verdict: 'revisar a mano' }]);
+        const html = renderActivityReportHtml(buildActivityReport({ ...base, providers }), 'turno', []);
+        expect(html).toContain('Técnicos');
+        expect(html).toContain('Por revisar (1)');
+    });
+
+    it('sin datos de técnicos el reporte sale igual', () => {
+        expect(buildActivityReport(base).providers).toBeNull();
+    });
+});

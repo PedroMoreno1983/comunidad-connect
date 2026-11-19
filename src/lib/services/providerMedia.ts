@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent, recordPlatformOperationEvent } from '@/lib/operations/audit';
 import { checkProviderDocument } from '@/lib/services/providerDocumentCheck';
+import { BRAND, FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper, escapeEmailHtml, resend } from '@/lib/email';
+import { CANONICAL_SITE_URL } from '@/lib/config';
 import type { ProviderDocument, ProviderDocumentAutoCheck, ProviderDocumentKind, ProviderIdentity, ProviderMediaActor, ProviderWorkPhoto } from '@/lib/types';
 
 /**
@@ -128,6 +130,21 @@ export async function listWorkPhotos(providerId: string): Promise<ProviderWorkPh
     return (data || []).map(row => ({ id: String(row.id), url: String(row.url), caption: row.caption ? String(row.caption) : null, createdAt: String(row.created_at) }));
 }
 
+const DOCUMENT_NAME: Record<ProviderDocumentKind, string> = { background_certificate: 'certificado de antecedentes', identity: 'cédula de identidad' };
+const VERDICT_TEXT: Record<string, string> = { looks_ok: 'el chequeo automático lo ve bien', needs_review: 'el chequeo automático pide revisarlo a mano', problem: 'el chequeo automático encontró problemas' };
+
+/** Correo al CEO cuando un técnico sube un documento. Sin datos personales del documento. */
+async function notifyDocumentUploaded(providerName: string, kind: ProviderDocumentKind, verdict: string) {
+    const name = escapeEmailHtml(providerName);
+    const html = emailWrapper(`
+        <h1 style="font-family:${BRAND.serif};font-size:24px;font-weight:400;color:${BRAND.ink};">${name} subió su ${DOCUMENT_NAME[kind]}</h1>
+        <p style="color:${BRAND.inkMuted};font-size:15px;line-height:1.6;">Lo subió desde su portal de técnico; ${VERDICT_TEXT[verdict] || 'no tiene chequeo automático'}. Queda pendiente hasta que lo apruebes o lo rechaces.</p>
+        <p style="margin:24px 0;"><a href="${escapeEmailHtml(`${CANONICAL_SITE_URL}/superadmin`)}" style="display:inline-block;padding:12px 18px;border-radius:10px;background:${BRAND.ink};color:#fff;text-decoration:none;font-weight:600;">Revisar en Proveedores</a></p>
+    `, 'Documento de técnico');
+    const { error } = await resend.emails.send({ from: FROM_EMAIL, to: SUPERADMIN_EMAIL, subject: `Técnico: ${providerName} subió su ${DOCUMENT_NAME[kind]}`, html });
+    if (error) throw error;
+}
+
 export async function uploadProviderDocument(providerId: string, kind: string, file: File | null, actor: ProviderMediaActor, via: string) {
     if (!DOCUMENT_KINDS.includes(kind as ProviderDocumentKind)) throw new ProviderMediaError('Tipo de documento no válido.', 400);
     const provider = await loadProvider(providerId);
@@ -152,6 +169,8 @@ export async function uploadProviderDocument(providerId: string, kind: string, f
     }
     // En la bitácora va el veredicto, no los datos personales del documento.
     await audit(provider, actor, 'service_provider.document_uploaded', `Documento subido para revisión: ${provider.name}`, { kind, verdict: autoCheck.verdict });
+    // Lo subió el técnico desde su portal: aviso al CEO para que no quede esperando.
+    if (via === 'provider_portal') await notifyDocumentUploaded(provider.name, kind as ProviderDocumentKind, autoCheck.verdict).catch(() => undefined);
     return { id: String(data.id), verdict: autoCheck.verdict };
 }
 
