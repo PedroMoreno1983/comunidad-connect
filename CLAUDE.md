@@ -51,7 +51,9 @@ DEEPSEEK_API_KEY=        # Opcional. Tareas simples de solo texto; sin ella caen
 NORMA_MCP_KEY=           # Investigación jurídica de CoCo en Norma (jurisprudencia, dictámenes CGR, UF/UTM). Sin ella, solo BCN
 
 # Emails
-RESEND_API_KEY=          # Proveedor de emails transaccionales
+RESEND_API_KEY=          # Proveedor de emails transaccionales (también baja los adjuntos de boletas recibidas)
+BILLS_INBOUND_DOMAIN=    # Dominio donde Resend recibe las boletas (subdominio con MX o <id>.resend.app)
+RESEND_INBOUND_WEBHOOK_SECRET= # whsec_… del webhook email.received → /api/inbound/bills
 
 # WhatsApp (ver docs/whatsapp-twilio-webhook.md)
 COCO_WHATSAPP_FROM=      # Número compartido con Norma (+56 9 9947 4056)
@@ -151,6 +153,8 @@ src/
 | `storage.ts` | `StorageService` (bodegas: arriendo mensual entre vecinos, cobrado en gastos comunes) |
 | `deals.ts` | `CommunityDealsService` (convenios: feria en el edificio, servicios en bloque, ingresos por espacios) |
 | `access.ts` | `IntercomService`, `AccessGateService` |
+| `billsInbox.ts` | `BillsInboxService` (boletas de luz, agua y gas que llegan solas por correo) |
+| `boats.ts` | `BoatsService` (embarcaciones, módulo "Vida junto al lago") |
 | `utilities.ts` | `UtilityAccountsService` (Mis servicios: cuentas personales de luz, agua y gas, privadas del residente) |
 | `_shared.ts` | Helpers internos usados por más de un dominio (`readApi`, `financeWrite`, `isUuid`, `textValue`, `nullableText`, `mapCocoCase`, `DbRow`). No se re-exporta. |
 

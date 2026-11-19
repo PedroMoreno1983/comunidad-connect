@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CommitteeReviewPanel } from "@/components/finance/CommitteeReviewPanel";
+import { BillsInboxPanel } from "@/components/finance/BillsInboxPanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
@@ -469,6 +470,8 @@ export default function EgresosPage() {
                         </label>
                     </section>
                 )}
+
+                {!issuedRun && <BillsInboxPanel month={month} categories={CATEGORIES} onRegistered={() => void load()} />}
 
                 {!issuedRun && (
                     <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>

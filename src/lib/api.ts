@@ -27,3 +27,4 @@ export * from './api/push';
 export * from './api/documents';
 export * from './api/utilities';
 export * from './api/boats';
+export * from './api/billsInbox';

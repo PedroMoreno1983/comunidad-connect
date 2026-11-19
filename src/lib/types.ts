@@ -4320,3 +4320,26 @@ export interface CommunityBoatInput {
     lengthM?: number | null;
     notes?: string;
 }
+
+// ─── Boletas que llegan por correo ──────────────────────────────────────────
+
+export interface InboundBillDocument {
+    id: string;
+    from: string;
+    subject: string;
+    fileName: string;
+    status: 'pending' | 'registered' | 'discarded' | 'failed';
+    /** Lo que leyó la IA (null si no se pudo leer). */
+    draft: FinanceDocumentDraft | null;
+    error: string | null;
+    receivedAt: string;
+}
+
+export interface InboundBillRegisterInput {
+    month: string;
+    label: string;
+    amount: number;
+    category: string;
+    provider: string;
+    prorateMethod: 'share' | 'equal';
+}
