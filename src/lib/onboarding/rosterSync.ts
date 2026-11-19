@@ -6,6 +6,7 @@ import type { OnboardingSyncRowResult } from '@/lib/types';
 import type { OnboardingRightsUpsertResponse } from '@/lib/onboarding/types';
 import { applyOnboardingRights } from '@/lib/onboarding/unitRightsOnboarding';
 import { legacyPermilleTextToPercent, type ProvidedRight } from '@/lib/onboarding/unitRightsImport';
+import { sendResidentWelcomeEmails, type ResidentWelcome } from '@/lib/onboarding/residentWelcome';
 
 export const dynamic = 'force-dynamic';
 
@@ -196,10 +197,10 @@ async function ensureResidentProfile(
             .eq('id', String(existingProfile.id));
 
         if (error) throw error;
-        return String(existingProfile.id);
+        return { id: String(existingProfile.id), created: false };
     }
 
-    if (!resident.email) return null;
+    if (!resident.email) return { id: null, created: false };
 
     const authResult = await supabaseAdmin.auth.admin.createUser({
         email: resident.email,
@@ -224,7 +225,7 @@ async function ensureResidentProfile(
         await supabaseAdmin.auth.admin.deleteUser(authResult.data.user.id).catch(() => undefined);
         throw error;
     }
-    return authResult.data.user.id;
+    return { id: authResult.data.user.id, created: true };
 }
 
 
@@ -291,7 +292,7 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
         }
         const { data: community, error: communityError } = await supabaseAdmin
             .from('communities')
-            .select('resident_code')
+            .select('name, resident_code')
             .eq('id', communityId)
             .single();
         if (communityError || !community?.resident_code) {
@@ -302,6 +303,7 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
         let unitOnlyCount = 0;
         let errorCount = 0;
         const providedRights: ProvidedRight[] = [];
+        const newAccounts: ResidentWelcome[] = [];
 
         for (const resident of residents) {
             try {
@@ -317,7 +319,7 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
                 });
                 providedRights.push({ unitId: finalUnitId, label: resident.unit_id, raw: resident.derechos_porcentaje });
 
-                const residentProfileId = await ensureResidentProfile(
+                const { id: residentProfileId, created } = await ensureResidentProfile(
                     supabaseAdmin,
                     resident,
                     communityId,
@@ -334,6 +336,7 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
 
                     if (unitAssignError) throw unitAssignError;
                     successCount++;
+                    if (created && resident.email) newAccounts.push({ email: resident.email, name: resident.name, unit: resident.unit_id });
                     rowResults.push({ name: resident.name, unit: resident.unit_id, status: 'synced', detail: 'Perfil residente y unidad sincronizados.' });
                     if (batchId && resident.id) await supabaseAdmin.from('onboarding_import_rows').update({ status: 'synced', error: null, updated_at: new Date().toISOString() }).eq('id', resident.id).eq('batch_id', batchId);
                 } else {
@@ -348,6 +351,11 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
                 console.error('[onboarding/upsert] row failed:', err);
             }
         }
+
+        // Bienvenida a las cuentas nuevas: sin ella nadie sabía que tenía acceso.
+        const welcome = newAccounts.length
+            ? await sendResidentWelcomeEmails(newAccounts, String(community.name || ''))
+            : { sent: 0, failed: [] as string[] };
 
         // Derechos (en %, se guardan en ‰): mismo servicio y auditoría que /admin/asambleas#derechos. No bloquea la sincronización.
         const rights = await applyOnboardingRights(
@@ -379,6 +387,7 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
                 errors: errorCount,
                 withEmail: residents.filter(resident => resident.email).length,
                 withPhone: residents.filter(resident => resident.phone).length,
+                welcomeEmails: { sent: welcome.sent, failed: welcome.failed.length },
                 destinations: ['profiles', 'units', 'auth.users'],
                 rowResults: rowResults.slice(0, 30),
                 unitRights: { status: rights.status, verified: rights.verified, provided: providedRights.filter(item => item.raw).length },
@@ -392,6 +401,7 @@ export async function syncResidentRoster(profile: RosterSyncProfile | null, body
             success: successCount,
             unitOnly: unitOnlyCount,
             errors: errorCount,
+            welcomeEmails: welcome.sent,
             destinations: ['profiles', 'units', 'auth.users'],
             rowResults,
             rights,
