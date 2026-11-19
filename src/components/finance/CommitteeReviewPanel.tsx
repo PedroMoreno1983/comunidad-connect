@@ -50,9 +50,10 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
                 {review.reviewNote && <p className="mt-1">Comentario: {review.reviewNote}</p>}
                 {changed && <p className="mt-1 text-warning-fg">El cálculo, los respaldos, la fecha o la cuota cambiaron. Solicita una nueva revisión antes de emitir.</p>}
             </div>}
-            {!issued && <div className="mt-4 flex flex-wrap items-end gap-2">
+            {/* Sin integrantes, un selector vacío y un botón gris no sirven: solo el aviso. */}
+            {!issued && reviewers.length > 0 && <div className="mt-4 flex flex-wrap items-end gap-2">
                 <label className="text-sm cc-text-secondary">Residente revisor
-                    <select className="mt-1 block rounded-lg border bg-transparent p-2" value={reviewerId} onChange={event => setReviewerId(event.target.value)}>
+                    <select className="mt-1 block min-w-[14rem] rounded-lg border bg-transparent p-2" value={reviewerId} onChange={event => setReviewerId(event.target.value)}>
                         {reviewers.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
                     </select>
                 </label>
@@ -60,7 +61,7 @@ export function CommitteeReviewPanel({ month, dueDate, quotaAmount, quotaMethod,
                     {saving ? 'Enviando…' : review ? 'Solicitar nueva revisión' : 'Enviar a revisión'}
                 </button>
             </div>}
-            {!issued && reviewers.length === 0 && <p className="mt-2 text-sm cc-text-tertiary">No hay integrantes del comité vigentes. <Link href="/admin/finanzas/comite" className="underline">Configura el comité</Link> antes de pedir revisión.</p>}
+            {!issued && reviewers.length === 0 && <p className="mt-3 text-sm cc-text-secondary">Todavía no hay integrantes del comité. <Link href="/admin/finanzas/comite" className="font-semibold underline">Designa el comité</Link> para poder pedir la revisión antes de emitir. Es opcional: también puedes emitir sin ella.</p>}
         </>}
         {message && <p role="status" className="mt-3 text-sm cc-text-secondary">{message}</p>}
     </section>;

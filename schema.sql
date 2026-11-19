@@ -7573,3 +7573,26 @@ CREATE TABLE IF NOT EXISTS public.community_boats (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Boletas por correo (20261119020000_bills_inbox).
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS bills_inbox_token TEXT UNIQUE;
+CREATE TABLE IF NOT EXISTS public.inbound_bill_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+    email_id TEXT NOT NULL,
+    attachment_id TEXT NOT NULL,
+    from_address TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL DEFAULT '',
+    file_name TEXT NOT NULL DEFAULT '',
+    storage_path TEXT,
+    document_sha256 TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'registered', 'discarded', 'failed')),
+    draft JSONB NOT NULL DEFAULT '{}'::jsonb,
+    error TEXT,
+    expense_id UUID REFERENCES public.community_expenses(id) ON DELETE SET NULL,
+    decided_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    decided_at TIMESTAMPTZ,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Resend reintenta el webhook: el mismo adjunto no entra dos veces.
+    UNIQUE (email_id, attachment_id)
+);
+
