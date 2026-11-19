@@ -54,6 +54,9 @@ describe('dirección de la comunidad', () => {
 describe('seguridad', () => {
     it('solo baja adjuntos del CDN de Resend', () => {
         expect(resendDownloadAllowed('https://inbound-cdn.resend.com/a/b?sig=1')).toBe(true);
+        // El CDN real de los adjuntos recibidos (comprobado el 19-11-2026).
+        expect(resendDownloadAllowed('https://cdn.resend.app/receiving/x/attachments/y?sig=1')).toBe(true);
+        expect(resendDownloadAllowed('https://resend.app.evil.cl/a')).toBe(false);
         expect(resendDownloadAllowed('http://inbound-cdn.resend.com/a')).toBe(false);
         expect(resendDownloadAllowed('https://resend.com.evil.cl/a')).toBe(false);
         expect(resendDownloadAllowed('https://169.254.169.254/latest')).toBe(false);
