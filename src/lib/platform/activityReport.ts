@@ -214,7 +214,7 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
         blockedMap.set(key, entry);
     }
 
-    const defaults = { staff_daily_cost_cents: 100, staff_weekly_cost_cents: 400, resident_daily_cost_cents: 15, resident_weekly_cost_cents: 50 };
+    const defaults = { staff_daily_cost_cents: 200, staff_weekly_cost_cents: 600, resident_daily_cost_cents: 50, resident_weekly_cost_cents: 150 };
     const nearLimit = Object.entries(input.todayCostByUser).flatMap(([id, cents]) => {
         const person = peopleById.get(id);
         if (!person) return [];

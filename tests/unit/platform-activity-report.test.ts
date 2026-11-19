@@ -23,7 +23,7 @@ const base: ReportInput = {
         { user_id: 'u1', community_id: C, status: 'success', blocked_reason: null, estimated_cost_cents: 3, module: 'coco.chat', created_at: '2026-11-19T10:01:00Z' },
         { user_id: 'u2', community_id: null, status: 'blocked', blocked_reason: 'daily_person_cost_limit', estimated_cost_cents: 3, module: 'coco.chat', created_at: '2026-11-19T10:02:00Z' },
     ],
-    todayCostByUser: { u1: 92, u2: 15 },
+    todayCostByUser: { u1: 185, u2: 45 },
     sessions: [{
         key: 'web:u1:t', lastActivity: '2026-11-19T10:01:00Z', userId: 'u1', name: 'Camilo Valenzuela', role: 'admin', channel: 'web', communityId: C,
         turns: [
@@ -47,7 +47,7 @@ describe('reporte de actividad', () => {
         expect(report.active[0]).toMatchObject({ name: 'Camilo Valenzuela', community: 'Bahía Las Palmas', turns: 2, channel: 'Web' });
         expect(report.problems[0]).toMatchObject({ who: 'Camilo Valenzuela', asked: 'sitio 20 Jose ignacio valenzuela', times: 1 });
         expect(report.blocked[0]).toMatchObject({ name: 'Ana Pérez', community: 'Sin condominio', reason: 'cupo diario' });
-        expect(report.nearLimit.map(n => n.name)).toEqual(['Ana Pérez', 'Camilo Valenzuela']);
+        expect(report.nearLimit.map(n => n.name)).toEqual(['Camilo Valenzuela', 'Ana Pérez']);
         expect(report.pendingBills).toEqual([{ community: 'Bahía Las Palmas', count: 1 }]);
         expect(report.failedBills[0]).toMatchObject({ file: 'gas.pdf' });
     });

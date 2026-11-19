@@ -1,7 +1,7 @@
 /**
  * 18-11-2026: cupo de CoCo por persona, diario y semanal, en centavos de dólar.
- * Administración y conserjería: US$1 al día y US$4 a la semana. Residentes:
- * US$0,15 al día y US$0,50 a la semana. La comunidad: US$10 al mes.
+ * Desde el 19-11-2026: administración y conserjería US$2 al día y US$6 a la
+ * semana; residentes US$0,50 al día y US$1,50 a la semana. La comunidad: tope mensual.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -40,26 +40,26 @@ describe('cupo de CoCo por persona', () => {
         expect(personCostLimits(budget, 'resident')).toEqual({ daily: 15, weekly: 50 });
     });
 
-    it('un residente que ya gastó US$0,14 hoy no puede uno de 3 centavos', async () => {
-        state.events = [spent(14)];
+    it('un residente que ya gastó US$0,49 hoy no puede uno de 3 centavos', async () => {
+        state.events = [spent(49)];
         await expect(ask('resident', 3)).rejects.toThrow('cupo diario');
         expect(state.inserted[0]).toMatchObject({ status: 'blocked', blocked_reason: 'daily_person_cost_limit' });
     });
 
     it('un residente con cupo diario libre pero la semana gastada queda bloqueado hasta el lunes', async () => {
         const yesterday = new Date(Date.now() - 86_400_000);
-        state.events = yesterday >= new Date(chileWeekStart()) ? [spent(49, yesterday)] : [spent(49)];
+        state.events = yesterday >= new Date(chileWeekStart()) ? [spent(149, yesterday)] : [spent(149)];
         await expect(ask('resident', 3)).rejects.toThrow(/semana|cupo diario/);
     });
 
     it('un residente sin condominio también tiene tope diario (19-11-2026)', async () => {
-        state.events = [spent(14)];
+        state.events = [spent(49)];
         const sinComunidad = enforceAiBudget({ communityId: '', userId: USER, role: 'resident', module: 'coco.chat', provider: 'anthropic', model: 'claude-sonnet-5', actionType: 'chat', estimatedPromptTokens: 1000, estimatedCompletionTokens: 100, estimatedCostCents: 3 });
         await expect(sinComunidad).rejects.toThrow('cupo diario');
     });
 
-    it('la administración puede seguir con US$0,90 gastados hoy y un mensaje de 5 centavos', async () => {
-        state.events = [spent(90)];
+    it('la administración puede seguir con US$1,90 gastados hoy y un mensaje de 5 centavos', async () => {
+        state.events = [spent(190)];
         await expect(ask('admin', 5)).resolves.toBeUndefined();
     });
 
