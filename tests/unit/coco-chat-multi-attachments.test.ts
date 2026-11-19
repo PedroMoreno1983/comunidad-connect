@@ -21,6 +21,7 @@ vi.mock('@/lib/coco/session-store', () => ({
     saveDeliveredTurn: vi.fn(async () => undefined),
     checkRateLimit: vi.fn(() => true),
 }));
+vi.mock('@/lib/ai/budget', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/ai/budget')>(), getPersonAllowance: vi.fn(async () => null) }));
 vi.mock('@/lib/security/rateLimit', () => ({ enforceRateLimit: vi.fn(() => null) }));
 vi.mock('@/lib/coco/usageSignals', () => ({ recordUsageSignal: vi.fn(async () => undefined) }));
 vi.mock('@/lib/server/agentIdentity', () => ({

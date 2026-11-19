@@ -939,7 +939,7 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'set_unit_owner',
-        description: 'Fija o cambia el dueño (propietario) de una unidad, o la deja sin dueño (clear: true). Distinto de assign_resident_unit, que asigna el departamento a un residente. Requiere confirmación. SOLO administradores.',
+        description: 'Fija o cambia el dueño (propietario) de una unidad, o la deja sin dueño (clear: true). Si la persona no tiene cuenta en Convive, queda anotado su nombre (resident_name) como propietario y el resultado explica cómo sumarla. Distinto de assign_resident_unit, que asigna el departamento a un residente. Requiere confirmación. SOLO administradores.',
         input_schema: {
             type: 'object' as const,
             properties: {

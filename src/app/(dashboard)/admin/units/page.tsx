@@ -386,6 +386,11 @@ export default function UnitsPage() {
                                                         <p className="font-semibold cc-text-primary">{residentName}</p>
                                                         <p className="text-xs cc-text-secondary">{unit.profiles?.email}</p>
                                                     </div>
+                                                ) : unit.owner_name ? (
+                                                    <div>
+                                                        <p className="font-semibold cc-text-primary">{unit.owner_name}</p>
+                                                        <p className="text-xs cc-text-tertiary">Propietario · aún sin cuenta</p>
+                                                    </div>
                                                 ) : (
                                                     <span className="text-sm font-semibold cc-text-tertiary">Sin asignar</span>
                                                 )}

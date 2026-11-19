@@ -14,7 +14,7 @@ import type { CoCoApiResponse, CoCoChatMessage, CoCoResolutions } from '@/lib/ty
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveDeliveredTurn, checkRateLimit, type SessionData } from '@/lib/coco/session-store';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
-import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
+import { allowanceNotice, enforceAiBudget, estimateAiCostCents, estimateTokensFromText, getPersonAllowance, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSafeCoCoNavigation } from '@/lib/coco/navigation';
 import { resolveAiModel } from '@/lib/ai/modelRouter';
@@ -725,6 +725,19 @@ export async function POST(req: NextRequest) {
         const unitId = profile.unit_id || '';
         const communityId = profile.community_id || '';
         visualOwner = { communityId, userId };
+        // Cupo de CoCo antes del turno: al final se avisa si este turno cruzó el 50, 75 o 90 %.
+        // Nunca retrasa la respuesta: si la base tarda, se responde sin el dato.
+        const readAllowance = () => Promise.race([
+            getPersonAllowance({ communityId, userId, role: safeRole }).catch(() => null),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 800)),
+        ]);
+        const allowanceBefore = readAllowance();
+        const withAllowance = async (text: string) => {
+            const before = await allowanceBefore;
+            const after = await readAllowance();
+            const notice = allowanceNotice(before, after);
+            return { reply: notice ? `${text}\n\n_${notice}_` : text, ...(after ? { allowance: after } : {}) };
+        };
         visualCleanup = legalDocuments.flatMap(document => document.visualPdfPath ? [document.visualPdfPath] : []);
         // Solo el tema del mensaje, para los datos agregados de la administración. Nunca el texto.
         if (message) void recordUsageSignal({ communityId, userId, role: safeRole, channel: 'web', message });
@@ -960,7 +973,7 @@ export async function POST(req: NextRequest) {
         // confirme o rechace desde el cliente.
         if (pendingActions && pendingActions.length > 0) {
             const waiting: CoCoApiResponse = {
-                reply: reply || 'Antes de continuar, necesito tu confirmación:',
+                ...await withAllowance(reply || 'Antes de continuar, necesito tu confirmación:'),
                 pendingActions: await withAttachmentPreviews(userId, pendingActions),
             };
             return NextResponse.json(waiting, { status: 200 });
@@ -986,7 +999,7 @@ export async function POST(req: NextRequest) {
             conversation: [...(session?.conversation || []), ...updatedHistory],
         });
         const answer: CoCoApiResponse = {
-            reply,
+            ...await withAllowance(reply),
             ...navigation,
             action,
         };

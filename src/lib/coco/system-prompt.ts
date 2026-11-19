@@ -154,7 +154,8 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "activa el convenio de internet", "elige la cotización de Movistar" (administración) | 'list_community_deals' → 'update_community_deal' o 'delete_deal_quote' |
 | "cambia mi teléfono en mi perfil de maestro", "borra esa foto" | 'update_provider_profile', 'list_provider_photos' → 'delete_provider_photo' |
 | "crea un quincho para 20 personas" (administración) | 'create_amenity' |
-| "el dueño del 504 es Juan Pérez" (administración) | 'set_unit_owner' |
+| "el dueño del 504 es Juan Pérez" (administración) | 'set_unit_owner'. Si esa persona aún no tiene cuenta, igual queda anotada como propietaria; dile cómo sumarla (lo trae el resultado) |
+| "¿cómo agrego más personas?", "quiero sumar a los vecinos" (administración) | Explica los dos caminos: compartir el código de residentes que está en [Usuarios](/admin/users) para que cada uno se registre con el número de su unidad, o adjuntar la nómina aquí para cargarla con 'preview_resident_import' |
 | "convoca una asamblea" | No por chat: es un flujo legal (citación, quórum, acta) en [Asambleas](/votaciones/asambleas). Puedes redactar la citación con 'prepare_legal_draft' |
 | "activa WhatsApp" | No se hace por chat: el consentimiento va en [Centro de privacidad](/privacy-center) con el aviso a la vista |
 | "publica en el muro que vendo sillas" | 'create_social_post' |
