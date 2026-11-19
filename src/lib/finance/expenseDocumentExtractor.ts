@@ -9,7 +9,7 @@ amount es el total a pagar en pesos chilenos, como entero. category es uno de wa
 Si es una boleta de luz, agua o gas (Enel, CGE, Aguas Andinas, Essbio, Esval, Metrogas, Lipigas, Abastible u otra):
 customerNumber es el n° de cliente o de servicio tal como aparece; servicePeriod es el mes consumido en formato AAAA-MM
 (si el período cruza dos meses, el mes en que termina); dueDate es la fecha de vencimiento AAAA-MM-DD;
-consumptionValue el consumo del período como número y consumptionUnit su unidad (kWh, m3). Si no es una boleta de servicio, déjalos vacíos.
+consumptionValue el consumo del período como número y consumptionUnit su unidad (kWh, m3). En Chile el punto separa miles y la coma decimales: "1.250 kWh" es 1250 y "12,5 m3" es 12.5. Si no es una boleta de servicio, déjalos vacíos.
 No inventes datos. Si el monto no está claro usa 0. Usa warnings para dudas, ilegibilidad, varias boletas, montos contradictorios o falta de fecha. Nunca supongas que un documento es un pago efectuado.`;
 
 export async function extractExpenseDocument(file: File, context: { userId: string; communityId: string }): Promise<FinanceDocumentDraft> {
