@@ -96,11 +96,14 @@ async function resendListAttachments(emailId: string): Promise<ResendAttachment[
     return body.data ?? [];
 }
 
-/** Solo se baja desde el CDN de Resend: una URL de otro sitio no se sigue. */
+/**
+ * Solo se baja desde el CDN de Resend (hoy cdn.resend.app; se acepta también
+ * resend.com): una URL de otro sitio no se sigue.
+ */
 export function resendDownloadAllowed(url: string) {
     try {
         const parsed = new URL(url);
-        return parsed.protocol === 'https:' && /(^|\.)resend\.com$/i.test(parsed.hostname);
+        return parsed.protocol === 'https:' && /(^|\.)resend\.(com|app)$/i.test(parsed.hostname);
     } catch {
         return false;
     }
