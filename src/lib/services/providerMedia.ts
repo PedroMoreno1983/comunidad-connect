@@ -131,17 +131,72 @@ export async function listWorkPhotos(providerId: string): Promise<ProviderWorkPh
 }
 
 const DOCUMENT_NAME: Record<ProviderDocumentKind, string> = { background_certificate: 'certificado de antecedentes', identity: 'cédula de identidad' };
-const VERDICT_TEXT: Record<string, string> = { looks_ok: 'el chequeo automático lo ve bien', needs_review: 'el chequeo automático pide revisarlo a mano', problem: 'el chequeo automático encontró problemas' };
+const VERDICT_TEXT: Record<string, string> = { looks_ok: 'CoCo lo ve bien', needs_review: 'CoCo no pudo confirmarlo todo y necesita que lo mires', problem: 'CoCo encontró un problema' };
 
-/** Correo al CEO cuando un técnico sube un documento. Sin datos personales del documento. */
-async function notifyDocumentUploaded(providerName: string, kind: ProviderDocumentKind, verdict: string) {
+/**
+ * CoCo revisa el documento y solo molesta si hay algo raro (19-11-2026).
+ * Si la lectura salió limpia (tipo correcto, RUT válido, nombre que calza,
+ * certificado reciente y sin anotaciones, cédula vigente), queda aprobado solo.
+ * Si no, queda pendiente y sale un aviso al CEO con lo que encontró.
+ */
+async function settleAutoCheck(providerId: string, documentId: string, autoCheck: ProviderDocumentAutoCheck, providerName: string, kind: ProviderDocumentKind, via: string) {
+    if (autoCheck.verdict === 'looks_ok') {
+        try {
+            await reviewProviderDocument(providerId, documentId, true, 'Aprobado automáticamente por CoCo: ' + autoCheck.findings.join(' ').slice(0, 250), { id: null, role: 'coco' });
+            return 'approved' as const;
+        } catch (error) {
+            console.error('[provider documents] no se pudo aprobar solo', error instanceof Error ? error.message : error);
+        }
+    }
+    if (via === 'provider_portal') await notifyDocumentUploaded(providerName, kind, autoCheck).catch(() => undefined);
+    return 'pending' as const;
+}
+
+/**
+ * Segunda pasada para los documentos que CoCo no pudo leer (la lectura falló
+ * por un error puntual). Se vuelve a leer el archivo guardado; si sale limpio
+ * queda aprobado, si no, sigue pendiente con lo que encontró. Corre con el
+ * reporte de actividad. Devuelve cuántos quedaron aprobados.
+ */
+export async function recheckUnreadProviderDocuments(limit = 5) {
+    const admin = getSupabaseAdmin();
+    const { data } = await admin.from('service_provider_documents')
+        .select('id, provider_id, kind, storage_path, mime_type, auto_check').eq('status', 'pending')
+        .order('created_at', { ascending: true }).limit(50);
+    const unread = (data || []).filter(row => !(row.auto_check as ProviderDocumentAutoCheck | null)?.extracted).slice(0, limit);
+    let approved = 0;
+    for (const row of unread) {
+        try {
+            const provider = await loadProvider(String(row.provider_id));
+            const { data: file } = await admin.storage.from(DOCUMENTS_BUCKET).download(String(row.storage_path));
+            if (!file) continue;
+            const kind = row.kind as ProviderDocumentKind;
+            const autoCheck = await checkProviderDocument({
+                kind, buffer: Buffer.from(await file.arrayBuffer()), mimeType: String(row.mime_type), providerName: provider.name, communityId: provider.community_id,
+            });
+            if (!autoCheck.extracted) continue;
+            await admin.from('service_provider_documents').update({ auto_check: autoCheck, issued_on: autoCheck.extracted.issueDate ?? null }).eq('id', row.id).eq('status', 'pending');
+            if (await settleAutoCheck(provider.id, String(row.id), autoCheck, provider.name, kind, 'provider_portal') === 'approved') approved++;
+        } catch (error) {
+            console.error('[provider documents] segunda pasada falló', error instanceof Error ? error.message : error);
+        }
+    }
+    return approved;
+}
+
+/** Correo al CEO cuando un documento necesita ojos humanos. Sin RUT ni datos del documento. */
+async function notifyDocumentUploaded(providerName: string, kind: ProviderDocumentKind, autoCheck: ProviderDocumentAutoCheck) {
+    const verdict = autoCheck.verdict;
+    // Lo que encontró, sin repetir el RUT ni el folio.
+    const issues = autoCheck.findings.filter(item => !/^RUT |^Folio|calza con el perfil.$|^Emitido hace|^Sin anotaciones/.test(item)).slice(0, 4);
     const name = escapeEmailHtml(providerName);
     const html = emailWrapper(`
         <h1 style="font-family:${BRAND.serif};font-size:24px;font-weight:400;color:${BRAND.ink};">${name} subió su ${DOCUMENT_NAME[kind]}</h1>
         <p style="color:${BRAND.inkMuted};font-size:15px;line-height:1.6;">Lo subió desde su portal de técnico; ${VERDICT_TEXT[verdict] || 'no tiene chequeo automático'}. Queda pendiente hasta que lo apruebes o lo rechaces.</p>
+        ${issues.length ? `<ul style="color:${BRAND.ink};font-size:14px;line-height:1.6;">${issues.map(item => `<li>${escapeEmailHtml(item)}</li>`).join('')}</ul>` : ''}
         <p style="margin:24px 0;"><a href="${escapeEmailHtml(`${CANONICAL_SITE_URL}/superadmin`)}" style="display:inline-block;padding:12px 18px;border-radius:10px;background:${BRAND.ink};color:#fff;text-decoration:none;font-weight:600;">Revisar en Proveedores</a></p>
     `, 'Documento de técnico');
-    const { error } = await resend.emails.send({ from: FROM_EMAIL, to: SUPERADMIN_EMAIL, subject: `Técnico: ${providerName} subió su ${DOCUMENT_NAME[kind]}`, html });
+    const { error } = await resend.emails.send({ from: FROM_EMAIL, to: SUPERADMIN_EMAIL, subject: `${verdict === 'problem' ? 'Problema' : 'Revisar'}: ${DOCUMENT_NAME[kind]} de ${providerName}`, html });
     if (error) throw error;
 }
 
@@ -169,9 +224,8 @@ export async function uploadProviderDocument(providerId: string, kind: string, f
     }
     // En la bitácora va el veredicto, no los datos personales del documento.
     await audit(provider, actor, 'service_provider.document_uploaded', `Documento subido para revisión: ${provider.name}`, { kind, verdict: autoCheck.verdict });
-    // Lo subió el técnico desde su portal: aviso al CEO para que no quede esperando.
-    if (via === 'provider_portal') await notifyDocumentUploaded(provider.name, kind as ProviderDocumentKind, autoCheck.verdict).catch(() => undefined);
-    return { id: String(data.id), verdict: autoCheck.verdict };
+    const status = await settleAutoCheck(provider.id, String(data.id), autoCheck, provider.name, kind as ProviderDocumentKind, via);
+    return { id: String(data.id), verdict: autoCheck.verdict, status };
 }
 
 /**

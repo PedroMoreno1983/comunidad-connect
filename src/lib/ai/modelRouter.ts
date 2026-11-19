@@ -93,7 +93,7 @@ export const AI_TASKS = {
     },
     'services.provider-document-check': {
         complexity: 'standard',
-        description: 'Lectura de certificado de antecedentes y cédula de un maestro; el chequeo lo cierra una persona',
+        description: 'Lectura de certificado de antecedentes y cédula de un maestro; si sale limpio queda aprobado; si no, lo revisa una persona',
     },
     'training.classroom': {
         complexity: 'standard',

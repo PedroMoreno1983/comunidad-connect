@@ -78,3 +78,12 @@ describe('tipo real del archivo', () => {
         expect(sniffFileType(Buffer.from('<html><script>', 'latin1'))).toBeNull();
     });
 });
+
+describe('CoCo aprueba solo lo limpio (19-11-2026)', () => {
+    it('la subida aprueba sola si el chequeo sale limpio y avisa solo si no', async () => {
+        const { readFileSync } = await import('node:fs');
+        const source = readFileSync('src/lib/services/providerMedia.ts', 'utf8');
+        expect(source).toMatch(/if \(autoCheck\.verdict === 'looks_ok'\)[\s\S]*reviewProviderDocument\(providerId, documentId, true/);
+        expect(source).toMatch(/if \(via === 'provider_portal'\) await notifyDocumentUploaded/);
+    });
+});
