@@ -193,8 +193,12 @@ export async function setUnitOwner(admin: SupabaseClient, communityId: string, i
 
     let ownerId: string | null = null;
     let ownerName = '';
+    // Propietario que todavía no tiene cuenta: se anota su nombre en la unidad
+    // (antes fallaba con "No encontré a esa persona", 19-11-2026).
+    let withoutAccount = false;
     if (input.clear !== true) {
-        const name = likeSafe(text(input.resident_name, 80));
+        const typedName = text(input.resident_name, 80);
+        const name = likeSafe(typedName);
         const residentId = text(input.resident_id, 36);
         let query = admin.from('profiles').select('id, name').eq('community_id', communityId).limit(6);
         if (UUID.test(residentId)) query = query.eq('id', residentId);
@@ -202,12 +206,28 @@ export async function setUnitOwner(admin: SupabaseClient, communityId: string, i
         else return { error: 'Dime quién es el dueño (nombre), o clear: true para dejarla sin dueño.' };
         const { data: people } = await query;
         const rows = (people ?? []) as Row[];
-        if (!rows.length) return { error: 'No encontré a esa persona en la comunidad.' };
         if (rows.length > 1) return { error: 'Hay varias personas con ese nombre. Pregunta cuál y vuelve a llamar con resident_id.', personas: rows.map(r => ({ resident_id: r.id, nombre: r.name })) };
-        ownerId = String(rows[0].id);
-        ownerName = String(rows[0].name || 'el residente');
+        if (rows.length === 1) {
+            ownerId = String(rows[0].id);
+            ownerName = String(rows[0].name || 'el residente');
+        } else if (typedName && !UUID.test(residentId)) {
+            withoutAccount = true;
+            ownerName = typedName;
+        } else {
+            return { error: 'No encontré a esa persona en la comunidad.' };
+        }
     }
-    const { error } = await admin.from('units').update({ owner_id: ownerId }).eq('id', String(matches[0].id)).eq('community_id', communityId);
+    const { error } = await admin.from('units')
+        .update({ owner_id: ownerId, owner_name: input.clear === true ? null : ownerName })
+        .eq('id', String(matches[0].id)).eq('community_id', communityId);
     if (error) return { error: 'No se pudo actualizar la unidad.' };
+    if (withoutAccount) {
+        return {
+            success: true,
+            message: `${ownerName} quedó anotado como propietario del ${number}. Todavía no tiene cuenta en Convive. `
+                + 'Si quieres sumarlo: en Usuarios (/admin/users) está el código de residentes; compártelo y que se registre en conviveconnect.com con el número de su unidad, así queda unido a ella. '
+                + 'Si son varias personas, adjunta la nómina (Excel, CSV o PDF) en este chat y la cargo de una vez; las que tengan correo reciben su acceso.',
+        };
+    }
     return { success: true, message: ownerId ? `${ownerName} quedó como dueño del ${number}.` : `El ${number} quedó sin dueño asignado.` };
 }

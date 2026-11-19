@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS public.units (
   type TEXT DEFAULT 'apartment',
   resident_profile_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  -- Propietario anotado que aún no tiene cuenta (owner_id manda cuando existe).
+  owner_name TEXT CHECK (owner_name IS NULL OR char_length(owner_name) <= 120),
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

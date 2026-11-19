@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 import { CoCoMarkdownLink } from "@/components/CoCo/CoCoMarkdownLink";
 import { CoCoThreadSidebar } from "@/components/CoCo/CoCoThreadSidebar";
-import type { CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, CocoConsentState, PrivacyConsentsResponse, WhatsAppStartStatus } from "@/lib/types";
+import type { CoCoAllowance, CoCoApiResponse, CoCoChatMessage, CoCoPendingAction, CoCoThread, CocoConsentState, PrivacyConsentsResponse, WhatsAppStartStatus } from "@/lib/types";
 import { CommunityDocumentsService } from "@/lib/api";
 import { COCO_PRIVACY_NOTICE, PRIVACY_POLICY_VERSION } from "@/lib/privacy";
 import { CHAT_FILE_ACCEPT, MAX_CHAT_ATTACHMENTS, MAX_CHAT_DOCUMENT_BYTES, MAX_CHAT_IMAGE_BYTES, addChatAttachments, attachmentSummary, formatBytes, imageDataUrlBudget, type ChatAttachmentDraft, type CoCoDocumentRead } from "@/lib/coco/chatAttachmentRules";
@@ -71,6 +71,8 @@ export default function CoCoChatPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
     const [msgs, setMsgs] = useState<CoCoChatMessage[]>([WELCOME_MESSAGE]);
+    // Cuánto le queda a la persona de su cupo de CoCo (llega con cada respuesta).
+    const [allowance, setAllowance] = useState<CoCoAllowance | null>(null);
     const [threads, setThreads] = useState<CoCoThread[]>([]);
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
     const [threadsOpen, setThreadsOpen] = useState(false);
@@ -275,6 +277,7 @@ export default function CoCoChatPage() {
     };
 
     const appendAssistantReply = (data: CoCoApiResponse) => {
+        if (data.allowance) setAllowance(data.allowance);
         const safeNavigate = getSafeCoCoNavigation(data.navigate);
         setMsgs(previous => [...previous, {
             id: (Date.now() + 1).toString(),
@@ -829,6 +832,11 @@ export default function CoCoChatPage() {
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                         </button>
                     </form>
+                    {allowance && (
+                        <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-[var(--cc-ink-tertiary)]">
+                            Te queda un {Math.min(allowance.dailyLeftPct, allowance.weeklyLeftPct)} % de tu uso de CoCo {allowance.weeklyLeftPct < allowance.dailyLeftPct ? "esta semana" : "hoy"}
+                        </p>
+                    )}
                 </div>
 
             </div>

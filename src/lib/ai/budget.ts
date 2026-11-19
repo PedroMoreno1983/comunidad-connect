@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { CoCoAllowance } from '@/lib/types';
 
 export type AiActionType = 'chat' | 'image' | 'embedding' | 'extraction' | 'course' | 'fallback' | 'other';
 export type AiUsageStatus = 'success' | 'error' | 'blocked' | 'skipped' | 'fallback';
@@ -430,4 +431,53 @@ export async function enforceAiBudget(input: AiBudgetCheck) {
     });
 
     throw new AiBudgetExceededError(budgetUserMessage(reason, input.role), reason);
+}
+
+/** Umbrales de uso (en % del tope) en los que CoCo avisa cuánto queda. */
+export const ALLOWANCE_NOTICE_THRESHOLDS = [50, 75, 90] as const;
+
+/**
+ * Cuánto le queda a una persona de su cupo de CoCo (diario y semanal), en %.
+ * null si no hay tope que medir (sin comunidad, o tope en cero).
+ */
+export async function getPersonAllowance(input: { communityId?: string | null; userId?: string | null; role?: string | null }): Promise<CoCoAllowance | null> {
+    if (!isUuid(input.communityId) || !isUuid(input.userId)) return null;
+    const limits = personCostLimits(await fetchBudget(input.communityId), input.role);
+    if (!(limits.daily > 0) && !(limits.weekly > 0)) return null;
+    const week = chileWeekStart();
+    const { data, error } = await getSupabaseAdmin()
+        .from('ai_usage_events')
+        .select('estimated_cost_cents, status, created_at')
+        .eq('user_id', input.userId)
+        .gte('created_at', week);
+    if (error) return null;
+    const day = dayStart();
+    const events = ((data ?? []) as Array<{ estimated_cost_cents: number | null; status: string | null; created_at: string }>)
+        .filter(event => event.status !== 'blocked');
+    const cost = (list: typeof events) => list.reduce((sum, event) => sum + Number(event.estimated_cost_cents ?? 0), 0);
+    return allowanceFrom({ dailyUsed: cost(events.filter(event => event.created_at >= day)), weeklyUsed: cost(events), limits });
+}
+
+export function allowanceFrom(input: { dailyUsed: number; weeklyUsed: number; limits: { daily: number; weekly: number } }): CoCoAllowance {
+    const left = (used: number, limit: number) => limit > 0 ? Math.max(0, Math.min(100, Math.round(100 - (used / limit) * 100))) : 100;
+    return { dailyLeftPct: left(input.dailyUsed, input.limits.daily), weeklyLeftPct: left(input.weeklyUsed, input.limits.weekly) };
+}
+
+/**
+ * Aviso cuando este turno cruzó un umbral de uso (50 %, 75 %, 90 %) del cupo
+ * diario o del semanal. Sin cruce, null: no se repite en cada mensaje.
+ */
+export function allowanceNotice(before: CoCoAllowance | null, after: CoCoAllowance | null): string | null {
+    if (!after) return null;
+    const crossed = (prevLeft: number, nowLeft: number) =>
+        ALLOWANCE_NOTICE_THRESHOLDS.some(threshold => 100 - prevLeft < threshold && 100 - nowLeft >= threshold);
+    const prev = before ?? { dailyLeftPct: 100, weeklyLeftPct: 100 };
+    // El semanal manda si es el más apretado.
+    if (after.weeklyLeftPct < after.dailyLeftPct && crossed(prev.weeklyLeftPct, after.weeklyLeftPct)) {
+        return `Te queda un ${after.weeklyLeftPct} % de tu uso de CoCo de esta semana (se renueva el lunes).`;
+    }
+    if (crossed(prev.dailyLeftPct, after.dailyLeftPct)) {
+        return `Te queda un ${after.dailyLeftPct} % de tu uso de CoCo de hoy (se renueva a medianoche).`;
+    }
+    return null;
 }

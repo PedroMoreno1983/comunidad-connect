@@ -3046,6 +3046,8 @@ export interface UnitProfileOption {
  */
 export type UnitRow = Unit & {
     profiles?: { name: string; email: string } | null;
+    /** Propietario anotado por la administración que aún no tiene cuenta. */
+    owner_name?: string | null;
     share_permille?: number | string | null;
 };
 
@@ -3220,6 +3222,13 @@ export interface CoCoApiResponse {
     autoNavigate?: boolean;
     action?: string;
     pendingActions?: CoCoPendingAction[];
+    /** Cuánto le queda a la persona de su cupo de CoCo, en %. */
+    allowance?: CoCoAllowance;
+}
+
+export interface CoCoAllowance {
+    dailyLeftPct: number;
+    weeklyLeftPct: number;
 }
 
 export interface CoCoChatMessage {
