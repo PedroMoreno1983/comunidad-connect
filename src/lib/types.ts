@@ -4118,6 +4118,15 @@ export interface ProviderDocumentAutoCheck {
   verdict: 'looks_ok' | 'needs_review' | 'problem';
   findings: string[];
   extracted: ProviderDocumentExtraction | null;
+  /** Certificado de antecedentes en PDF: firma electrónica del Registro Civil (19-11-2026). */
+  signature?: ProviderDocumentSignature;
+}
+
+export interface ProviderDocumentSignature {
+  status: 'verified' | 'modified' | 'untrusted' | 'unsigned' | 'invalid';
+  detail: string;
+  signer?: string;
+  signedAt?: string;
 }
 
 export interface ProviderDocument {

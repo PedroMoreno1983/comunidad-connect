@@ -5,6 +5,7 @@ import { resolveAiModel } from '@/lib/ai/modelRouter';
 import { enforceAiBudget, recordAiUsage } from '@/lib/ai/budget';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { assessProviderDocument } from '@/lib/services/providerDocumentRules';
+import { verifyRegistroCivilSignature } from '@/lib/services/registroCivilSignature';
 import type { ProviderDocumentAutoCheck, ProviderDocumentExtraction, ProviderDocumentKind } from '@/lib/types';
 
 /**
@@ -102,5 +103,9 @@ export async function checkProviderDocument(input: {
     communityId: string | null;
 }): Promise<ProviderDocumentAutoCheck> {
     const extracted = await extract(input.buffer, input.mimeType, input.communityId);
-    return assessProviderDocument(input.kind, extracted, input.providerName, chileTodayISO());
+    const signature = input.kind !== 'background_certificate' ? undefined
+        : input.mimeType === 'application/pdf'
+            ? verifyRegistroCivilSignature(input.buffer)
+            : { status: 'unsigned' as const, detail: 'Es una foto o imagen, no el PDF del Registro Civil: no se puede verificar su firma. Pide el PDF original descargado de registrocivil.cl.' };
+    return assessProviderDocument(input.kind, extracted, input.providerName, chileTodayISO(), signature);
 }

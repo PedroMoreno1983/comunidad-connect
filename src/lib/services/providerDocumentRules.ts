@@ -1,11 +1,11 @@
-import type { ProviderDocumentAutoCheck, ProviderDocumentExtraction, ProviderDocumentKind } from '@/lib/types';
+import type { ProviderDocumentAutoCheck, ProviderDocumentExtraction, ProviderDocumentKind, ProviderDocumentSignature } from '@/lib/types';
 
 /**
  * Reglas del chequeo automático de documentos de un maestro. Son puras: la
  * lectura del documento (IA) entrega una extracción y aquí se decide qué se ve
- * bien y qué hay que mirar. No reemplazan la revisión humana: el certificado
- * se puede validar contra el Registro Civil con su folio y código, cosa que el
- * sistema no hace.
+ * bien y qué hay que mirar. El certificado de antecedentes solo queda aprobado
+ * solo si además trae la firma electrónica del Registro Civil intacta
+ * (registroCivilSignature.ts): sin ella, el texto podría estar editado.
  */
 
 /** Días que se acepta un certificado de antecedentes desde su emisión. */
@@ -51,9 +51,11 @@ export function assessProviderDocument(
     extracted: ProviderDocumentExtraction | null,
     providerName: string,
     todayIso: string,
+    signature?: ProviderDocumentSignature,
 ): ProviderDocumentAutoCheck {
+    const withSignature = <T extends ProviderDocumentAutoCheck>(check: T): T => (signature ? { ...check, signature } : check);
     if (!extracted) {
-        return { verdict: 'needs_review', findings: ['No se pudo leer el documento automáticamente: revísalo a mano.'], extracted: null };
+        return withSignature({ verdict: 'needs_review', findings: ['No se pudo leer el documento automáticamente: revísalo a mano.'], extracted: null });
     }
     const problems: string[] = [];
     const warnings: string[] = [];
@@ -85,11 +87,16 @@ export function assessProviderDocument(
         if (extracted.hasRecords === true) problems.push('El certificado registra anotaciones.');
         else if (extracted.hasRecords === false) okNotes.push('Sin anotaciones.');
         else warnings.push('No se pudo determinar si tiene anotaciones.');
-        if (extracted.verificationCode) okNotes.push(`Folio o código de verificación: ${extracted.verificationCode} (se puede validar en el Registro Civil).`);
+        if (extracted.verificationCode) okNotes.push(`Folio o código de verificación: ${extracted.verificationCode}.`);
+        // La firma electrónica es lo que prueba que el Registro Civil lo emitió así.
+        if (!signature) warnings.push('No se verificó la firma electrónica del Registro Civil: pide el PDF original descargado de registrocivil.cl.');
+        else if (signature.status === 'verified') okNotes.unshift(signature.detail);
+        else if (signature.status === 'untrusted' || signature.status === 'invalid') problems.push(signature.detail);
+        else warnings.push(signature.detail);
     } else if (extracted.expiryDate && extracted.expiryDate < todayIso) {
         problems.push('La cédula está vencida.');
     }
 
     const verdict = problems.length ? 'problem' : warnings.length ? 'needs_review' : 'looks_ok';
-    return { verdict, findings: [...problems, ...warnings, ...okNotes], extracted };
+    return withSignature({ verdict, findings: [...problems, ...warnings, ...okNotes], extracted });
 }

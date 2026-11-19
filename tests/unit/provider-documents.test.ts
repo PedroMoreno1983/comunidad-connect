@@ -36,8 +36,17 @@ describe('nombre', () => {
 describe('veredicto', () => {
     const today = '2026-11-14';
 
-    it('un certificado reciente, sin anotaciones y con RUT válido se ve bien', () => {
-        expect(assessProviderDocument('background_certificate', certificate(), 'Juan Pérez', today).verdict).toBe('looks_ok');
+    const signed = { status: 'verified' as const, detail: 'Firma electrónica del Registro Civil verificada (X).' };
+
+    it('un certificado reciente, sin anotaciones, con RUT válido y firma del Registro Civil intacta se ve bien', () => {
+        expect(assessProviderDocument('background_certificate', certificate(), 'Juan Pérez', today, signed).verdict).toBe('looks_ok');
+    });
+
+    it('sin firma verificada no se aprueba solo (19-11-2026)', () => {
+        expect(assessProviderDocument('background_certificate', certificate(), 'Juan Pérez', today).verdict).toBe('needs_review');
+        expect(assessProviderDocument('background_certificate', certificate(), 'Juan Pérez', today, { status: 'modified', detail: 'modificado' }).verdict).toBe('needs_review');
+        expect(assessProviderDocument('background_certificate', certificate(), 'Juan Pérez', today, { status: 'unsigned', detail: 'foto' }).verdict).toBe('needs_review');
+        expect(assessProviderDocument('background_certificate', certificate(), 'Juan Pérez', today, { status: 'untrusted', detail: 'otro firmante' }).verdict).toBe('problem');
     });
 
     it('con anotaciones o RUT inválido es un problema', () => {
