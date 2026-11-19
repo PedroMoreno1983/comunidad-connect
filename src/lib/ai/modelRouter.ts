@@ -75,6 +75,10 @@ export const AI_TASKS = {
         complexity: 'standard',
         description: 'Resumen semanal para el comité, redactado desde métricas agregadas (lo revisa el admin)',
     },
+    'platform.activity-report': {
+        complexity: 'light',
+        description: 'Reporte de actividad de mañana y tarde: resume en pocas líneas lo importante desde cifras ya calculadas',
+    },
     'assemblies.writer': {
         complexity: 'standard',
         description: 'Asambleas (Ley 21.442): prosa de la citación y del acta; las cifras las arma el código y el admin revisa',

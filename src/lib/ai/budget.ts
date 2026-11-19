@@ -292,6 +292,9 @@ async function fetchBudget(communityId?: string | null): Promise<AiBudget> {
 }
 
 async function fetchUsage(communityId: string | null | undefined, userId: string | null | undefined) {
+    // Residente sin condominio: no hay cupo de comunidad, pero su tope personal
+    // diario y semanal sí corre (antes quedaba sin límite, 19-11-2026).
+    if (!isUuid(communityId) && isUuid(userId)) return fetchPersonalUsage(String(userId));
     if (!isUuid(communityId)) {
         return {
             monthlyTokens: 0,
@@ -349,6 +352,25 @@ async function fetchUsage(communityId: string | null | undefined, userId: string
             .filter(event => event.created_at >= day && isHeavyAction(event.action_type ?? undefined))
             .length,
     };
+}
+
+/** Uso de una persona sin comunidad: solo su costo del día y de la semana. */
+async function fetchPersonalUsage(userId: string) {
+    const empty = { monthlyTokens: 0, monthlyImages: 0, monthlyCostCents: 0, dailyUserTokens: 0, dailyHeavyActions: 0, dailyUserCostCents: 0, weeklyUserCostCents: 0 };
+    const { data, error } = await getSupabaseAdmin()
+        .from('ai_usage_events')
+        .select('total_tokens, estimated_cost_cents, status, created_at, metadata')
+        .eq('user_id', userId)
+        .gte('created_at', chileWeekStart());
+    if (error) {
+        console.warn('[AI Budget] Could not read personal usage:', error.message);
+        return empty;
+    }
+    const day = dayStart();
+    const events = ((data ?? []) as AiUsageEvent[]).filter(event => event.status !== 'blocked');
+    const today = events.filter(event => event.created_at >= day);
+    const cost = (list: AiUsageEvent[]) => list.reduce((sum, event) => sum + Number(event.estimated_cost_cents ?? 0), 0);
+    return { ...empty, dailyUserCostCents: cost(today), weeklyUserCostCents: cost(events), dailyUserTokens: today.reduce((sum, event) => sum + dailyTokensOf(event), 0) };
 }
 
 export async function recordAiUsage(input: AiUsageRecord) {
@@ -441,7 +463,7 @@ export const ALLOWANCE_NOTICE_THRESHOLDS = [50, 75, 90] as const;
  * null si no hay tope que medir (sin comunidad, o tope en cero).
  */
 export async function getPersonAllowance(input: { communityId?: string | null; userId?: string | null; role?: string | null }): Promise<CoCoAllowance | null> {
-    if (!isUuid(input.communityId) || !isUuid(input.userId)) return null;
+    if (!isUuid(input.userId)) return null;
     const limits = personCostLimits(await fetchBudget(input.communityId), input.role);
     if (!(limits.daily > 0) && !(limits.weekly > 0)) return null;
     const week = chileWeekStart();

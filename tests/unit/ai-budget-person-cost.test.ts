@@ -52,6 +52,12 @@ describe('cupo de CoCo por persona', () => {
         await expect(ask('resident', 3)).rejects.toThrow(/semana|cupo diario/);
     });
 
+    it('un residente sin condominio también tiene tope diario (19-11-2026)', async () => {
+        state.events = [spent(14)];
+        const sinComunidad = enforceAiBudget({ communityId: '', userId: USER, role: 'resident', module: 'coco.chat', provider: 'anthropic', model: 'claude-sonnet-5', actionType: 'chat', estimatedPromptTokens: 1000, estimatedCompletionTokens: 100, estimatedCostCents: 3 });
+        await expect(sinComunidad).rejects.toThrow('cupo diario');
+    });
+
     it('la administración puede seguir con US$0,90 gastados hoy y un mensaje de 5 centavos', async () => {
         state.events = [spent(90)];
         await expect(ask('admin', 5)).resolves.toBeUndefined();
