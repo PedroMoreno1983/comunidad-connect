@@ -28,6 +28,7 @@ export function isDashboardPathAllowedForRole(pathname: string, role: string | n
     if (pathname.startsWith("/resident/supermercado")) return normalized === "resident";
     if (
         pathname.startsWith("/marketplace")
+        || pathname.startsWith("/embarcaciones")
         || pathname.startsWith("/services")
         || pathname.startsWith("/votaciones")
         || pathname.startsWith("/expenses")

@@ -26,3 +26,4 @@ export * from './api/auth-providers';
 export * from './api/push';
 export * from './api/documents';
 export * from './api/utilities';
+export * from './api/boats';

@@ -47,6 +47,7 @@ const PROTECTED_DASHBOARD_PREFIXES = [
   "/concierge",
   "/convivencia",
   "/directorio",
+  "/embarcaciones",
   "/estacionamientos",
   "/expenses",
   "/feed",

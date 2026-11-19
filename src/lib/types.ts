@@ -23,6 +23,8 @@ export interface User {
   communityName?: string; // Display name of the active community
   communityCoverPhotoUrl?: string; // Optional real building photo, set per-community
   features?: Record<string, boolean>; // Plan features
+  /** Módulos que la comunidad apagó (communities.disabled_modules): 'parking', 'water'. */
+  disabledModules?: string[];
   /** false: comunidad sin administrar (modo vecino). */
   communityManaged?: boolean;
   /** false: entró sin código; la administración lo valida al tomar el edificio. */
@@ -4294,4 +4296,27 @@ export interface ResidentUtilityAccountInput {
     alias?: string;
     dueDay?: number | null;
     remindersEnabled?: boolean;
+}
+
+// ─── Vida junto al lago: embarcaciones ──────────────────────────────────────
+
+export interface CommunityBoat {
+    id: string;
+    ownerId: string;
+    ownerName: string;
+    unitNumber: string;
+    kind: 'lancha' | 'velero' | 'kayak' | 'moto_agua' | 'bote' | 'otro';
+    name: string;
+    registration: string;
+    lengthM: number | null;
+    notes: string;
+    createdAt: string;
+}
+
+export interface CommunityBoatInput {
+    kind: CommunityBoat['kind'];
+    name?: string;
+    registration?: string;
+    lengthM?: number | null;
+    notes?: string;
 }

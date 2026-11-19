@@ -14,6 +14,7 @@ import { NeighborModeGateScreen } from "@/components/neighbor/NeighborModeGate";
 import { NeighborModeBanner } from "@/components/neighbor/NeighborModeBanner";
 import { InviteNeighborsButton } from "@/components/neighbor/InviteNeighborsButton";
 import { neighborModeGateFor } from "@/lib/neighborMode";
+import { COMMUNITY_MODULES, disabledModuleForPath, disabledModulesOf } from "@/lib/community/modules";
 
 export default function DashboardLayout({
     children,
@@ -128,6 +129,8 @@ function DashboardShell({
     // También para quien espera validación en un edificio ya administrado.
     const pendingValidation = user.communityManaged !== false && user.residenceVerified === false;
     const neighborGate = user.communityManaged === false || pendingValidation ? neighborModeGateFor(pathname) : null;
+    // Módulo que la comunidad apagó (p. ej. estacionamientos en un condominio de casas).
+    const offModule = pathname ? disabledModuleForPath(pathname, disabledModulesOf(user.disabledModules)) : null;
 
 
     // Admin, Concierge, & Resident wrapped in responsive AdminShell layout
@@ -158,7 +161,12 @@ function DashboardShell({
                                 <InviteNeighborsButton variant="secondary" />
                             </div>
                         ) : null}
-                        {neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} pendingValidation={pendingValidation} /> : children}
+                        {offModule ? (
+                            <div className="mx-auto max-w-xl rounded-2xl border p-6 text-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                                <p className="text-lg font-semibold cc-text-primary">{COMMUNITY_MODULES[offModule].label} no está activo en {user.communityName || "tu comunidad"}</p>
+                                <p className="mt-2 text-sm cc-text-secondary">La comunidad lo dejó fuera porque no aplica. Si lo necesitas, pídeselo a la administración.</p>
+                            </div>
+                        ) : neighborGate ? <NeighborModeGateScreen gate={neighborGate} buildingName={user.communityName} pendingValidation={pendingValidation} /> : children}
                     </ErrorBoundary>
                 </AdminShell>
             </ErrorBoundary>

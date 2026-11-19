@@ -92,6 +92,9 @@ import { communityProvidersFilter } from '@/lib/services/providerNetwork';
 import { NEIGHBOR_MODE_BLOCKED_TOOLS } from '@/lib/neighborMode';
 import { setCommunityCoverFromChat } from './communityCoverTool';
 import { addCommunityExpenseWithChatImage } from '@/lib/finance/expenseChatAttachment';
+import { COMMUNITY_MODULES, disabledModulesOf, toolsBlockedByModules } from '@/lib/community/modules';
+
+const MODULE_TOOLS = new Set<string>(Object.values(COMMUNITY_MODULES).flatMap(module => [...module.tools]));
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -2518,6 +2521,12 @@ export async function executeTool(
 ): Promise<unknown> {
     try {
         if (!isToolAllowedForRole(name, userCtx.role)) return forbidden();
+        if (MODULE_TOOLS.has(name) && userCtx.community_id) {
+            const { data: community } = await supabaseAdmin.from('communities').select('disabled_modules').eq('id', userCtx.community_id).maybeSingle();
+            if (toolsBlockedByModules(disabledModulesOf(community?.disabled_modules)).has(name)) {
+                return forbidden('Ese módulo no está activo en esta comunidad.');
+            }
+        }
         if (NEIGHBOR_MODE_BLOCKED_TOOLS.has(name) && userCtx.community_id) {
             const [{ data: community }, { data: profile }] = await Promise.all([
                 supabaseAdmin.from('communities').select('managed').eq('id', userCtx.community_id).maybeSingle(),

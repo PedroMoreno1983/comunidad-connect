@@ -24,19 +24,25 @@ import type { CoCoPendingAction, CoCoResolutions } from '@/lib/types';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { ATTACHMENT_TOOLS, discardChatAttachment } from './chatAttachments';
 import { NEIGHBOR_MODE_BLOCKED_TOOLS, NEIGHBOR_MODE_PROMPT } from '@/lib/neighborMode';
+import { LAKE_SEASON_NOTICES, disabledModulesOf, extraModulesOf, toolsBlockedByModules } from '@/lib/community/modules';
 
 /**
  * Modo vecino: la comunidad no está administrada (la crearon residentes) o la
  * administración todavía no valida a esta persona.
  */
-async function isNeighborMode(communityId?: string, userId?: string) {
-    if (!communityId) return false;
+async function communityMode(communityId?: string, userId?: string) {
+    if (!communityId) return { neighborMode: false, blockedByModules: new Set<string>(), lake: false };
     const admin = getSupabaseAdmin();
     const [{ data: community }, { data: profile }] = await Promise.all([
-        admin.from('communities').select('managed').eq('id', communityId).maybeSingle(),
+        admin.from('communities').select('managed, disabled_modules, extra_modules').eq('id', communityId).maybeSingle(),
         userId ? admin.from('profiles').select('residence_verified').eq('id', userId).maybeSingle() : Promise.resolve({ data: null }),
     ]);
-    return community?.managed === false || profile?.residence_verified === false;
+    return {
+        neighborMode: community?.managed === false || profile?.residence_verified === false,
+        // Módulos que la comunidad apagó: sus herramientas no se ofrecen.
+        blockedByModules: toolsBlockedByModules(disabledModulesOf(community?.disabled_modules)),
+        lake: extraModulesOf(community?.extra_modules).includes('lake'),
+    };
 }
 
 const anthropic = new Anthropic({
@@ -504,14 +510,20 @@ export async function askCoCo(
     // WhatsApp no tiene pantalla actual, pero igual recibe la regla de uso.
     const platformContext = buildPlatformContext(userCtx.currentPage, userCtx.role);
     // Modo vecino: comunidad sin administrar; no hay gastos, reservas ni avisos.
-    const neighborMode = await isNeighborMode(userCtx.community_id, userCtx.user_id);
+    const { neighborMode, blockedByModules, lake } = await communityMode(userCtx.community_id, userCtx.user_id);
+    // Comunidad junto a un lago: embarcaciones y avisos de temporada.
+    const lakeContext = lake
+        ? `Esta comunidad es un condominio de casas junto a un lago: no hay torres ni pisos (cada unidad es una casa); hay muelle, rampa de botes, quincho, sede y canchas. Las embarcaciones se registran en /embarcaciones. Si la administración quiere avisar algo de temporada, propón una de estas plantillas, adáptala y prográmala con schedule_community_notice:\n- ${LAKE_SEASON_NOTICES.join('\n- ')}`
+        : '';
     const offeredTool = (name: string) => isToolOfferedFor(name, userCtx.role, userCtx.channel)
-        && !(neighborMode && NEIGHBOR_MODE_BLOCKED_TOOLS.has(name));
+        && !(neighborMode && NEIGHBOR_MODE_BLOCKED_TOOLS.has(name))
+        && !blockedByModules.has(name);
     const volatileSystem = [
         legalKnowledge,
         memoryContext,
         proactiveContext,
         communityContext,
+        lakeContext,
         platformContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
         options.turnContext || '',

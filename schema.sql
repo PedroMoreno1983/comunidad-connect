@@ -7556,3 +7556,20 @@ CREATE POLICY "resident_utility_accounts_service_role" ON public.resident_utilit
     TO service_role USING (true) WITH CHECK (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.resident_utility_accounts TO authenticated;
 GRANT ALL ON public.resident_utility_accounts TO service_role;
+
+-- Módulos por comunidad y embarcaciones (20261119000000_community_disabled_modules).
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS disabled_modules TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.communities ADD COLUMN IF NOT EXISTS extra_modules TEXT[] NOT NULL DEFAULT '{}';
+CREATE TABLE IF NOT EXISTS public.community_boats (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+    owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    unit_id UUID REFERENCES public.units(id) ON DELETE SET NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('lancha', 'velero', 'kayak', 'moto_agua', 'bote', 'otro')),
+    name TEXT NOT NULL DEFAULT '' CHECK (length(name) <= 60),
+    registration TEXT NOT NULL DEFAULT '' CHECK (length(registration) <= 40),
+    length_m NUMERIC(5, 2) CHECK (length_m IS NULL OR (length_m > 0 AND length_m < 100)),
+    notes TEXT NOT NULL DEFAULT '' CHECK (length(notes) <= 300),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
