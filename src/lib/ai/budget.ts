@@ -198,10 +198,10 @@ function defaultBudget(): AiBudget {
         resident_daily_token_limit: Number(process.env.AI_RESIDENT_DAILY_TOKEN_LIMIT || 100_000),
         staff_daily_token_limit: Number(process.env.AI_STAFF_DAILY_TOKEN_LIMIT || 300_000),
         heavy_action_daily_limit: Number(process.env.AI_HEAVY_DAILY_LIMIT || 20),
-        staff_daily_cost_cents: Number(process.env.AI_STAFF_DAILY_COST_CENTS || 100),
-        staff_weekly_cost_cents: Number(process.env.AI_STAFF_WEEKLY_COST_CENTS || 400),
-        resident_daily_cost_cents: Number(process.env.AI_RESIDENT_DAILY_COST_CENTS || 15),
-        resident_weekly_cost_cents: Number(process.env.AI_RESIDENT_WEEKLY_COST_CENTS || 50),
+        staff_daily_cost_cents: Number(process.env.AI_STAFF_DAILY_COST_CENTS || 200),
+        staff_weekly_cost_cents: Number(process.env.AI_STAFF_WEEKLY_COST_CENTS || 600),
+        resident_daily_cost_cents: Number(process.env.AI_RESIDENT_DAILY_COST_CENTS || 50),
+        resident_weekly_cost_cents: Number(process.env.AI_RESIDENT_WEEKLY_COST_CENTS || 150),
     };
 }
 

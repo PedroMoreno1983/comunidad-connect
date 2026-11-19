@@ -17,6 +17,7 @@ import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import { buildPlatformContext } from './platformMap';
 import type { ConversationMessage, SessionData } from './session-store';
+import { isLightTurn, LIGHT_COCO_MODEL } from '@/lib/coco/lightTurn';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
@@ -664,6 +665,16 @@ export async function askCoCo(
     // herramienta), se repite una sola vez pidiendo responder en texto.
     let lengthRetry = false;
     let lengthRetried = false;
+    // Saludos y preguntas de "dónde está" van al modelo liviano (lightTurn.ts).
+    const lightTurn = isLightTurn({
+        message,
+        resuming: isResuming,
+        attachments: (options.image ? 1 : 0) + (options.images?.length ?? 0) + (options.legalDocument ? 1 : 0) + (options.legalDocuments?.length ?? 0),
+        requiredTool: requiredTool ?? null,
+    });
+    const anthropicModel = lightTurn ? LIGHT_COCO_MODEL : MODEL;
+    // Haiku 5.5 piensa por defecto: en lo simple no hace falta y no deja bloques de razonamiento en el historial.
+    const lightOptions = lightTurn ? { thinking: { type: 'disabled' as const } } : {};
 
     do {
         const forceText = lengthRetry;
@@ -672,7 +683,7 @@ export async function askCoCo(
             ? { tool_choice: { type: 'none' as const } }
             : requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {};
         let provider = useOpenAi ? 'openai' : 'anthropic';
-        let model = useOpenAi ? OPENAI_MODEL : MODEL;
+        let model = useOpenAi ? OPENAI_MODEL : anthropicModel;
         const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateHistoryTokens(history);
         const estimatedCompletionTokens = MAX_OUTPUT_TOKENS;
 
@@ -698,7 +709,8 @@ export async function askCoCo(
             tools: TOOL_DEFINITIONS.filter(tool => offeredTool(tool.name)) as { name: string; description: string; input_schema: Record<string, unknown> }[],
             requiredTool: rounds === 0 ? requiredTool : undefined,
         }) : await anthropic.messages.create({
-            model: MODEL,
+            model: anthropicModel,
+            ...lightOptions,
             max_tokens: MAX_OUTPUT_TOKENS,
             system: systemBlocks,
             messages: history,
@@ -712,14 +724,14 @@ export async function askCoCo(
                 console.warn('[CoCo] OpenAI rechazó su clave; se continúa con Anthropic en esta conversación.');
                 useOpenAi = false;
                 provider = 'anthropic';
-                model = MODEL;
+                model = anthropicModel;
                 await enforceAiBudget({
                     communityId: userCtx.community_id, userId: userCtx.user_id, role: userCtx.role,
                     module: 'coco.chat', provider, model, actionType: 'chat',
                     estimatedPromptTokens, estimatedCompletionTokens,
                 });
                 response = await anthropic.messages.create({
-                    model: MODEL, max_tokens: MAX_OUTPUT_TOKENS, system: systemBlocks, messages: history,
+                    model: anthropicModel, ...lightOptions, max_tokens: MAX_OUTPUT_TOKENS, system: systemBlocks, messages: history,
                     tools: TOOL_DEFINITIONS.filter(tool => offeredTool(tool.name)) as unknown as Anthropic.Tool[],
                     ...toolChoice,
                 });
