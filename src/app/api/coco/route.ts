@@ -726,10 +726,15 @@ export async function POST(req: NextRequest) {
         const communityId = profile.community_id || '';
         visualOwner = { communityId, userId };
         // Cupo de CoCo antes del turno: al final se avisa si este turno cruzó el 50, 75 o 90 %.
-        const allowanceBefore = getPersonAllowance({ communityId, userId, role: safeRole }).catch(() => null);
+        // Nunca retrasa la respuesta: si la base tarda, se responde sin el dato.
+        const readAllowance = () => Promise.race([
+            getPersonAllowance({ communityId, userId, role: safeRole }).catch(() => null),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 800)),
+        ]);
+        const allowanceBefore = readAllowance();
         const withAllowance = async (text: string) => {
             const before = await allowanceBefore;
-            const after = await getPersonAllowance({ communityId, userId, role: safeRole }).catch(() => null);
+            const after = await readAllowance();
             const notice = allowanceNotice(before, after);
             return { reply: notice ? `${text}\n\n_${notice}_` : text, ...(after ? { allowance: after } : {}) };
         };
