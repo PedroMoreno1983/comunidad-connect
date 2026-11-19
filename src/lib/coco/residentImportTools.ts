@@ -64,7 +64,7 @@ export async function previewResidentImport(admin: Admin, input: Record<string, 
     return {
         // Lo que ve la administración al aprobar la revisión: el resumen y el código para cargarla.
         message: [
-            `Revisé la nómina (código ${code}): ${rows.length} residentes, ${withEmail} con correo y ${rows.length - withEmail} sin correo (esos quedan con su lote listo, sin acceso todavía).`,
+            `Revisé la nómina (código ${code}): ${rows.length} residentes, ${withEmail} con correo y ${rows.length - withEmail} sin correo (esos quedan con su lote listo, sin acceso todavía). A quien tenga correo y no tenga cuenta le llega un correo de bienvenida para crear su contraseña.`,
             warnings.length ? `Avisos: ${warnings.join(' ')}` : '',
             `Ejemplos: ${rows.slice(0, 4).map(row => `${row.name || '(sin nombre)'}, ${row.unit_id || 'sin lote'}`).join('; ')}.`,
             `Si está bien, dime "carga la nómina ${code}". Nada se ha creado todavía.`,
@@ -131,7 +131,8 @@ export async function applyResidentImport(admin: Admin, input: Record<string, un
         con_acceso: done.success,
         solo_unidad: done.unitOnly,
         con_error: done.errors,
+        bienvenidas_enviadas: done.welcomeEmails ?? 0,
         errores: (done.rowResults || []).filter(row => row.status === 'failed').slice(0, 5).map(row => `${row.name} (${row.unit}): ${row.detail}`),
-        message: `Listo: ${done.success} residentes con acceso y ${done.unitOnly} unidades sin correo todavía${done.errors ? `; ${done.errors} filas con error` : ''}.`,
+        message: `Listo: ${done.success} residentes con acceso y ${done.unitOnly} unidades sin correo todavía${done.errors ? `; ${done.errors} filas con error` : ''}.${done.welcomeEmails ? ` Les mandé el correo de bienvenida a ${done.welcomeEmails} personas para que creen su contraseña.` : ''}`,
     };
 }

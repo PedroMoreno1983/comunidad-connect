@@ -2962,6 +2962,8 @@ export interface OnboardingUpsertResponse {
     success?: number;
     errors?: number;
     unitOnly?: number;
+    /** Correos de bienvenida enviados a cuentas nuevas. */
+    welcomeEmails?: number;
     destinations?: string[];
     rowResults?: OnboardingSyncRowResult[];
 }

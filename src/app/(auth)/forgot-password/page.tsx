@@ -1,10 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export default function ForgotPasswordPage() {
-    const [email, setEmail] = useState('');
+    return <Suspense fallback={null}><ForgotPasswordForm /></Suspense>;
+}
+
+function ForgotPasswordForm() {
+    const searchParams = useSearchParams();
+    // Viene del correo de bienvenida de la nómina: mismo flujo, otras palabras.
+    const welcome = searchParams.get('bienvenida') === '1';
+    const [email, setEmail] = useState(searchParams.get('email') || '');
     const [busy, setBusy] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState('');
@@ -26,8 +34,10 @@ export default function ForgotPasswordPage() {
     return (
         <main className="flex min-h-screen items-center justify-center bg-[#FAF7F1] px-6">
             <section className="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-sm">
-                <h1 className="text-2xl font-semibold text-slate-900">Recuperar acceso</h1>
-                <p className="text-sm text-slate-600">Te enviaremos un código y un enlace a la página para ingresarlo y crear una contraseña nueva.</p>
+                <h1 className="text-2xl font-semibold text-slate-900">{welcome ? 'Crea tu contraseña' : 'Recuperar acceso'}</h1>
+                <p className="text-sm text-slate-600">{welcome
+                    ? 'Te enviaremos un código a tu correo. Con él creas tu contraseña y entras a tu comunidad.'
+                    : 'Te enviaremos un código y un enlace a la página para ingresarlo y crear una contraseña nueva.'}</p>
                 {sent ? (
                     <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">Si ese correo tiene una cuenta, recibirás un código y un enlace para ingresarlo. Revisa también la carpeta de spam.</p>
                 ) : (

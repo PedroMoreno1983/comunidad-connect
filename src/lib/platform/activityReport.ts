@@ -13,7 +13,6 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { chileDayStart, personCostLimits } from '@/lib/ai/budget';
 import { BRAND, emailWrapper, escapeEmailHtml, FROM_EMAIL, resend, SUPERADMIN_EMAIL } from '@/lib/email';
-import { getSuperAdminEmails } from '@/lib/security/superadmin';
 
 export type ReportPeriod = 'am' | 'pm';
 
@@ -381,7 +380,8 @@ export async function runActivityReport(now = new Date(), options: { dryRun?: bo
     const recipients = options.recipients?.length
         ? options.recipients
         : [...new Set((process.env.ACTIVITY_REPORT_EMAILS?.split(',').map(email => email.trim().toLowerCase()).filter(Boolean))
-            ?? (getSuperAdminEmails().length ? getSuperAdminEmails() : [SUPERADMIN_EMAIL]))];
+            // Sin lista explícita va solo al CEO (SUPERADMIN_EMAIL), no a todo el equipo superadmin.
+            ?? [SUPERADMIN_EMAIL])];
 
     if (!options.dryRun) {
         const { data: existing } = await admin.from('platform_activity_reports').select('id').eq('report_key', key).maybeSingle();
