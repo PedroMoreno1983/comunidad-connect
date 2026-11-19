@@ -6,8 +6,7 @@ import Image from "next/image";
 import { AmenitiesService } from "@/lib/api";
 import {
     Calendar, Users, Check, ArrowLeft,
-    Flame, Waves, PartyPopper, Dumbbell, Monitor, Gamepad2, Plus, Settings2
-} from "lucide-react";
+    Flame, Waves, PartyPopper, Dumbbell, Monitor, Gamepad2, Plus, Settings2, Anchor, Sailboat, Trophy } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/cc/Button";
@@ -25,6 +24,9 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Dumbbell,
     Monitor,
     Gamepad2,
+    Anchor,
+    Sailboat,
+    Trophy,
 };
 
 type AmenityRow = Record<string, unknown>;

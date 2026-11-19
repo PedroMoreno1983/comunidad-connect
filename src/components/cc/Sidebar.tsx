@@ -34,6 +34,7 @@ import {
   MessageCircle,
   Waves,
   Zap,
+  Sailboat,
   UserCircle,
   GraduationCap,
   Upload,
@@ -96,6 +97,8 @@ type SidebarLink = {
   capability?: ProductCapabilityKey;
   requiresMarketplaceListing?: boolean;
   requiresServiceProvider?: boolean;
+  /** Solo aparece si la comunidad encendió esa función (features[feature] === true). */
+  optIn?: boolean;
 };
 
 export function Sidebar({ role: propRole, activeHref: propActiveHref, user: propUser }: SidebarProps) {
@@ -216,8 +219,9 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "MI HOGAR",
       links: [
         { href: "/expenses", label: "Mis Gastos", icon: DollarSign, roles: ["resident"] },
-        { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"] },
+        { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"], feature: "water" },
         { href: "/resident/servicios", label: "Mis Servicios", icon: Zap, roles: ["resident", "admin"] },
+        { href: "/embarcaciones", label: "Embarcaciones", icon: Sailboat, roles: ["resident", "admin"], feature: "lake", optIn: true },
         { href: "/resident/packages", label: "Mis Encomiendas", icon: Package, roles: ["resident"] },
         { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident"] },
         { href: "/resident/cases", label: "Mis Casos CoCo", icon: Bot, roles: ["resident"], feature: "coco_ai" },
@@ -226,7 +230,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "SERVICIOS DE LA COMUNIDAD",
       links: [
-        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["resident"] },
+        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["resident"], feature: "parking" },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
         { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
@@ -252,7 +256,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/concierge/visitors", label: "Visitas", icon: Shield, roles: ["concierge", "admin"] },
         { href: "/concierge/packages", label: "Paquetería", icon: Package, roles: ["concierge", "admin"] },
-        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["concierge"] },
+        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["concierge"], feature: "parking" },
         { href: "/concierge#incidencias", label: "Incidencias", icon: Wrench, roles: ["concierge"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["concierge"] },
       ]
@@ -264,8 +268,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/admin/finanzas/egresos#boletas", label: "Boletas luz, agua y gas", icon: Zap, roles: ["admin"] },
         { href: "/admin/units", label: "Unidades", icon: Home, roles: ["admin"] },
         { href: "/admin/asambleas", label: "Asambleas", icon: Landmark, roles: ["admin"] },
-        { href: "/estacionamientos?tab=admin", label: "Estacionamientos", icon: Car, roles: ["admin"] },
-        { href: "/admin/consumo", label: "Control Hídrico", icon: Waves, roles: ["admin"] },
+        { href: "/estacionamientos?tab=admin", label: "Estacionamientos", icon: Car, roles: ["admin"], feature: "parking" },
+        { href: "/admin/consumo", label: "Control Hídrico", icon: Waves, roles: ["admin"], feature: "water" },
         { href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"] },
         { href: "/admin/mantenimiento", label: "Mantenimiento", icon: Wrench, roles: ["admin"], feature: "maintenance" },
         { href: "/admin/operations", label: "Centro Operativo", icon: Activity, roles: ["admin"] },
@@ -302,6 +306,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     if (link.capability && !capabilities[link.capability]) return false;
     if (link.requiresMarketplaceListing && !residentNavigation.hasMarketplaceListings) return false;
     if (link.requiresServiceProvider && !residentNavigation.isServiceProvider) return false;
+    if (link.optIn && link.feature && activeUser.features?.[link.feature] !== true) return false;
     if (link.feature && activeUser.features) {
       if (activeUser.features[link.feature] === false) return false;
     }

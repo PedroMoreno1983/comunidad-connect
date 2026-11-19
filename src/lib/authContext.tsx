@@ -6,6 +6,7 @@ import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { forgetNativePushDevice } from '@/lib/native/pushBridge';
 import { predominantKind, unitName, unitNoun } from "@/lib/units/unitLabel";
+import { disabledModulesOf, extraModulesOf } from "@/lib/community/modules";
 
 // ============================================
 // Unified Auth Context
@@ -130,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*, communities!profiles_community_id_fkey(id, name, cover_photo_url, managed, pricing_tiers!communities_tier_id_fkey(features))')
+                .select('*, communities!profiles_community_id_fkey(id, name, cover_photo_url, managed, disabled_modules, extra_modules, pricing_tiers!communities_tier_id_fkey(features))')
                 .eq('id', sbUser.id)
                 .single();
 
@@ -145,7 +146,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     || (emailFirstPart ? emailFirstPart.charAt(0).toUpperCase() + emailFirstPart.slice(1) : null)
                     || 'Usuario';
 
-                const features = profile.communities?.pricing_tiers?.features || {};
+                // Un módulo apagado por la comunidad se trata como función ausente del plan.
+                const disabledModules = disabledModulesOf(profile.communities?.disabled_modules);
+                const features = {
+                    ...(profile.communities?.pricing_tiers?.features || {}),
+                    ...Object.fromEntries(disabledModules.map(module => [module, false])),
+                    // Módulos opcionales (p. ej. 'lake'): solo existen si la comunidad los encendió.
+                    ...Object.fromEntries(extraModulesOf(profile.communities?.extra_modules).map(module => [module, true])),
+                };
                 const profileRole: User["role"] =
                     profile.role === "admin" || profile.role === "concierge" ? profile.role : "resident";
                 const profileUnitId = typeof profile.unit_id === 'string' ? profile.unit_id : undefined;
@@ -164,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     communityName: profile.communities?.name || undefined,
                     communityCoverPhotoUrl: profile.communities?.cover_photo_url || undefined,
                     features,
+                    disabledModules,
                     communityManaged: profile.communities?.managed !== false,
                     residenceVerified: profile.residence_verified !== false,
                 });
