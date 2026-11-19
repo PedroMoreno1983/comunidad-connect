@@ -226,7 +226,7 @@ export async function setUnitOwner(admin: SupabaseClient, communityId: string, i
             success: true,
             message: `${ownerName} quedó anotado como propietario del ${number}. Todavía no tiene cuenta en Convive. `
                 + 'Si quieres sumarlo: en Usuarios (/admin/users) está el código de residentes; compártelo y que se registre en conviveconnect.com con el número de su unidad, así queda unido a ella. '
-                + 'Si son varias personas, adjunta la nómina (Excel, CSV o PDF) en este chat y la cargo de una vez; las que tengan correo reciben su acceso.',
+                + 'Si son varias personas, adjunta la nómina (Excel, CSV o PDF) en este chat y la cargo de una vez; a las que tengan correo les dejo la cuenta creada y entran con "Olvidé mi contraseña" usando ese correo.',
         };
     }
     return { success: true, message: ownerId ? `${ownerName} quedó como dueño del ${number}.` : `El ${number} quedó sin dueño asignado.` };
