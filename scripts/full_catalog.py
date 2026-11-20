@@ -963,8 +963,7 @@ def describe_lider_taxonomy_page(page_html: str) -> str:
     for name in ("Despensa", "Lácteos", "Limpieza y Aseo", "Frutas y Verduras"):
         index = page_html.find(name)
         if index >= 0:
-            hits.append(page_html[max(0, index - 160):index + 40].replace("
-", " "))
+            hits.append(" ".join(page_html[max(0, index - 160):index + 40].split()))
     clues = " || ".join(hits)[:900]
     names: set[str] = set()
 
