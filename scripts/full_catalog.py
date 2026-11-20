@@ -6,6 +6,7 @@ from __future__ import annotations
 import html
 import json
 import math
+import os
 import re
 import sys
 import time
@@ -74,6 +75,33 @@ LIDER_BROWSE_PAGE_CAP = 60
 # cubre ambos extremos: medido el 2026-11-10, 1.609 de 1.636.
 LIDER_BROWSE_SORTS = ("price_low", "price_high")
 LIDER_BROWSE_DELAY_SECONDS = 0.5
+
+
+def lider_rotation_settings() -> tuple[int | None, float]:
+    """Rotación de Lider (20-11-2026): departamentos por corrida y pausa entre páginas.
+
+    Lider corta con HTTP 412 tras ~50 páginas seguidas. En vez de forzarlo, el
+    job de rotación recorre pocos departamentos por corrida, cada 6 horas, con
+    pausa larga: el catálogo completo se renueva en ~3 días y nunca se le pide
+    más de lo que acepta. Sin LIDER_DEPARTMENTS_PER_RUN se recorre todo.
+    """
+    raw = os.environ.get("LIDER_DEPARTMENTS_PER_RUN", "").strip()
+    per_run = int(raw) if raw.isdigit() and int(raw) > 0 else None
+    try:
+        delay = float(os.environ.get("LIDER_PAGE_DELAY_SECONDS", "") or LIDER_BROWSE_DELAY_SECONDS)
+    except ValueError:
+        delay = LIDER_BROWSE_DELAY_SECONDS
+    return per_run, max(delay, LIDER_BROWSE_DELAY_SECONDS)
+
+
+def lider_rotation_slice(roots: list[str], per_run: int, now: float | None = None) -> list[str]:
+    """Departamentos de este turno: ventana que avanza cada 6 horas sobre la lista ordenada."""
+    ordered = sorted(roots)
+    if per_run >= len(ordered):
+        return ordered
+    slot = int((now if now is not None else time.time()) // (6 * 3600))
+    start = (slot * per_run) % len(ordered)
+    return [ordered[(start + index) % len(ordered)] for index in range(per_run)]
 # Un departamento con menos de esta fracción de su aggregatedCount se reporta como
 # cobertura incompleta (la ingesta guarda lo leído y omite la conciliación).
 LIDER_DEPARTMENT_MIN_COVERAGE = 0.9
@@ -1765,6 +1793,11 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
             "Lider taxonomy did not list supermarket departments ("
             + describe_lider_taxonomy_page(taxonomy_html) + ")"
         )
+    per_run, page_delay = lider_rotation_settings()
+    all_departments = len(roots)
+    if per_run:
+        roots = lider_rotation_slice(roots, per_run)
+        print(f"[lider] rotación: {', '.join(url.split('/browse/', 1)[-1] for url in roots)} de {all_departments}", file=sys.stderr)
     page_cap = min(LIDER_BROWSE_PAGE_CAP, max_pages or LIDER_BROWSE_PAGE_CAP)
     seen: set[str] = set()
     coverage_warnings: list[str] = []
@@ -1780,7 +1813,7 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
             last_page = page_cap
             while page_number <= last_page:
                 if page_number > 1 or sort != LIDER_BROWSE_SORTS[0]:
-                    time.sleep(LIDER_BROWSE_DELAY_SECONDS)
+                    time.sleep(page_delay)
                 try:
                     page_html = fetch_text(f"{root_url}?sort={sort}&page={page_number}")
                 except RuntimeError as exc:
@@ -1805,6 +1838,14 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
                 page_number += 1
         if max_pages is None and advertised and len(department_seen) < advertised * LIDER_DEPARTMENT_MIN_COVERAGE:
             coverage_warnings.append(f"{department}: {len(department_seen)} of {advertised}")
+    if per_run:
+        # Una parte del catálogo: se guarda lo leído y no se concilia stock
+        # (los demás departamentos no se tocaron en esta corrida).
+        print(f"[lider] rotación: {len(seen)} productos de {len(roots)} departamentos", file=sys.stderr)
+        raise CatalogCoverageWarning(
+            f"Lider rotation: {len(roots)} of {all_departments} departments"
+            + (" (" + "; ".join(coverage_warnings) + ")" if coverage_warnings else "")
+        )
     if max_pages is None and len(seen) < LIDER_MIN_CATALOG_SIZE:
         raise RuntimeError(f"Lider catalog too small ({len(seen)} products); likely blocked")
     print(f"[lider] catálogo: {len(seen)} productos de {len(roots)} departamentos", file=sys.stderr)
