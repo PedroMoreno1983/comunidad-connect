@@ -4189,7 +4189,7 @@ export async function executeTool(
                 }, {
                     title: input.title,
                     closesAt: input.closes_at,
-                    items: parseGroupShoppingList(input.shopping_list),
+                    items: parseGroupShoppingList(input.shopping_list, true),
                     requestId: randomUUID(),
                 });
                 return { success: true, order_id: order.id, title: order.title, members: order.members.length, items: order.items.length };
@@ -4201,7 +4201,7 @@ export async function executeTool(
                     id: userCtx.user_id,
                     role: (userCtx.role || 'resident') as UserRole,
                     community_id: userCtx.community_id,
-                }, input.order_id, parseGroupShoppingList(input.shopping_list));
+                }, input.order_id, parseGroupShoppingList(input.shopping_list, true));
                 return { success: true, order_id: order.id, title: order.title, members: order.members.length, items: order.items.length };
             }
 
