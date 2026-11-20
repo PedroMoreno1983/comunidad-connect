@@ -1,0 +1,75 @@
+name: Lider catalog rotation
+
+# 20-11-2026: Lider corta con HTTP 412 tras ~50 páginas seguidas, así que el
+# catálogo nocturno completo no alcanza. Cada 6 horas se recorren 2
+# departamentos con pausa larga; con ~11 departamentos el catálogo se renueva
+# en ~1,5 días, dentro de las 96 h en que la app acepta un precio. La rotación
+# guarda lo leído sin conciliar stock (los demás departamentos no se tocaron).
+
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-catalog-lider
+  cancel-in-progress: false
+
+jobs:
+  rotate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LIDER_DEPARTMENTS_PER_RUN: "2"
+      LIDER_PAGE_DELAY_SECONDS: "4"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install current CA bundle
+        run: |
+          python -m pip install --disable-pip-version-check certifi==2026.7.22
+          cat "$(python -m certifi)" .github/certificates/globalsign-rsa-ov-ssl-ca-2018.pem > "$RUNNER_TEMP/supermarket-ca-bundle.pem"
+          echo "SSL_CERT_FILE=$RUNNER_TEMP/supermarket-ca-bundle.pem" >> "$GITHUB_ENV"
+
+      - name: Crawl two Lider departments
+        id: crawl
+        shell: bash
+        run: |
+          set +e
+          python scripts/ingest_full_supermarket_catalog.py --store lider --pretty | tee lider-rotation.json
+          exit_code=${PIPESTATUS[0]}
+          set -e
+          # "refreshed" (parte del catálogo) es el resultado esperado de la rotación.
+          if [ "$exit_code" -ne 0 ] && ! jq -e '.refreshed > 0 and .total_persisted > 0' lider-rotation.json > /dev/null; then
+            exit "$exit_code"
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Complete Lider cart identifiers
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          npm ci --ignore-scripts
+          node scripts/backfill-lider-offer-id.js --apply --limit 1000
+
+      - name: Upload rotation report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: lider-rotation-${{ github.run_id }}
+          path: lider-rotation.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -29,6 +29,7 @@ from full_catalog import (
     jumbo_payload_candidates,
     lider_department_browse_urls,
     lider_departments_from_search,
+    lider_rotation_slice,
     parse_acuenta_categories,
     parse_acuenta_category_page,
     parse_irurzun_products,
@@ -738,6 +739,17 @@ class FullCatalogParserTests(unittest.TestCase):
         ), patch("full_catalog.time.sleep"):
             with self.assertRaises(RuntimeError):
                 list(crawl_lider())
+
+    def test_lider_rotation_covers_every_department_across_turns(self) -> None:
+        roots = [f"https://super.lider.cl/browse/d{n}/{n}" for n in range(11)]
+        six_hours = 6 * 3600
+        covered: set[str] = set()
+        for turn in range(6):
+            chosen = lider_rotation_slice(list(reversed(roots)), 2, now=turn * six_hours)
+            self.assertEqual(len(chosen), 2)
+            covered.update(chosen)
+        self.assertEqual(covered, set(roots))
+        self.assertEqual(lider_rotation_slice(roots, 20), sorted(roots))
 
     def test_lider_departments_come_from_product_category_paths(self) -> None:
         # 20-11-2026: Lider sacó el menú; el departamento sigue en category.path[0].

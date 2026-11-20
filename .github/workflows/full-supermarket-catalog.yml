@@ -109,7 +109,10 @@ jobs:
         env:
           REQUESTED_STORE: ${{ inputs.store || 'all' }}
         run: |
-          if [ "$REQUESTED_STORE" = "all" ] || [ "$REQUESTED_STORE" = "${{ matrix.store }}" ]; then
+          # Lider va por lider-catalog-rotation.yml (cada 6 h, 2 departamentos): de noche solo choca con su límite.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ matrix.store }}" = "lider" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ "$REQUESTED_STORE" = "all" ] || [ "$REQUESTED_STORE" = "${{ matrix.store }}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
