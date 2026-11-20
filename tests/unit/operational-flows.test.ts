@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BillingError } from '@/lib/finance/billingService';
 import { addMonths, assertBalancedJournal, splitInstallments } from '@/lib/finance/operationalFlows';
-import { HIDDEN_SUPERMARKET_STORES, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { HIDDEN_SUPERMARKET_STORES, NO_CART_SUPERMARKET_STORES, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 
 describe('splitInstallments', () => {
   it('reparte el resto en la última cuota', () => {
@@ -46,11 +46,11 @@ describe('assertBalancedJournal', () => {
 });
 
 describe('flujos visibles', () => {
-  it('ofrece cinco cadenas y deja Tottus e Irurzun fuera de la compra', () => {
-    expect(SUPERMARKET_STORES).toEqual(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta']);
-    expect(HIDDEN_SUPERMARKET_STORES).toEqual(['Tottus', 'Irurzun']);
+  it('ofrece seis cadenas; Tottus compara sin carro e Irurzun queda fuera (20-11-2026)', () => {
+    expect(SUPERMARKET_STORES).toEqual(['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta']);
+    expect(HIDDEN_SUPERMARKET_STORES).toEqual(['Irurzun']);
     expect(SUPERMARKET_STORES).not.toContain('Irurzun');
-    expect(SUPERMARKET_STORES).not.toContain('Tottus');
+    expect(NO_CART_SUPERMARKET_STORES.has('Tottus')).toBe(true);
   });
 
   it('le dice a CoCo dónde quedaron convenios, remuneraciones y el libro', () => {
