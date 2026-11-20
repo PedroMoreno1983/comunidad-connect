@@ -1051,6 +1051,64 @@ def lider_department_browse_urls(page_html: str) -> list[str]:
     return urls
 
 
+# 20-11-2026: Lider sacó el menú de departamentos del JSON de la página y los
+# renombró ("Despensa y panadería"). El departamento sigue en la ruta de
+# categoría de cada producto (category.path[0]), así que se descubren con unas
+# pocas búsquedas de supermercado, con pausa, y se recorren igual que antes.
+LIDER_DEPARTMENT_SEED_QUERIES = (
+    "arroz", "leche", "detergente", "pollo", "manzana", "bebida", "yogurt",
+    "papel higienico", "comida perro", "pañales", "helado", "galletas", "shampoo", "vino",
+)
+
+
+def lider_departments_from_search(page_html: str) -> list[str]:
+    """URLs /browse/<slug>/<id> del primer nivel de category.path de los productos."""
+    match = LIDER_NEXT_DATA_RE.search(page_html)
+    if not match:
+        return []
+    try:
+        root = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+    urls: list[str] = []
+
+    def visit(node: Any) -> None:
+        if isinstance(node, dict):
+            category = node.get("category")
+            path = category.get("path") if isinstance(category, dict) else None
+            if isinstance(path, list) and path and isinstance(path[0], dict):
+                slug_id = re.match(r"^/content/([a-z0-9-]+/\d+)$", str(path[0].get("url") or ""))
+                if slug_id:
+                    url = f"{LIDER_BROWSE_BASE}/browse/{slug_id.group(1)}"
+                    if url not in urls:
+                        urls.append(url)
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+
+    visit(root)
+    return urls
+
+
+def discover_lider_departments() -> list[str]:
+    roots: list[str] = []
+    for index, query in enumerate(LIDER_DEPARTMENT_SEED_QUERIES):
+        if index:
+            time.sleep(LIDER_BROWSE_DELAY_SECONDS)
+        try:
+            page_html = fetch_text(f"{LIDER_BROWSE_BASE}/search?q={quote(query)}")
+        except RuntimeError as exc:
+            print(f"[lider] búsqueda semilla '{query}' falló ({exc})", file=sys.stderr)
+            continue
+        for url in lider_departments_from_search(page_html):
+            if url not in roots:
+                roots.append(url)
+    print(f"[lider] departamentos descubiertos: {len(roots)}", file=sys.stderr)
+    return roots
+
+
 def parse_lider_browse_page(page_html: str) -> tuple[list[tuple[str, int, int]], int]:
     """Extrae (sku, price, was_price) y maxPage de una página /browse/ de Lider.
 
@@ -1701,7 +1759,7 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
     incompleta, y la ingesta guarda lo leído sin conciliar stock.
     """
     taxonomy_html = fetch_text(LIDER_TAXONOMY_URL)
-    roots = lider_department_browse_urls(taxonomy_html)
+    roots = lider_department_browse_urls(taxonomy_html) or discover_lider_departments()
     if not roots:
         raise RuntimeError(
             "Lider taxonomy did not list supermarket departments ("
