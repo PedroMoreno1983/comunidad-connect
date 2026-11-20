@@ -60,7 +60,7 @@ describe('flujos visibles', () => {
     expect(prompt).toContain('/admin/finanzas/contabilidad');
     expect(prompt).toContain('Haulmer');
     expect(prompt).not.toContain('remuneraciones del personal, contabilidad');
-    expect(prompt).toContain('Tottus e Irurzun no se ofrecen');
+    expect(prompt).toContain('Irurzun no se ofrece');
     expect(prompt).not.toContain('aCuenta e Irurzun');
   });
 });

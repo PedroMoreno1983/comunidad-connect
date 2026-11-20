@@ -25,6 +25,7 @@ const STORE_COLORS: Record<string, string> = {
   'Santa Isabel': '#c62828',
   Lider: '#1476d4',
   Unimarc: '#d71920',
+  Tottus: '#7ab800',
   aCuenta: '#f28c00',
 };
 
@@ -33,6 +34,7 @@ const STORE_SITES: Record<string, string> = {
   'Santa Isabel': 'https://www.santaisabel.cl',
   Lider: 'https://super.lider.cl',
   Unimarc: 'https://www.unimarc.cl',
+  Tottus: 'https://www.tottus.cl/tottus-cl',
   aCuenta: 'https://www.acuenta.cl',
 };
 

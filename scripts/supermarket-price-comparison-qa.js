@@ -6,8 +6,9 @@ const { loadEnvFile } = require('./load-env');
 loadEnvFile();
 
 const root = path.resolve(__dirname, '..');
-const visibleStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'];
-const hiddenStores = ['Tottus', 'Irurzun'];
+// 20-11-2026: Tottus vuelve a la búsqueda y la comparación, sin carro (Cloudflare).
+const visibleStores = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta'];
+const hiddenStores = ['Irurzun'];
 const sampleTerms = ['arroz', 'leche', 'aceite', 'huevos', 'papel', 'fideos'];
 const report = {
   generatedAt: new Date().toISOString(),
@@ -53,9 +54,11 @@ function assertReplacementIntegrity() {
     assert(!page.includes(store), `La compra por tienda no menciona ${store}.`);
     assert(!comparador.includes(store), `El comparador no menciona ${store}.`);
   }
-  assert(basket.includes("export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta']"), 'Las cadenas visibles no incluyen Irurzun ni Tottus.');
-  assert(basket.includes("export const HIDDEN_SUPERMARKET_STORES = ['Tottus', 'Irurzun']"), 'Irurzun y Tottus quedan fuera de la compra.');
-  assert(prompt.includes('Tottus e Irurzun no se ofrecen'), 'CoCo tiene prohibido ofrecer Irurzun y Tottus.');
+  assert(basket.includes("export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta']"), 'Las cadenas visibles incluyen Tottus y no Irurzun.');
+  assert(basket.includes("export const HIDDEN_SUPERMARKET_STORES = ['Irurzun']"), 'Irurzun queda fuera de la compra.');
+  assert(basket.includes("NO_CART_SUPERMARKET_STORES = new Set<string>(['Tottus'])"), 'Tottus compara, pero su carro no se carga desde Convive.');
+  assert(handoffRoute.includes('NO_CART_SUPERMARKET_STORES'), 'El traspaso del carro rechaza Tottus con su motivo.');
+  assert(prompt.includes('Irurzun no se ofrece'), 'CoCo tiene prohibido ofrecer Irurzun.');
   assert(!prompt.includes('aCuenta e Irurzun'), 'CoCo ya no lista Irurzun entre las cadenas de compra.');
   assert(handoffRoute.includes('SUPERMARKET_STORES'), 'El traspaso del carro solo acepta cadenas visibles.');
   assert(comparador.includes('data-testid="store-comparison-row"'), 'La comparación usa una hilera única de supermercados.');
