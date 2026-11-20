@@ -954,12 +954,18 @@ def parse_lider_browse_products(
 
 def describe_lider_taxonomy_page(page_html: str) -> str:
     """Pista corta de por qué no salieron departamentos: bloqueo o cambio de página."""
-    lowered = page_html.lower()
-    if "/blocked" in lowered or "px-captcha" in lowered or "perimeterx" in lowered:
-        return f"bloqueado por anti-bot, {len(page_html)} bytes"
     match = LIDER_NEXT_DATA_RE.search(page_html)
     if not match:
-        return f"sin __NEXT_DATA__, {len(page_html)} bytes"
+        blocked = "px-captcha" in page_html.lower() or "/blocked?" in page_html
+        return f"{'bloqueado por anti-bot' if blocked else 'sin __NEXT_DATA__'}, {len(page_html)} bytes"
+    # Dónde aparecen hoy los nombres de departamento conocidos, para seguirles la pista.
+    hits = []
+    for name in ("Despensa", "Lácteos", "Limpieza y Aseo", "Frutas y Verduras"):
+        index = page_html.find(name)
+        if index >= 0:
+            hits.append(page_html[max(0, index - 160):index + 40].replace("
+", " "))
+    clues = " || ".join(hits)[:900]
     names: set[str] = set()
 
     def visit(node: Any) -> None:
@@ -977,7 +983,7 @@ def describe_lider_taxonomy_page(page_html: str) -> str:
         visit(json.loads(match.group(1)))
     except json.JSONDecodeError:
         return "__NEXT_DATA__ ilegible"
-    return "departamentos vistos: " + (", ".join(sorted(names))[:300] or "ninguno")
+    return "departamentos vistos: " + (", ".join(sorted(names))[:300] or "ninguno") + " | pistas: " + (clues or "ninguna")
 
 
 def lider_department_browse_urls(page_html: str) -> list[str]:
