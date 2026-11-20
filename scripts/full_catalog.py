@@ -952,6 +952,34 @@ def parse_lider_browse_products(
     return products, max_page, aggregated
 
 
+def describe_lider_taxonomy_page(page_html: str) -> str:
+    """Pista corta de por qué no salieron departamentos: bloqueo o cambio de página."""
+    lowered = page_html.lower()
+    if "/blocked" in lowered or "px-captcha" in lowered or "perimeterx" in lowered:
+        return f"bloqueado por anti-bot, {len(page_html)} bytes"
+    match = LIDER_NEXT_DATA_RE.search(page_html)
+    if not match:
+        return f"sin __NEXT_DATA__, {len(page_html)} bytes"
+    names: set[str] = set()
+
+    def visit(node: Any) -> None:
+        if isinstance(node, dict):
+            departments = node.get("departments")
+            if isinstance(departments, list):
+                names.update(str(item.get("name")) for item in departments if isinstance(item, dict) and item.get("name"))
+            for child in node.values():
+                visit(child)
+        elif isinstance(node, list):
+            for child in node:
+                visit(child)
+
+    try:
+        visit(json.loads(match.group(1)))
+    except json.JSONDecodeError:
+        return "__NEXT_DATA__ ilegible"
+    return "departamentos vistos: " + (", ".join(sorted(names))[:300] or "ninguno")
+
+
 def lider_department_browse_urls(page_html: str) -> list[str]:
     """URLs /browse/<slug>/<id> de los departamentos de supermercado.
 
@@ -1646,9 +1674,13 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
     queda corto no detiene a los demás: se reporta al final como cobertura
     incompleta, y la ingesta guarda lo leído sin conciliar stock.
     """
-    roots = lider_department_browse_urls(fetch_text(LIDER_TAXONOMY_URL))
+    taxonomy_html = fetch_text(LIDER_TAXONOMY_URL)
+    roots = lider_department_browse_urls(taxonomy_html)
     if not roots:
-        raise RuntimeError("Lider taxonomy did not list supermarket departments")
+        raise RuntimeError(
+            "Lider taxonomy did not list supermarket departments ("
+            + describe_lider_taxonomy_page(taxonomy_html) + ")"
+        )
     page_cap = min(LIDER_BROWSE_PAGE_CAP, max_pages or LIDER_BROWSE_PAGE_CAP)
     seen: set[str] = set()
     coverage_warnings: list[str] = []
