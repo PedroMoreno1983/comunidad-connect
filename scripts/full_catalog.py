@@ -982,7 +982,28 @@ def describe_lider_taxonomy_page(page_html: str) -> str:
         visit(json.loads(match.group(1)))
     except json.JSONDecodeError:
         return "__NEXT_DATA__ ilegible"
-    return "departamentos vistos: " + (", ".join(sorted(names))[:300] or "ninguno") + " | pistas: " + (clues or "ninguna")
+    # Departamentos de primer nivel: {name, url: /content|browse/<slug>/<id>} en cualquier parte del JSON.
+    tops: dict[str, str] = {}
+
+    def collect(node: Any, path: str) -> None:
+        if isinstance(node, dict):
+            url = node.get("url") or node.get("cta") or ""
+            if isinstance(url, dict):
+                url = url.get("clickThrough", {}).get("value", "") if isinstance(url.get("clickThrough"), dict) else ""
+            if isinstance(url, str) and re.match(r"^/(content|browse)/[a-z0-9-]+/\d+$", url) and node.get("name"):
+                tops.setdefault(f"{node.get('name')}={url}", path)
+            for key, child in node.items():
+                collect(child, f"{path}.{key}")
+        elif isinstance(node, list):
+            for child in node[:200]:
+                collect(child, f"{path}[]")
+
+    try:
+        collect(json.loads(match.group(1)), "$")
+    except json.JSONDecodeError:
+        pass
+    shown = "; ".join(f"{key} @ {path[-80:]}" for key, path in list(tops.items())[:25])
+    return "departamentos vistos: " + (", ".join(sorted(names))[:300] or "ninguno") + " | primer nivel: " + (shown[:2500] or "ninguno")
 
 
 def lider_department_browse_urls(page_html: str) -> list[str]:
