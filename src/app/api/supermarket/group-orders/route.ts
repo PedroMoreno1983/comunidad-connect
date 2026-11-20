@@ -61,14 +61,14 @@ export async function POST(request: NextRequest) {
       order = await createSupermarketGroupOrder(profile, {
         title: clean(body.title, 120),
         closesAt: clean(body.closesAt, 10),
-        items: parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS)),
+        items: parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS), true),
         requestId: clean(body.requestId, 36),
       });
     } else if (action === 'join') {
       order = await joinSupermarketGroupOrder(
         profile,
         orderId,
-        parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS)),
+        parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS), true),
       );
     } else if (action === 'lock') {
       order = await lockSupermarketGroupOrder(profile, orderId, clean(body.store, 40) || undefined);

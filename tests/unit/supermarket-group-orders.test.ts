@@ -63,6 +63,16 @@ describe('supermarket group orders', () => {
     ]);
   });
 
+  it('la compra comunitaria lee "6 leche entera 1 L" como seis envases de 1 L (20-11-2026)', () => {
+    // La tabla de aportes guarda término y cantidad, sin unidad: el envase va en el término.
+    expect(parseGroupShoppingList('6 leche entera 1 L\n4 arroz 1 kg\n2 detergente líquido 3 L\n10 papel higiénico', true)).toEqual([
+      { term: 'leche entera 1 l', quantity: 6, unit: undefined },
+      { term: 'arroz 1 kg', quantity: 4, unit: undefined },
+      { term: 'detergente liquido 3 l', quantity: 2, unit: undefined },
+      { term: 'papel higienico', quantity: 10, unit: undefined },
+    ]);
+  });
+
   it('accepts the common un abbreviation without leaving it in the product term', () => {
     expect(parseGroupShoppingList('pan de molde 1 un, te 20 un')).toEqual([
       { term: 'pan de molde', quantity: 1 },
