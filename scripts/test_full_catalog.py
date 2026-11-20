@@ -28,6 +28,7 @@ from full_catalog import (
     jumbo_pagination_target,
     jumbo_payload_candidates,
     lider_department_browse_urls,
+    lider_departments_from_search,
     parse_acuenta_categories,
     parse_acuenta_category_page,
     parse_irurzun_products,
@@ -690,7 +691,7 @@ class FullCatalogParserTests(unittest.TestCase):
 
         def fake_fetch(url: str, **_: object) -> str:
             requested.append(url)
-            if "search?query=" in url:
+            if "/search?" in url:
                 return taxonomy
             return pages.get(url.split("browse/", 1)[1], self._lider_browse_html([]))
 
@@ -737,6 +738,20 @@ class FullCatalogParserTests(unittest.TestCase):
         ), patch("full_catalog.time.sleep"):
             with self.assertRaises(RuntimeError):
                 list(crawl_lider())
+
+    def test_lider_departments_come_from_product_category_paths(self) -> None:
+        # 20-11-2026: Lider sacó el menú; el departamento sigue en category.path[0].
+        item = {"category": {"path": [
+            {"name": "Despensa y panadería", "url": "/content/despensa-y-panaderia/1473433"},
+            {"name": "Arroz", "url": "/content/despensa-y-panaderia/arroz/1473433_8214833"},
+        ]}}
+        other = {"category": {"path": [{"name": "Lácteos", "url": "/content/lacteos/1473434"}]}}
+        html = self._lider_next_data_html({"itemStacks": [{"items": [item, item, other]}]})
+        self.assertEqual(lider_departments_from_search(html), [
+            "https://super.lider.cl/browse/despensa-y-panaderia/1473433",
+            "https://super.lider.cl/browse/lacteos/1473434",
+        ])
+        self.assertEqual(lider_departments_from_search("<html></html>"), [])
 
     @staticmethod
     def _lider_next_data_html(search_result: dict) -> str:
