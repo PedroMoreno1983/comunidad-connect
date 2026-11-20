@@ -13,20 +13,24 @@ import type {
  * Cadenas que se comparan y se muestran al vecino. Reducirla oculta una cadena
  * de toda la pantalla: comparacion, tarjetas y carga de carro.
  */
-export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta'] as const;
+export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta'] as const;
+
+/**
+ * Cadenas que se buscan y comparan, pero cuyo carro no se puede cargar desde
+ * aquí: la compra se termina en su sitio. Tottus volvió a la comparación el
+ * 20-11-2026 (su catálogo nocturno siempre siguió al día); el carro sigue fuera
+ * porque Cloudflare interpone un desafío humano al cargarlo desde el VPS.
+ */
+export const NO_CART_SUPERMARKET_STORES = new Set<string>(['Tottus']);
 
 /**
  * Cadenas que el scraper nocturno sigue recorriendo y guardando, pero que hoy
  * no se muestran. El pipeline de ingesta es Python y no lee esta constante, asi
  * que sus precios siguen al dia y volver a mostrarlas es moverlas de lista.
  *
- * Tottus: Cloudflare interpone un desafio humano alrededor del segundo producto
- * al cargar el carro desde el VPS, reproducible tres de tres veces. Pausar la
- * navegacion no lo evito. El carro directo tampoco esta soportado.
- *
  * Irurzun queda fuera del flujo de compra por decision de producto.
  */
-export const HIDDEN_SUPERMARKET_STORES = ['Tottus', 'Irurzun'] as const;
+export const HIDDEN_SUPERMARKET_STORES = ['Irurzun'] as const;
 
 /**
  * aCuenta se ofrece como mayorista. Irurzun sigue clasificada igual en filas

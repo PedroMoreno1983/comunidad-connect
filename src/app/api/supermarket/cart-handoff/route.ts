@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
-import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
+import { NO_CART_SUPERMARKET_STORES, SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { prepareRemoteCartHandoff } from '@/lib/supermarketRemoteCart';
-import type { SupermarketCartHandoffItem } from '@/lib/types';
+import type { SupermarketCartHandoff, SupermarketCartHandoffItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -60,6 +60,13 @@ export async function POST(req: NextRequest) {
     const items = parseItems(body);
     if (items.length === 0) return NextResponse.json({ error: 'La lista llegó vacía.' }, { status: 400 });
 
+    if (NO_CART_SUPERMARKET_STORES.has(store)) {
+      const handoff: SupermarketCartHandoff = {
+        supported: false, store, mode: 'unavailable', plannedCount: 0, missingItems: [],
+        reason: `${store} no permite cargar el carro desde Convive: abre su sitio y agrega los productos de la lista.`,
+      };
+      return NextResponse.json(handoff);
+    }
     return NextResponse.json(await prepareRemoteCartHandoff(store, items, session.access_token));
   } catch (error) {
     return apiErrorResponse(req, '/api/supermarket/cart-handoff', error, {
