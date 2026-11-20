@@ -690,7 +690,7 @@ class FullCatalogParserTests(unittest.TestCase):
 
         def fake_fetch(url: str, **_: object) -> str:
             requested.append(url)
-            if "search?query=" in url:
+            if "/search?" in url:
                 return taxonomy
             return pages.get(url.split("browse/", 1)[1], self._lider_browse_html([]))
 
