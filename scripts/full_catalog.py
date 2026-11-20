@@ -62,7 +62,7 @@ UNIMARC_CATEGORIES = (
 # stock empezó a rechazar cada corrida (observed 929 of 10213).
 LIDER_BROWSE_BASE = "https://super.lider.cl"
 # Cualquier búsqueda SSR sirve para leer la taxonomía de departamentos.
-LIDER_TAXONOMY_URL = f"{LIDER_BROWSE_BASE}/search?query=arroz"
+LIDER_TAXONOMY_URL = f"{LIDER_BROWSE_BASE}/search?q=arroz"
 LIDER_NEXT_DATA_RE = re.compile(
     r'<script[^>]*id=["\']?__NEXT_DATA__["\']?[^>]*>([\s\S]*?)</script>',
     re.IGNORECASE,
