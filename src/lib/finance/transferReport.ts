@@ -42,15 +42,22 @@ export async function reportTransferForUnit(admin: SupabaseClient, input: Transf
     if (!Number.isFinite(amount) || amount <= 0) return { error: 'El monto debe ser mayor que cero.', status: 400 };
     if (!DATE_PATTERN.test(paidAt)) return { error: 'Indica la fecha de la transferencia.', status: 400 };
     if (reference.length < 4) return { error: 'Indica el número de comprobante.', status: 400 };
+    // Sin mes: si la unidad tiene un solo cobro pendiente, es ese (21-11-2026). Con varios, hay que elegir.
+    let pendingId = '';
     if (!expenseId && !MONTH_PATTERN.test(month)) {
-        return { error: 'Elige el mes al que corresponde la transferencia.', status: 400 };
+        const { data: pending, error: pendingError } = await admin.from('expenses')
+            .select('id').eq('community_id', input.communityId).eq('unit_id', input.unitId)
+            .in('status', ['pending', 'overdue']).limit(2);
+        if (pendingError) throw pendingError;
+        if (pending?.length !== 1) return { error: 'Elige el mes al que corresponde la transferencia.', status: 400 };
+        pendingId = String(pending[0].id);
     }
 
     let query = admin.from('expenses')
         .select('id, month, unit_id')
         .eq('community_id', input.communityId)
         .eq('unit_id', input.unitId);
-    query = expenseId ? query.eq('id', expenseId) : query.eq('month', month);
+    query = expenseId || pendingId ? query.eq('id', expenseId || pendingId) : query.eq('month', month);
     const { data: expense, error: expenseError } = await query.maybeSingle();
     if (expenseError) throw expenseError;
     if (!expense) {

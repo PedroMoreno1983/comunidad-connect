@@ -144,10 +144,30 @@ export function matchesRequestedPackageSize(name: string, requestedTerm: string)
  * These defaults mirror what a Chilean household normally means in a shopping
  * list while preserving explicit requests such as "bebida lactea 200 ml".
  */
+/** Otro formato del mismo alimento: nunca reemplaza al pedido si la lista no lo nombra. */
+const FORMAT_VARIANTS: RegExp[] = [/\ben polvo\b/, /\bcondensad[oa]\b/, /\bevaporad[oa]\b/];
+/** Lo que contradice "entera": si la lista dice entera, estas no sirven (salvo que también las pida). */
+const NOT_WHOLE_VARIANTS: RegExp[] = [
+  /\bsin lactosa\b|\bdeslactosad[oa]s?\b/,
+  /\bsemi ?descremad[oa]s?\b|\bdescremad[oa]s?\b/,
+  /\blight\b/,
+];
+/** Bebidas vegetales: solo cuentan como "leche" si se piden por nombre. */
+const PLANT_MILK = /\b(?:almendras?|avena|soya|soja|coco)\b/;
+
+function hasUnrequestedVariant(term: string, name: string): boolean {
+  if (FORMAT_VARIANTS.some(variant => variant.test(name) && !variant.test(term))) return true;
+  if (/\benter[oa]s?\b/.test(term) && NOT_WHOLE_VARIANTS.some(variant => variant.test(name) && !variant.test(term))) return true;
+  if (/\bleche\b/.test(term) && PLANT_MILK.test(name) && !PLANT_MILK.test(term)) return true;
+  return false;
+}
+
 export function isProductSuitableForRequest(
   name: string,
   requestedTerm: string,
   requestedUnit: SupermarketMeasurementUnit | undefined,
+  /** Las alternativas "con menos sellos" ofrecen variantes a propósito (semidescremada por entera). */
+  options: { allowVariants?: boolean } = {},
 ): boolean {
   if (!isProductMeasurementCompatible(name, requestedUnit)) return false;
   const normalizedName = foldAccents(name);
@@ -158,6 +178,17 @@ export function isProductSuitableForRequest(
   // Database search can return every word separately, including a different
   // food that merely mentions the requested ingredient in its description.
   if (productMatchScore(requestedTerm, name) < 0) return false;
+
+  // 21-11-2026 (prueba de punta a punta): para "leche entera" elegía una sin
+  // lactosa y para "papel higiénico 12 rollos" un paquete de 4. Una variante que
+  // la lista no pidió es otro producto; un conteo explícito tiene que calzar.
+  if (!options.allowVariants && hasUnrequestedVariant(normalizedTerm, normalizedName)) return false;
+  const requestedCount = normalizedTerm.match(/\b(\d{1,3})\s*(?:rollos?|unidades|un|uds?)\b/);
+  if (requestedCount) {
+    const actualCount = normalizedName.match(/\b(\d{1,3})\s*(?:rollos?|unidades|un|uds?)\b/)
+      ?? normalizedName.match(/\bx\s*(\d{1,3})\b/);
+    if (!actualCount || Number(actualCount[1]) !== Number(requestedCount[1])) return false;
+  }
 
   if (family === 'coca' && /\b(sprite|fanta)\b/.test(normalizedName)) return false;
   if (
