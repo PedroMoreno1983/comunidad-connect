@@ -8,7 +8,13 @@ const expect = (label, condition) => { checks.push(label); if (!condition) failu
 
 const prompt = read('src/lib/coco/system-prompt.ts');
 const navigation = read('src/lib/coco/navigation.ts');
-const tools = read('src/lib/coco/tools.ts');
+// Desde el 21-11-2026 las herramientas de CoCo están divididas en src/lib/coco/tools/.
+const tools = [
+  'src/lib/coco/tools.ts',
+  ...['definitions', 'executors'].flatMap(dir => fs.readdirSync(path.join(root, 'src/lib/coco/tools', dir)).map(name => `src/lib/coco/tools/${dir}/${name}`)),
+  'src/lib/coco/tools/shared.ts',
+  'src/lib/coco/tools/pendingActions.ts',
+].map(read).join(String.fromCharCode(10));
 const cocoAgent = read('src/lib/coco/agent.ts');
 const groupRoute = read('src/app/api/supermarket/group-orders/route.ts');
 const groupDomain = read('src/lib/supermarketGroupOrders.ts');

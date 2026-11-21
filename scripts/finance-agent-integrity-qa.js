@@ -20,7 +20,13 @@ const expensePage = read('src/app/(dashboard)/expenses/page.tsx');
 const residentFinancePage = read('src/app/(dashboard)/resident/finances/page.tsx');
 const marketplacePage = read('src/app/(dashboard)/marketplace/page.tsx');
 const agent = read('src/lib/coco/agent.ts');
-const tools = read('src/lib/coco/tools.ts');
+// Desde el 21-11-2026 las herramientas de CoCo están divididas en src/lib/coco/tools/.
+const tools = [
+  'src/lib/coco/tools.ts',
+  ...['definitions', 'executors'].flatMap(dir => fs.readdirSync(path.join(root, 'src/lib/coco/tools', dir)).map(name => `src/lib/coco/tools/${dir}/${name}`)),
+  'src/lib/coco/tools/shared.ts',
+  'src/lib/coco/tools/pendingActions.ts',
+].map(read).join(String.fromCharCode(10));
 const agentCenter = read('src/app/api/agent-center/route.ts');
 const financeDashboard = read('src/components/admin/FinanceDashboard.tsx');
 const emailRoute = read('src/app/api/email/send-expenses/route.ts');
