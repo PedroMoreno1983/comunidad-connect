@@ -12,7 +12,7 @@ Combina gestión de residentes, pagos, amenidades, IoT, marketplace vecinal y un
 
 - **URL producción:** https://conviveconnect.com
 - **Repositorio:** `c:\Users\pedro.moreno\Documents\GitHub\comunidad-connect`
-- **Deploy:** Vercel (automático desde main)
+- **Deploy:** Vercel (automático desde master)
 
 ---
 
@@ -288,7 +288,7 @@ npm run lint             # ESLint
 # Panel: https://supabase.com/dashboard/project/sxtnhhblunvorbwbmmbg
 
 # Deploy
-# Automático desde GitHub → Vercel en rama main
+# Automático desde GitHub → Vercel en rama master
 ```
 
 ---

@@ -45,13 +45,19 @@ export async function recordUsageSignal(input: { communityId: string; userId: st
     if (!input.communityId || !input.userId || !input.message.trim()) return;
     // Solo residentes: lo del personal no es "lo que preguntan los vecinos".
     if (['admin', 'concierge', 'superadmin'].includes(input.role)) return;
-    const { error } = await getSupabaseAdmin().from('coco_usage_signals').insert({
-        community_id: input.communityId,
-        user_id: input.userId,
-        channel: input.channel,
-        topic: classifyTopic(input.message),
-    });
-    if (error) console.warn('[coco] no se pudo registrar el tema', error.message);
+    // Dato secundario: las rutas lo llaman con `void`, así que nunca puede rechazar
+    // (un rechazo sin manejar tumbaba la prueba; en producción ensucia los logs).
+    try {
+        const { error } = await getSupabaseAdmin().from('coco_usage_signals').insert({
+            community_id: input.communityId,
+            user_id: input.userId,
+            channel: input.channel,
+            topic: classifyTopic(input.message),
+        });
+        if (error) console.warn('[coco] no se pudo registrar el tema', error.message);
+    } catch (error) {
+        console.warn('[coco] no se pudo registrar el tema', error instanceof Error ? error.message : error);
+    }
 }
 
 type SignalRow = { user_id: string; topic: string; channel: string };
