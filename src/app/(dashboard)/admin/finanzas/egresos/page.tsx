@@ -430,7 +430,7 @@ export default function EgresosPage() {
 
                 {issuedRun && issueWarnings.length > 0 && (
                     <section role="alert" className="rounded-2xl border border-warning-border bg-warning-bg p-4">
-                        <p className="font-semibold text-warning-fg">La emisión requiere revisión</p>
+                        <p className="font-semibold text-warning-fg">Emitido, con observaciones para revisar</p>
                         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm cc-text-secondary">
                             {issueWarnings.map(warning => <li key={warning}>{warning}</li>)}
                         </ul>

@@ -660,7 +660,10 @@ export default function CoCoChatPage() {
                                                                 <img src={pending.previewUrl} alt="Imagen que se va a guardar" className="mt-2 max-h-48 rounded-lg object-contain" />
                                                             )}
                                                             {Object.entries(pending.input).filter(([, value]) => value !== undefined && value !== null && value !== "").length > 0 && (
-                                                                <dl className="mt-2 space-y-0.5 rounded-lg bg-[var(--cc-paper)] p-2">
+                                                                // Los datos exactos que se ejecutarán (en bruto) quedan plegados: el resumen de arriba ya los dice en español (21-11-2026).
+                                                                <details className="mt-2">
+                                                                <summary className={`cursor-pointer text-[11px] font-semibold ${subtle}`}>Ver datos exactos</summary>
+                                                                <dl className="mt-1 space-y-0.5 rounded-lg bg-[var(--cc-paper)] p-2">
                                                                     {Object.entries(pending.input)
                                                                         .filter(([, value]) => value !== undefined && value !== null && value !== "")
                                                                         .map(([key, value]) => (
@@ -670,6 +673,7 @@ export default function CoCoChatPage() {
                                                                             </div>
                                                                         ))}
                                                                 </dl>
+                                                                </details>
                                                             )}
                                                         </div>
                                                     </div>

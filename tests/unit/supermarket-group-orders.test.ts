@@ -73,6 +73,15 @@ describe('supermarket group orders', () => {
     ]);
   });
 
+  it('el comparador multiplica el envase por la cantidad de adelante (21-11-2026)', () => {
+    expect(parseGroupShoppingList('2 leche entera 1 L\n2 detergente líquido 3 L\n3 jugo 1,5 L\n1 arroz 1 kg')).toEqual([
+      { term: 'leche entera', quantity: 2, unit: 'l' },
+      { term: 'detergente liquido', quantity: 6, unit: 'l' },
+      { term: 'jugo', quantity: 4500, unit: 'ml' },
+      { term: 'arroz', quantity: 1, unit: 'kg' },
+    ]);
+  });
+
   it('accepts the common un abbreviation without leaving it in the product term', () => {
     expect(parseGroupShoppingList('pan de molde 1 un, te 20 un')).toEqual([
       { term: 'pan de molde', quantity: 1 },

@@ -29,8 +29,12 @@ export function isAdmin(userCtx: UserContext) {
     return userCtx.role === 'admin' || userCtx.role === 'system';
 }
 
+/**
+ * Cualquier UUID con forma válida. Hasta el 21-11-2026 exigía versión 1–5 y
+ * rechazaba la comunidad demo (00000000-…): CoCo no encontraba la unidad de nadie ahí.
+ */
 export function isUuid(value?: string) {
-    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
 
 export function isIsoDate(value?: string) {
