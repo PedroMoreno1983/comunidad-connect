@@ -93,7 +93,7 @@ export async function findLowerSealAlternatives(
         && row.sku !== item.sku
         && Number(row.price) > 0
         && termMatchesProductName(item.requestedTerm, name)
-        && isProductSuitableForRequest(name, item.requestedTerm, item.requestedUnit)
+        && isProductSuitableForRequest(name, item.requestedTerm, item.requestedUnit, { allowVariants: true })
         && formatSignature(name) === signature;
     });
     return { item, rows };

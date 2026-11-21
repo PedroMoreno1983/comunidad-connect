@@ -12,6 +12,13 @@ export const LIGHT_COCO_MODEL = process.env.COCO_LIGHT_MODEL || 'claude-haiku-5-
 
 const SMALL_TALK = /^(hola|holi|buen[oa]s?( d[ií]as| tardes| noches)?|gracias|muchas gracias|ok|okay|dale|perfecto|genial|chao|adi[óo]s|nos vemos|qu[ée] tal|c[óo]mo est[áa]s)\b/i;
 const HOW_TO = /\b(d[óo]nde (est[áa]|veo|encuentro|queda|se ve|puedo)|c[óo]mo (hago|veo|encuentro|llego|funciona|se usa|puedo)|qu[ée] es|para qu[ée] sirve|qu[ée] puedo hacer|en qu[ée] me (puedes|pod[ée]s) ayudar)\b/i;
+/**
+ * Preguntas de cuenta que solo leen (21-11-2026): en la prueba de punta a punta
+ * "¿cuánto debo y cuándo vence?" costó ~10 centavos en Sonnet. Haiku llama la
+ * misma herramienta de solo lectura.
+ */
+const ACCOUNT_QUESTION = /\b(cu[áa]nto (debo|me toca pagar|tengo que pagar|sale el gasto)|cu[áa]ndo vence|mi saldo|estoy al d[íi]a|mi deuda|estado de (mi )?cuenta|qu[ée] debo)\b/i;
+
 /** Verbos que piden cambiar algo: van al modelo grande aunque el mensaje sea corto. */
 const ACTION = /\b(crea|cre[áa]|agrega|agreg[áa]|anota|registra|reserva|cancela|borra|elimina|publica|paga|cobra|env[íi]a|manda|asigna|cambia|actualiza|sube|carga|compra|compara|arma|programa|emite|aprueba|rechaza)\w*/i;
 
@@ -32,5 +39,5 @@ export function isLightTurn(input: LightTurnInput): boolean {
     const text = input.message.trim();
     if (!text || text.length > 140) return false;
     if (ACTION.test(text)) return false;
-    return SMALL_TALK.test(text) || HOW_TO.test(text);
+    return SMALL_TALK.test(text) || HOW_TO.test(text) || ACCOUNT_QUESTION.test(text);
 }

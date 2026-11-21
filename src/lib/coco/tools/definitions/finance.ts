@@ -25,9 +25,9 @@ export const FINANCE_TOOL_DEFINITIONS = [
                 amount: { type: 'integer', description: 'Monto transferido, en pesos.' },
                 paid_at: { type: 'string', description: 'Fecha de la transferencia, AAAA-MM-DD.' },
                 reference: { type: 'string', description: 'Número de comprobante u operación (al menos 4 caracteres).' },
-                month: { type: 'string', description: 'Mes del gasto común que paga, YYYY-MM. Si no lo dice, usa get_payment_status y pregúntale cuál.' },
+                month: { type: 'string', description: 'Mes del gasto común que paga, YYYY-MM. Omítelo si la unidad tiene un solo cobro pendiente (se usa ese); si tiene varios y no lo dice, pregúntale cuál.' },
             },
-            required: ['amount', 'paid_at', 'reference', 'month'],
+            required: ['amount', 'paid_at', 'reference'],
         },
     },
     {

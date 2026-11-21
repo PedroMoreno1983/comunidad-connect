@@ -15,6 +15,10 @@ describe('turno liviano de CoCo', () => {
         expect(turn('¿dónde veo mis gastos comunes?')).toBe(true);
         expect(turn('cómo hago una reserva del quincho')).toBe(false); // "reserva" pide acción
         expect(turn('qué puedo hacer aquí')).toBe(true);
+        // 21-11-2026: preguntas de cuenta que solo leen.
+        expect(turn('¿cuánto debo de gastos comunes y cuándo vence?')).toBe(true);
+        expect(turn('estoy al día?')).toBe(true);
+        expect(turn('registra el pago de 60.000 de la unidad 101')).toBe(false);
     });
 
     it('lo que cambia datos o necesita más contexto va al modelo grande', () => {
