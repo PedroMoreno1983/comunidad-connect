@@ -91,6 +91,31 @@ if (unexported.length || oversizedApiModules.length) {
     });
 }
 
+// 21-11-2026: tipos y herramientas de CoCo divididos por dominio (llegaron a ~4.300
+// líneas cada uno, con varios agentes trabajando encima). types.ts queda como barrel
+// y ningún archivo de estos dominios pasa de 1500 líneas.
+const typesBarrelLines = fs.readFileSync(path.join(root, 'src', 'lib', 'types.ts'), 'utf8').split(/\r?\n/)
+    .map(line => line.trim()).filter(line => line && !line.startsWith('//') && !line.startsWith('/*') && !line.startsWith('*'));
+const typesNonBarrel = typesBarrelLines.filter(line => !/^export \* from '\.\/types\/[a-z0-9-]+';$/.test(line));
+const domainFiles = [
+    path.join(root, 'src', 'lib', 'coco', 'tools.ts'),
+    ...filesUnder(path.join(root, 'src', 'lib', 'coco', 'tools'), file => file.endsWith('.ts')),
+    ...filesUnder(path.join(root, 'src', 'lib', 'types'), file => file.endsWith('.ts')),
+].map(file => ({ file, lines: fs.readFileSync(file, 'utf8').split(/\r?\n/).length }));
+const oversizedDomainFiles = domainFiles.filter(item => item.lines > 1_500);
+checks.push({
+    name: 'types.ts is a barrel and CoCo tools/types modules stay under 1500 lines',
+    passed: typesNonBarrel.length === 0 && oversizedDomainFiles.length === 0,
+    details: { files: domainFiles.length },
+});
+if (typesNonBarrel.length || oversizedDomainFiles.length) {
+    failures.push({
+        message: 'src/lib/types.ts must stay a barrel of src/lib/types/*, and no CoCo tools/types module may pass 1500 lines',
+        typesNonBarrel,
+        files: oversizedDomainFiles.map(item => ({ file: path.relative(root, item.file), lines: item.lines })),
+    });
+}
+
 const report = { passed: failures.length === 0, checks, failures };
 console.log(JSON.stringify(report, null, 2));
 if (!report.passed) process.exit(1);
