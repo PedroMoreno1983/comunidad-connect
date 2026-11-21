@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordAiEvent } from '@/lib/ai/telemetry';
 
 const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type CoCoRole = 'admin' | 'resident' | 'concierge';
 type CaseType =

@@ -124,7 +124,12 @@ export function parseGroupShoppingList(value: string, preservePackageSize = fals
       unit = normalizeMeasurementUnit(trailingMeasure[3]);
       rawTerm = trailingMeasure[1];
       const leadingCount = rawTerm.match(/^(\d{1,3})\s+(.+)$/);
-      if (leadingCount) rawTerm = leadingCount[2];
+      // "2 leche entera 1 L" son dos envases de 1 L: 2 L, no 1 L (comparador, 21-11-2026).
+      // Solo llega aquí sin preservePackageSize, donde la cantidad viaja con su unidad.
+      if (leadingCount) {
+        rawTerm = leadingCount[2];
+        quantity *= Number(leadingCount[1]);
+      }
     } else if (leadingQuantity) {
       quantity = Number(leadingQuantity[1]);
       rawTerm = leadingQuantity[2];
