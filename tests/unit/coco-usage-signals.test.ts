@@ -6,16 +6,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
-const db = vi.hoisted(() => ({ inserts: [] as Array<Record<string, unknown>> }));
+const db = vi.hoisted(() => ({ inserts: [] as Array<Record<string, unknown>>, unconfigured: false }));
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({
-    getSupabaseAdmin: () => ({
+    getSupabaseAdmin: () => {
+        if (db.unconfigured) throw new Error('Supabase sin configurar');
+        return {
         from: () => ({ insert: async (row: Record<string, unknown>) => { db.inserts.push(row); return { error: null }; } }),
-    }),
+        };
+    },
 }));
 
 import { aggregateSignals, classifyTopic, MIN_PEOPLE, recordUsageSignal } from '@/lib/coco/usageSignals';
 
-beforeEach(() => { db.inserts = []; });
+beforeEach(() => { db.inserts = []; db.unconfigured = false; });
+
+describe('registro del tema (auditoría 21-11-2026)', () => {
+    it('sin Supabase no rechaza: es un dato secundario que se llama con void', async () => {
+        db.unconfigured = true;
+        await expect(recordUsageSignal({ communityId: 'c', userId: 'u', role: 'resident', channel: 'web', message: 'hola' })).resolves.toBeUndefined();
+    });
+});
 
 describe('tema de un mensaje', () => {
     it('reconoce los temas de la comunidad', () => {

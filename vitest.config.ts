@@ -5,6 +5,13 @@ export default defineConfig({
     test: {
         environment: "node",
         include: ["tests/unit/**/*.test.ts"],
+        // 21-11-2026: con todos los núcleos en paralelo, importar los módulos
+        // grandes de CoCo y finanzas superaba los 5 s por defecto y fallaban
+        // pruebas distintas en cada corrida (pasan solas). Menos trabajadores y
+        // más margen: la suite completa da el mismo resultado siempre.
+        testTimeout: 20_000,
+        hookTimeout: 20_000,
+        maxWorkers: "50%",
     },
     resolve: {
         alias: {
