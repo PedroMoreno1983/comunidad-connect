@@ -157,16 +157,29 @@ export async function executeRentalsTool(name: string, input: Record<string, str
                     .gt('ends_at', desde.toISOString());
 
                 const tomados = new Set((ocupadas ?? []).map(b => String(b.spot_id)));
-                const disponibles = spots.filter(s => !tomados.has(String(s.id)));
+                const libres = spots.filter(s => !tomados.has(String(s.id)));
+                // 22-11-2026: la reserva exige que el horario caiga dentro de la
+                // disponibilidad que publicó el dueño (parking_windows_cover_range).
+                // Sin este filtro la búsqueda ofrecía cupos que después no se podían reservar.
+                const cubre = await Promise.all(libres.map(async spot => {
+                    const { data: ok } = await supabaseAdmin.rpc('parking_windows_cover_range', {
+                        p_spot_id: spot.id, p_starts_at: desde.toISOString(), p_ends_at: hasta.toISOString(),
+                    });
+                    return ok === true;
+                }));
+                const disponibles = libres.filter((_, index) => cubre[index]);
+                const sinHorario = libres.length - disponibles.length;
 
                 return {
                     desde: desde.toISOString(),
                     hasta: hasta.toISOString(),
                     disponibles,
                     total_publicados: spots.length,
-                    nota: disponibles.length === 0
-                        ? 'Hay estacionamientos en la comunidad, pero todos estan reservados en ese horario.'
-                        : undefined,
+                    nota: disponibles.length > 0
+                        ? undefined
+                        : sinHorario > 0
+                            ? 'Hay estacionamientos publicados, pero ninguno tiene disponibilidad publicada para ese horario. Prueba otro horario o pide al dueño que publique su disponibilidad.'
+                            : 'Hay estacionamientos en la comunidad, pero todos estan reservados en ese horario.',
                 };
             }
 

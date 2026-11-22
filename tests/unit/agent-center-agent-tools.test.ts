@@ -138,6 +138,8 @@ describe('Agent Center: herramientas del ciclo agentico', () => {
         });
 
         it('estacionamientos: disponibilidad y reservas solo de la comunidad propia', async () => {
+            // La búsqueda pregunta si el horario cae en la disponibilidad publicada (22-11-2026).
+            mocks.db.rpc = async (name: string) => ({ data: name === 'parking_windows_cover_range' ? true : null, error: null });
             const result = await executeAgentTool('get_parking_status', { startsAt: future(1), endsAt: future(3) }, adminA);
             const data = result.data as { available: Array<{ id: string }>; bookings: Array<{ bookingId: string; totalAmount: number }> };
             expect(data.available.map(spot => spot.id)).toEqual([SPOT_A]);

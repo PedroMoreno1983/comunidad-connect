@@ -214,8 +214,10 @@ ${COCO_WHATSAPP_PRIVACY_LINE}` : text;
         const sessionKey = `wa:${waId}`;
         const existingSession = await getSession(sessionKey);
         const answersConvive = req.headers.get('x-coco-route') === 'last-outbound';
-        if (!existingSession && !answersConvive && !/^(hola\s+)?coco[.!?]?$/i.test(message)) {
-            return new NextResponse('', { status: 204 });
+        // 22-11-2026: basta con que el mensaje empiece por el saludo ("Hola CoCo, ¿cuánto debo?").
+        // Antes exigía el saludo solo, y el 204 llevaba cuerpo: Next lo rechazaba con un 500.
+        if (!existingSession && !answersConvive && !/^(hola\s+)?coco\b/i.test(message)) {
+            return new NextResponse(null, { status: 204 });
         }
     }
 
