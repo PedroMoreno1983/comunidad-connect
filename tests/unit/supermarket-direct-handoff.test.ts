@@ -101,7 +101,7 @@ describe('direct supermarket cart handoff', () => {
       }],
     }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
-    const result = await prepareDirectCartHandoff('Unimarc', [{
+    const result = await prepareDirectCartHandoff('Santa Isabel', [{
       id: 'avena-1',
       name: 'Avena Tradicional 700 g',
       requestedTerm: 'avena',
@@ -126,7 +126,7 @@ describe('direct supermarket cart handoff', () => {
       }],
     }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
-    const result = await prepareDirectCartHandoff('Unimarc', [{
+    const result = await prepareDirectCartHandoff('Santa Isabel', [{
       id: 'avena-1',
       name: 'Avena Tradicional 700 g',
       requestedTerm: 'avena',

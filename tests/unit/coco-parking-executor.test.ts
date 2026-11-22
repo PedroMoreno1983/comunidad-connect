@@ -223,3 +223,25 @@ describe('get_my_parking distingue "no tienes nada" de "nunca te registraste"', 
         expect(result.nota).toBeUndefined();
     });
 });
+
+describe('search_parking: solo lo que se puede reservar (22-11-2026)', () => {
+    beforeEach(() => {
+        mocks.tables = { parking_spots: { id: SPOT_ID, label: 'S1-14', community_id: COMUNIDAD_A, status: 'published' }, parking_bookings: null };
+        mocks.rpcCalls = [];
+        mocks.rpc.mockReset();
+    });
+
+    it('descarta el cupo sin disponibilidad publicada para ese horario', async () => {
+        mocks.rpc.mockResolvedValue({ data: false, error: null });
+        const result = await executeTool('search_parking', { starts_at: '2026-11-28T10:00:00-03:00', ends_at: '2026-11-28T14:00:00-03:00' }, residente) as Row;
+        expect(result.disponibles).toEqual([]);
+        expect(String(result.nota)).toContain('disponibilidad publicada');
+        expect(mocks.rpcCalls[0].fn).toBe('parking_windows_cover_range');
+    });
+
+    it('ofrece el cupo cuando su disponibilidad cubre el horario', async () => {
+        mocks.rpc.mockResolvedValue({ data: true, error: null });
+        const result = await executeTool('search_parking', { starts_at: '2026-11-28T10:00:00-03:00', ends_at: '2026-11-28T14:00:00-03:00' }, residente) as Row;
+        expect((result.disponibles as Row[]).map(spot => spot.id)).toEqual([SPOT_ID]);
+    });
+});

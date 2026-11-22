@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .maybeSingle();
 
-    if (!event) return new NextResponse('', { status: 204 });
+    if (!event) return new NextResponse(null, { status: 204 });
 
     const metadata = event.metadata && typeof event.metadata === 'object'
         ? event.metadata as Record<string, unknown>
@@ -66,6 +66,6 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', event.id);
 
-    return new NextResponse('', { status: 204 });
+    return new NextResponse(null, { status: 204 });
 }
 

@@ -25,18 +25,24 @@ export type AdminActor = { id: string; role: string; communityId: string; name: 
 export async function listOpenCases(admin: SupabaseClient, communityId: string) {
     const { data, error } = await admin
         .from('coco_cases')
-        .select('id, title, status, category, urgency, unit_label, created_at')
+        .select('id, title, status, category, urgency, unit_id, unit_label, created_at')
         .eq('community_id', communityId)
         .in('status', ['open', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(25);
     if (error) return { error: 'No pude cargar los casos.' };
     const rows = (data ?? []) as Row[];
+    // Los reclamos guardan unit_id pero no siempre unit_label (22-11-2026): se busca el número.
+    const unitIds = [...new Set(rows.filter(row => !row.unit_label && row.unit_id).map(row => String(row.unit_id)))];
+    const { data: units } = unitIds.length
+        ? await admin.from('units').select('id, number, tower').in('id', unitIds)
+        : { data: [] as Row[] };
+    const unitName = new Map((units ?? []).map(unit => [String(unit.id), [unit.tower, unit.number].filter(Boolean).join(' ')]));
     return {
         total: rows.length,
         casos: rows.map(row => ({
             case_id: row.id, titulo: row.title, estado: row.status, categoria: row.category,
-            urgencia: row.urgency, unidad: row.unit_label || 'sin unidad', creado: String(row.created_at ?? '').slice(0, 10),
+            urgencia: row.urgency, unidad: row.unit_label || unitName.get(String(row.unit_id)) || 'sin unidad', creado: String(row.created_at ?? '').slice(0, 10),
         })),
         nota: rows.length ? undefined : 'No hay casos abiertos.',
     };
@@ -47,7 +53,9 @@ export async function updateCaseStatusForStaff(admin: SupabaseClient, actor: Adm
     if (!UUID.test(caseId)) return { error: 'Necesito el case_id que devuelve list_open_cases.' };
     const result = await changeCaseStatus(admin, actor, caseId, text(input.status, 20), 'coco');
     if ('error' in result) return { error: result.error };
-    return { success: true, message: `El caso "${result.case.title}" quedó ${String(result.case.status)}. El residente recibe el aviso.` };
+    const statusLabel: Record<string, string> = { open: 'abierto', in_progress: 'en curso', resolved: 'resuelto', closed: 'cerrado', cancelled: 'cancelado' };
+    const status = String(result.case.status);
+    return { success: true, message: `El caso "${result.case.title}" quedó ${statusLabel[status] ?? status}. El residente recibe el aviso.` };
 }
 
 // ── Publicaciones de vecinos ─────────────────────────────────────────────────
@@ -77,30 +85,40 @@ export async function listPendingListings(admin: SupabaseClient, communityId: st
     };
 }
 
+/** true/false, o su texto: el modelo a veces manda "true" como string (prueba de punta a punta, 22-11-2026). */
+function booleanInput(value: unknown): boolean | undefined {
+    if (typeof value === 'boolean') return value;
+    const t = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    if (['true', 'sí', 'si', 'aprobar'].includes(t)) return true;
+    if (['false', 'no', 'rechazar'].includes(t)) return false;
+    return undefined;
+}
+
 export async function reviewListingForAdmin(admin: SupabaseClient, actor: AdminActor, input: Record<string, unknown>) {
     const kind = text(input.kind, 20);
     const table = kind === 'parking' ? 'parking_spots' : kind === 'storage' ? 'storage_units' : null;
     if (!table) return { error: 'Indica si es un estacionamiento (parking) o una bodega (storage).' };
     const listingId = text(input.listing_id, 36);
     if (!UUID.test(listingId)) return { error: 'Necesito el listing_id que devuelve list_pending_listings.' };
-    if (typeof input.approve !== 'boolean') return { error: 'Indica si se aprueba (approve: true) o se rechaza (false).' };
+    const approve = booleanInput(input.approve);
+    if (approve === undefined) return { error: 'Indica si se aprueba (approve: true) o se rechaza (false).' };
     const reason = text(input.reason, 300);
-    if (!input.approve && !reason) return { error: 'Para rechazar necesito el motivo; el vecino lo verá.' };
+    if (!approve && !reason) return { error: 'Para rechazar necesito el motivo; el vecino lo verá.' };
 
     const { data: listing } = await admin.from(table).select('id, label, community_id, status').eq('id', listingId).maybeSingle();
     if (!listing || listing.community_id !== actor.communityId) return { error: 'No encontré esa publicación en tu comunidad.' };
     if (listing.status !== 'pending_approval') return { error: `"${listing.label}" no está esperando aprobación (estado: ${listing.status}).` };
 
     const { error } = await admin.from(table).update({
-        status: input.approve ? 'published' : 'rejected',
-        approved_by: input.approve ? actor.id : null,
-        approved_at: input.approve ? new Date().toISOString() : null,
-        rejection_reason: input.approve ? null : reason,
+        status: approve ? 'published' : 'rejected',
+        approved_by: approve ? actor.id : null,
+        approved_at: approve ? new Date().toISOString() : null,
+        rejection_reason: approve ? null : reason,
     }).eq('id', listingId).eq('community_id', actor.communityId).eq('status', 'pending_approval');
     if (error) return { error: 'No se pudo guardar la revisión.' };
     return {
         success: true,
-        message: input.approve
+        message: approve
             ? `Aprobé "${listing.label}": ya aparece para los vecinos.`
             : `Rechacé "${listing.label}". El vecino ve el motivo: ${reason}`,
     };
@@ -109,15 +127,16 @@ export async function reviewListingForAdmin(admin: SupabaseClient, actor: AdminA
 export async function reviewGroupOrderForAdmin(actor: AdminActor, input: Record<string, unknown>) {
     const orderId = text(input.order_id, 36);
     if (!UUID.test(orderId)) return { error: 'Necesito el order_id que devuelve list_supermarket_group_orders.' };
-    if (typeof input.approve !== 'boolean') return { error: 'Indica si se aprueba (approve: true) o se rechaza (false).' };
+    const approve = booleanInput(input.approve);
+    if (approve === undefined) return { error: 'Indica si se aprueba (approve: true) o se rechaza (false).' };
     try {
         const order = await reviewSupermarketGroupOrder(
             { id: actor.id, name: actor.name, role: actor.role as UserRole, community_id: actor.communityId },
-            orderId, input.approve, undefined, text(input.note, 500),
+            orderId, approve, undefined, text(input.note, 500),
         );
         return {
             success: true,
-            message: input.approve
+            message: approve
                 ? `Aprobé la compra comunitaria "${order.title}". Los vecinos ya pueden sumarse.`
                 : `Rechacé la compra comunitaria "${order.title}".`,
         };

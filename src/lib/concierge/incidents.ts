@@ -42,10 +42,12 @@ export async function registerIncident(
             user_id: reporter.id,
             role: reporter.role,
             channel: 'concierge',
+            // 22-11-2026: 'registrar' y la categoría 'incidencia' no existen en los CHECK de coco_cases
+            // (017_coco_cases.sql): toda incidencia fallaba al guardarse, en el panel y en CoCo.
             type: 'incidencia',
-            category: 'incidencia',
+            category: 'otro',
             urgency,
-            action: 'registrar',
+            action: 'crear_ticket',
             title,
             description: description || title,
             reason: source === 'coco' ? 'Reportada por conserjería a través de CoCo.' : 'Reportada manualmente por conserjería.',

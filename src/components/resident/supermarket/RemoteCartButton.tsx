@@ -30,7 +30,7 @@ function handoffItems(items: SupermarketSearchCandidate[]): SupermarketCartHando
  * En las demás el carro lo arma el navegador remoto; ahí se ofrece además comprar
  * en el propio navegador con la lista y un enlace a cada producto (22-11-2026).
  */
-const OWN_BROWSER_CART = new Set(['Jumbo', 'Santa Isabel', 'Unimarc', 'Irurzun']);
+const OWN_BROWSER_CART = new Set(['Jumbo', 'Santa Isabel', 'Irurzun']);
 
 export function RemoteCartButton({ store, items, complete }: SupermarketCartButtonProps) {
   const { toast } = useToast();

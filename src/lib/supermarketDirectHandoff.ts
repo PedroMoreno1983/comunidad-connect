@@ -238,7 +238,7 @@ export const CENCOSUD_CART_HOSTS: Partial<Record<SupermarketStore, string>> = {
 };
 
 /** Cadenas sin enlace directo utilizable: su carro lo carga el navegador remoto. */
-export const DIRECT_CART_DISABLED = new Set<string>();
+export const DIRECT_CART_DISABLED = new Set<string>(['Unimarc']);
 
 export function supportsDirectCartHandoff(store: string): boolean {
   if (DIRECT_CART_DISABLED.has(store)) return false;
