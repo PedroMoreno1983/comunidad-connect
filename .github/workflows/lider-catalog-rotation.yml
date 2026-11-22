@@ -1,14 +1,15 @@
 name: Lider catalog rotation
 
 # 20-11-2026: Lider corta con HTTP 412 tras ~50 páginas seguidas, así que el
-# catálogo nocturno completo no alcanza. Cada 6 horas se recorren 2
-# departamentos con pausa larga; con ~11 departamentos el catálogo se renueva
-# en ~1,5 días, dentro de las 96 h en que la app acepta un precio. La rotación
-# guarda lo leído sin conciliar stock (los demás departamentos no se tocaron).
+# catálogo nocturno completo no alcanza. Cada 4 horas se recorre 1 departamento
+# con pausa larga (22-11-2026: con 2 por corrida, el segundo siempre chocaba con
+# el límite). Con ~12 departamentos el catálogo se renueva en 2 días, dentro de
+# las 96 h en que la app acepta un precio. La rotación guarda lo leído sin
+# conciliar stock (los demás departamentos no se tocaron).
 
 on:
   schedule:
-    - cron: "41 */6 * * *"
+    - cron: "41 */4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -25,7 +26,9 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      LIDER_DEPARTMENTS_PER_RUN: "2"
+      LIDER_DEPARTMENTS_PER_RUN: "1"
+      # Igual al intervalo del cron: cada corrida cae en una ventana distinta.
+      LIDER_ROTATION_HOURS: "4"
       LIDER_PAGE_DELAY_SECONDS: "4"
     steps:
       - uses: actions/checkout@v5
@@ -40,7 +43,7 @@ jobs:
           cat "$(python -m certifi)" .github/certificates/globalsign-rsa-ov-ssl-ca-2018.pem > "$RUNNER_TEMP/supermarket-ca-bundle.pem"
           echo "SSL_CERT_FILE=$RUNNER_TEMP/supermarket-ca-bundle.pem" >> "$GITHUB_ENV"
 
-      - name: Crawl two Lider departments
+      - name: Crawl one Lider department
         id: crawl
         shell: bash
         run: |

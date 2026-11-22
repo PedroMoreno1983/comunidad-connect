@@ -24,6 +24,8 @@ const selectedBasketMigration = read('supabase/migrations/20260723143000_superma
 const superadmin = read('src/app/api/superadmin/communities/route.ts');
 const sidebar = read('src/components/cc/Sidebar.tsx');
 const supermarketPage = read('src/app/(dashboard)/resident/supermercado/page.tsx');
+// 22-11-2026: la comparación de listas vive en el comparador desde el rediseño "primero la tienda".
+const comparatorPage = read('src/app/(dashboard)/resident/supermercado/comparador/page.tsx');
 const supermarketApi = read('src/app/api/supermarket/route.ts');
 const supermarketLive = read('src/lib/supermarketLive.ts');
 
@@ -42,11 +44,11 @@ expect('Wholesale comparison aggregates requested quantities', groupDomain.inclu
 expect('Prepared group orders remain visible after they are locked', groupUi.includes('visibleOrders') && groupUi.includes("order.status === 'locked'"));
 expect('The exact selected basket is persisted when an order is locked', selectedBasketMigration.includes('selected_items JSONB') && groupDomain.includes('selected_items: selected.items'));
 expect('Prepared group orders expose persisted direct product links', groupUi.includes('order.selectedItems') && groupUi.includes('Productos listos para abrir') && groupUi.includes('item.productUrl'));
-expect('Personal and community purchases live in separate domains', supermarketPage.includes('Tu compra personal') && !supermarketPage.includes('Comprar en comunidad') && groupUi.includes('Compra en comunidad'));
-expect('The personal flow reports complete request coverage', supermarketPage.includes('Encontramos {foundCount} de {requestedCount} productos') && supermarketApi.includes('requestedCount: requestedItems.length') && supermarketApi.includes('foundCount'));
-expect('Missing products remain visible instead of disappearing', supermarketPage.includes('Sin precio vigente') && supermarketApi.includes("source: 'missing'"));
+expect('Personal and community purchases live in separate domains', supermarketPage.includes('Compra en tu supermercado') && !supermarketPage.includes('Compra en comunidad') && groupUi.includes('Compra en comunidad'));
+expect('The personal flow reports complete request coverage', comparatorPage.includes('{basket.coveredCount} de {basket.requestedCount} productos') && supermarketApi.includes('requestedCount: requestedItems.length') && supermarketApi.includes('foundCount'));
+expect('Missing products remain visible instead of disappearing', comparatorPage.includes('No aparece en el catálogo') && comparatorPage.includes('Comparación con faltantes') && supermarketApi.includes("source: 'missing'"));
 expect('Lists support at least fifteen independent search terms', supermarketLive.includes('MAX_SEARCH_TERMS = 20'));
-expect('Quantities and optional brands are explained to the shopper', supermarketPage.includes('Si no indicas cantidad') && supermarketPage.includes('Si no escribes una marca'));
+expect('Quantities and optional brands are explained to the shopper', comparatorPage.includes('Respetamos cantidades, unidades y formatos comparables') && comparatorPage.includes('Elegir marca o presentación') && groupUi.includes('Si no indicas cantidad'));
 expect('Group orders provide a direct invitation link to community supply', groupUi.includes('/convivencia?lane=abasto&order=') && groupUi.includes('Invitar'));
 expect('Prepared group orders expose a per-person settlement', groupDomain.includes('allocateGroupCosts') && groupUi.includes('Quién paga cuánto') && groupUi.includes('Debe pagar a'));
 expect('RLS isolates orders, members and items by community', ['supermarket_group_orders_read_community', 'supermarket_group_members_read_community', 'supermarket_group_items_read_community'].every(policy => migration.includes(policy)));
