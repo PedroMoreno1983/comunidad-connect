@@ -95,11 +95,13 @@ def lider_rotation_settings() -> tuple[int | None, float]:
 
 
 def lider_rotation_slice(roots: list[str], per_run: int, now: float | None = None) -> list[str]:
-    """Departamentos de este turno: ventana que avanza cada 6 horas sobre la lista ordenada."""
+    """Departamentos de este turno: ventana que avanza cada LIDER_ROTATION_HOURS (6 por defecto) sobre la lista ordenada."""
     ordered = sorted(roots)
     if per_run >= len(ordered):
         return ordered
-    slot = int((now if now is not None else time.time()) // (6 * 3600))
+    raw_hours = os.environ.get("LIDER_ROTATION_HOURS", "").strip()
+    hours = int(raw_hours) if raw_hours.isdigit() and int(raw_hours) > 0 else 6
+    slot = int((now if now is not None else time.time()) // (hours * 3600))
     start = (slot * per_run) % len(ordered)
     return [ordered[(start + index) % len(ordered)] for index in range(per_run)]
 # Un departamento con menos de esta fracción de su aggregatedCount se reporta como

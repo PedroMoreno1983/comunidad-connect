@@ -105,3 +105,22 @@ describe('técnicos en el reporte (19-11-2026)', () => {
         expect(buildActivityReport(base).providers).toBeNull();
     });
 });
+
+describe('catálogos atrasados (22-11-2026)', () => {
+    it('avisa la cadena que no se actualiza hace 30 h o más', () => {
+        const report = buildActivityReport({ ...base, catalogs: [
+            { store: 'Jumbo', lastSeenAt: '2026-11-19T09:00:00.000Z', fresh24h: 20000, total: 52000 },
+            { store: 'Lider', lastSeenAt: '2026-11-12T12:00:00.000Z', fresh24h: 0, total: 18951 },
+            { store: 'Tottus', lastSeenAt: null, fresh24h: 0, total: 0 },
+        ] });
+        expect(report.staleCatalogs.map(c => c.store)).toEqual(['Lider', 'Tottus']);
+        const html = renderActivityReportHtml(report, 'turno', []);
+        expect(html).toContain('Catálogos del supermercado atrasados');
+        expect(html).toContain('nunca');
+    });
+
+    it('sin catálogos atrasados no agrega la sección', () => {
+        const html = renderActivityReportHtml(buildActivityReport(base), 'turno', []);
+        expect(html).not.toContain('Catálogos del supermercado atrasados');
+    });
+});

@@ -42,21 +42,32 @@ describe('direct supermarket cart handoff', () => {
       }],
     }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
-    const result = await prepareDirectCartHandoff('Jumbo', [{
+    const result = await prepareDirectCartHandoff('Santa Isabel', [{
       id: 'arroz-1',
       name: 'Arroz Pregraneado 1 kg',
       requestedTerm: 'arroz',
       quantity: 2,
       sku: '111151',
-      productUrl: 'https://www.jumbo.cl/arroz-pregraneado/p',
+      productUrl: 'https://www.santaisabel.cl/arroz-pregraneado/p',
     }]);
 
     expect(result.supported).toBe(true);
     expect(result.plannedCount).toBe(1);
-    expect(result.cartUrl).toContain('jumbo.vtexcommercestable.com.br/checkout/cart/add?');
+    expect(result.cartUrl).toContain('santaisabel.vtexcommercestable.com.br/checkout/cart/add?');
     expect(result.cartUrl).toContain('sku=111151');
     expect(result.cartUrl).toContain('qty=2');
     expect(result.missingItems).toEqual([]);
+  });
+
+  it('Jumbo ya no usa el enlace directo: cae al login de VTEX (22-11-2026)', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const result = await prepareDirectCartHandoff('Jumbo', [{
+      id: 'arroz-1', name: 'Arroz 1 kg', requestedTerm: 'arroz', quantity: 1, sku: '111151', productUrl: 'https://www.jumbo.cl/arroz/p',
+    }]);
+    expect(result.supported).toBe(false);
+    expect(result.cartUrl).toBeUndefined();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('resolves the Shopify variant instead of using a barcode as cart id', async () => {

@@ -203,7 +203,15 @@ async function resolveShopifyVariant(item: SupermarketCartHandoffItem) {
   }
 }
 
+/**
+ * 22-11-2026: el enlace directo de Jumbo (jumbo.vtexcommercestable.com.br/checkout/cart/add)
+ * ya no llega al carro: redirige al login de administración de VTEX. Jumbo pasó a su
+ * propio sitio; su carro lo carga el navegador remoto en www.jumbo.cl.
+ */
+export const DIRECT_CART_DISABLED = new Set<string>(['Jumbo']);
+
 export function supportsDirectCartHandoff(store: string): boolean {
+  if (DIRECT_CART_DISABLED.has(store)) return false;
   return store === 'Irurzun'
     || Object.prototype.hasOwnProperty.call(VTEX_STORES, store);
 }
@@ -236,7 +244,7 @@ export async function prepareDirectCartHandoff(
     };
   }
 
-  const base = VTEX_STORES[store as SupermarketStore];
+  const base = DIRECT_CART_DISABLED.has(store) ? undefined : VTEX_STORES[store as SupermarketStore];
   if (base) {
     const resolved = await resolveInChunks(items, item => resolveVtexItem(base, item));
     const available = resolved.filter((entry): entry is NonNullable<typeof entry> => entry !== null);

@@ -13,6 +13,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { chileDayStart, personCostLimits } from '@/lib/ai/budget';
 import { recheckUnreadProviderDocuments } from '@/lib/services/providerMedia';
+import { SUPERMARKET_STORES } from '@/lib/supermarketBasket';
 import { BRAND, emailWrapper, escapeEmailHtml, FROM_EMAIL, resend, SUPERADMIN_EMAIL } from '@/lib/email';
 
 export type ReportPeriod = 'am' | 'pm';
@@ -76,6 +77,26 @@ export interface ReportProviders {
     pendingReview: Array<{ name: string; kind: string; since: string; verdict: string }>;
 }
 
+/** Frescura del catálogo de cada cadena visible (22-11-2026). */
+export interface ReportCatalogRow {
+    store: string;
+    /** Último producto actualizado en el catálogo (ISO), o null si no hay. */
+    lastSeenAt: string | null;
+    /** Productos actualizados en las últimas 24 h. */
+    fresh24h: number;
+    total: number;
+}
+
+/** Un catálogo que no se actualiza en 30 h quedó atrás: la app esconde precios de más de 96 h. */
+export const CATALOG_STALE_HOURS = 30;
+
+export function staleCatalogs(rows: ReportCatalogRow[], now: Date): Array<ReportCatalogRow & { hoursAgo: number | null }> {
+    return rows.flatMap(row => {
+        const hoursAgo = row.lastSeenAt ? Math.round((now.getTime() - Date.parse(row.lastSeenAt)) / 3_600_000) : null;
+        return hoursAgo === null || hoursAgo >= CATALOG_STALE_HOURS ? [{ ...row, hoursAgo }] : [];
+    });
+}
+
 export interface ReportInput {
     period: ReportPeriod;
     windowStart: string;
@@ -87,6 +108,8 @@ export interface ReportInput {
     todayCostByUser: Record<string, number>;
     sessions: ReportSession[];
     bills: ReportBill[];
+    /** Opcional: frescura de los catálogos del supermercado. */
+    catalogs?: ReportCatalogRow[];
     /** Opcional: sin datos de técnicos, el reporte sale sin esa sección. */
     providers?: ReportProviderData;
 }
@@ -120,6 +143,8 @@ export interface ActivityReport {
     failedBills: Array<{ community: string; file: string; error: string }>;
     byCommunity: Array<{ community: string; active: number; turns: number; costCents: number }>;
     providers: ReportProviders | null;
+    /** Cadenas cuyo catálogo no se actualiza hace 30 h o más. */
+    staleCatalogs: Array<{ store: string; hoursAgo: number | null; fresh24h: number; total: number }>;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -304,6 +329,7 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
         failedBills,
         byCommunity: [...communityStats.values()].sort((a, b) => b.turns - a.turns),
         providers: input.providers ? buildProviderSection(input.providers, inWindow) : null,
+        staleCatalogs: staleCatalogs(input.catalogs ?? [], new Date(input.windowEnd)),
     };
 }
 
@@ -365,6 +391,11 @@ export function renderActivityReportHtml(report: ActivityReport, windowLabel: st
     if (report.byCommunity.length) {
         parts.push(section('Por comunidad', table(['Comunidad', 'Activas', 'Mensajes a CoCo', 'Costo'], report.byCommunity.map(c => [c.community, String(c.active), String(c.turns), usd(c.costCents)]))));
     }
+    if (report.staleCatalogs.length) {
+        parts.push(section('Catálogos del supermercado atrasados', table(['Cadena', 'Última actualización', 'Productos al día (24 h)'],
+            report.staleCatalogs.map(c => [c.store, c.hoursAgo === null ? 'nunca' : `hace ${c.hoursAgo} h`, `${c.fresh24h} de ${c.total}`]))
+            + para('La app esconde los precios de más de 4 días: si sigue así, esa cadena desaparece de la comparación. Revisa el job de catálogo en GitHub Actions.')));
+    }
     if (report.providers) {
         const p = report.providers;
         const lines = [
@@ -386,7 +417,7 @@ export function renderActivityReportHtml(report: ActivityReport, windowLabel: st
 /** 3 a 5 frases con lo que conviene mirar. Sin IA o si falla, el reporte sale igual. */
 async function summarize(report: ActivityReport): Promise<string[]> {
     if (!process.env.ANTHROPIC_API_KEY) return [];
-    const providerNews = Boolean(report.providers && (report.providers.uploaded.length || report.providers.openedNow.length));
+    const providerNews = Boolean(report.providers && (report.providers.uploaded.length || report.providers.openedNow.length)) || report.staleCatalogs.length > 0;
     if (!report.totals.activePeople && !report.totals.problems && !providerNews) return [];
     try {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 20_000, maxRetries: 1 });
@@ -424,6 +455,19 @@ async function listAllAuthUsers() {
         if (data.users.length < 1000) break;
     }
     return users;
+}
+
+async function loadCatalogHealth(): Promise<ReportCatalogRow[]> {
+    const admin = getSupabaseAdmin();
+    const since = new Date(Date.now() - 24 * 3_600_000).toISOString();
+    return Promise.all(SUPERMARKET_STORES.map(async store => {
+        const [total, fresh, last] = await Promise.all([
+            admin.from('supermarket_products').select('id', { count: 'exact', head: true }).eq('store', store),
+            admin.from('supermarket_products').select('id', { count: 'exact', head: true }).eq('store', store).gte('last_seen_at', since),
+            admin.from('supermarket_products').select('last_seen_at').eq('store', store).order('last_seen_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        return { store, total: total.count ?? 0, fresh24h: fresh.count ?? 0, lastSeenAt: last.data?.last_seen_at ? String(last.data.last_seen_at) : null };
+    }));
 }
 
 async function loadProviderData(): Promise<ReportProviderData> {
@@ -486,6 +530,10 @@ export async function runActivityReport(now = new Date(), options: { dryRun?: bo
     for (const res of [communitiesRes, profilesRes, usageRes, todayRes, sessionsRes, billsRes]) if (res.error) throw res.error;
     // Antes de contar, CoCo vuelve a leer los documentos que no pudo leer la primera vez.
     if (!options.dryRun) await recheckUnreadProviderDocuments().catch(() => 0);
+    const catalogs = await loadCatalogHealth().catch(error => {
+        console.warn('[activity-report] sin datos de catálogos', error instanceof Error ? error.message : error);
+        return undefined;
+    });
     const providerData = await loadProviderData().catch(error => {
         console.warn('[activity-report] sin datos de técnicos', error instanceof Error ? error.message : error);
         return undefined;
@@ -535,6 +583,7 @@ export async function runActivityReport(now = new Date(), options: { dryRun?: bo
         sessions,
         bills: (billsRes.data ?? []) as ReportBill[],
         providers: providerData,
+        catalogs,
     });
     const highlights = await summarize(report);
     const html = renderActivityReportHtml(report, windowLabel(start, end), highlights);

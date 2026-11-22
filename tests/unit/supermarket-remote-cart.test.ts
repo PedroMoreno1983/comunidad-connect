@@ -28,13 +28,14 @@ describe('remote supermarket cart handoff', () => {
       throw new Error(`Unexpected remote request: ${url}`);
     }));
 
-    const result = await prepareRemoteCartHandoff('Jumbo', [{
+    // 22-11-2026: Santa Isabel (Jumbo ya no tiene enlace directo: cae al login de VTEX).
+    const result = await prepareRemoteCartHandoff('Santa Isabel', [{
       id: 'arroz',
       name: 'Arroz 1 kg',
       requestedTerm: 'arroz',
       quantity: 1,
       sku: 'sku-1',
-      productUrl: 'https://www.jumbo.cl/arroz/p',
+      productUrl: 'https://www.santaisabel.cl/arroz/p',
     }], 'user-jwt');
 
     expect(result).toMatchObject({
