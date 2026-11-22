@@ -53,21 +53,21 @@ describe('direct supermarket cart handoff', () => {
 
     expect(result.supported).toBe(true);
     expect(result.plannedCount).toBe(1);
-    expect(result.cartUrl).toContain('santaisabel.vtexcommercestable.com.br/checkout/cart/add?');
-    expect(result.cartUrl).toContain('sku=111151');
-    expect(result.cartUrl).toContain('qty=2');
+    // Carro precargado oficial de Cencosud (openapi buildCartUrl), no el checkout de VTEX.
+    expect(result.cartUrl).toBe('https://www.santaisabel.cl/?sku=111151&qty=2');
     expect(result.missingItems).toEqual([]);
   });
 
-  it('Jumbo ya no usa el enlace directo: cae al login de VTEX (22-11-2026)', async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-    const result = await prepareDirectCartHandoff('Jumbo', [{
-      id: 'arroz-1', name: 'Arroz 1 kg', requestedTerm: 'arroz', quantity: 1, sku: '111151', productUrl: 'https://www.jumbo.cl/arroz/p',
-    }]);
-    expect(result.supported).toBe(false);
-    expect(result.cartUrl).toBeUndefined();
-    expect(fetchSpy).not.toHaveBeenCalled();
+  it('Jumbo usa su carro precargado oficial en www.jumbo.cl (22-11-2026)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([{
+      productName: 'Arroz 1 kg',
+      items: [{ itemId: '1716104', nameComplete: 'Arroz 1 kg', sellers: [{ sellerId: '1', commertialOffer: { AvailableQuantity: 9, Price: 2_430 } }] }],
+    }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    const result = await prepareDirectCartHandoff('Jumbo', [
+      { id: 'arroz-1', name: 'Arroz 1 kg', requestedTerm: 'arroz', quantity: 2, sku: '1716104', productUrl: 'https://www.jumbo.cl/arroz/p' },
+    ]);
+    expect(result.supported).toBe(true);
+    expect(result.cartUrl).toBe('https://www.jumbo.cl/?sku=1716104&qty=2');
   });
 
   it('resolves the Shopify variant instead of using a barcode as cart id', async () => {

@@ -45,7 +45,7 @@ describe('remote supermarket cart handoff', () => {
       missingItems: [],
     });
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(result.cartUrl).toContain('/checkout/cart/add?');
+    expect(result.cartUrl).toContain('https://www.santaisabel.cl/?sku=');
   });
 
   it('keeps the official direct checkout as an outage fallback', async () => {

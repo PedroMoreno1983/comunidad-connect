@@ -155,6 +155,26 @@ async function resolveInChunks<T, R>(
   return output;
 }
 
+/** URL del carro precargado de Cencosud: una sola visita agrega todo. */
+export function buildCencosudCartUrl(
+  host: string,
+  resolved: Array<{ sku: string; quantity: number; name: string }>,
+) {
+  const included: typeof resolved = [];
+  for (const item of resolved) {
+    const next = [...included, item];
+    const url = `${host}/?sku=${next.map(entry => encodeURIComponent(entry.sku)).join(',')}&qty=${next.map(entry => entry.quantity).join(',')}`;
+    if (url.length > MAX_URL_LENGTH) break;
+    included.push(item);
+  }
+  return {
+    url: included.length
+      ? `${host}/?sku=${included.map(entry => encodeURIComponent(entry.sku)).join(',')}&qty=${included.map(entry => entry.quantity).join(',')}`
+      : null,
+    included: included.map(entry => entry.name),
+  };
+}
+
 function buildVtexUrl(
   base: string,
   resolved: Array<{ sku: string; seller: string; quantity: number; name: string }>,
@@ -204,11 +224,21 @@ async function resolveShopifyVariant(item: SupermarketCartHandoffItem) {
 }
 
 /**
- * 22-11-2026: el enlace directo de Jumbo (jumbo.vtexcommercestable.com.br/checkout/cart/add)
- * ya no llega al carro: redirige al login de administración de VTEX. Jumbo pasó a su
- * propio sitio; su carro lo carga el navegador remoto en www.jumbo.cl.
+ * Carro precargado oficial de Cencosud (22-11-2026). Jumbo y Santa Isabel publican
+ * para asistentes de IA una API documentada (/.well-known/ai-plugin.json →
+ * /openapi.json, operación buildCartUrl): `https://www.jumbo.cl/?sku=A,B&qty=2,1`
+ * "agrega automáticamente los productos al carro y abre el carro" en el navegador
+ * de la persona, con su sesión. Reemplaza al checkout de vtexcommercestable, que
+ * en Jumbo caía al login de administración de VTEX y en Santa Isabel mostraba una
+ * plantilla sin marca. Los SKU son los mismos itemId de VTEX que ya resolvemos.
  */
-export const DIRECT_CART_DISABLED = new Set<string>(['Jumbo']);
+export const CENCOSUD_CART_HOSTS: Partial<Record<SupermarketStore, string>> = {
+  Jumbo: 'https://www.jumbo.cl',
+  'Santa Isabel': 'https://www.santaisabel.cl',
+};
+
+/** Cadenas sin enlace directo utilizable: su carro lo carga el navegador remoto. */
+export const DIRECT_CART_DISABLED = new Set<string>();
 
 export function supportsDirectCartHandoff(store: string): boolean {
   if (DIRECT_CART_DISABLED.has(store)) return false;
@@ -248,7 +278,8 @@ export async function prepareDirectCartHandoff(
   if (base) {
     const resolved = await resolveInChunks(items, item => resolveVtexItem(base, item));
     const available = resolved.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-    const built = buildVtexUrl(base, available);
+    const cencosudHost = CENCOSUD_CART_HOSTS[store as SupermarketStore];
+    const built = cencosudHost ? buildCencosudCartUrl(cencosudHost, available) : buildVtexUrl(base, available);
     const includedNames = new Set(built.included);
     return {
       supported: Boolean(built.url),

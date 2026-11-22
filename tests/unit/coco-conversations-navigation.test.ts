@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
+// Importa todo el árbol de herramientas de CoCo: en frío (primera corrida tras un cambio) pasaba los 20 s.
+vi.setConfig({ testTimeout: 60_000 });
+
 // Varios tests importan tools.ts y agent.ts en caliente: la primera carga es pesada.
 vi.setConfig({ testTimeout: 30_000 });
 vi.mock('server-only', () => ({}));
