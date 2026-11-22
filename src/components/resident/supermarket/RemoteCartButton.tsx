@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { SupermarketCartService } from '@/lib/api';
+import { storeSearchUrl } from '@/lib/supermarketText';
 import type {
   SupermarketCartButtonProps,
   SupermarketCartHandoffItem,
@@ -23,6 +24,13 @@ function handoffItems(items: SupermarketSearchCandidate[]): SupermarketCartHando
     price: item.price,
   }));
 }
+
+/**
+ * Cadenas cuyo carro se carga solo en el navegador de la persona (enlace oficial).
+ * En las demás el carro lo arma el navegador remoto; ahí se ofrece además comprar
+ * en el propio navegador con la lista y un enlace a cada producto (22-11-2026).
+ */
+const OWN_BROWSER_CART = new Set(['Jumbo', 'Santa Isabel', 'Unimarc', 'Irurzun']);
 
 export function RemoteCartButton({ store, items, complete }: SupermarketCartButtonProps) {
   const { toast } = useToast();
@@ -88,7 +96,10 @@ export function RemoteCartButton({ store, items, complete }: SupermarketCartButt
       ? 'Abrir carro asistido en Líder'
       : `Abrir canasta en ${store}`;
 
+  const offerOwnBrowser = !OWN_BROWSER_CART.has(store) && items.length > 0;
+
   return (
+    <div className="flex flex-col items-start gap-2">
     <button
       type="button"
       onClick={() => void loadCart()}
@@ -105,5 +116,27 @@ export function RemoteCartButton({ store, items, complete }: SupermarketCartButt
       {loading ? 'Preparando…' : buttonLabel}
       {!loading && <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
     </button>
+    {offerOwnBrowser && (
+      <details className="w-full max-w-md text-xs cc-text-secondary">
+        <summary className="cursor-pointer font-semibold">Prefiero comprar en mi navegador</summary>
+        <p className="mt-2">
+          {store} no permite cargar el carro desde otro sitio. Abre cada producto en tu navegador, con tu sesión de {store} de siempre, y agrégalo:
+        </p>
+        <ol className="mt-2 space-y-1">
+          {items.map(item => {
+            const href = item.productUrl || storeSearchUrl(store, item.name);
+            return (
+              <li key={item.id} className="flex items-baseline gap-1.5">
+                <span className="font-semibold">{item.quantity} ×</span>
+                {href
+                  ? <a href={href} target="_blank" rel="noreferrer" className="underline">{item.name}</a>
+                  : <span>{item.name}</span>}
+              </li>
+            );
+          })}
+        </ol>
+      </details>
+    )}
+    </div>
   );
 }

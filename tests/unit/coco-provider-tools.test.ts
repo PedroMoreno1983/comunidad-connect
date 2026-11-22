@@ -4,6 +4,9 @@
  * enlaces cuando el nombre es ambiguo o el maestro tiene cuenta.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Importa todo el árbol de herramientas de CoCo: en frío (primera corrida tras un cambio) pasaba los 20 s.
+vi.setConfig({ testTimeout: 60_000 });
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 vi.mock('server-only', () => ({}));
