@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { stableNotificationId } from '@/lib/agent-center/utils';
 import { formatFinanceDate, todayInChile } from '@/lib/finance/chileDates';
-import { UTILITY_SERVICE_LABELS, daysBetween, findUtilityProvider, isUtilityService, nextDueDate } from './providers';
+import { UTILITY_SERVICE_LABELS, daysBetween, findUtilityProvider, isPersonalBillService, nextDueDate } from './providers';
 
 /** Días antes del vencimiento en que se avisa. 0: el mismo día. */
 const NOTICE_DAYS = [3, 0] as const;
@@ -12,7 +12,9 @@ export interface UtilityReminderAccount {
     communityId: string;
     service: string;
     provider: string;
-    dueDay: number;
+    dueDay: number | null;
+    billDueDate?: string | null;
+    lastPaidBillDueDate?: string | null;
     lastPaidPeriod: string | null;
 }
 
@@ -23,12 +25,14 @@ export interface UtilityReminderAccount {
  */
 export function buildUtilityReminders(accounts: UtilityReminderAccount[], today: string) {
     return accounts.flatMap(account => {
-        const dueDate = nextDueDate(account.dueDay, today);
+        const dueDate = account.billDueDate ?? (account.dueDay ? nextDueDate(account.dueDay, today) : null);
+        if (!dueDate) return [];
         const days = daysBetween(today, dueDate);
         if (!(NOTICE_DAYS as readonly number[]).includes(days)) return [];
-        if (account.lastPaidPeriod === dueDate.slice(0, 7)) return [];
+        const paid = account.billDueDate ? account.lastPaidBillDueDate === dueDate : account.lastPaidPeriod === dueDate.slice(0, 7);
+        if (paid) return [];
         const provider = findUtilityProvider(account.provider);
-        const service = isUtilityService(account.service) ? UTILITY_SERVICE_LABELS[account.service].toLowerCase() : 'servicio';
+        const service = isPersonalBillService(account.service) ? UTILITY_SERVICE_LABELS[account.service].toLowerCase() : 'servicio';
         const name = provider?.name ?? account.provider;
         return [{
             id: stableNotificationId('utility', 'due', account.id, dueDate, String(days)),
@@ -48,17 +52,19 @@ export async function sendUtilityReminders(now = new Date()) {
     const admin = getSupabaseAdmin();
     const today = todayInChile(now);
     const { data, error } = await admin.from('resident_utility_accounts')
-        .select('id, user_id, service, provider, due_day, last_paid_period, profiles!inner(community_id)')
-        .eq('reminders_enabled', true).not('due_day', 'is', null);
+        .select('id, user_id, service, provider, due_day, last_paid_period, bill_due_date, last_paid_bill_due_date, profiles!inner(community_id)')
+        .eq('reminders_enabled', true).or('bill_due_date.not.is.null,due_day.not.is.null');
     if (error) throw error;
 
-    type Row = { id: string; user_id: string; service: string; provider: string; due_day: number; last_paid_period: string | null;
+    type Row = { id: string; user_id: string; service: string; provider: string; due_day: number | null; last_paid_period: string | null;
+        bill_due_date: string | null; last_paid_bill_due_date: string | null;
         profiles: { community_id: string | null } | { community_id: string | null }[] | null };
     const accounts: UtilityReminderAccount[] = ((data ?? []) as unknown as Row[]).flatMap(row => {
         const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
         if (!profile?.community_id) return [];
         return [{ id: row.id, userId: row.user_id, communityId: profile.community_id, service: row.service,
-            provider: row.provider, dueDay: row.due_day, lastPaidPeriod: row.last_paid_period }];
+            provider: row.provider, dueDay: row.due_day, lastPaidPeriod: row.last_paid_period,
+            billDueDate: row.bill_due_date, lastPaidBillDueDate: row.last_paid_bill_due_date }];
     });
 
     const notifications = buildUtilityReminders(accounts, today);

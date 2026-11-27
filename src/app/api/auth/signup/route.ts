@@ -38,6 +38,16 @@ function isExistingUserError(error: unknown) {
     return message.includes('already') || message.includes('registered') || message.includes('exists');
 }
 
+async function findSignupCommunity(admin: ReturnType<typeof getSupabaseAdmin>, accessCode: string) {
+    const { data, error } = await admin
+        .from('communities')
+        .select('id,name,managed,resident_code,concierge_code,admin_code')
+        .or(`resident_code.eq.${accessCode},concierge_code.eq.${accessCode},admin_code.eq.${accessCode}`)
+        .limit(1);
+    if (error) throw error;
+    return data?.[0] ?? null;
+}
+
 export async function POST(req: NextRequest) {
     const limited = await enforceDistributedRateLimit(req, 'auth.signup', { limit: 5, windowMs: 15 * 60_000 });
     if (limited) return limited;
@@ -52,18 +62,19 @@ export async function POST(req: NextRequest) {
         const byAddress = body.signupMode === 'address';
         // Invitación de un vecino (/unirse/<código>): el enlace ya trae el edificio.
         const byInvite = body.signupMode === 'invite';
+        const personal = body.signupMode === 'personal';
         const inviteCode = cleanText(body.inviteCode, 16).toUpperCase();
         let accessCode = cleanText(body.accessCode, 40).toUpperCase();
-        const departmentNumber = cleanText(body.departmentNumber, 40);
+        const departmentNumber = personal ? '' : cleanText(body.departmentNumber, 40);
         const buildingName = cleanText(body.buildingName, 120);
         const acceptTerms = body.acceptTerms === true;
         const acceptPrivacy = body.acceptPrivacy === true;
-        const whatsappOptIn = body.whatsappOptIn === true;
+        const whatsappOptIn = !personal && body.whatsappOptIn === true;
 
         if (!fullName) return NextResponse.json({ error: 'Ingresa tu nombre.' }, { status: 400 });
         if (!isEmail(email)) return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
         if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
-        if (!byAddress && !byInvite && !/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
+        if (!personal && !byAddress && !byInvite && !/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
             return NextResponse.json({ error: 'Código de invitación inválido.' }, { status: 400 });
         }
 
@@ -104,24 +115,18 @@ export async function POST(req: NextRequest) {
             accessCode = building.residentCode.toUpperCase();
         }
 
-        const { data: communities, error: communityError } = await admin
-            .from('communities')
-            .select('id,name,managed,resident_code,concierge_code,admin_code')
-            .or(`resident_code.eq.${accessCode},concierge_code.eq.${accessCode},admin_code.eq.${accessCode}`)
-            .limit(1);
-        if (communityError) throw communityError;
-
-        const community = communities?.[0];
-        const resolvedRole = community ? roleForCode(community, accessCode) : null;
-        if (!community || !resolvedRole) {
+        const community = personal ? null : await findSignupCommunity(admin, accessCode);
+        const resolvedRole = personal ? 'resident' : community ? roleForCode(community, accessCode) : null;
+        const communityId = community?.id ?? null;
+        if (!resolvedRole) {
             return NextResponse.json({ error: 'El código de invitación no es válido.' }, { status: 403 });
         }
         // En una comunidad sin administrar solo hay residentes, sin validar.
-        const communityManaged = community.managed !== false;
+        const communityManaged = community !== null && community.managed !== false;
         if (!communityManaged && resolvedRole !== 'resident') {
             return NextResponse.json({ error: 'El código de invitación no es válido.' }, { status: 403 });
         }
-        if (resolvedRole === 'resident' && !departmentNumber) {
+        if (!personal && resolvedRole === 'resident' && !departmentNumber) {
             return NextResponse.json({ error: 'Ingresa tu departamento o unidad.' }, { status: 400 });
         }
 
@@ -131,13 +136,14 @@ export async function POST(req: NextRequest) {
             email_confirm: false,
             user_metadata: {
                 name: fullName,
-                invite_code: accessCode,
-                department_number: resolvedRole === 'resident' && !(byInvite && community.managed !== false) ? departmentNumber : undefined,
+                invite_code: personal ? undefined : accessCode,
+                department_number: departmentNumber && resolvedRole === 'resident' && !(byInvite && communityManaged) ? departmentNumber : undefined,
             },
+            app_metadata: personal ? { personal_signup: true } : undefined,
         });
         if (createError) {
             // No queda un edificio vacío creado por un registro que no prosperó.
-            if (createdCommunity) await admin.from('communities').delete().eq('id', community.id).eq('managed', false);
+            if (createdCommunity && communityId) await admin.from('communities').delete().eq('id', communityId).eq('managed', false);
             const status = isExistingUserError(createError) ? 409 : 400;
             return NextResponse.json({
                 error: status === 409 ? 'Este correo ya tiene una cuenta.' : 'No se pudo crear la cuenta.',
@@ -148,8 +154,8 @@ export async function POST(req: NextRequest) {
         if (!userId) throw new Error('No se pudo crear el usuario.');
 
         let unitId: string | null = null;
-        if (resolvedRole === 'resident' && departmentNumber && !(byInvite && communityManaged)) {
-            unitId = await findOrCreateCommunityUnit(admin, community.id, departmentNumber);
+        if (communityId && resolvedRole === 'resident' && departmentNumber && !(byInvite && communityManaged)) {
+            unitId = await findOrCreateCommunityUnit(admin, communityId, departmentNumber);
         }
 
         const { error: profileError } = await admin.from('profiles').upsert({
@@ -158,8 +164,8 @@ export async function POST(req: NextRequest) {
             name: fullName,
             full_name: fullName,
             role: resolvedRole,
-            community_id: community.id,
-            department_number: resolvedRole === 'resident' ? departmentNumber : null,
+            community_id: communityId,
+            department_number: resolvedRole === 'resident' ? departmentNumber || null : null,
             unit_id: unitId,
             whatsapp_enabled: whatsappOptIn,
             // Por invitación de un vecino nunca queda validado: lo confirma la administración.
@@ -170,19 +176,19 @@ export async function POST(req: NextRequest) {
             await admin.auth.admin.deleteUser(userId);
             throw profileError;
         }
-        if (createdCommunity) {
-            await admin.from('communities').update({ created_by_resident: userId }).eq('id', community.id);
+        if (createdCommunity && communityId) {
+            await admin.from('communities').update({ created_by_resident: userId }).eq('id', communityId);
         }
         if (invite) await recordInviteUse(invite.code, invite.uses).catch(() => undefined);
         // Con 5 y 10 vecinos sin administración, el equipo comercial se entera.
-        if (!communityManaged) {
+        if (community && !communityManaged) {
             await noteResidentThreshold(community.id, String(community.name)).catch(error => logger.warn('auth.signup_threshold_note_failed', { error }));
         }
 
         const consentEvents = [
             {
                 user_id: userId,
-                community_id: community.id,
+                community_id: communityId,
                 consent_type: 'terms',
                 action: 'granted',
                 policy_version: TERMS_VERSION,
@@ -192,7 +198,7 @@ export async function POST(req: NextRequest) {
             },
             {
                 user_id: userId,
-                community_id: community.id,
+                community_id: communityId,
                 consent_type: 'privacy_notice',
                 action: 'granted',
                 policy_version: PRIVACY_POLICY_VERSION,
@@ -202,7 +208,7 @@ export async function POST(req: NextRequest) {
             },
             ...(whatsappOptIn ? [{
                 user_id: userId,
-                community_id: community.id,
+                community_id: communityId,
                 consent_type: 'whatsapp',
                 action: 'granted',
                 policy_version: PRIVACY_POLICY_VERSION,
@@ -236,7 +242,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        await sendWelcomeEmail({
+        if (community) await sendWelcomeEmail({
             to: email,
             residentName: fullName,
             unitName: departmentNumber ? `Depto ${departmentNumber}` : resolvedRole === 'admin' ? 'Administración' : 'Conserjería',

@@ -84,6 +84,7 @@ type SidebarProps = {
   role?: Role;
   activeHref?: string;
   user?: { name: string; initials: string; roleLabel: string };
+  personal?: boolean;
 };
 
 type SidebarLink = {
@@ -101,7 +102,7 @@ type SidebarLink = {
   optIn?: boolean;
 };
 
-export function Sidebar({ role: propRole, activeHref: propActiveHref, user: propUser }: SidebarProps) {
+export function Sidebar({ role: propRole, activeHref: propActiveHref, user: propUser, personal = false }: SidebarProps) {
   const pathname = usePathname();
   const { user: authUser, logout } = useAuth();
   const router = useRouter();
@@ -159,7 +160,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     };
   }, [activeUser.email, activeUser.role]);
   useEffect(() => {
-    if (activeUser.role !== "resident" || !authUser?.id) return;
+    if (personal || activeUser.role !== "resident" || !authUser?.id) return;
 
     let cancelled = false;
     NavigationService.getResidentContext(authUser.id)
@@ -173,14 +174,30 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     return () => {
       cancelled = true;
     };
-  }, [activeUser.role, authUser?.id]);
+  }, [activeUser.role, authUser?.id, personal]);
 
   const role: Role = (activeUser.role === "concierge" ? "conserje" : activeUser.role === "resident" ? "resident" : "admin") as Role;
   const accent = ACCENT[role];
   const activeHref = propActiveHref || pathname;
   const isPlatformCreator = isPlatformCreatorEmail(activeUser.email);
 
-  const menuSections = [
+  const menuSections = personal ? [
+    {
+      title: "MI HOGAR",
+      links: [
+        { href: "/home", label: "Inicio", icon: Home, roles: ["resident"] },
+        { href: "/resident/servicios", label: "Cuentas", icon: Zap, roles: ["resident"] },
+        { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
+      ],
+    },
+    {
+      title: "AJUSTES",
+      links: [
+        { href: "/profile", label: "Mi perfil y privacidad", icon: UserCircle, roles: ["resident"] },
+        { href: "/bienvenida", label: "Vincular comunidad", icon: Users, roles: ["resident"] },
+      ],
+    },
+  ] : [
     {
       title: "INTELIGENCIA OPERATIVA",
       links: [
@@ -220,7 +237,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/expenses", label: "Mis Gastos", icon: DollarSign, roles: ["resident"] },
         { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"], feature: "water" },
-        { href: "/resident/servicios", label: "Mis Servicios", icon: Zap, roles: ["resident", "admin"] },
+        { href: "/resident/servicios", label: "Cuentas", icon: Zap, roles: ["resident", "admin"] },
         { href: "/embarcaciones", label: "Embarcaciones", icon: Sailboat, roles: ["resident", "admin"], feature: "lake", optIn: true },
         { href: "/resident/packages", label: "Mis Encomiendas", icon: Package, roles: ["resident"] },
         { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident"] },
@@ -285,11 +302,12 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     }
   ];
 
-  if (hasSuperAdminAccess) {
+  if (!personal && hasSuperAdminAccess) {
     menuSections.push({
       title: "SaaS SUPERADMIN",
       links: [
-        { href: "/superadmin", label: "Panel SaaS", icon: Shield, roles: ["admin"] }
+        { href: "/superadmin", label: "Panel SaaS", icon: Shield, roles: ["admin"] },
+        { href: "/superadmin/providers", label: "Proveedores", icon: Wrench, roles: ["admin"] }
       ]
     });
   }

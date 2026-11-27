@@ -23,8 +23,13 @@ describe('handle_new_user', () => {
           CREATE POLICY "profiles_select_community_only" ON public.profiles FOR SELECT USING (community_id = public.get_my_community_id());
           GRANT SELECT ON public.profiles TO authenticated;
           ALTER TABLE public.units ADD COLUMN IF NOT EXISTS tower TEXT, ADD COLUMN IF NOT EXISTS floor INTEGER, ADD COLUMN IF NOT EXISTS type TEXT, ADD COLUMN IF NOT EXISTS resident_profile_id UUID;
+          CREATE TABLE public.resident_utility_accounts (
+            service TEXT CHECK (service IN ('electricity', 'water', 'gas'))
+          );
+          INSERT INTO public.resident_utility_accounts (service) VALUES ('electricity'), ('water'), ('gas');
         `);
         await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261114160000_oauth_signup_without_invite.sql'), 'utf8'));
+        await db.exec(readFileSync(resolve(process.cwd(), 'supabase/migrations/20261127161253_personal_accounts.sql'), 'utf8'));
         await db.exec('CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();');
         await db.query("INSERT INTO public.communities (id, name, resident_code, concierge_code, admin_code) VALUES ('11111111-1111-4111-8111-111111111111', 'Los Aromos', 'RES-AROMOS', 'CON-AROMOS', 'ADM-AROMOS')");
     });
@@ -41,6 +46,25 @@ describe('handle_new_user', () => {
     it('con correo y sin código: se rechaza, como antes', async () => {
         await expect(db.query(`INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES ($1, 'x@x.cl', '{"provider":"email"}')`, ['33333333-3333-4333-8333-333333333333']))
             .rejects.toThrow(/invitation code/);
+    });
+
+    it('el alta personal del servidor crea un perfil sin comunidad ni unidad', async () => {
+        const id = '55555555-5555-4555-8555-555555555555';
+        await db.query(`INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES ($1, 'personal@example.cl', '{"provider":"email","personal_signup":true}')`, [id]);
+        const { rows } = await db.query('SELECT role, community_id, unit_id FROM public.profiles WHERE id = $1', [id]);
+        expect(rows[0]).toEqual({ role: 'resident', community_id: null, unit_id: null });
+    });
+
+    it('rechaza la marca personal si solo viene de los metadatos del usuario', async () => {
+        await expect(db.query(`INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES ($1, 'publico@example.cl', '{"personal_signup":true}')`, ['66666666-6666-4666-8666-666666666666']))
+            .rejects.toThrow(/invitation code/);
+    });
+
+    it('mantiene las cuentas existentes y admite las tres categorías nuevas', async () => {
+        await db.exec("INSERT INTO public.resident_utility_accounts (service) VALUES ('internet'), ('highway'), ('mobile')");
+        const { rows } = await db.query('SELECT service FROM public.resident_utility_accounts ORDER BY service');
+        expect(rows.map(row => row.service)).toEqual(['electricity', 'gas', 'highway', 'internet', 'mobile', 'water']);
+        await expect(db.exec("INSERT INTO public.resident_utility_accounts (service) VALUES ('unsupported')")).rejects.toThrow(/service_check/);
     });
 
     it('con código válido: entra a su edificio y a su unidad, por cualquier vía', async () => {

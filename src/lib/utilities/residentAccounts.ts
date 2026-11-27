@@ -1,6 +1,7 @@
+import { isBillDate } from './personalBill';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type { ResidentUtilityAccount, ResidentUtilityAccountInput } from '@/lib/types';
-import { findUtilityProvider, isUtilityService, normalizeCustomerNumber } from './providers';
+import { findUtilityProvider, isPersonalBillService, normalizeCustomerNumber } from './providers';
 
 /**
  * Cuentas personales de luz, agua y gas del residente. Son privadas: cada
@@ -13,23 +14,27 @@ export class UtilityAccountError extends Error {
 }
 
 const MAX_ACCOUNTS = 12;
-const COLUMNS = 'id, service, provider, customer_number, alias, due_day, reminders_enabled, last_paid_period';
+const COLUMNS = 'id, service, provider, customer_number, alias, due_day, reminders_enabled, last_paid_period, bill_due_date, bill_amount, last_paid_bill_due_date';
 
 type Row = {
     id: string; service: string; provider: string; customer_number: string; alias: string | null;
     due_day: number | null; reminders_enabled: boolean; last_paid_period: string | null;
+    bill_due_date: string | null; bill_amount: number | null; last_paid_bill_due_date: string | null;
 };
 
 function mapRow(row: Row): ResidentUtilityAccount {
     return {
         id: row.id,
-        service: isUtilityService(row.service) ? row.service : 'electricity',
+        service: isPersonalBillService(row.service) ? row.service : 'electricity',
         provider: row.provider,
         customerNumber: row.customer_number,
         alias: row.alias || '',
         dueDay: row.due_day,
         remindersEnabled: row.reminders_enabled,
         lastPaidPeriod: row.last_paid_period,
+        billDueDate: row.bill_due_date,
+        billAmount: row.bill_amount,
+        lastPaidBillDueDate: row.last_paid_bill_due_date,
     };
 }
 
@@ -38,6 +43,20 @@ function parseDueDay(value: unknown): number | null {
     const day = Number(value);
     if (!Number.isInteger(day) || day < 1 || day > 31) throw new UtilityAccountError('El día de vencimiento va del 1 al 31.');
     return day;
+}
+
+function parseBillDate(value: unknown): string | null {
+    if (value === null || value === undefined || value === '') return null;
+    if (!isBillDate(value)) throw new UtilityAccountError('La fecha de vencimiento no es válida.');
+    return value;
+}
+
+function parseBillAmount(value: unknown): number | null {
+    if (value === null || value === undefined) return null;
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 2_147_483_647) {
+        throw new UtilityAccountError('Ingresa un monto válido en pesos.');
+    }
+    return value;
 }
 
 export function validateAccountInput(input: Partial<ResidentUtilityAccountInput>) {
@@ -73,7 +92,9 @@ export async function createResidentAccount(userId: string, input: Partial<Resid
     if (countError) throw countError;
     if ((count ?? 0) >= MAX_ACCOUNTS) throw new UtilityAccountError(`Puedes registrar hasta ${MAX_ACCOUNTS} cuentas.`);
     const { data, error } = await admin.from('resident_utility_accounts')
-        .insert({ ...values, user_id: userId }).select(COLUMNS).single();
+        .insert({ ...values, user_id: userId,
+            bill_due_date: parseBillDate(input.billDueDate), bill_amount: parseBillAmount(input.billAmount),
+        }).select(COLUMNS).single();
     if (error) {
         if (error.code === '23505') throw new UtilityAccountError('Esa cuenta ya está registrada.', 409);
         throw error;
@@ -81,7 +102,7 @@ export async function createResidentAccount(userId: string, input: Partial<Resid
     return mapRow(data as Row);
 }
 
-export async function updateResidentAccount(userId: string, id: string, input: Partial<ResidentUtilityAccountInput> & { paidPeriod?: string | null }) {
+export async function updateResidentAccount(userId: string, id: string, input: Partial<ResidentUtilityAccountInput> & { paidPeriod?: string | null; paidBillDueDate?: string | null }) {
     const changes: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (input.provider !== undefined || input.customerNumber !== undefined) Object.assign(changes, validateAccountInput(input));
     else {
@@ -89,6 +110,9 @@ export async function updateResidentAccount(userId: string, id: string, input: P
         if (input.dueDay !== undefined) changes.due_day = parseDueDay(input.dueDay);
         if (input.remindersEnabled !== undefined) changes.reminders_enabled = Boolean(input.remindersEnabled);
     }
+    if (input.billDueDate !== undefined) changes.bill_due_date = parseBillDate(input.billDueDate);
+    if (input.billAmount !== undefined) changes.bill_amount = parseBillAmount(input.billAmount);
+    if (input.paidBillDueDate !== undefined) changes.last_paid_bill_due_date = parseBillDate(input.paidBillDueDate);
     if (input.paidPeriod !== undefined) {
         if (input.paidPeriod !== null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.paidPeriod)) throw new UtilityAccountError('Mes no válido.');
         changes.last_paid_period = input.paidPeriod;

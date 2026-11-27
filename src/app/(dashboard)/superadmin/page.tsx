@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { Activity, Building2, Check, Copy, Search, Shield, UserRoundCheck } from "lucide-react";
+import { Activity, Building2, Check, Copy, Search, Shield, UserRoundCheck, Wrench, Zap } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import CommercialOutreach from "@/components/admin/CommercialOutreach";
-import ProviderNetworkPanel from "@/components/admin/ProviderNetworkPanel";
 import NeighborBuildingsPanel from "@/components/admin/NeighborBuildingsPanel";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import type {
@@ -163,6 +163,18 @@ export default function SuperAdminDashboard() {
                         Gestiona los condominios clientes, sus planes y módulos activos.
                     </p>
                 </div>
+                <nav aria-label="Accesos del panel" className="flex flex-wrap gap-2 text-sm font-semibold">
+                    <Link href="/superadmin/providers" className="inline-flex items-center gap-2 rounded-xl px-4 py-2"
+                        style={{ background: "var(--cc-ink)", color: "var(--cc-paper)" }}>
+                        <Wrench className="h-4 w-4" aria-hidden="true" /> Proveedores
+                    </Link>
+                    {user?.role !== "concierge" && (
+                        <Link href="/resident/servicios" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2"
+                            style={{ borderColor: "var(--cc-line-strong)" }}>
+                            <Zap className="h-4 w-4" aria-hidden="true" /> Mis cuentas
+                        </Link>
+                    )}
+                </nav>
             </div>
 
             {/* Quick Stats */}
@@ -208,8 +220,6 @@ export default function SuperAdminDashboard() {
             <CommercialOutreach />
 
             <NeighborBuildingsPanel />
-
-            <ProviderNetworkPanel />
 
             <section className="grid gap-4 rounded-2xl border p-6 md:grid-cols-[1fr_auto] md:items-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="flex items-start gap-4">

@@ -27,7 +27,7 @@ export default function SignUpPage() {
     const [whatsappOptIn, setWhatsappOptIn] = useState(false);
     const [accessCodeError, setAccessCodeError] = useState("");
     // Entrada por residente: sin código, con la dirección del edificio.
-    const [signupMode, setSignupMode] = useState<"code" | "address" | "invite">("code");
+    const [signupMode, setSignupMode] = useState<"code" | "address" | "invite" | "personal">("code");
     // /signup?invitacion=<código>: invitación de un vecino por WhatsApp; ya trae el edificio.
     const [invite, setInvite] = useState<NeighborInvitePreview | null>(null);
     // /signup?modo=edificio abre directo en "Mi edificio no usa Convive" (enlace para volantes y QR).
@@ -43,6 +43,7 @@ export default function SignUpPage() {
             return;
         }
         if (params.get("modo") === "edificio") setSignupMode("address");
+        if (["personal", "cuentas"].includes(params.get("modo") ?? "")) setSignupMode("personal");
     }, []);
     const [buildingAddress, setBuildingAddress] = useState<GeocodeSuggestion | null>(null);
     const [buildingName, setBuildingName] = useState("");
@@ -140,7 +141,7 @@ export default function SignUpPage() {
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : "No se pudo crear la cuenta.";
-                const title = message.includes("perfil") ? "Rol no coincide" : "Código inválido";
+                const title = "No se pudo crear la cuenta";
             toast({ title, description: message, variant: "destructive" });
             setLoading(false);
             return;
@@ -171,7 +172,7 @@ export default function SignUpPage() {
                     <div className="w-full max-w-[360px] space-y-7">
                         <div className="flex justify-between items-start">
                             <div>
-                        <Eyebrow className="mb-2">INVITACIÓN</Eyebrow>
+                        <Eyebrow className="mb-2">Convive Connect</Eyebrow>
                                 <DisplayHeading size={36}>
                                     Crear <br />
                                     <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>cuenta.</em>
@@ -255,10 +256,10 @@ export default function SignUpPage() {
 
                             {signupMode !== "invite" && (
                             <div className="grid grid-cols-2 gap-1 rounded-xl border p-1 text-xs font-semibold" style={{ borderColor: "var(--cc-line-strong)" }} role="tablist">
-                                {([["code", "Tengo código"], ["address", "Mi edificio no usa Convive"]] as const).map(([mode, label]) => (
+                                {([["code", "Tengo código"], ["address", "Mi edificio no usa Convive"], ["personal", "Sin condominio"]] as const).map(([mode, label]) => (
                                     <button key={mode} type="button" role="tab" aria-selected={signupMode === mode}
                                         onClick={() => { setSignupMode(mode); setManagedBuilding(""); }}
-                                        className="rounded-lg px-2 py-2 transition-colors"
+                                        className={`rounded-lg px-2 py-2 transition-colors ${mode === "personal" ? "col-span-2" : ""}`}
                                         style={signupMode === mode ? { background: "var(--cc-ink)", color: "var(--cc-paper)" } : { color: "var(--cc-ink)" }}>
                                         {label}
                                     </button>
@@ -332,7 +333,7 @@ export default function SignUpPage() {
                             </Field>
                             )}
 
-                            <Field label={signupMode === "code" ? "DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)" : "DEPARTAMENTO / UNIDAD"} htmlFor="department-number">
+                            {signupMode !== "personal" && <Field label={signupMode === "code" ? "DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)" : "DEPARTAMENTO / UNIDAD"} htmlFor="department-number">
                                 <input
                                     id="department-number"
                                     type="text"
@@ -342,7 +343,11 @@ export default function SignUpPage() {
                                     className="w-full px-4 py-3 rounded-xl border bg-[var(--cc-paper)] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
-                            </Field>
+                            </Field>}
+
+                            {signupMode === "personal" && (
+                                <p className="text-xs cc-text-secondary">Podrás acceder a las funciones personales de Convive y vincular tu comunidad más adelante.</p>
+                            )}
 
                             <div className="space-y-3 rounded-xl border p-4 text-xs text-slate-600" style={{ borderColor: "var(--cc-line-strong)" }}>
                                 <label className="flex items-start gap-3">
@@ -353,10 +358,10 @@ export default function SignUpPage() {
                                     <input type="checkbox" checked={acceptPrivacy} onChange={(event) => setAcceptPrivacy(event.target.checked)} required className="mt-0.5" />
                                     <span>Confirmo que leí la <Link href="/privacy" target="_blank" className="font-semibold underline">política de privacidad</Link>.</span>
                                 </label>
-                                <label className="flex items-start gap-3">
+                                {signupMode !== "personal" && <label className="flex items-start gap-3">
                                     <input type="checkbox" checked={whatsappOptIn} onChange={(event) => setWhatsappOptIn(event.target.checked)} className="mt-0.5" />
                                     <span>Quiero recibir avisos operativos por WhatsApp. Es opcional y puedo retirarlo después.</span>
-                                </label>
+                                </label>}
                             </div>
 
                             <button

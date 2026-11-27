@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isSuperAdminEmail } from "@/lib/security/superadmin";
 import { resolveProductCapabilities } from "@/lib/productCapabilities";
-import { homePathForRole, isDashboardPathAllowedForRole } from "@/lib/roleAccess";
+import { homePathForRole, isDashboardPathAllowedForRole, isPersonalDashboardPath } from "@/lib/roleAccess";
 import { SUPERMARKET_DIRECT_IMAGE_HOSTS } from "@/lib/supermarketImageSources";
 
 const SUPERMARKET_DIRECT_IMAGE_CSP = SUPERMARKET_DIRECT_IMAGE_HOSTS
@@ -160,12 +160,15 @@ export async function proxy(req: NextRequest) {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Entró con Google y todavía no eligió edificio: primero eso.
-  if (profile && !profile.community_id) {
-    return secureResponse(NextResponse.redirect(new URL("/bienvenida", req.url)), nonce);
-  }
-
   const role = typeof profile?.role === "string" ? profile.role : "resident";
+  if (profile && !profile.community_id) {
+    if (role !== "resident") {
+      return secureResponse(NextResponse.redirect(new URL("/bienvenida", req.url)), nonce);
+    }
+    if (!isPersonalDashboardPath(pathname)) {
+      return secureResponse(NextResponse.redirect(new URL("/home", req.url)), nonce);
+    }
+  }
 
   if (pathname.startsWith("/comunicaciones") && role === "resident") {
     return secureResponse(NextResponse.redirect(new URL("/feed", req.url)), nonce);

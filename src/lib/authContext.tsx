@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // Fetch or repair unit if exists
                 fetchUnitForUser(sbUser.id, profileUnitId);
                 if (profile.community_id) fetchCommunityUnitNoun(profile.community_id);
-                if (profileRole === 'resident' && !profileUnitId) {
+                if (profile.community_id && profileRole === 'resident' && !profileUnitId) {
                     ensureResidentUnitForUser();
                 }
                 return profileRole;

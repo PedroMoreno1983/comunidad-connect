@@ -704,9 +704,8 @@ BEGIN
   LIMIT 1;
 
   IF v_community_id IS NULL OR v_role IS NULL THEN
-    -- Google y otros proveedores OAuth: perfil sin comunidad; elige su
-    -- edificio en /bienvenida.
-    IF v_provider <> 'email' THEN
+    -- El alta personal por correo solo la habilita la API del servidor.
+    IF v_provider <> 'email' OR NEW.raw_app_meta_data->'personal_signup' = 'true'::jsonb THEN
       INSERT INTO public.profiles (id, name, full_name, email, role, community_id)
       VALUES (NEW.id, v_name, v_name, NEW.email, 'resident', NULL)
       ON CONFLICT (id) DO NOTHING;
@@ -7531,13 +7530,16 @@ GRANT ALL ON public.community_utility_accounts TO service_role;
 CREATE TABLE IF NOT EXISTS public.resident_utility_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    service TEXT NOT NULL CHECK (service IN ('electricity', 'water', 'gas')),
+    service TEXT NOT NULL CHECK (service IN ('electricity', 'water', 'gas', 'internet', 'highway', 'mobile')),
     provider TEXT NOT NULL CHECK (length(provider) BETWEEN 1 AND 40),
     customer_number TEXT NOT NULL CHECK (length(customer_number) BETWEEN 1 AND 40),
     alias TEXT NOT NULL DEFAULT '' CHECK (length(alias) <= 60),
     -- Día del mes en que suele vencer. NULL: sin recordatorio de fecha.
     due_day SMALLINT CHECK (due_day IS NULL OR due_day BETWEEN 1 AND 31),
     reminders_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    bill_due_date DATE,
+    bill_amount INTEGER CHECK (bill_amount >= 0),
+    last_paid_bill_due_date DATE,
     -- Último mes (AAAA-MM) que el residente marcó como pagado: apaga el aviso de ese mes.
     last_paid_period TEXT CHECK (last_paid_period IS NULL OR last_paid_period ~ '^\d{4}-(0[1-9]|1[0-2])$'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

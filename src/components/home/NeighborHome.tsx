@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Bot, ShoppingBag, Store, Wrench } from "lucide-react";
+import { ArrowRight, Bot, ShoppingBag, Store, Wrench, Zap } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { Eyebrow } from "@/components/cc/Eyebrow";
 import type { NeighborHomeProps, ResidentHomeQuickActionProps } from "@/lib/types";
@@ -82,7 +82,8 @@ export function NeighborHome({ firstName, buildingName, pendingValidation, initi
             </section>
 
             <Eyebrow className="mb-3">Lo que ya puedes usar</Eyebrow>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Tile href="/resident/servicios" icon={<Zap size={19} />} title="Cuentas" detail="Organiza tus cuentas personales de luz, agua y más." />
                 <Tile href="/resident/supermercado" icon={<Store size={19} />} title="Supermercado" detail="Compara precios entre cadenas y arma tu carro." />
                 <Tile href="/marketplace" icon={<ShoppingBag size={19} />} title="Marketplace" detail="Compra, vende o permuta con tus vecinos." />
                 <Tile href="/services" icon={<Wrench size={19} />} title="Maestros de confianza" detail="Gasfiter, electricista y más, con reseñas de vecinos." />

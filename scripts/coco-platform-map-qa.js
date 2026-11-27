@@ -35,6 +35,7 @@ const EXCLUDED = {
   "/showcase": "Lienzo de diseño interno, oculto del menú",
   "/marketing/reels": "Herramienta interna del creador de la plataforma",
   "/superadmin": "Consola SaaS interna",
+  "/superadmin/providers": "Administración global de proveedores en la consola SaaS",
 };
 
 function walk(dir, out = []) {

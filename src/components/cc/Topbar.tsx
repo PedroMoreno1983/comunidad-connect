@@ -13,6 +13,7 @@ type TopbarProps = {
   roleLabel: string;
   /** Pass current date/time formatted in es-CL. */
   rightSubtitle: string;
+  personal?: boolean;
   /** Optional search destination and label. */
   searchHref?: string;
   searchPlaceholder?: string;
@@ -24,6 +25,7 @@ export function Topbar({
   building,
   roleLabel,
   rightSubtitle,
+  personal = false,
   searchHref = "/directorio",
   searchPlaceholder = "Buscar residentes, unidades, casos…",
   cta,
@@ -36,7 +38,7 @@ export function Topbar({
       <div className="flex items-center gap-3.5 min-w-0">
         <Tag tone="copper" solid dot>
           <span className="truncate max-w-[120px] sm:max-w-none">
-            {building} · {roleLabel}
+            {personal ? roleLabel : `${building} · ${roleLabel}`}
           </span>
         </Tag>
         <div className="text-[12px] hidden sm:block truncate" style={{ color: "var(--cc-ink-tertiary)" }}>
@@ -44,7 +46,7 @@ export function Topbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5 shrink-0">
+      {!personal && <div className="flex items-center gap-2.5 shrink-0">
         <Link
           href={searchHref}
           aria-label={searchPlaceholder}
@@ -91,7 +93,7 @@ export function Topbar({
             <Plus size={13} /> <span className="hidden sm:inline">{cta.label}</span>
           </Button>
         ) : null}
-      </div>
+      </div>}
     </header>
   );
 }

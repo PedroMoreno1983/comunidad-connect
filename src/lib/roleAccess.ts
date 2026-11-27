@@ -10,6 +10,13 @@ export function normalizeAppRole(role: string | null | undefined): AppRole {
     return "resident";
 }
 
+export function isPersonalDashboardPath(pathname: string): boolean {
+    return [
+        "/home", "/resident/servicios", "/resident/supermercado",
+        "/resident/supermercado/comparador", "/profile", "/privacy-center",
+    ].includes(pathname);
+}
+
 export function homePathForRole(role: string | null | undefined): string {
     const normalized = normalizeAppRole(role);
     if (normalized === "admin") return "/chat";

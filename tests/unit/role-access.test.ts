@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { homePathForRole, isDashboardPathAllowedForRole, postLoginPath } from "@/lib/roleAccess";
+import { homePathForRole, isDashboardPathAllowedForRole, isPersonalDashboardPath, postLoginPath } from "@/lib/roleAccess";
 
 describe("roleAccess", () => {
     it.each([
@@ -16,6 +16,15 @@ describe("roleAccess", () => {
         expect(homePathForRole("admin")).toBe("/chat");
         expect(homePathForRole("concierge")).toBe("/concierge");
         expect(homePathForRole("resident")).toBe("/home");
+    });
+
+    it("limits accounts without a community to home, personal tools and profile", () => {
+        for (const path of ["/home", "/resident/servicios", "/resident/supermercado", "/resident/supermercado/comparador", "/profile", "/privacy-center"]) {
+            expect(isPersonalDashboardPath(path)).toBe(true);
+        }
+        for (const path of ["/expenses", "/resident/consumo", "/resident/services-other", "/admin", "/agent-center", "/chat"]) {
+            expect(isPersonalDashboardPath(path)).toBe(false);
+        }
     });
 
     it("blocks concierge from resident finance routes", () => {

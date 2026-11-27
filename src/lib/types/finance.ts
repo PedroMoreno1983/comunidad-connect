@@ -995,6 +995,7 @@ export interface FirebaseFederatedAccount {
 // ─── Servicios básicos: luz, agua y gas ─────────────────────────────────────
 
 export type UtilityService = 'electricity' | 'water' | 'gas';
+export type PersonalBillService = UtilityService | 'internet' | 'highway' | 'mobile';
 
 export interface UtilityBillFields {
     customerNumber: string;
@@ -1005,24 +1006,35 @@ export interface UtilityBillFields {
 }
 
 /** Cuenta personal del residente. Privada: solo la ve su dueño. */
+export interface PersonalBillExtract {
+    customerNumber: string | null;
+    dueDate: string | null;
+    amount: number | null;
+}
+
 export interface ResidentUtilityAccount {
     id: string;
-    service: UtilityService;
+    service: PersonalBillService;
     provider: string;
     customerNumber: string;
     alias: string;
     dueDay: number | null;
     remindersEnabled: boolean;
     lastPaidPeriod: string | null;
+    billDueDate?: string | null;
+    billAmount?: number | null;
+    lastPaidBillDueDate?: string | null;
 }
 
 export interface ResidentUtilityAccountInput {
-    service: UtilityService;
+    service: PersonalBillService;
     provider: string;
     customerNumber: string;
     alias?: string;
     dueDay?: number | null;
     remindersEnabled?: boolean;
+    billDueDate?: string | null;
+    billAmount?: number | null;
 }
 
 // ─── Boletas que llegan por correo ──────────────────────────────────────────

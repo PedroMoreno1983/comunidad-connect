@@ -7,13 +7,14 @@ import Image from "next/image";
 import { useAuth } from "@/lib/authContext";
 import { HomeService } from "@/lib/api";
 import type { ResidentHomeQuickActionProps, ResidentHomeSummary } from "@/lib/types";
-import { Bell, ChevronRight, ArrowRight, Sparkles, BellRing, Bot, CalendarCheck, Wrench, QrCode, Megaphone } from "lucide-react";
+import { Bell, ChevronRight, ArrowRight, Sparkles, BellRing, Bot, CalendarCheck, Wrench, QrCode, Megaphone, Zap } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { Button } from "@/components/cc/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { NextUpCard } from "@/components/home/NextUpCard";
+import { PersonalHome } from "@/components/home/PersonalHome";
 import { NeighborHome } from "@/components/home/NeighborHome";
 import { todayInChile } from "@/lib/finance/chileDates";
 import type { ResidentNextUp } from "@/lib/home/types";
@@ -43,7 +44,7 @@ export default function HomePage() {
 
     // ── Fetch Resident Data ──
     useEffect(() => {
-        if (!user || user.role !== "resident") return;
+        if (!user?.communityId || user.role !== "resident") return;
         // Modo vecino: el inicio no muestra gastos ni reservas; no hace falta pedirlos.
         if (user.communityManaged === false || user.residenceVerified === false) return;
 
@@ -64,6 +65,7 @@ export default function HomePage() {
     }, [user]);
 
     if (!user || user.role !== "resident") return null;
+    if (!user.communityId) return <PersonalHome />;
 
     // Modo vecino o esperando validación: el inicio de abajo (gastos, reservas,
     // visitas) lleva a pantallas que todavía no existen para esta persona.
@@ -193,7 +195,8 @@ export default function HomePage() {
                         <Eyebrow>¿Qué necesitas hacer?</Eyebrow>
                         <span className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>Accesos directos</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                        <QuickAction href="/resident/servicios" icon={<Zap size={19} />} title="Cuentas" detail="Luz, agua y más" />
                         <QuickAction href="/amenities" icon={<CalendarCheck size={19} />} title="Reservar" detail="Espacios comunes" />
                         <QuickAction href="/resident/invitations" icon={<QrCode size={19} />} title="Invitar" detail="Generar acceso" />
                         <QuickAction href="/services" icon={<Wrench size={19} />} title="Solicitar" detail="Servicios para tu hogar" />
