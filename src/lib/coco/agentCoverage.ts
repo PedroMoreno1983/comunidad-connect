@@ -98,6 +98,7 @@ export const AGENT_COVERAGE: Record<string, AgentCoverage> = {
     'DELETE /api/boats': { ui: 'Quitar una embarcación del registro: se hace en la pantalla, con confirmación.' },
     'UtilityAccountsService.create': { gap: 'Registrar una cuenta personal de luz, agua o gas (Mis servicios).' },
     'POST /api/resident/utility-accounts': { gap: 'Registrar una cuenta personal de luz, agua o gas (Mis servicios).' },
+    'POST /api/resident/utility-accounts/read-bill': { read: 'Extrae el número de cliente, el monto y el vencimiento de una boleta PDF para revisar en Cuentas.' },
     'UtilityAccountsService.update': { gap: 'Marcar como pagada una cuenta de luz, agua o gas, o cambiar su vencimiento.' },
     'PATCH /api/resident/utility-accounts': { gap: 'Marcar como pagada una cuenta de luz, agua o gas, o cambiar su vencimiento.' },
     'UtilityAccountsService.remove': { ui: 'Quitar una cuenta de Mis servicios: se hace en la pantalla, con confirmación.' },

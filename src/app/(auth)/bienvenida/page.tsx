@@ -157,6 +157,7 @@ export default function WelcomePage() {
                     {loading ? <Loader2 size={16} className="animate-spin" /> : null}
                     Entrar a mi edificio <ArrowRight size={15} />
                 </button>
+                <Link href="/home" className="block text-center text-sm font-semibold underline">Volver a Inicio</Link>
             </form>
         </main>
     );

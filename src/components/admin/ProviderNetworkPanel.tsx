@@ -27,6 +27,7 @@ const EMPTY_FORM = { name: "", category: "plumbing", contactPhone: "", email: ""
 export default function ProviderNetworkPanel() {
     const { toast } = useToast();
     const [data, setData] = useState<SuperAdminProvidersResponse | null>(null);
+    const [loadError, setLoadError] = useState("");
     const [busy, setBusy] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [form, setForm] = useState(EMPTY_FORM);
@@ -44,12 +45,13 @@ export default function ProviderNetworkPanel() {
     }, [search]);
 
     const load = useCallback(async () => {
+        setLoadError("");
         try {
             setData(await ProviderNetworkService.load(query));
         } catch (error) {
-            toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo cargar la red.", variant: "destructive" });
+            setLoadError(error instanceof Error ? error.message : "No se pudo cargar la red.");
         }
-    }, [query, toast]);
+    }, [query]);
 
     useEffect(() => { void load(); }, [load]);
 
@@ -155,7 +157,12 @@ export default function ProviderNetworkPanel() {
                 </div>
             )}
 
-            <div className="grid gap-6 p-6 lg:grid-cols-2">
+            {loadError ? (
+                <div className="flex flex-wrap items-center gap-3 p-6">
+                    <p role="alert" className="text-sm text-danger-fg">{loadError}</p>
+                    <Button type="button" variant="outline" onClick={() => void load()}>Reintentar</Button>
+                </div>
+            ) : <div className="grid gap-6 p-6 lg:grid-cols-2">
                 <div>
                     <h3 className="mb-3 text-sm font-bold uppercase tracking-wider cc-text-secondary">En la red ({network.length})</h3>
                     {!data ? <p className="text-sm cc-text-secondary">Cargando…</p> : network.length === 0 ? (
@@ -235,7 +242,7 @@ export default function ProviderNetworkPanel() {
                         </ul>
                     )}
                 </div>
-            </div>
+            </div>}
         </section>
     );
 }

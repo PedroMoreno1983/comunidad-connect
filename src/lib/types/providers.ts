@@ -1,4 +1,4 @@
-import type { ParkingChargeMethod, ParkingChargeStatus, UtilityService } from './finance';
+import type { ParkingChargeMethod, ParkingChargeStatus, PersonalBillService } from './finance';
 
 export interface ProviderCardProps {
   provider: ServiceProvider;
@@ -348,9 +348,11 @@ export interface ProviderPortalClientProps {
 export interface UtilityProvider {
     id: string;
     name: string;
-    service: UtilityService;
+    service: PersonalBillService;
     /** Portal oficial donde el cliente paga con su n° de cliente. */
     payUrl: string;
     /** Cómo llama la empresa al número que pide (n° de cliente, n° de servicio…). */
     customerNumberLabel: string;
+    lookupUrl?: string;
+    billUrl?: string;
 }

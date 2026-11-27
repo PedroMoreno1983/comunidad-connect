@@ -12,6 +12,7 @@ type AdminShellProps = {
   user: { name: string; initials: string; roleLabel: string };
   building: string;
   rightSubtitle: string;
+  personal?: boolean;
   cta?: { label: string; onClick?: () => void; href?: string };
   children: React.ReactNode;
 };
@@ -26,17 +27,19 @@ export function AdminShell({
   user,
   building,
   rightSubtitle,
+  personal = false,
   cta,
   children,
 }: AdminShellProps) {
   return (
     <div className="flex min-h-screen" style={{ background: "var(--cc-ivory)" }}>
-      <Sidebar role={role} activeHref={activeHref} user={user} />
+      <Sidebar role={role} activeHref={activeHref} user={user} personal={personal} />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar
           building={building}
           roleLabel={user.roleLabel}
           rightSubtitle={rightSubtitle}
+          personal={personal}
           searchHref={role === "conserje" ? "/concierge/visitors" : "/directorio"}
           searchPlaceholder={role === "conserje" ? "Buscar visitas y accesos…" : undefined}
           cta={cta}
@@ -45,7 +48,7 @@ export function AdminShell({
           {children}
         </div>
       </main>
-      {role === "resident" && <ResidentBottomNav />}
+      {role === "resident" && <ResidentBottomNav personal={personal} />}
     </div>
   );
 }

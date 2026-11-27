@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({ getSupabaseAdmin: () => { throw new Error('sin base en tests'); } }));
 
 import {
-    UTILITY_PROVIDERS, daysBetween, matchUtilityProvider, nextDueDate, normalizeCustomerNumber, utilityAmountWarning,
+    UTILITY_PROVIDERS, UTILITY_SERVICES, daysBetween, matchUtilityProvider, nextDueDate, normalizeCustomerNumber, utilityAmountWarning,
 } from '@/lib/utilities/providers';
 import { buildUtilityReminders, type UtilityReminderAccount } from '@/lib/utilities/reminders';
 import { validateAccountInput } from '@/lib/utilities/residentAccounts';
@@ -19,15 +19,19 @@ describe('catálogo de empresas', () => {
     it('cada empresa tiene un portal https y un servicio válido', () => {
         for (const provider of UTILITY_PROVIDERS) {
             expect(provider.payUrl.startsWith('https://')).toBe(true);
-            expect(['electricity', 'water', 'gas']).toContain(provider.service);
+            expect(UTILITY_SERVICES).toContain(provider.service);
         }
         expect(new Set(UTILITY_PROVIDERS.map(item => item.id)).size).toBe(UTILITY_PROVIDERS.length);
+        expect(new Set(UTILITY_PROVIDERS.map(item => item.service))).toEqual(
+            new Set(['electricity', 'water', 'gas', 'internet', 'highway', 'mobile']),
+        );
     });
 
     it('reconoce la empresa por el nombre largo de la boleta', () => {
         expect(matchUtilityProvider('ENEL DISTRIBUCIÓN CHILE S.A.')?.id).toBe('enel');
         expect(matchUtilityProvider('Aguas Andinas S.A.')?.service).toBe('water');
         expect(matchUtilityProvider('Constructora XYZ')).toBeUndefined();
+        expect(matchUtilityProvider('Movistar Hogar')).toBeUndefined();
     });
 
     it('normaliza el n° de cliente para detectar la misma cuenta', () => {
@@ -70,6 +74,13 @@ describe('avisos de vencimiento', () => {
         expect(buildUtilityReminders([{ ...account, lastPaidPeriod: '2026-10' }], '2026-11-18')).toHaveLength(1);
     });
 
+    it('usa la fecha de la boleta sobre el día habitual y no inventa otro vencimiento', () => {
+        const dated = { ...account, billDueDate: '2026-11-25', dueDay: 21 };
+        expect(buildUtilityReminders([dated], '2026-11-22')).toHaveLength(1);
+        expect(buildUtilityReminders([dated], '2026-12-18')).toHaveLength(0);
+        expect(buildUtilityReminders([{ ...dated, lastPaidBillDueDate: '2026-11-25' }], '2026-11-25')).toHaveLength(0);
+    });
+
     it('el id del aviso es estable: correr el cron dos veces no duplica', () => {
         const first = buildUtilityReminders([account], '2026-11-18')[0];
         const second = buildUtilityReminders([account], '2026-11-18')[0];
@@ -98,6 +109,8 @@ describe('boletas compartidas', () => {
 
 describe('cuentas personales', () => {
     it('valida empresa, servicio y número', () => {
+        expect(validateAccountInput({ provider: 'sin-tag', customerNumber: ' AB-CD-12 ' }))
+            .toMatchObject({ service: 'highway', customer_number: 'AB-CD-12' });
         expect(validateAccountInput({ provider: 'metrogas', customerNumber: '55-1' })).toMatchObject({ service: 'gas', customer_number: '55-1', reminders_enabled: true });
         expect(() => validateAccountInput({ provider: 'otra', customerNumber: '1' })).toThrow('Elige la empresa');
         expect(() => validateAccountInput({ provider: 'enel', service: 'water', customerNumber: '1' })).toThrow('no corresponde');

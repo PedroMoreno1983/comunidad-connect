@@ -78,6 +78,7 @@ function DashboardShell({
             '/agent-center': 'Agent Center',
             '/marketing/reels': 'Reels Agent',
             '/marketplace': 'Marketplace',
+            '/resident/servicios': 'Cuentas',
             '/resident/supermercado': 'Supermercado y Compras Grupales',
             '/amenities': 'Reservas de Instalaciones',
             '/expenses': 'Gastos Comunes',
@@ -124,6 +125,7 @@ function DashboardShell({
         concierge: "Conserjería",
         resident: "Residente",
     };
+    const personal = user.role === "resident" && !user.communityId;
     const buildingName = user.communityName || "Mi comunidad";
     // Modo vecino: las pantallas de la administración muestran cómo invitarla.
     // También para quien espera validación en un edificio ya administrado.
@@ -142,10 +144,11 @@ function DashboardShell({
                 <AdminShell
                     activeHref={pathname}
                     role={roleMapped}
+                    personal={personal}
                     user={{
                         name: user.name,
                         initials,
-                        roleLabel: roleLabels[user.role] || "Miembro",
+                        roleLabel: personal ? "Cuenta personal" : roleLabels[user.role] || "Miembro",
                     }}
                     building={buildingName}
                     rightSubtitle={timeString}
@@ -155,7 +158,7 @@ function DashboardShell({
                             <NeighborModeBanner pathname={pathname} buildingName={user.communityName} />
                         ) : null}
                         {/* Comunidad administrada: los residentes también invitan vecinos desde Inicio. */}
-                        {user.communityManaged !== false && user.role === "resident" && pathname === "/home" ? (
+                        {!personal && user.communityManaged !== false && user.role === "resident" && pathname === "/home" ? (
                             <div className="mb-4 flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                 <p className="text-sm cc-text-secondary"><strong className="cc-text-primary">¿Tus vecinos todavía no están?</strong> Invítalos: la administración confirma que viven aquí.</p>
                                 <InviteNeighborsButton variant="secondary" />
@@ -170,7 +173,7 @@ function DashboardShell({
                     </ErrorBoundary>
                 </AdminShell>
             </ErrorBoundary>
-            {pathname !== "/chat" && (
+            {!personal && pathname !== "/chat" && (
                 <ErrorBoundary name="CoCo Widget">
                     <CoCo />
                 </ErrorBoundary>
@@ -178,7 +181,7 @@ function DashboardShell({
             <ErrorBoundary name="Bloqueo biométrico">
                 <BiometricLockGate userId={user.id} />
             </ErrorBoundary>
-            {user.role === "resident" && (
+            {!personal && user.role === "resident" && (
                 <ErrorBoundary name="Citófono">
                     <IntercomCallWatcher />
                 </ErrorBoundary>

@@ -107,9 +107,9 @@ export const PLATFORM_SCREENS: readonly PlatformScreen[] = [
     { route: '/resident/consumo', title: 'Mi Consumo de Agua', module: 'Agua', roles: ['resident'],
         does: 'Lecturas y consumo de agua de tu unidad por mes.',
         keywords: ['agua', 'consumo', 'lectura', 'medidor', 'boleta de agua'] },
-    { route: '/resident/servicios', title: 'Mis Servicios', module: 'Hogar', roles: ['resident'],
-        does: 'Tus cuentas personales de luz, agua y gas: n° de cliente, aviso antes del vencimiento y enlace al portal oficial para pagar. Solo las ves tú.',
-        keywords: ['luz', 'agua', 'gas', 'cuenta de la luz', 'pagar luz', 'enel', 'cge', 'aguas andinas', 'metrogas', 'numero de cliente', 'vencimiento'] },
+    { route: '/resident/servicios', title: 'Cuentas', module: 'Hogar', roles: ['resident'],
+        does: 'Guarda cuentas de luz, agua, gas, internet, TAG y celular. Lee el vencimiento de la boleta y paga en el portal de la empresa.',
+        keywords: ['luz', 'agua', 'gas', 'internet', 'autopista', 'tag', 'celular', 'cuenta de la luz', 'pagar luz', 'enel', 'cge', 'aguas andinas', 'metrogas', 'numero de cliente', 'vencimiento'] },
     { route: '/embarcaciones', title: 'Embarcaciones', module: 'Hogar', roles: ['resident', 'admin'],
         does: 'Registro de lanchas, botes, kayaks y motos de agua por casa, en comunidades junto a un lago.',
         keywords: ['embarcacion', 'lancha', 'bote', 'kayak', 'moto de agua', 'muelle', 'matricula', 'lago'] },
@@ -277,6 +277,7 @@ export const PLATFORM_SCREENS: readonly PlatformScreen[] = [
 
 /** Rutas que solo redirigen: se resuelven a su destino. */
 export const PLATFORM_ALIASES: Readonly<Record<string, string>> = {
+    '/cuentas': '/resident/servicios',
     '/soporte': '/support',
     '/privacy-center': '/profile',
     '/resident/finances': '/expenses',

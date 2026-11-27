@@ -84,8 +84,7 @@ function LoginForm() {
         router.refresh();
     };
 
-    // Google: vuelve por /auth/callback; si la persona es nueva, el proxy la
-    // lleva a /bienvenida para elegir su edificio.
+    // Google vuelve por /auth/callback y conserva el destino de entrada.
     const [googleLoading, setGoogleLoading] = useState(false);
     // El botón se activa solo si Google está habilitado en Supabase Auth
     // (Authentication > Providers): así nadie choca con un error.

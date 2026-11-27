@@ -10,7 +10,7 @@ function safeNext(value: string | null) {
 
 /**
  * Vuelta de Google (OAuth con PKCE): canjea el código por la sesión y sigue.
- * Si la persona todavía no tiene edificio, el proxy la lleva a /bienvenida.
+ * El inicio muestra las funciones disponibles para el perfil.
  */
 export async function GET(request: NextRequest) {
     const code = request.nextUrl.searchParams.get('code');
